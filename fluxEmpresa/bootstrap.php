@@ -113,6 +113,12 @@ try {
     if ($fiscalIntegrationEnabled === null || $fiscalProductionEnabled === null) {
         throw new RuntimeException('Configuração de integração fiscal inválida.');
     }
+    $soIntegrationEnabled = filter_var($environment->get('SO_INTEGRATION_ENABLED', 'false'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+    $soVerifyTls = filter_var($environment->get('SO_API_VERIFY_TLS', 'true'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+    $soConnectTimeout = filter_var($environment->get('SO_API_CONNECT_TIMEOUT', '5'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 60]]);
+    $soTimeout = filter_var($environment->get('SO_API_TIMEOUT', '15'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 120]]);
+    if ($soIntegrationEnabled === null || $soVerifyTls === null || $soConnectTimeout === false || $soTimeout === false) throw new RuntimeException('Configuração da integração SO inválida.');
+    if ($soIntegrationEnabled && $appEnv === 'production' && !$soVerifyTls) throw new RuntimeException('TLS da integração SO deve ser validado em produção.');
 
     $sessionTimeout = max(86400, (int) $environment->get('SESSION_TIMEOUT', '86400'));
     $sessionAbsoluteTimeout = max(86400, (int) $environment->get('SESSION_ABSOLUTE_TIMEOUT', '86400'));
@@ -123,6 +129,14 @@ try {
         'project_root' => __DIR__,
         'fiscal_integration_enabled' => $fiscalIntegrationEnabled,
         'fiscal_production_enabled' => $fiscalProductionEnabled,
+        'so_integration_enabled' => $soIntegrationEnabled,
+        'so_api_base_url' => $environment->get('SO_API_BASE_URL', ''),
+        'so_api_acquisition_path' => $environment->get('SO_API_ACQUISITION_PATH', '/api/integracoes/fluxempresa/aquisicoes'),
+        'so_api_client_id' => $environment->get('SO_API_CLIENT_ID', ''),
+        'so_api_secret' => $environment->get('SO_API_SECRET', ''),
+        'so_api_connect_timeout' => $soConnectTimeout,
+        'so_api_timeout' => $soTimeout,
+        'so_api_verify_tls' => $soVerifyTls,
         'session_name' => $environment->get('SESSION_NAME', 'YKSESSID'),
         'session_timeout' => $sessionTimeout,
         'session_absolute_timeout' => $sessionAbsoluteTimeout,

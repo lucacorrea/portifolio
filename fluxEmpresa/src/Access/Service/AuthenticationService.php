@@ -86,6 +86,7 @@ final class AuthenticationService
         $authenticatedUser = new AuthenticatedUser(
             $user->id(),
             $user->profileId(),
+            $profile->code() ?? '',
             $profile->name(),
             $user->name(),
             $user->username(),
@@ -145,6 +146,7 @@ final class AuthenticationService
             $this->currentUser = new AuthenticatedUser(
                 $user->id(),
                 $user->profileId(),
+                $profile->code() ?? '',
                 $profile->name(),
                 $user->name(),
                 $user->username(),

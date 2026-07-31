@@ -30,7 +30,17 @@ final class Budget
         private readonly ?string $rejectedAt,
         private readonly string $createdAt,
         private readonly string $updatedAt,
-        private readonly int $itemsCount
+        private readonly int $itemsCount,
+        private readonly ?string $creatorName = null,
+        private readonly ?string $creatorProfileName = null,
+        private readonly bool $createdBySupport = false,
+        private readonly ?string $approverName = null,
+        private readonly ?string $approverProfileName = null,
+        private readonly ?string $soAcquisitionNumber = null,
+        private readonly ?string $soDeliveryCode = null,
+        private readonly ?string $soAcquisitionStatus = null,
+        private readonly ?string $soIntegrationStatus = null,
+        private readonly ?string $soSynchronizedAt = null
     ) {
         if ($this->id <= 0 || $this->clientId <= 0) {
             throw new InvalidArgumentException('Orçamento inválido.');
@@ -61,7 +71,17 @@ final class Budget
             rejectedAt: isset($data['recusado_em']) ? (string) $data['recusado_em'] : null,
             createdAt: (string) ($data['criado_em'] ?? ''),
             updatedAt: (string) ($data['atualizado_em'] ?? ''),
-            itemsCount: (int) ($data['itens_total'] ?? 0)
+            itemsCount: (int) ($data['itens_total'] ?? 0),
+            creatorName: isset($data['criado_por_nome_snapshot']) ? (string) $data['criado_por_nome_snapshot'] : null,
+            creatorProfileName: isset($data['criado_por_perfil_nome_snapshot']) ? (string) $data['criado_por_perfil_nome_snapshot'] : null,
+            createdBySupport: (bool) ($data['criado_por_suporte'] ?? false),
+            approverName: isset($data['aprovado_por_nome_snapshot']) ? (string) $data['aprovado_por_nome_snapshot'] : null,
+            approverProfileName: isset($data['aprovado_por_perfil_nome_snapshot']) ? (string) $data['aprovado_por_perfil_nome_snapshot'] : null,
+            soAcquisitionNumber: isset($data['so_aquisicao_numero']) ? (string) $data['so_aquisicao_numero'] : null,
+            soDeliveryCode: isset($data['so_codigo_entrega']) ? (string) $data['so_codigo_entrega'] : null,
+            soAcquisitionStatus: isset($data['so_aquisicao_status']) ? (string) $data['so_aquisicao_status'] : null,
+            soIntegrationStatus: isset($data['integracao_so_status']) ? (string) $data['integracao_so_status'] : null,
+            soSynchronizedAt: isset($data['so_sincronizado_em']) ? (string) $data['so_sincronizado_em'] : null
         );
     }
 
@@ -88,6 +108,16 @@ final class Budget
     public function createdAt(): string { return $this->createdAt; }
     public function updatedAt(): string { return $this->updatedAt; }
     public function itemsCount(): int { return $this->itemsCount; }
+    public function creatorName(): ?string { return $this->creatorName; }
+    public function creatorProfileName(): ?string { return $this->creatorProfileName; }
+    public function createdBySupport(): bool { return $this->createdBySupport; }
+    public function approverName(): ?string { return $this->approverName; }
+    public function approverProfileName(): ?string { return $this->approverProfileName; }
+    public function soAcquisitionNumber(): ?string { return $this->soAcquisitionNumber; }
+    public function soDeliveryCode(): ?string { return $this->soDeliveryCode; }
+    public function soAcquisitionStatus(): ?string { return $this->soAcquisitionStatus; }
+    public function soIntegrationStatus(): ?string { return $this->soIntegrationStatus; }
+    public function soSynchronizedAt(): ?string { return $this->soSynchronizedAt; }
 
     public function displayStatus(): string
     {

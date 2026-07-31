@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Sales\Repository;
 
 use App\Sales\DTO\BudgetFormData;
+use App\Sales\DTO\BudgetActorData;
 use App\Sales\Entity\Budget;
 use App\Sales\Entity\BudgetItem;
 use InvalidArgumentException;
@@ -160,7 +161,7 @@ final class BudgetRepository
         ];
     }
 
-    public function create(BudgetFormData $data): Budget
+    public function create(BudgetFormData $data, BudgetActorData $actor): Budget
     {
         $this->connection->beginTransaction();
         try {
@@ -169,12 +170,21 @@ final class BudgetRepository
             $statement = $this->connection->prepare(
                 'INSERT INTO orcamentos
                     (cliente_id, data_emissao, validade, status, observacoes,
-                     subtotal_servicos, subtotal_produtos, subtotal_outros, desconto, acrescimo, total)
+                     subtotal_servicos, subtotal_produtos, subtotal_outros, desconto, acrescimo, total,
+                     criado_por_usuario_id, criado_por_nome_snapshot, criado_por_perfil_id_snapshot,
+                     criado_por_perfil_codigo_snapshot, criado_por_perfil_nome_snapshot, criado_por_suporte)
                  VALUES
                     (:client_id, :issue_date, :valid_until, :status, :notes,
-                     :services_subtotal, :products_subtotal, :others_subtotal, :discount, :increase, :total)'
+                     :services_subtotal, :products_subtotal, :others_subtotal, :discount, :increase, :total,
+                     :creator_id, :creator_name, :creator_profile_id, :creator_profile_code, :creator_profile_name, :creator_support)'
             );
             $this->bindForm($statement, $data, $totals);
+            $statement->bindValue('creator_id', $actor->userId(), PDO::PARAM_INT);
+            $statement->bindValue('creator_name', $actor->name());
+            $statement->bindValue('creator_profile_id', $actor->profileId(), PDO::PARAM_INT);
+            $statement->bindValue('creator_profile_code', $actor->profileCode());
+            $statement->bindValue('creator_profile_name', $actor->profileName());
+            $statement->bindValue('creator_support', $actor->isSupport() ? 1 : 0, PDO::PARAM_INT);
             $statement->execute();
 
             $id = (int) $this->connection->lastInsertId();
@@ -238,6 +248,17 @@ final class BudgetRepository
               WHERE id = :id AND status <> 'aprovado' AND excluido_em IS NULL"
         );
         $statement->execute(['id' => $id]);
+    }
+
+    public function recordApprover(int $id, BudgetActorData $actor): void
+    {
+        $statement = $this->connection->prepare(
+            "UPDATE orcamentos SET aprovado_por_usuario_id = :user_id, aprovado_por_nome_snapshot = :name,
+             aprovado_por_perfil_id_snapshot = :profile_id, aprovado_por_perfil_codigo_snapshot = :profile_code,
+             aprovado_por_perfil_nome_snapshot = :profile_name WHERE id = :id"
+        );
+        $statement->execute(['id' => $id, 'user_id' => $actor->userId(), 'name' => $actor->name(),
+            'profile_id' => $actor->profileId(), 'profile_code' => $actor->profileCode(), 'profile_name' => $actor->profileName()]);
     }
 
     public function reject(int $id, ?string $reason = null): void
@@ -386,16 +407,24 @@ final class BudgetRepository
                        o.data_emissao, o.validade, o.status, o.observacoes, o.motivo_recusa,
                        o.subtotal_servicos, o.subtotal_produtos, o.subtotal_outros,
                        o.desconto, o.acrescimo, o.total, o.aprovado_em, o.recusado_em,
-                       o.criado_em, o.atualizado_em, COUNT(i.id) AS itens_total
+                       o.criado_em, o.atualizado_em, COUNT(i.id) AS itens_total,
+                       o.criado_por_nome_snapshot, o.criado_por_perfil_nome_snapshot, o.criado_por_suporte,
+                       o.aprovado_por_nome_snapshot, o.aprovado_por_perfil_nome_snapshot,
+                       o.so_aquisicao_numero, o.so_codigo_entrega, o.so_aquisicao_status, o.so_sincronizado_em,
+                       integracao.status AS integracao_so_status
                   FROM orcamentos o
                   JOIN clientes c ON c.id = o.cliente_id
-             LEFT JOIN orcamento_itens i ON i.orcamento_id = o.id';
+             LEFT JOIN orcamento_itens i ON i.orcamento_id = o.id
+             LEFT JOIN orcamento_integracoes_so integracao ON integracao.orcamento_id = o.id';
         if ($where !== []) $sql .= ' WHERE ' . implode(' AND ', $where);
         $sql .= ' GROUP BY o.id, o.numero, o.cliente_id, c.codigo, c.nome, c.documento,
                          o.data_emissao, o.validade, o.status,
                          o.observacoes, o.motivo_recusa, o.subtotal_servicos, o.subtotal_produtos,
                          o.subtotal_outros, o.desconto, o.acrescimo, o.total, o.aprovado_em,
-                         o.recusado_em, o.criado_em, o.atualizado_em
+                         o.recusado_em, o.criado_em, o.atualizado_em, o.criado_por_nome_snapshot,
+                         o.criado_por_perfil_nome_snapshot, o.criado_por_suporte, o.aprovado_por_nome_snapshot,
+                         o.aprovado_por_perfil_nome_snapshot, o.so_aquisicao_numero, o.so_codigo_entrega,
+                         o.so_aquisicao_status, o.so_sincronizado_em, integracao.status
                   ORDER BY ' . $orderBy;
         if ($forUpdate) $sql .= ' FOR UPDATE';
         $statement = $this->connection->prepare($sql);

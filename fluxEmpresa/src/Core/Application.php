@@ -30,6 +30,10 @@ use App\Finance\Service\CashManagementService;
 use App\Finance\Service\PaymentManagementService;
 use App\Finance\Service\ReceiptService;
 use App\Inventory\Service\InventoryManagementService;
+use App\Integration\SO\BudgetApprovalIntegrationService;
+use App\Integration\SO\BudgetSoIntegrationRepository;
+use App\Integration\SO\SoApiClient;
+use App\Integration\SO\SoConfiguration;
 use App\Purchasing\Service\SupplierManagementService;
 use App\Report\Repository\ProductionReportRepository;
 use App\Report\Service\ProductionReportService;
@@ -75,6 +79,7 @@ final class Application
     private ?ClientImportService $clientImport = null;
 
     private ?BudgetManagementService $budgetManagement = null;
+    private ?BudgetApprovalIntegrationService $budgetApprovalIntegration = null;
 
     private ?ServiceOrderManagementService $serviceOrderManagement = null;
 
@@ -319,6 +324,16 @@ final class Application
         }
 
         return $this->serviceOrderManagement;
+    }
+
+    public function budgetApprovalIntegration(): BudgetApprovalIntegrationService
+    {
+        if ($this->budgetApprovalIntegration === null) {
+            $connection = $this->database->connection();
+            $config = new SoConfiguration((bool) ($this->settings['so_integration_enabled'] ?? false), (string) ($this->settings['so_api_base_url'] ?? ''), (string) ($this->settings['so_api_acquisition_path'] ?? ''), (string) ($this->settings['so_api_client_id'] ?? ''), (string) ($this->settings['so_api_secret'] ?? ''), (int) ($this->settings['so_api_connect_timeout'] ?? 5), (int) ($this->settings['so_api_timeout'] ?? 15), (bool) ($this->settings['so_api_verify_tls'] ?? true), (string) ($this->settings['app_env'] ?? 'production'));
+            $this->budgetApprovalIntegration = new BudgetApprovalIntegrationService($config, new BudgetSoIntegrationRepository($connection), new SoApiClient($config), $this->budgetManagement(), $this->serviceOrderManagement(), fn(): array => $this->companySettings()->get());
+        }
+        return $this->budgetApprovalIntegration;
     }
 
     public function agendaManagement(): AgendaManagementService

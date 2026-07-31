@@ -164,7 +164,7 @@ final class MigrationRunner
 
     public static function supportsVersion(int $version): bool
     {
-        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22], true);
+        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], true);
     }
 
     private function acquireLock(string $name, int $waitSeconds): bool
@@ -398,6 +398,27 @@ final class MigrationRunner
                 && $this->permissionSatisfied('recibo.emitir')
                 && $this->permissionSatisfied('recibo.reimprimir')
                 && $this->permissionSatisfied('recibo.cancelar'),
+            24 => $this->allColumns('perfis', ['codigo'])
+                && $this->allColumns('orcamentos', [
+                    'criado_por_usuario_id', 'criado_por_nome_snapshot', 'criado_por_perfil_id_snapshot',
+                    'criado_por_perfil_codigo_snapshot', 'criado_por_perfil_nome_snapshot', 'criado_por_suporte',
+                    'aprovado_por_usuario_id', 'aprovado_por_nome_snapshot', 'aprovado_por_perfil_id_snapshot',
+                    'aprovado_por_perfil_codigo_snapshot', 'aprovado_por_perfil_nome_snapshot',
+                    'so_evento_uuid', 'so_aquisicao_id', 'so_aquisicao_numero', 'so_codigo_entrega',
+                    'so_aquisicao_status', 'so_sincronizado_em',
+                ])
+                && $this->tableExists('orcamento_integracoes_so')
+                && $this->allIndexes([
+                    ['perfis', 'uk_perfis_codigo'], ['orcamentos', 'idx_orcamentos_criado_por'],
+                    ['orcamentos', 'idx_orcamentos_aprovado_por'], ['orcamentos', 'idx_orcamentos_criado_por_suporte'],
+                    ['orcamentos', 'uk_orcamentos_so_evento_uuid'], ['orcamentos', 'uk_orcamentos_so_aquisicao_id'],
+                    ['orcamento_integracoes_so', 'uk_integracao_so_orcamento'], ['orcamento_integracoes_so', 'uk_integracao_so_evento'],
+                ])
+                && $this->allForeignKeys([
+                    'fk_orcamentos_criado_por_usuario', 'fk_orcamentos_aprovado_por_usuario', 'fk_integracao_so_orcamento',
+                ])
+                && $this->permissionSatisfied('orcamento.integracao_so.visualizar')
+                && $this->permissionSatisfied('orcamento.integracao_so.reprocessar'),
             default => null,
         };
     }

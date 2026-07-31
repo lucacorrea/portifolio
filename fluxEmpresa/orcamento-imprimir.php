@@ -244,6 +244,7 @@ $companyDetails = array_values(array_filter([
                 <strong><?= h($budget->displayNumber()) ?></strong>
                 <p>Emissão: <?= h(budget_print_date($budget->issueDate())) ?></p>
                 <p>Validade: <?= h(budget_print_date($budget->validUntil())) ?></p>
+                <?php if ($budget->creatorName() !== null): ?><p>Elaborado por: <?= h($budget->creatorName()) ?><?= $budget->creatorProfileName() !== null ? ' — ' . h($budget->creatorProfileName()) : '' ?></p><?php endif; ?>
             </div>
         </header>
 
@@ -256,6 +257,13 @@ $companyDetails = array_values(array_filter([
                 <div class="field"><span>Status comercial</span><strong><?= h($budget->displayStatus()) ?></strong></div>
             </div>
         </section>
+
+        <?php if ($budget->soAcquisitionNumber() !== null): ?>
+        <section class="document-section">
+            <h2>Integração com o SO</h2>
+            <div class="info-grid"><div class="field"><span>Referência da Aquisição no SO</span><strong><?= h($budget->soAcquisitionNumber()) ?></strong></div><div class="field"><span>Status</span><strong><?= h($budget->soAcquisitionStatus() ?? '-') ?></strong></div></div>
+        </section>
+        <?php endif; ?>
 
         <?php budget_print_items($items, 'servico', 'Serviços'); ?>
         <?php budget_print_items($items, 'produto', 'Produtos'); ?>

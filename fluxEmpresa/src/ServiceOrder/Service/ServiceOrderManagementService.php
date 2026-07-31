@@ -8,6 +8,7 @@ use App\Catalog\Repository\ProductRepository;
 use App\Catalog\Repository\ServiceRepository;
 use App\CRM\Repository\ClientRepository;
 use App\Sales\Repository\BudgetRepository;
+use App\Sales\DTO\BudgetActorData;
 use App\ServiceOrder\DTO\ServiceOrderFormData;
 use App\ServiceOrder\DTO\ServiceOrderScheduleData;
 use App\ServiceOrder\DTO\ServiceOrderTeamData;
@@ -166,7 +167,7 @@ final class ServiceOrderManagementService
         });
     }
 
-    public function approveBudgetAndCreateOrder(int $budgetId): ServiceOrder
+    public function approveBudgetAndCreateOrder(int $budgetId, ?BudgetActorData $actor = null): ServiceOrder
     {
         if ($this->budgets === null) {
             throw new InvalidArgumentException('Integração de orçamento indisponível.');
@@ -190,6 +191,7 @@ final class ServiceOrderManagementService
             }
 
             if ($budget->status() !== 'aprovado') {
+                if ($actor !== null) $this->budgets->recordApprover($budgetId, $actor);
                 $this->budgets->approve($budgetId);
             }
 

@@ -11,6 +11,7 @@ final class AuthenticatedUser
     public function __construct(
         private readonly int $id,
         private readonly int $profileId,
+        private readonly string $profileCode,
         private readonly string $profileName,
         private readonly string $name,
         private readonly string $username,
@@ -27,6 +28,16 @@ final class AuthenticatedUser
     public function profileId(): int
     {
         return $this->profileId;
+    }
+
+    public function profileCode(): string
+    {
+        return $this->profileCode;
+    }
+
+    public function isSupport(): bool
+    {
+        return $this->profileCode === 'suporte';
     }
 
     public function profileName(): string

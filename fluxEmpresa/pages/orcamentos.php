@@ -127,6 +127,10 @@ $editError = budget_error($recovery, 'edit');
             <tr>
                 <td>
                     <strong><?= h($budget->displayNumber()) ?></strong>
+                    <?php if ($budget->soAcquisitionNumber() !== null): ?><small class="d-block text-muted">Aquisição SO: <?= h($budget->soAcquisitionNumber()) ?></small><?php endif; ?>
+                    <?php if (isset($ordersByBudget[$budget->id()])): ?><small class="d-block text-muted">OS: <?= h($ordersByBudget[$budget->id()]['numero']) ?></small><?php endif; ?>
+                    <?php if ($budget->createdBySupport()): ?><small class="d-block text-primary">SUPORTE · Criado pelo suporte: <?= h($budget->creatorName() ?? '-') ?></small><?php endif; ?>
+                    <?php if ($budget->soIntegrationStatus() !== null): ?><small class="d-block text-muted">Integração SO: <?= h(ucfirst($budget->soIntegrationStatus())) ?></small><?php endif; ?>
                     <?php if (isset($ordersByBudget[$budget->id()])): ?><br><small class="text-muted">OS criada: <?= h($ordersByBudget[$budget->id()]['numero']) ?></small><?php endif; ?>
                 </td><td>
                     <?= h($budget->clientName()) ?>

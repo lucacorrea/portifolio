@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/orcamento-action-common.php';
+use App\Sales\DTO\BudgetActorData;
 
 budget_require_post_request();
 
@@ -23,7 +24,8 @@ if ($permission === '') {
 try {
     $budgetId = budget_posted_positive_int('id');
     if ($operation === 'approve') {
-        $order = $application->serviceOrderManagement()->approveBudgetAndCreateOrder($budgetId);
+        $currentUser = $application->authorization()->requireLogin();
+        $order = $application->budgetApprovalIntegration()->approve($budgetId, BudgetActorData::fromAuthenticatedUser($currentUser));
         $session->flash(
             'success',
             'Orçamento aprovado e OS criada automaticamente: ' . $order->displayNumber() . '.'

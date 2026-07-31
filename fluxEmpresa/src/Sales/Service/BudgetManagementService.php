@@ -11,6 +11,7 @@ use App\Sales\DTO\BudgetFormData;
 use App\Sales\Entity\Budget;
 use App\Sales\Entity\BudgetItem;
 use App\Sales\Repository\BudgetRepository;
+use App\Sales\DTO\BudgetActorData;
 use InvalidArgumentException;
 
 final class BudgetManagementService
@@ -56,10 +57,10 @@ final class BudgetManagementService
         return $this->budgets->findItems($id);
     }
 
-    public function createBudget(BudgetFormData $data): Budget
+    public function createBudget(BudgetFormData $data, BudgetActorData $actor): Budget
     {
         $this->validateReferences($data, true);
-        return $this->budgets->create($data);
+        return $this->budgets->create($data, $actor);
     }
 
     public function updateBudget(int $id, BudgetFormData $data): void

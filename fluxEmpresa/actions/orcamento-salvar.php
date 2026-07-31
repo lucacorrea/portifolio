@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Sales\DTO\BudgetFormData;
+use App\Sales\DTO\BudgetActorData;
 
 require __DIR__ . '/orcamento-action-common.php';
 
@@ -21,7 +22,8 @@ try {
     $service = $application->budgetManagement();
 
     if ($budgetId === null) {
-        $budget = $service->createBudget($data);
+        $currentUser = $application->authorization()->requireLogin();
+        $budget = $service->createBudget($data, BudgetActorData::fromAuthenticatedUser($currentUser));
         $session->flash('success', 'Orçamento cadastrado com o número ' . $budget->displayNumber() . '.');
     } else {
         $service->updateBudget($budgetId, $data);

@@ -29,7 +29,7 @@ migrationAssertSame(true, str_contains($sampleStatements[0], "valor;interno"), '
 
 $migrationPaths = glob(dirname(__DIR__) . '/database/migrations/*.sql') ?: [];
 sort($migrationPaths, SORT_NATURAL | SORT_FLAG_CASE);
-migrationAssertSame(23, count($migrationPaths), 'A sequência atual deve conter 23 migrations.');
+migrationAssertSame(24, count($migrationPaths), 'A sequência atual deve conter 24 migrations.');
 
 $expectedVersion = 1;
 foreach ($migrationPaths as $path) {
@@ -133,6 +133,12 @@ $receiptPermissionMigration = file_get_contents(dirname(__DIR__) . '/database/mi
 migrationAssertSame(true, is_string($receiptPermissionMigration), 'A migration de reparo das permissões de recibo deve ser legível.');
 foreach (['recibo.visualizar', 'recibo.emitir', 'recibo.reimprimir', 'recibo.cancelar'] as $permission) {
     migrationAssertSame(true, str_contains((string) $receiptPermissionMigration, $permission), 'A migration deve reparar a permissão ' . $permission . '.');
+}
+
+$integrationMigration = file_get_contents(dirname(__DIR__) . '/database/migrations/024_budget_audit_so_integration.sql');
+migrationAssertSame(true, is_string($integrationMigration), 'A migration de integração com o SO deve ser legível.');
+foreach (['orcamento_integracoes_so', 'uk_integracao_so_evento', 'criado_por_suporte', 'so_aquisicao_numero'] as $required) {
+    migrationAssertSame(true, str_contains((string) $integrationMigration, $required), 'A migration deve criar ' . $required . '.');
 }
 
 echo "MigrationRunnerTest: OK\n";

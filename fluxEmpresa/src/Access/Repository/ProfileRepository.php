@@ -19,7 +19,7 @@ final class ProfileRepository
         $this->assertPositiveId($id);
 
         $statement = $this->connection->prepare(
-            'SELECT id, nome, descricao, protegido, status, criado_em, atualizado_em
+            'SELECT id, nome, codigo, descricao, protegido, status, criado_em, atualizado_em
                FROM perfis
               WHERE id = :id
               LIMIT 1'
@@ -34,7 +34,7 @@ final class ProfileRepository
     public function findByName(string $name): ?Profile
     {
         $statement = $this->connection->prepare(
-            'SELECT id, nome, descricao, protegido, status, criado_em, atualizado_em
+            'SELECT id, nome, codigo, descricao, protegido, status, criado_em, atualizado_em
                FROM perfis
               WHERE nome = :name
               LIMIT 1'
@@ -52,7 +52,7 @@ final class ProfileRepository
     public function findAll(): array
     {
         $statement = $this->connection->query(
-            'SELECT id, nome, descricao, protegido, status, criado_em, atualizado_em
+            'SELECT id, nome, codigo, descricao, protegido, status, criado_em, atualizado_em
                FROM perfis
               ORDER BY nome ASC'
         );
