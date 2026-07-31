@@ -13,7 +13,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     toggles.forEach((toggle) => {
       toggle.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
-      if (!toggle.classList.contains('desktop-sidebar-btn')) return;
       const label = isExpanded ? 'Ocultar barra lateral' : 'Exibir barra lateral';
       toggle.setAttribute('aria-label', label);
       toggle.setAttribute('title', label);
@@ -49,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   backdrop?.addEventListener('click', closeSidebar);
 
-  document.querySelectorAll('.os-sidebar a').forEach((link) => {
+  document.querySelectorAll('.os-sidebar a, .admin-sidebar a').forEach((link) => {
     link.addEventListener('click', () => {
       if (window.matchMedia('(max-width: 920px)').matches) closeSidebar();
     });

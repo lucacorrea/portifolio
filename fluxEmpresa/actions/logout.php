@@ -24,6 +24,11 @@ try {
 
 try {
     $application->authentication()->requireAuthenticatedUser();
+    try {
+        $application->adminAccesses()->leave($application->activeCompanyContext());
+    } catch (Throwable $exception) {
+        error_log('Could not close administrative access on logout: ' . get_class($exception));
+    }
     $application->authentication()->logout();
 } catch (Throwable $exception) {
     header('Location: ' . $redirect->loginUrl(), true, 303);

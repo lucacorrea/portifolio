@@ -164,7 +164,7 @@ final class MigrationRunner
 
     public static function supportsVersion(int $version): bool
     {
-        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22], true);
+        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], true);
     }
 
     private function acquireLock(string $name, int $waitSeconds): bool
@@ -398,6 +398,17 @@ final class MigrationRunner
                 && $this->permissionSatisfied('recibo.emitir')
                 && $this->permissionSatisfied('recibo.reimprimir')
                 && $this->permissionSatisfied('recibo.cancelar'),
+            24 => $this->allColumns('perfis', ['codigo'])
+                && $this->allTables(['empresas', 'empresa_integracoes', 'empresa_acessos_administrativos'])
+                && $this->allColumns('empresas', ['uuid', 'razao_social', 'nome_fantasia', 'documento', 'tipo_pessoa', 'segmento', 'contato_responsavel', 'telefone', 'email', 'status', 'criado_por', 'criado_em', 'atualizado_em'])
+                && $this->allColumns('empresa_integracoes', ['empresa_id', 'sistema', 'entidade', 'identificador_externo'])
+                && $this->allColumns('empresa_acessos_administrativos', ['empresa_id', 'usuario_id', 'ip', 'motivo', 'sessao_chave', 'iniciado_em', 'encerrado_em'])
+                && $this->allIndexes([
+                    ['perfis', 'uk_perfis_codigo'],
+                    ['empresas', 'uk_empresas_uuid'],
+                    ['empresas', 'uk_empresas_documento'],
+                    ['empresa_integracoes', 'uk_empresa_integracao_externa'],
+                ]),
             default => null,
         };
     }

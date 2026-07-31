@@ -30,6 +30,11 @@ foreach (['fornecedores.php', 'contas-pagar.php', 'usuarios.php', 'relatorios.ph
     redirectAssertSame('/fluxEmpresa/' . $target, $redirect->applicationUrl($target), 'A URL interna deve retornar à página de origem.');
 }
 
+foreach (['empresa-criar.php', 'empresa-editar.php', 'empresa-entrar.php', 'empresa-importar-so.php', 'empresa-sair.php', 'empresa-status.php', 'empresa-vincular-so.php'] as $action) {
+    $target = 'adm/actions/' . $action;
+    redirectAssertSame($target, $redirect->sanitize($target), 'A ação administrativa deve permanecer na rota protegida.');
+}
+
 foreach ([
     'https://example.com',
     '../usuarios.php',

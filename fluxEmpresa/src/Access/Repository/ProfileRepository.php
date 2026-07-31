@@ -124,11 +124,12 @@ final class ProfileRepository
     public function create(Profile $profile): int
     {
         $statement = $this->connection->prepare(
-            'INSERT INTO perfis (nome, descricao, protegido, status)
-             VALUES (:name, :description, :protected, :status)'
+            'INSERT INTO perfis (nome, codigo, descricao, protegido, status)
+             VALUES (:name, :code, :description, :protected, :status)'
         );
         $statement->execute([
             'name' => $profile->name(),
+            'code' => $profile->code() !== '' ? $profile->code() : 'perfil_' . bin2hex(random_bytes(8)),
             'description' => $profile->description(),
             'protected' => $profile->isProtected() ? 1 : 0,
             'status' => $profile->status(),
@@ -149,6 +150,7 @@ final class ProfileRepository
         $statement = $this->connection->prepare(
             'UPDATE perfis
                 SET nome = :name,
+                    codigo = :code,
                     descricao = :description,
                     protegido = :protected,
                     status = :status
@@ -158,6 +160,7 @@ final class ProfileRepository
         return $statement->execute([
             'id' => $id,
             'name' => $profile->name(),
+            'code' => $profile->code() !== '' ? $profile->code() : 'perfil_' . bin2hex(random_bytes(8)),
             'description' => $profile->description(),
             'protected' => $profile->isProtected() ? 1 : 0,
             'status' => $profile->status(),

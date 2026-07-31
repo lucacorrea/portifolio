@@ -19,6 +19,7 @@
             "@php tests/EmployeeFormDataTest.php",
             "@php tests/CompanyBrandingTest.php",
             "@php tests/SafeRedirectTest.php",
+            "@php tests/AdminPlatformTest.php",
             "@php tests/ProductionReportServiceTest.php",
             "@php tests/PayablesValidationTest.php",
             "@php tests/CashManagementValidationTest.php",

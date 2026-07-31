@@ -4,11 +4,14 @@
 SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 INSERT INTO perfis
-    (nome, descricao, protegido, status)
+    (nome, codigo, descricao, protegido, status)
 VALUES
-    ('Administrador', 'Acesso completo ao sistema', 1, 'ativo'),
-    ('Recepção', 'Atendimento, clientes, ordens de serviço, orçamentos e agenda', 0, 'ativo')
+    ('Administrador', 'administrador', 'Acesso completo ao sistema', 1, 'ativo'),
+    ('Recepção', 'recepcao', 'Atendimento, clientes, ordens de serviço, orçamentos e agenda', 0, 'ativo'),
+    ('Suporte da plataforma', 'suporte', 'Atendimento administrativo auditado às empresas', 1, 'ativo'),
+    ('Superadministrador da plataforma', 'super_admin', 'Administração integral da plataforma', 1, 'ativo')
 ON DUPLICATE KEY UPDATE
+    codigo = VALUES(codigo),
     descricao = VALUES(descricao),
     protegido = VALUES(protegido),
     status = VALUES(status);
