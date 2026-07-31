@@ -2,7 +2,7 @@
 $primaryActionLabel = $primaryActionLabel ?? 'Nova OS';
 $primaryActionIcon = $primaryActionIcon ?? 'bi-plus-lg';
 $primaryActionTarget = $primaryActionTarget ?? '#modal-os';
-$pageSubtitle = $pageSubtitle ?? 'Gestão de serviços';
+$pageSubtitle = $pageSubtitle ?? 'FluxEmpresa';
 $showPrimaryAction = isset($showPrimaryAction)
   ? (bool) $showPrimaryAction
   : (!isset($primaryActionPermission) || $authorization->can((string) $primaryActionPermission));

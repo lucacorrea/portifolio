@@ -1,6 +1,6 @@
 {
-    "name": "kyamaguchi/osmais",
-    "description": "Sistema de gestão de serviços da K. Yamaguchi Refrigeração.",
+    "name": "fluxempresa/sistema",
+    "description": "FluxEmpresa.",
     "type": "project",
     "license": "proprietary",
     "require": {

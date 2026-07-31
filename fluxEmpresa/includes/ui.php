@@ -582,7 +582,7 @@ function render_configuracoes(): void {
   $sections = ['Dados da empresa','Logotipo','Assinatura','Carimbo','Dados fiscais','Formas de pagamento','Tipos de equipamentos','Tipos de ambientes','Funções dos funcionários','Status de OS','Categorias','Preferências de impressão'];
   echo '<div class="settings-grid">';
   foreach ($sections as $section) {
-    echo '<section class="panel settings-panel"><div class="panel-header"><div class="panel-title"><i class="bi bi-sliders"></i>' . h($section) . '</div></div><div class="p-3">' . field('Campo visual', $section === 'Dados da empresa' ? 'K. Yamaguchi Refrigeração' : '') . field('Observações','Configuração apenas visual nesta etapa.','textarea') . '<button class="btn-modal-save" type="button">Salvar visualmente</button></div></section>';
+    echo '<section class="panel settings-panel"><div class="panel-header"><div class="panel-title"><i class="bi bi-sliders"></i>' . h($section) . '</div></div><div class="p-3">' . field('Campo visual', $section === 'Dados da empresa' ? 'FluxEmpresa' : '') . field('Observações','Configuração apenas visual nesta etapa.','textarea') . '<button class="btn-modal-save" type="button">Salvar visualmente</button></div></section>';
   }
   echo '</div>';
 }

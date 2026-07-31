@@ -21,12 +21,12 @@ function environmentAssertSame(mixed $expected, mixed $actual, string $message):
 
 $previousValue = getenv('DB_AUTO_MIGRATE');
 $previousWebValue = getenv('DB_WEB_MIGRATIONS');
-$previousEnvPath = getenv('YK_ENV_PATH');
+$previousEnvPath = getenv('FLUX_ENV_PATH');
 
 try {
     putenv('DB_AUTO_MIGRATE');
     putenv('DB_WEB_MIGRATIONS');
-    putenv('YK_ENV_PATH');
+    putenv('FLUX_ENV_PATH');
     unset($_ENV['DB_AUTO_MIGRATE'], $_SERVER['DB_AUTO_MIGRATE']);
     unset($_ENV['DB_WEB_MIGRATIONS'], $_SERVER['DB_WEB_MIGRATIONS']);
 
@@ -65,9 +65,9 @@ try {
     );
 
     environmentAssertSame(
-        '/home/usuario/configuracoes/yk/.env',
-        str_replace('\\', '/', Environment::resolveFilePath('/home/usuario/public_html/YK')),
-        'O .env padrão deve ser procurado dentro de configuracoes/yk.'
+        '/home/usuario/configuracoes/flux/.env',
+        str_replace('\\', '/', Environment::resolveFilePath('/home/usuario/public_html/fluxEmpresa')),
+        'O .env padrão deve ser procurado dentro de configuracoes/flux.'
     );
 
     $bootstrapSource = file_get_contents(dirname(__DIR__) . '/bootstrap.php');
@@ -96,9 +96,9 @@ try {
         $_SERVER['DB_WEB_MIGRATIONS'] = $previousWebValue;
     }
     if ($previousEnvPath === false) {
-        putenv('YK_ENV_PATH');
+        putenv('FLUX_ENV_PATH');
     } else {
-        putenv('YK_ENV_PATH=' . $previousEnvPath);
+        putenv('FLUX_ENV_PATH=' . $previousEnvPath);
     }
 }
 

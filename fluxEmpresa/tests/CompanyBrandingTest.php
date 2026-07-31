@@ -16,7 +16,7 @@ function company_branding_assert(bool $condition, string $message): void
 }
 
 company_branding_assert(
-    CompanyBranding::shortName('K. Yamaguchi Produtos e Serviços') === 'K. Yamaguchi Produtos',
+    CompanyBranding::shortName('FluxEmpresa Produtos e Serviços') === 'FluxEmpresa Produtos e',
     'O nome do menu deve conter somente as três primeiras palavras.'
 );
 company_branding_assert(
@@ -24,7 +24,7 @@ company_branding_assert(
     'O nome do menu deve normalizar os espaços.'
 );
 company_branding_assert(
-    CompanyBranding::shortName('') === 'K. Yamaguchi',
+    CompanyBranding::shortName('') === 'FluxEmpresa',
     'O nome do menu deve usar o valor padrão quando estiver vazio.'
 );
 company_branding_assert(

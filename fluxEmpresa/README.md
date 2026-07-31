@@ -1,6 +1,6 @@
-# K. Yamaguchi Refrigeração
+# FluxEmpresa
 
-Layout visual em PHP, Bootstrap 5 e Bootstrap Icons para gestão de serviços de refrigeração.
+Sistema FluxEmpresa em PHP, Bootstrap 5 e Bootstrap Icons.
 
 ## Como executar
 
@@ -34,7 +34,7 @@ Acesse `http://localhost:8000/dashboard.php`.
 
 ## Estrutura
 
-- `includes/menu.php`: menu lateral e identidade K. Yamaguchi.
+- `includes/menu.php`: menu lateral e identidade FluxEmpresa.
 - `includes/topbar.php`: breadcrumb, título, descrição e ação principal visual.
 - `includes/shell.php`: estrutura base compartilhada.
 - `includes/ui.php`: componentes e layouts visuais reutilizáveis.

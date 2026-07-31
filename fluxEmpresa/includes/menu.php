@@ -18,7 +18,7 @@ if ($companyName === '') {
     $companyName = trim((string) ($companySettings['razao_social'] ?? ''));
 }
 if ($companyName === '') {
-    $companyName = 'K. Yamaguchi';
+    $companyName = 'FluxEmpresa';
 }
 $companyLogo = CompanyBranding::safeLogoUrl($companySettings['logo'] ?? null);
 
@@ -273,7 +273,7 @@ $canSeeItem = static function (
 
         <div class="brand-copy">
             <div class="brand-tag">
-                Gestão de Serviços
+                FluxEmpresa
             </div>
         </div>
     </a>
