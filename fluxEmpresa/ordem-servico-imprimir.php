@@ -20,10 +20,10 @@ try {
     $authorization->requireLogin();
     $authorization->requirePermission('os.imprimir');
 } catch (AuthenticationException) {
-    header('Location: login.php', true, 303);
+    header('Location: ' . $application->redirect()->loginUrl(), true, 303);
     exit;
 } catch (AuthorizationException) {
-    header('Location: acesso-negado.php', true, 303);
+    header('Location: ' . $application->redirect()->applicationUrl('acesso-negado.php'), true, 303);
     exit;
 }
 
@@ -78,7 +78,7 @@ function os_print_company_name(array $company): string
         $name = trim((string) ($company['razao_social'] ?? ''));
     }
 
-    return $name !== '' ? $name : 'FluxEmpresa';
+    return $name !== '' ? $name : 'Flux Empresas';
 }
 
 function os_print_logo_url(mixed $value): ?string

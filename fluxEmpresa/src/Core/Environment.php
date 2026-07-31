@@ -12,6 +12,8 @@ final class Environment
         'APP_ENV',
         'APP_DEBUG',
         'APP_TIMEZONE',
+        'APP_NAME',
+        'APP_BASE_PATH',
 
         'DB_HOST',
         'DB_PORT',
@@ -25,6 +27,15 @@ final class Environment
         'FISCAL_INTEGRATION_ENABLED',
         'FISCAL_PRODUCTION_ENABLED',
         'FISCAL_MASTER_KEY',
+
+        'SO_INTEGRATION_ENABLED',
+        'SO_API_BASE_URL',
+        'SO_API_ACQUISITION_PATH',
+        'SO_API_CLIENT_ID',
+        'SO_API_SECRET',
+        'SO_API_CONNECT_TIMEOUT',
+        'SO_API_TIMEOUT',
+        'SO_API_VERIFY_TLS',
 
         'SESSION_NAME',
         'SESSION_TIMEOUT',
@@ -48,7 +59,7 @@ final class Environment
      *
      * /home/usuario/
      * ├── configuracoes/
-     * │   └── flux/
+     * │   └── fluxempresa/
      * │       └── .env
      * └── public_html/
      *     └── fluxEmpresa/
@@ -57,11 +68,11 @@ final class Environment
      * /home/usuario/public_html/fluxEmpresa
      *
      * O resultado será:
-     * /home/usuario/configuracoes/flux/.env
+     * /home/usuario/configuracoes/fluxempresa/.env
      */
     public static function resolveFilePath(string $projectRoot): string
     {
-        $configuredPath = getenv('FLUX_ENV_PATH');
+        $configuredPath = getenv('FLUXEMPRESA_ENV_PATH');
 
         if (
             is_string($configuredPath)
@@ -90,7 +101,7 @@ final class Environment
             . DIRECTORY_SEPARATOR
             . 'configuracoes'
             . DIRECTORY_SEPARATOR
-            . 'flux'
+            . 'fluxempresa'
             . DIRECTORY_SEPARATOR
             . '.env';
     }

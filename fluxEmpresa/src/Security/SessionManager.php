@@ -8,11 +8,11 @@ final class SessionManager
     private bool $started = false;
 
     public function __construct(
-        private readonly string $name = 'YKSESSID',
+        private readonly string $name = 'FLUXEMPRESASESSID',
         private readonly int $idleTimeout = 86400,
         private readonly int $absoluteTimeout = 86400,
         private readonly int $regenerateInterval = 900,
-        private readonly string $cookiePath = '/flux/',
+        private readonly string $cookiePath = '/fluxEmpresa',
         private readonly bool $secureCookie = true
     ) {
     }
@@ -135,6 +135,32 @@ final class SessionManager
             'type' => $type,
             'message' => $message,
         ];
+    }
+
+    public function set(string $key, mixed $value): void
+    {
+        $this->start();
+        if ($key === '' || str_contains($key, "\0")) throw new \InvalidArgumentException('Chave de sessão inválida.');
+        $_SESSION[$key] = $value;
+    }
+
+    public function get(string $key, mixed $default = null): mixed
+    {
+        $this->start();
+        return $_SESSION[$key] ?? $default;
+    }
+
+    public function remove(string $key): void
+    {
+        $this->start();
+        unset($_SESSION[$key]);
+    }
+
+    public function regenerate(): void
+    {
+        $this->start();
+        session_regenerate_id(true);
+        $_SESSION['last_regenerated_at'] = time();
     }
 
     /**

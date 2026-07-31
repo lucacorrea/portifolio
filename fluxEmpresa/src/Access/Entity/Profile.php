@@ -8,6 +8,7 @@ use InvalidArgumentException;
 final class Profile
 {
     private const VALID_STATUSES = ['ativo', 'inativo'];
+    private readonly string $code;
 
     public function __construct(
         private readonly ?int $id,
@@ -17,10 +18,11 @@ final class Profile
         private string $status,
         private readonly ?string $createdAt = null,
         private readonly ?string $updatedAt = null,
-        private readonly ?string $code = null
+        string $code = ''
     ) {
         $this->name = $this->validateName($name);
         $this->status = $this->validateStatus($status);
+        $this->code = $this->validateCode($code);
     }
 
     public static function fromArray(array $data): self
@@ -33,7 +35,7 @@ final class Profile
             (string) ($data['status'] ?? 'ativo'),
             isset($data['criado_em']) ? (string) $data['criado_em'] : null,
             isset($data['atualizado_em']) ? (string) $data['atualizado_em'] : null,
-            isset($data['codigo']) && $data['codigo'] !== null ? (string) $data['codigo'] : null
+            (string) ($data['codigo'] ?? '')
         );
     }
 
@@ -47,9 +49,19 @@ final class Profile
         return $this->name;
     }
 
-    public function code(): ?string
+    public function code(): string
     {
         return $this->code;
+    }
+
+    private function validateCode(string $code): string
+    {
+        $code = trim($code);
+        if ($code === '') return '';
+        if (strlen($code) > 80 || preg_match('/^[a-z0-9_-]+$/', $code) !== 1) {
+            throw new InvalidArgumentException('Código técnico do perfil inválido.');
+        }
+        return $code;
     }
 
     public function description(): ?string

@@ -6,21 +6,8 @@ use App\Company\Service\CompanyBranding;
 
 $activePage = $activePage ?? 'dashboard';
 
-$companySettings = [];
-try {
-    $companySettings = $application->companySettings()->get();
-} catch (Throwable) {
-    $companySettings = [];
-}
-
-$companyName = trim((string) ($companySettings['nome_fantasia'] ?? ''));
-if ($companyName === '') {
-    $companyName = trim((string) ($companySettings['razao_social'] ?? ''));
-}
-if ($companyName === '') {
-    $companyName = 'FluxEmpresa';
-}
-$companyLogo = CompanyBranding::safeLogoUrl($companySettings['logo'] ?? null);
+$activeCompany = $application->activeCompanyContext()->currentForUser($currentUser->id());
+$companyName = $activeCompany?->name();
 
 $navGroups = [
     'Principal' => [
@@ -204,6 +191,13 @@ $navGroups = [
 
     'Administração' => [
         [
+            'key' => 'admin-empresas',
+            'label' => 'Empresas',
+            'icon' => 'bi-buildings',
+            'href' => 'admin-empresas.php',
+            'platform_admin' => true,
+        ],
+        [
             'key' => 'usuarios',
             'label' => 'Usuários',
             'icon' => 'bi-person-gear',
@@ -222,7 +216,8 @@ $navGroups = [
 
 $canSeeItem = static function (
     array $item
-) use ($authorization): bool {
+) use ($authorization, $currentUser): bool {
+    if (($item['platform_admin'] ?? false) === true) return $currentUser->isPlatformAdministrator();
     if (isset($item['permission'])) {
         return $authorization->can(
             (string) $item['permission']
@@ -249,32 +244,15 @@ $canSeeItem = static function (
     <a
         class="sidebar-brand"
         href="dashboard.php"
-        aria-label="Ir para o Dashboard - <?= htmlspecialchars(
-            $companyName,
-            ENT_QUOTES,
-            'UTF-8'
-        ) ?>"
+        aria-label="Ir para o Dashboard - <?= htmlspecialchars($application->appName(), ENT_QUOTES, 'UTF-8') ?>"
     >
-        <div class="brand-icon<?= $companyLogo !== null ? ' has-logo' : '' ?>">
-            <?php if ($companyLogo !== null): ?>
-                <img
-                    class="brand-logo-img"
-                    src="<?= htmlspecialchars(
-                        $companyLogo,
-                        ENT_QUOTES,
-                        'UTF-8'
-                    ) ?>"
-                    alt=""
-                >
-            <?php else: ?>
-                <i class="bi bi-snow2"></i>
-            <?php endif; ?>
+        <div class="brand-icon">
+            <i class="bi bi-buildings"></i>
         </div>
 
         <div class="brand-copy">
-            <div class="brand-tag">
-                FluxEmpresa
-            </div>
+            <strong><?= htmlspecialchars($application->appName(), ENT_QUOTES, 'UTF-8') ?></strong>
+            <div class="brand-tag"><?= htmlspecialchars($companyName !== null ? $companyName : 'Gestão empresarial integrada', ENT_QUOTES, 'UTF-8') ?></div>
         </div>
     </a>
 

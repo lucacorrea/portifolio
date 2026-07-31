@@ -1,6 +1,6 @@
 {
-    "name": "fluxempresa/sistema",
-    "description": "FluxEmpresa.",
+    "name": "lj-solucoes/flux-empresas",
+    "description": "Plataforma de gestão empresarial integrada e multiempresa.",
     "type": "project",
     "license": "proprietary",
     "require": {

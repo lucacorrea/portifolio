@@ -20,7 +20,7 @@ try {
     $authorization = $application->authorization();
     $user = $authorization->requireLogin();
 } catch (AuthenticationException) {
-    header('Location: login.php', true, 303);
+    header('Location: ' . $application->redirect()->loginUrl(), true, 303);
     exit;
 }
 
@@ -59,7 +59,7 @@ try {
         $authorization->requirePermission('recibo.reimprimir');
     }
 } catch (AuthorizationException) {
-    header('Location: acesso-negado.php', true, 303);
+    header('Location: ' . $application->redirect()->applicationUrl('acesso-negado.php'), true, 303);
     exit;
 }
 
@@ -259,7 +259,7 @@ body { margin: 0; background: #eef2f7; color: #111827; font-family: Arial, sans-
         <div class="company">
             <?php if ($logo !== null): ?><img class="logo" src="<?= receipt_print_h($logo) ?>" alt="Logotipo da empresa"><?php endif; ?>
             <div>
-                <h1><?= receipt_print_h($receipt['empresa_nome'] ?: 'Empresa não configurada') ?></h1>
+                <h1><?= receipt_print_h($receipt['empresa_nome'] ?: 'Flux Empresas') ?></h1>
                 <?php if ($receipt['empresa_documento']): ?><p>Documento: <?= receipt_print_h($receipt['empresa_documento']) ?></p><?php endif; ?>
                 <?php if ($receipt['empresa_telefone']): ?><p>Telefone: <?= receipt_print_h($receipt['empresa_telefone']) ?></p><?php endif; ?>
                 <?php if ($receipt['empresa_endereco']): ?><p><?= receipt_print_h($receipt['empresa_endereco']) ?></p><?php endif; ?>

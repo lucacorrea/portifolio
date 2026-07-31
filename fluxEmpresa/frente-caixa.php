@@ -22,7 +22,7 @@ try {
     header('Location: ' . $application->redirect()->loginUrl(), true, 303);
     exit;
 } catch (AuthorizationException) {
-    header('Location: acesso-negado.php', true, 303);
+    header('Location: ' . $application->redirect()->applicationUrl('acesso-negado.php'), true, 303);
     exit;
 }
 
@@ -31,7 +31,7 @@ $cash = $application->cashManagement();
 $cashSession = $cash->currentSession();
 $products = $cashSession === null ? [] : $cash->availableProducts();
 $settings = $application->companySettings()->get();
-$companyName = trim((string) ($settings['nome_fantasia'] ?? $settings['razao_social'] ?? '')) ?: 'FluxEmpresa';
+$companyName = trim((string) ($settings['nome_fantasia'] ?? $settings['razao_social'] ?? '')) ?: $application->appName();
 $companyDocument = trim((string) ($settings['documento'] ?? ''));
 $canSearchClients = $authorization->can('cliente.visualizar');
 $returnPage = $authorization->can('caixa.visualizar') ? 'caixa.php' : 'dashboard.php';

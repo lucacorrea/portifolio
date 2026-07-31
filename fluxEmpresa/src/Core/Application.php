@@ -17,6 +17,14 @@ use App\Catalog\Repository\ServiceRepository;
 use App\Catalog\Service\ProductManagementService;
 use App\Catalog\Service\ServiceManagementService;
 use App\Company\Service\CompanySettingsService;
+use App\Company\Service\ActiveCompanyContext;
+use App\Admin\Repository\CompanyAdminRepository;
+use App\Admin\Service\CompanyAdminService;
+use App\Admin\Service\PlatformAdminPolicy;
+use App\Integration\SO\SoDatabase;
+use App\Integration\SO\SoEnvironment;
+use App\Integration\SO\Repository\SoSupplierRepository;
+use App\Integration\SO\Service\SoSupplierService;
 use App\CRM\Import\A7ClientReportMapper;
 use App\CRM\Import\ClientPdfParser;
 use App\CRM\Repository\ClientRepository;
@@ -98,6 +106,10 @@ final class Application
     private ?DashboardService $dashboardService = null;
     private ?ProductionReportService $productionReportService = null;
     private ?SafeRedirect $redirect = null;
+    private ?PlatformAdminPolicy $platformAdminPolicy = null;
+    private ?ActiveCompanyContext $activeCompanyContext = null;
+    private ?SoSupplierService $soSupplierService = null;
+    private ?CompanyAdminService $companyAdminService = null;
 
     public function __construct(
         private readonly Database $database,
@@ -124,7 +136,7 @@ final class Application
             $this->session = new SessionManager(
                 (string) (
                     $this->settings['session_name']
-                    ?? 'YKSESSID'
+                    ?? 'FLUXEMPRESASESSID'
                 ),
                 (int) (
                     $this->settings['session_timeout']
@@ -140,7 +152,7 @@ final class Application
                 ),
                 (string) (
                     $this->settings['session_cookie_path']
-                    ?? '/flux/'
+                    ?? $this->basePath()
                 ),
                 $secure
             );
@@ -495,9 +507,28 @@ final class Application
     public function redirect(): SafeRedirect
     {
         if ($this->redirect === null) {
-            $this->redirect = new SafeRedirect();
+            $this->redirect = new SafeRedirect($this->basePath());
         }
 
         return $this->redirect;
     }
+
+    public function appName(): string
+    {
+        $name = trim((string) ($this->settings['app_name'] ?? 'Flux Empresas'));
+
+        return $name !== '' ? $name : 'Flux Empresas';
+    }
+
+    public function basePath(): string
+    {
+        $basePath = trim((string) ($this->settings['app_base_path'] ?? '/fluxEmpresa'));
+
+        return $basePath !== '' ? $basePath : '/fluxEmpresa';
+    }
+
+    public function platformAdminPolicy(): PlatformAdminPolicy { return $this->platformAdminPolicy ??= new PlatformAdminPolicy(); }
+    public function activeCompanyContext(): ActiveCompanyContext { return $this->activeCompanyContext ??= new ActiveCompanyContext($this->session()); }
+    public function soSupplierService(): SoSupplierService { if($this->soSupplierService===null){$env=new SoEnvironment(SoEnvironment::resolveFilePath((string)$this->settings['project_root']));$this->soSupplierService=new SoSupplierService(new SoDatabase($env));}return $this->soSupplierService; }
+    public function companyAdmin(): CompanyAdminService { if($this->companyAdminService===null){$connection=$this->database->connection();$this->companyAdminService=new CompanyAdminService($connection,new CompanyAdminRepository($connection),$this->activeCompanyContext());}return $this->companyAdminService; }
 }

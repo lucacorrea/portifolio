@@ -2,7 +2,10 @@
 $primaryActionLabel = $primaryActionLabel ?? 'Nova OS';
 $primaryActionIcon = $primaryActionIcon ?? 'bi-plus-lg';
 $primaryActionTarget = $primaryActionTarget ?? '#modal-os';
-$pageSubtitle = $pageSubtitle ?? 'FluxEmpresa';
+$activeCompany = $application->activeCompanyContext()->currentForUser($currentUser->id());
+$pageSubtitle = $pageSubtitle ?? ($activeCompany !== null
+  ? ($activeCompany->isSupportMode() ? 'Modo suporte — ' : 'Empresa ativa: ') . $activeCompany->name()
+  : $application->appName());
 $showPrimaryAction = isset($showPrimaryAction)
   ? (bool) $showPrimaryAction
   : (!isset($primaryActionPermission) || $authorization->can((string) $primaryActionPermission));
@@ -68,3 +71,6 @@ $showPrimaryAction = isset($showPrimaryAction)
     </div>
   </div>
 </header>
+<?php if ($activeCompany !== null): ?>
+<div class="support-mode-banner" role="status"><span><i class="bi bi-shield-lock"></i> <?= htmlspecialchars($activeCompany->isSupportMode() ? 'Modo suporte — ' . $activeCompany->name() : 'Empresa ativa: ' . $activeCompany->name(), ENT_QUOTES, 'UTF-8') ?></span><span class="d-flex gap-2"><a class="btn btn-sm btn-outline-dark" href="admin-empresas.php">Voltar às empresas</a><form method="post" action="actions/admin-empresa-sair.php"><?= $csrf->field() ?><button class="btn btn-sm btn-dark" type="submit">Encerrar acesso</button></form></span></div>
+<?php endif; ?>

@@ -1,6 +1,6 @@
-# FluxEmpresa
+# Flux Empresas
 
-Sistema FluxEmpresa em PHP, Bootstrap 5 e Bootstrap Icons.
+Plataforma de gestão empresarial integrada e multiempresa em PHP, Bootstrap 5 e Bootstrap Icons.
 
 ## Como executar
 
@@ -34,11 +34,11 @@ Acesse `http://localhost:8000/dashboard.php`.
 
 ## Estrutura
 
-- `includes/menu.php`: menu lateral e identidade FluxEmpresa.
+- `includes/menu.php`: menu lateral e identidade Flux Empresas.
 - `includes/topbar.php`: breadcrumb, título, descrição e ação principal visual.
 - `includes/shell.php`: estrutura base compartilhada.
 - `includes/ui.php`: componentes e layouts visuais reutilizáveis.
 - `pages/dashboard.php`: renderização do dashboard.
 - `pages/operational.php`: renderização das páginas internas.
 - `assets/css/dashboard.css`: design system e responsividade.
-- `assets/js/osmais-app.js`: interações visuais mínimas.
+- `assets/js/fluxempresas-app.js`: interações visuais mínimas.

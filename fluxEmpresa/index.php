@@ -14,5 +14,5 @@ try {
     $target = 'login.php';
 }
 
-header('Location: ' . $target, true, 303);
+header('Location: ' . $application->redirect()->applicationUrl($target), true, 303);
 exit;

@@ -32,7 +32,7 @@ $companyName = trim((string) ($company['nome_fantasia'] ?? ''));
 if ($companyName === '') {
     $companyName = trim((string) ($company['razao_social'] ?? ''));
 }
-$companyName = $companyName !== '' ? $companyName : 'Empresa não configurada';
+$companyName = $companyName !== '' ? $companyName : 'Flux Empresas';
 $companyLogo = CompanyBranding::safeLogoUrl($company['logo'] ?? null);
 
 function receipt_h(?string $value): string { return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8'); }

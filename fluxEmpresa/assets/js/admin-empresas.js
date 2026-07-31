@@ -1,0 +1,1 @@
+document.addEventListener('submit', function (event) { const form=event.target; if (!form.matches('.visual-modal, .table-action-dropdown form')) return; const button=form.querySelector('button[type="submit"], .btn-modal-save'); if(button && !button.disabled){button.disabled=true;button.dataset.originalLabel=button.textContent;button.textContent='Processando...';} });

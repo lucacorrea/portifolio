@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const sidebar = document.getElementById('app-sidebar');
   const backdrop = document.getElementById('sidebar-backdrop');
   const toggles = document.querySelectorAll('[data-sidebar-toggle]');
-  const sidebarPreferenceKey = 'yk.sidebar.collapsed';
+  const sidebarPreferenceKey = 'fluxempresas.sidebar.collapsed';
   const mobileMedia = window.matchMedia('(max-width: 920px)');
 
   const syncSidebarToggles = () => {
@@ -414,13 +414,13 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   if (rowActionsDialog && rowActionsHost && typeof rowActionsDialog.showModal === 'function') {
-    window.OSMais = window.OSMais || {};
-    window.OSMais.refreshActionTables = (root = document) => {
+    window.FluxEmpresas = window.FluxEmpresas || {};
+    window.FluxEmpresas.refreshActionTables = (root = document) => {
       closeActionMenu();
       if (activeRowActions) restoreRowActions({ restoreFocus: false });
       root.querySelectorAll('table.os-table').forEach(enhanceActionTable);
     };
-    window.OSMais.refreshActionTables();
+    window.FluxEmpresas.refreshActionTables();
 
     document.addEventListener('click', (event) => {
       const row = event.target.closest('tr.row-actions-trigger');

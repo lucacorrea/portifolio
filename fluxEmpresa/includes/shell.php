@@ -18,11 +18,11 @@ try {
 } catch (AuthenticationException $exception) {
   $session->flash('warning', 'Sua sessão expirou. Entre novamente.');
   $currentPage = basename(parse_url($_SERVER['REQUEST_URI'] ?? 'dashboard.php', PHP_URL_PATH) ?: 'dashboard.php');
-  header('Location: login.php?next=' . rawurlencode($application->redirect()->sanitize($currentPage)), true, 303);
+  header('Location: ' . $application->redirect()->loginUrl() . '?next=' . rawurlencode($application->redirect()->sanitize($currentPage)), true, 303);
   exit;
 } catch (Throwable $exception) {
   $session->flash('danger', 'Não foi possível manter o acesso ao sistema. Entre em contato com o administrador.');
-  header('Location: login.php', true, 303);
+  header('Location: ' . $application->redirect()->loginUrl(), true, 303);
   exit;
 }
 
@@ -40,8 +40,13 @@ try {
     throw new AuthorizationException('Acesso negado.');
   }
 } catch (AuthorizationException $exception) {
-  header('Location: acesso-negado.php', true, 303);
+  header('Location: ' . $application->redirect()->applicationUrl('acesso-negado.php'), true, 303);
   exit;
+}
+
+if (($platformAdminOnly ?? false) === true) {
+  try { $application->platformAdminPolicy()->requireAccess($currentUser); }
+  catch (AuthorizationException) { header('Location: ' . $application->redirect()->applicationUrl('acesso-negado.php'), true, 303); exit; }
 }
 
 if (strcasecmp((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''), 'XMLHttpRequest') === 0) {
@@ -58,7 +63,7 @@ if (strcasecmp((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''), 'XMLHttpReque
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FluxEmpresa — <?= htmlspecialchars($pageTitle ?? 'Sistema', ENT_QUOTES, 'UTF-8') ?></title>
+  <title><?= htmlspecialchars($application->appName(), ENT_QUOTES, 'UTF-8') ?> — <?= htmlspecialchars($pageTitle ?? 'Sistema', ENT_QUOTES, 'UTF-8') ?></title>
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
@@ -66,6 +71,9 @@ if (strcasecmp((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''), 'XMLHttpReque
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/dashboard.css?v=<?= (int) filemtime(dirname(__DIR__) . '/assets/css/dashboard.css') ?>">
+  <?php foreach (($pageStyles ?? []) as $style): $stylePath = dirname(__DIR__) . '/' . ltrim((string) $style, '/'); ?>
+  <link rel="stylesheet" href="<?= htmlspecialchars((string) $style, ENT_QUOTES, 'UTF-8') ?>?v=<?= is_file($stylePath) ? (int) filemtime($stylePath) : 1 ?>">
+  <?php endforeach; ?>
 </head>
 <body>
   <div class="os-wrapper">
@@ -108,7 +116,7 @@ if (strcasecmp((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''), 'XMLHttpReque
   </dialog>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="assets/js/osmais-app.js?v=<?= (int) filemtime(dirname(__DIR__) . '/assets/js/osmais-app.js') ?>"></script>
+  <script src="assets/js/fluxempresas-app.js?v=<?= (int) filemtime(dirname(__DIR__) . '/assets/js/fluxempresas-app.js') ?>"></script>
   <script src="assets/js/live-filters.js?v=<?= (int) filemtime(dirname(__DIR__) . '/assets/js/live-filters.js') ?>"></script>
   <?php foreach (($pageScripts ?? []) as $script): ?>
   <?php $scriptPath = dirname(__DIR__) . '/' . ltrim((string) $script, '/'); ?>

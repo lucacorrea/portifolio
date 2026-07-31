@@ -40,6 +40,16 @@ final class AuthenticatedUser
         return $this->profileCode === 'suporte';
     }
 
+    public function isSuperAdmin(): bool
+    {
+        return $this->profileCode === 'super_admin';
+    }
+
+    public function isPlatformAdministrator(): bool
+    {
+        return $this->isSupport() || $this->isSuperAdmin();
+    }
+
     public function profileName(): string
     {
         return $this->profileName;

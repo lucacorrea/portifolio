@@ -21,6 +21,7 @@ try {
         exit;
     }
 } catch (Throwable $exception) {
+    error_log('Authenticated-login redirect failed: ' . $exception->getMessage());
 }
 
 $messages = $session->consumeFlashMessages();
@@ -35,7 +36,7 @@ function h(string $value): string
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FluxEmpresa — Acesso ao sistema</title>
+  <title><?= h($application->appName()) ?> — Acesso ao sistema</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -46,10 +47,10 @@ function h(string $value): string
   <main class="auth-page">
     <section class="auth-panel" aria-labelledby="login-title">
       <div class="auth-brand">
-        <div class="auth-icon"><i class="bi bi-snow2"></i></div>
+        <div class="auth-icon"><i class="bi bi-buildings"></i></div>
         <div>
-          <strong>FluxEmpresa</strong>
-          <span>FluxEmpresa</span>
+          <strong><?= h($application->appName()) ?></strong>
+          <span>Gestão empresarial integrada</span>
         </div>
       </div>
 

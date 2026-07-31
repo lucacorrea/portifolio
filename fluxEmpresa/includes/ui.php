@@ -260,7 +260,7 @@ function lembrete_modal_body(): string {
 
 function servico_semanal_modal_body(): string {
   return '<div class="weekly-modal-grid">' .
-    form_section('Cliente e OS', '<div class="form-row">' . field('Número da OS','OS-00272') . field('Cliente','Universal Refrigeração') . field('Telefone','(92) 98844-1188') . field('Endereço','Av. Djalma Batista, 1240') . field('Bairro','Centro') . '</div>') .
+    form_section('Cliente e OS', '<div class="form-row">' . field('Número da OS','OS-00272') . field('Cliente','Empresa Exemplo') . field('Telefone','(92) 98844-1188') . field('Endereço','Av. Djalma Batista, 1240') . field('Bairro','Centro') . '</div>') .
     form_section('Serviço e equipamento', '<div class="form-row">' . select_field('Tipo de serviço',['Revisão de Split','Lavagem de Split','Instalação','Reinstalação','Manutenção preventiva','Manutenção corretiva','Limpeza de evaporadora','Limpeza de condensadora','Carga de gás','Troca de compressor']) . select_field('Equipamento',['Split','Janela','Cassete','Piso-Teto','Freezer Vertical','Câmara Fria','Balcão Refrigerado']) . field('Capacidade','12.000 BTUs') . select_field('Ambiente',['Sala','Quarto','Cozinha','Loja','Salão','Escritório','Depósito','Área externa']) . '</div>' . field('Descrição','Atendimento visual planejado para o painel semanal.','textarea')) .
     form_section('Data e horário', '<div class="form-row">' . field('Data','2026-05-18','date') . field('Horário inicial','08:00','time') . field('Horário final','10:00','time') . field('Duração estimada','2h') . '</div>') .
     form_section('Dupla, status e prioridade', '<div class="form-row">' . select_field('Instalador',['Everton','Dione','Kalebe','Leonardo']) . select_field('Ajudante',['Odinez','Cristian','Inácio','Rafael']) . select_field('Status',['Agendado','Confirmado','Em deslocamento','Em execução','Aguardando peça','Concluído','Cancelado']) . select_field('Prioridade',['Baixa','Média','Alta','Urgente']) . '</div>') .
@@ -280,7 +280,7 @@ function mock_servicos_semanais(): array {
           'ajudante' => 'Odinez',
           'status' => 'Em atividade',
           'servicos' => [
-            ['horario' => '08:00', 'fim' => '10:00', 'os' => 'OS-00258', 'cliente' => 'Universal Refrigeração', 'servico' => 'Revisão de Split', 'equipamento' => 'Split', 'capacidade' => '12.000 BTUs', 'ambiente' => 'Sala', 'local' => 'Centro', 'status' => 'Agendado', 'prioridade' => 'Baixa'],
+            ['horario' => '08:00', 'fim' => '10:00', 'os' => 'OS-00258', 'cliente' => 'Empresa Exemplo', 'servico' => 'Revisão preventiva', 'equipamento' => 'Equipamento', 'capacidade' => 'Unidade 01', 'ambiente' => 'Sala', 'local' => 'Centro', 'status' => 'Agendado', 'prioridade' => 'Baixa'],
             ['horario' => '10:30', 'fim' => '12:00', 'os' => 'OS-00259', 'cliente' => 'Fernanda Paula', 'servico' => 'Lavagem de Split', 'equipamento' => 'Split', 'capacidade' => '9.000 BTUs', 'ambiente' => 'Quarto', 'local' => 'Duque de Caxias', 'status' => 'Confirmado', 'prioridade' => 'Média'],
           ],
         ],
@@ -504,7 +504,7 @@ function render_card_servico_semanal(array $servico): string {
     <strong class="week-service-client">' . h($servico['cliente']) . '</strong>
     <span class="week-service-title">' . h($servico['servico']) . '</span>
     <div class="week-service-details">
-      <span><i class="bi bi-snow2"></i>' . h($servico['equipamento'] . ' · ' . $servico['capacidade']) . '</span>
+      <span><i class="bi bi-buildings"></i>' . h($servico['equipamento'] . ' · ' . $servico['capacidade']) . '</span>
       <span><i class="bi bi-geo-alt"></i>' . h($servico['ambiente'] . ' · ' . $servico['local']) . '</span>
     </div>
     <div class="week-service-meta">' . ui_badge($servico['status']) . '<span class="priority-label"><i aria-hidden="true"></i>Prioridade ' . h($priorityText) . '</span></div>
@@ -570,7 +570,7 @@ function render_faturamento(): void {
   ui_table(['Número','Cliente','OS','Data','Valor','Status','Ações'], [['NF-00084','Clínica Bem Estar','OS-00256','18/06/2026',money(450),ui_badge('Emitida'),action_menu()],['Pendente','Restaurante Sabor Norte','OS-00258','18/06/2026',money(1320),ui_badge('Pendente'),action_menu()]]);
   echo '</div><div class="tab-pane fade" id="recibos">';
   ui_table(['Número','Cliente','Referência','Data','Valor','Ações'], [['REC-00031','João Almeida','OS-00254','18/06/2026',money(120),action_menu()]]);
-  echo '<div class="receipt-preview mt-3"><div class="brand-icon"><i class="bi bi-snow2"></i></div><h3>Recibo</h3><strong>' . money(120) . '</strong><p>Recebido de João Almeida, CPF 182.334.210-09, referente a diagnóstico técnico.</p><div>Manaus, 18/06/2026</div><div class="signature-line">Assinatura e carimbo</div></div>';
+  echo '<div class="receipt-preview mt-3"><div class="brand-icon"><i class="bi bi-buildings"></i></div><h3>Recibo</h3><strong>' . money(120) . '</strong><p>Recebido de João Almeida, CPF 182.334.210-09, referente a serviço técnico.</p><div>Manaus, 18/06/2026</div><div class="signature-line">Assinatura e carimbo</div></div>';
   echo '</div><div class="tab-pane fade" id="boletos"><div class="alert alert-warning">Integração bancária será realizada em outra etapa.</div>';
   ui_table(['Cliente','OS','Valor','Vencimento','Status','Ações'], [['Mercado Ponto Frio','OS-00257',money(2380),'25/06/2026',ui_badge('Pendente'),action_menu()]]);
   echo '</div><div class="tab-pane fade" id="pagamentos">';
@@ -582,7 +582,7 @@ function render_configuracoes(): void {
   $sections = ['Dados da empresa','Logotipo','Assinatura','Carimbo','Dados fiscais','Formas de pagamento','Tipos de equipamentos','Tipos de ambientes','Funções dos funcionários','Status de OS','Categorias','Preferências de impressão'];
   echo '<div class="settings-grid">';
   foreach ($sections as $section) {
-    echo '<section class="panel settings-panel"><div class="panel-header"><div class="panel-title"><i class="bi bi-sliders"></i>' . h($section) . '</div></div><div class="p-3">' . field('Campo visual', $section === 'Dados da empresa' ? 'FluxEmpresa' : '') . field('Observações','Configuração apenas visual nesta etapa.','textarea') . '<button class="btn-modal-save" type="button">Salvar visualmente</button></div></section>';
+    echo '<section class="panel settings-panel"><div class="panel-header"><div class="panel-title"><i class="bi bi-sliders"></i>' . h($section) . '</div></div><div class="p-3">' . field('Campo visual', $section === 'Dados da empresa' ? 'Flux Empresas' : '') . field('Observações','Configuração apenas visual nesta etapa.','textarea') . '<button class="btn-modal-save" type="button">Salvar visualmente</button></div></section>';
   }
   echo '</div>';
 }

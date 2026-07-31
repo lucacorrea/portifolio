@@ -1,6 +1,6 @@
 # AGENTS.md
 
-- Menus de ações de tabelas devem usar `table-action-dropdown` e o portal global em `assets/js/osmais-app.js`; não prenda `.dropdown-menu` ao overflow da tabela nem resolva removendo `overflow-x` dos painéis.
+- Menus de ações de tabelas devem usar `table-action-dropdown` e o portal global em `assets/js/fluxempresas-app.js`; não prenda `.dropdown-menu` ao overflow da tabela nem resolva removendo `overflow-x` dos painéis.
 - Orçamentos não possuem funcionários.
 - Ao aprovar um orçamento, uma OS deve ser criada automaticamente.
 - A aprovação e a criação da OS ocorrem na mesma transação.

@@ -31,6 +31,7 @@ try {
 
     $session->flash('danger', $result->message());
 } catch (Throwable $exception) {
+    error_log('Login failed: ' . $exception->getMessage());
     $session->flash('danger', 'Não foi possível concluir a operação. Tente novamente.');
 }
 

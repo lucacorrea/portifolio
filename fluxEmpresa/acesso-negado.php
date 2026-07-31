@@ -29,7 +29,7 @@ function h(string $value): string
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FluxEmpresa — Acesso negado</title>
+  <title><?= h($application->appName()) ?> — Acesso negado</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
   <link rel="stylesheet" href="assets/css/auth.css">
 </head>
@@ -39,7 +39,7 @@ function h(string $value): string
       <div class="auth-brand">
         <div class="auth-icon"><i class="bi bi-shield-lock"></i></div>
         <div>
-          <strong>FluxEmpresa</strong>
+          <strong><?= h($application->appName()) ?></strong>
           <span><?= h($currentUser->profileName()) ?></span>
         </div>
       </div>

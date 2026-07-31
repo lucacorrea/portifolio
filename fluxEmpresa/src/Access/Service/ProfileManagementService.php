@@ -157,7 +157,8 @@ final class ProfileManagementService
             $profile->isProtected(),
             $profile->isProtected() ? $profile->status() : $data->status(),
             $profile->createdAt(),
-            $profile->updatedAt()
+            $profile->updatedAt(),
+            $profile->code()
         ));
     }
 

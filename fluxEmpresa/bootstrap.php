@@ -122,10 +122,20 @@ try {
 
     $sessionTimeout = max(86400, (int) $environment->get('SESSION_TIMEOUT', '86400'));
     $sessionAbsoluteTimeout = max(86400, (int) $environment->get('SESSION_ABSOLUTE_TIMEOUT', '86400'));
+    $appName = trim((string) $environment->get('APP_NAME', 'Flux Empresas'));
+    $appName = $appName !== '' ? $appName : 'Flux Empresas';
+    $appBasePath = normalize_application_base_path(
+        (string) $environment->get('APP_BASE_PATH', '/fluxEmpresa')
+    );
+    $sessionCookiePath = normalize_application_base_path(
+        (string) $environment->get('SESSION_COOKIE_PATH', $appBasePath)
+    );
 
     $settings = [
         'app_env' => $appEnv,
         'app_debug' => $appDebug,
+        'app_name' => $appName,
+        'app_base_path' => $appBasePath,
         'project_root' => __DIR__,
         'fiscal_integration_enabled' => $fiscalIntegrationEnabled,
         'fiscal_production_enabled' => $fiscalProductionEnabled,
@@ -137,11 +147,11 @@ try {
         'so_api_connect_timeout' => $soConnectTimeout,
         'so_api_timeout' => $soTimeout,
         'so_api_verify_tls' => $soVerifyTls,
-        'session_name' => $environment->get('SESSION_NAME', 'YKSESSID'),
+        'session_name' => $environment->get('SESSION_NAME', 'FLUXEMPRESASESSID'),
         'session_timeout' => $sessionTimeout,
         'session_absolute_timeout' => $sessionAbsoluteTimeout,
         'session_regenerate_interval' => (int) $environment->get('SESSION_REGENERATE_INTERVAL', '900'),
-        'session_cookie_path' => $environment->get('SESSION_COOKIE_PATH', '/flux/'),
+        'session_cookie_path' => $sessionCookiePath,
         'login_max_attempts' => (int) $environment->get('LOGIN_MAX_ATTEMPTS', '5'),
         'login_lock_minutes' => (int) $environment->get('LOGIN_LOCK_MINUTES', '15'),
     ];
@@ -204,4 +214,26 @@ try {
         http_response_code(500);
     }
     exit('Não foi possível inicializar o sistema. Entre em contato com o administrador.');
+}
+
+function normalize_application_base_path(string $basePath): string
+{
+    $basePath = trim($basePath);
+
+    if (
+        $basePath === ''
+        || str_contains($basePath, "\0")
+        || preg_match('/[\x00-\x1F\x7F]/', $basePath) === 1
+        || str_contains($basePath, '\\')
+        || str_contains($basePath, '..')
+        || str_starts_with($basePath, '//')
+        || preg_match('/^[a-z][a-z0-9+.-]*:/i', $basePath) === 1
+    ) {
+        return '/fluxEmpresa';
+    }
+
+    $basePath = '/' . ltrim($basePath, '/');
+    $basePath = rtrim($basePath, '/');
+
+    return $basePath === '' ? '/' : $basePath;
 }

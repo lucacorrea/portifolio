@@ -1,0 +1,4 @@
+<?php
+declare(strict_types=1);
+namespace App\Integration\SO\DTO;
+final class SoSupplierData { public function __construct(private readonly int $id,private readonly string $name,private readonly ?string $cnpj,private readonly ?string $contact,private readonly ?string $phone){} public static function fromArray(array $row): self {$digits=preg_replace('/\D+/','',(string)($row['cnpj']??''))??'';return new self((int)$row['id'],trim((string)$row['nome']),$digits===''?null:$digits,self::clean($row['contato']??null),self::clean($row['telefone']??null));}private static function clean(mixed $v):?string{$v=trim((string)$v);return $v===''?null:$v;}public function id():int{return $this->id;}public function name():string{return $this->name;}public function cnpj():?string{return $this->cnpj;}public function contact():?string{return $this->contact;}public function phone():?string{return $this->phone;} }

@@ -93,6 +93,7 @@ final class ProfileRepository
         $sql = 'SELECT
                     p.id,
                     p.nome,
+                    p.codigo,
                     p.descricao,
                     p.protegido,
                     p.status,
@@ -108,7 +109,7 @@ final class ProfileRepository
             $sql .= ' WHERE ' . implode(' AND ', $where);
         }
 
-        $sql .= ' GROUP BY p.id, p.nome, p.descricao, p.protegido, p.status, p.criado_em, p.atualizado_em
+        $sql .= ' GROUP BY p.id, p.nome, p.codigo, p.descricao, p.protegido, p.status, p.criado_em, p.atualizado_em
                   ORDER BY p.protegido DESC, p.nome ASC';
 
         $statement = $this->connection->prepare($sql);
