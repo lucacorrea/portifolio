@@ -4,11 +4,13 @@
 SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 INSERT INTO perfis
-    (nome, descricao, protegido, status)
+    (nome, codigo, descricao, protegido, status)
 VALUES
-    ('Administrador', 'Acesso completo ao sistema', 1, 'ativo'),
-    ('Recepção', 'Atendimento, clientes, ordens de serviço, orçamentos e agenda', 0, 'ativo')
+    ('Administrador', 'administrador', 'Acesso completo ao sistema', 1, 'ativo'),
+    ('Recepção', 'recepcao', 'Atendimento, clientes, ordens de serviço, orçamentos e agenda', 0, 'ativo'),
+    ('Suporte', 'suporte', 'Acesso técnico de suporte auditado', 0, 'ativo')
 ON DUPLICATE KEY UPDATE
+    codigo = VALUES(codigo),
     descricao = VALUES(descricao),
     protegido = VALUES(protegido),
     status = VALUES(status);
@@ -114,3 +116,16 @@ INNER JOIN permissoes permissao
     )
 WHERE perfil.nome = 'Recepção'
   AND permissao.status = 'ativo';
+
+INSERT IGNORE INTO perfil_permissoes (perfil_id, permissao_id)
+SELECT perfil.id, permissao.id
+  FROM perfis perfil
+ CROSS JOIN permissoes permissao
+ WHERE perfil.codigo = 'suporte'
+   AND permissao.codigo IN (
+       'dashboard.visualizar', 'cliente.visualizar', 'orcamento.visualizar',
+       'orcamento.criar', 'orcamento.editar', 'orcamento.aprovar',
+       'orcamento.imprimir', 'orcamento.integracao_so.visualizar',
+       'orcamento.integracao_so.reprocessar', 'os.visualizar', 'os.criar'
+   )
+   AND permissao.status = 'ativo';
