@@ -27,7 +27,10 @@ $previousWebValue = getenv('DB_WEB_MIGRATIONS');
 $previousEnvPath = getenv('FLUXEMPRESA_ENV_PATH');
 $previousSoEnvPath = getenv('SO_ENV_PATH');
 $previousServerSoEnvPath = $_SERVER['SO_ENV_PATH'] ?? null;
+$previousDocumentRoot = $_SERVER['DOCUMENT_ROOT'] ?? null;
+$previousHome = getenv('HOME');
 $soEnvironmentFile = tempnam(sys_get_temp_dir(), 'flux-so-env-');
+$soEnvironmentBase = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'flux-so-path-' . bin2hex(random_bytes(6));
 
 try {
     putenv('DB_AUTO_MIGRATE');
@@ -98,6 +101,27 @@ try {
     environmentAssertSame('3307', $soEnvironment->get('DB_PORT'), 'A porta isolada do SO deve ser lida.');
     environmentAssertSame('sistema_so', $soEnvironment->get('DB_DATABASE'), 'O banco isolado do SO deve ser lido.');
 
+    $sigasCompatibleDirectory = $soEnvironmentBase . DIRECTORY_SEPARATOR . 'configuracao' . DIRECTORY_SEPARATOR . 'so' . DIRECTORY_SEPARATOR . 'conect';
+    if (!mkdir($sigasCompatibleDirectory, 0700, true) && !is_dir($sigasCompatibleDirectory)) {
+        throw new RuntimeException('Não foi possível preparar o caminho compatível com SIGAS.');
+    }
+    file_put_contents($sigasCompatibleDirectory . DIRECTORY_SEPARATOR . '.env', implode(PHP_EOL, [
+        'DB_HOST=so-db.internal',
+        'DB_DATABASE=sistema_so',
+        'DB_USERNAME=consulta_flux',
+        'DB_PASSWORD=segredo-de-teste',
+        'DB_CHARSET=utf8mb4',
+    ]));
+    putenv('SO_ENV_PATH');
+    putenv('HOME');
+    $_SERVER['DOCUMENT_ROOT'] = $soEnvironmentBase . DIRECTORY_SEPARATOR . 'public_html';
+    $sigasCompatibleEnvironment = new SoEnvironment($_SERVER['DOCUMENT_ROOT'] . DIRECTORY_SEPARATOR . 'fluxEmpresa');
+    environmentAssertSame(
+        'so-db.internal',
+        $sigasCompatibleEnvironment->get('DB_HOST'),
+        'A integração deve localizar configuracao/so/conect/.env como o SIGAS.'
+    );
+
     $bootstrapSource = file_get_contents(dirname(__DIR__) . '/bootstrap.php');
     environmentAssertSame(
         true,
@@ -138,8 +162,26 @@ try {
     } else {
         $_SERVER['SO_ENV_PATH'] = $previousServerSoEnvPath;
     }
+    if ($previousDocumentRoot === null) {
+        unset($_SERVER['DOCUMENT_ROOT']);
+    } else {
+        $_SERVER['DOCUMENT_ROOT'] = $previousDocumentRoot;
+    }
+    if ($previousHome === false) {
+        putenv('HOME');
+    } else {
+        putenv('HOME=' . $previousHome);
+    }
     if (is_string($soEnvironmentFile) && is_file($soEnvironmentFile)) {
         unlink($soEnvironmentFile);
+    }
+    $sigasCompatibleEnvironmentFile = $soEnvironmentBase . DIRECTORY_SEPARATOR . 'configuracao' . DIRECTORY_SEPARATOR . 'so' . DIRECTORY_SEPARATOR . 'conect' . DIRECTORY_SEPARATOR . '.env';
+    if (is_file($sigasCompatibleEnvironmentFile)) {
+        unlink($sigasCompatibleEnvironmentFile);
+        rmdir(dirname($sigasCompatibleEnvironmentFile));
+        rmdir(dirname(dirname($sigasCompatibleEnvironmentFile)));
+        rmdir(dirname(dirname(dirname($sigasCompatibleEnvironmentFile))));
+        rmdir($soEnvironmentBase);
     }
 }
 
