@@ -4,26 +4,31 @@ declare(strict_types=1);
 
 namespace App\Fiscal\Repository;
 
+use App\Company\DTO\CompanyScope;
+use InvalidArgumentException;
 use PDO;
 use Throwable;
 
 final class FiscalConfigurationRepository
 {
-    public function __construct(private readonly PDO $connection)
-    {
-    }
+    public function __construct(
+        private readonly PDO $connection,
+        private readonly CompanyScope $companyScope
+    ) {}
 
     /** @return array<string,mixed> */
     public function companyFiscalData(): array
     {
-        $row = $this->connection->query(
+        $statement = $this->connection->prepare(
             'SELECT razao_social, nome_fantasia, documento, inscricao_estadual,
                     inscricao_municipal, crt, cnae_principal, email, telefone,
                     endereco_logradouro, endereco_numero, endereco_complemento,
                     endereco_bairro, endereco_cidade, endereco_uf, endereco_cep,
                     codigo_municipio_ibge
-               FROM configuracoes_empresa WHERE id = 1'
-        )->fetch();
+               FROM configuracoes_empresa WHERE empresa_id = :empresa_id LIMIT 1'
+        );
+        $statement->execute(['empresa_id' => $this->companyScope->id()]);
+        $row = $statement->fetch();
 
         return $row === false ? [] : $row;
     }
@@ -31,8 +36,10 @@ final class FiscalConfigurationRepository
     /** @return array<string,mixed>|null */
     public function configurationById(int $id): ?array
     {
-        $statement = $this->connection->prepare($this->configurationSql() . ' WHERE cfg.id = :id LIMIT 1');
-        $statement->execute(['id' => $id]);
+        $statement = $this->connection->prepare(
+            $this->configurationSql() . ' WHERE cfg.empresa_id = :empresa_id AND cfg.id = :id LIMIT 1'
+        );
+        $statement->execute(['empresa_id' => $this->companyScope->id(), 'id' => $id]);
         $row = $statement->fetch();
         return $row === false ? null : $row;
     }
@@ -42,10 +49,15 @@ final class FiscalConfigurationRepository
     {
         $statement = $this->connection->prepare(
             $this->configurationSql()
-            . ' WHERE cfg.ambiente = :environment AND cfg.modelo = :model'
+            . ' WHERE cfg.empresa_id = :empresa_id'
+            . ' AND cfg.ambiente = :environment AND cfg.modelo = :model'
             . ' ORDER BY cfg.versao DESC LIMIT 1'
         );
-        $statement->execute(['environment' => $environment, 'model' => $model]);
+        $statement->execute([
+            'empresa_id' => $this->companyScope->id(),
+            'environment' => $environment,
+            'model' => $model,
+        ]);
         $row = $statement->fetch();
         return $row === false ? null : $row;
     }
@@ -63,11 +75,15 @@ final class FiscalConfigurationRepository
                     cert.chave_versao AS certificado_chave_versao,
                     empresa.razao_social
                FROM fiscal_configuracoes cfg
-               JOIN fiscal_certificados cert ON cert.id = cfg.certificado_id
-               JOIN configuracoes_empresa empresa ON empresa.id = 1
-              WHERE cfg.id = :id LIMIT 1'
+               JOIN fiscal_certificados cert
+                 ON cert.id = cfg.certificado_id AND cert.empresa_id = cfg.empresa_id
+               JOIN configuracoes_empresa empresa ON empresa.empresa_id = cfg.empresa_id
+              WHERE cfg.empresa_id = :empresa_id AND cfg.id = :id LIMIT 1'
         );
-        $statement->execute(['id' => $configurationId]);
+        $statement->execute([
+            'empresa_id' => $this->companyScope->id(),
+            'id' => $configurationId,
+        ]);
         $row = $statement->fetch();
 
         return $row === false ? null : $row;
@@ -79,11 +95,15 @@ final class FiscalConfigurationRepository
         $statement = $this->connection->prepare(
             'SELECT acao, detalhes, criado_em
                FROM fiscal_auditoria
-              WHERE entidade_tipo = \'configuracao\' AND entidade_id = :id
+              WHERE empresa_id = :empresa_id
+                AND entidade_tipo = \'configuracao\' AND entidade_id = :id
                 AND acao IN (\'teste_sefaz_sucesso\', \'teste_sefaz_falha\')
               ORDER BY id DESC LIMIT 1'
         );
-        $statement->execute(['id' => $configurationId]);
+        $statement->execute([
+            'empresa_id' => $this->companyScope->id(),
+            'id' => $configurationId,
+        ]);
         $row = $statement->fetch();
         if ($row === false) {
             return null;
@@ -114,6 +134,9 @@ final class FiscalConfigurationRepository
         string $code,
         string $message
     ): void {
+        if ($this->configurationById($configurationId) === null) {
+            throw new InvalidArgumentException('Configuração fiscal não encontrada.');
+        }
         $this->audit(
             'configuracao',
             $configurationId,
@@ -132,31 +155,44 @@ final class FiscalConfigurationRepository
             'SELECT id, ambiente, modelo, serie, proximo_numero, ultimo_numero_reservado,
                     status, criado_em, atualizado_em
                FROM fiscal_series
-              WHERE ambiente = :environment AND modelo = :model AND status = \'ativa\'
+              WHERE empresa_id = :empresa_id
+                AND ambiente = :environment AND modelo = :model AND status = \'ativa\'
               ORDER BY serie ASC'
         );
-        $statement->execute(['environment' => $environment, 'model' => $model]);
+        $statement->execute([
+            'empresa_id' => $this->companyScope->id(),
+            'environment' => $environment,
+            'model' => $model,
+        ]);
         return $statement->fetchAll();
     }
 
     /** @return array<int,array<string,mixed>> */
     public function activeCertificates(): array
     {
-        return $this->connection->query(
+        $statement = $this->connection->prepare(
             'SELECT id, titular_cnpj, titular_nome, certificado_fingerprint_sha256,
                     valido_de, valido_ate, criado_em
                FROM fiscal_certificados
-              WHERE status = \'ativo\' AND valido_ate >= CURRENT_TIMESTAMP
+              WHERE empresa_id = :empresa_id
+                AND status = \'ativo\' AND valido_ate >= CURRENT_TIMESTAMP
               ORDER BY valido_ate DESC, id DESC'
-        )->fetchAll();
+        );
+        $statement->execute(['empresa_id' => $this->companyScope->id()]);
+        return $statement->fetchAll();
     }
 
     public function certificateFingerprintExists(string $fingerprint): bool
     {
         $statement = $this->connection->prepare(
-            'SELECT 1 FROM fiscal_certificados WHERE certificado_fingerprint_sha256 = :fingerprint LIMIT 1'
+            'SELECT 1 FROM fiscal_certificados
+              WHERE empresa_id = :empresa_id
+                AND certificado_fingerprint_sha256 = :fingerprint LIMIT 1'
         );
-        $statement->execute(['fingerprint' => $fingerprint]);
+        $statement->execute([
+            'empresa_id' => $this->companyScope->id(),
+            'fingerprint' => $fingerprint,
+        ]);
 
         return $statement->fetchColumn() !== false;
     }
@@ -165,7 +201,7 @@ final class FiscalConfigurationRepository
     public function productReadiness(int $crt): array
     {
         $taxCodeColumn = in_array($crt, [1, 2, 4], true) ? 'csosn' : 'cst_icms';
-        $statement = $this->connection->query(
+        $statement = $this->connection->prepare(
             'SELECT COUNT(*) AS sale_products,
                     SUM(CASE WHEN ncm IS NULL OR ncm NOT REGEXP \'^[0-9]{8}$\' THEN 1 ELSE 0 END) AS missing_ncm,
                     SUM(CASE WHEN origem_mercadoria IS NULL OR origem_mercadoria > 8 THEN 1 ELSE 0 END) AS missing_origin,
@@ -175,8 +211,10 @@ final class FiscalConfigurationRepository
                     SUM(CASE WHEN cst_cofins IS NULL OR cst_cofins NOT REGEXP \'^[0-9]{2}$\' THEN 1 ELSE 0 END) AS missing_cofins,
                     SUM(CASE WHEN unidade_tributavel IS NULL OR TRIM(unidade_tributavel) = \'\' THEN 1 ELSE 0 END) AS missing_tax_unit
                FROM produtos
-              WHERE status = \'ativo\' AND excluido_em IS NULL AND preco_venda > 0'
+              WHERE empresa_id = :empresa_id
+                AND status = \'ativo\' AND excluido_em IS NULL AND preco_venda > 0'
         );
+        $statement->execute(['empresa_id' => $this->companyScope->id()]);
         $row = $statement->fetch() ?: [];
         return array_map('intval', $row);
     }
@@ -184,7 +222,7 @@ final class FiscalConfigurationRepository
     /** @return array<string,int> */
     public function clientReadiness(): array
     {
-        $row = $this->connection->query(
+        $statement = $this->connection->prepare(
             'SELECT COUNT(*) AS active_clients,
                     SUM(CASE WHEN documento IS NOT NULL AND documento <> \'\'
                               AND (endereco IS NULL OR numero IS NULL OR bairro IS NULL
@@ -197,8 +235,11 @@ final class FiscalConfigurationRepository
                     SUM(CASE WHEN codigo_municipio_ibge IS NOT NULL
                               AND codigo_municipio_ibge NOT REGEXP \'^[0-9]{7}$\'
                              THEN 1 ELSE 0 END) AS invalid_city_code
-               FROM clientes WHERE status = \'ativo\''
-        )->fetch() ?: [];
+               FROM clientes
+              WHERE empresa_id = :empresa_id AND status = \'ativo\' AND excluido_em IS NULL'
+        );
+        $statement->execute(['empresa_id' => $this->companyScope->id()]);
+        $row = $statement->fetch() ?: [];
         return array_map('intval', $row);
     }
 
@@ -208,16 +249,17 @@ final class FiscalConfigurationRepository
         return $this->transactional(function () use ($metadata, $secret, $userId): int {
             $statement = $this->connection->prepare(
             'INSERT INTO fiscal_certificados
-                (arquivo_referencia, arquivo_sha256, certificado_fingerprint_sha256,
+                (empresa_id, arquivo_referencia, arquivo_sha256, certificado_fingerprint_sha256,
                  certificado_serial, titular_cnpj, titular_nome, valido_de, valido_ate,
                  senha_ciphertext, senha_nonce, senha_tag, cifra_algoritmo, chave_versao,
                  status, criado_por)
              VALUES
-                (:reference, :file_sha256, :fingerprint, :serial, :holder_cnpj, :holder_name,
+                (:empresa_id, :reference, :file_sha256, :fingerprint, :serial, :holder_cnpj, :holder_name,
                  :valid_from, :valid_to, :ciphertext, :nonce, :tag, :algorithm, :key_version,
                  \'ativo\', :user_id)'
             );
             $statement->execute([
+            'empresa_id' => $this->companyScope->id(),
             'reference' => $metadata['reference'],
             'file_sha256' => $metadata['file_sha256'],
             'fingerprint' => $metadata['fingerprint'],
@@ -246,18 +288,20 @@ final class FiscalConfigurationRepository
     public function insertConfiguration(array $data, ?array $csc, int $userId): int
     {
         return $this->transactional(function () use ($data, $csc, $userId): int {
+            $this->assertCertificateBelongsToCompany((int) $data['certificate_id']);
             $version = $this->nextConfigurationVersion($data['environment'], $data['model']);
             $statement = $this->connection->prepare(
                 'INSERT INTO fiscal_configuracoes
-                    (ambiente, modelo, versao, uf, schema_versao, qr_code_versao,
+                    (empresa_id, ambiente, modelo, versao, uf, schema_versao, qr_code_versao,
                      certificado_id, csc_id, csc_ciphertext, csc_nonce, csc_tag,
                      csc_algoritmo, segredo_chave_versao, status, criado_por)
                  VALUES
-                    (:environment, :model, :version, :state, :schema_version, :qr_version,
+                    (:empresa_id, :environment, :model, :version, :state, :schema_version, :qr_version,
                      :certificate_id, :csc_id, :csc_ciphertext, :csc_nonce, :csc_tag,
                      :csc_algorithm, :secret_key_version, \'rascunho\', :user_id)'
             );
             $statement->execute([
+                'empresa_id' => $this->companyScope->id(),
                 'environment' => $data['environment'], 'model' => $data['model'],
                 'version' => $version, 'state' => $data['state'],
                 'schema_version' => $data['schema_version'], 'qr_version' => $data['qr_version'],
@@ -281,17 +325,47 @@ final class FiscalConfigurationRepository
     public function saveSeries(array $data, int $userId): void
     {
         $this->transactional(function () use ($data, $userId): void {
-            $this->connection->prepare(
-                'INSERT INTO fiscal_series
-                    (ambiente, modelo, serie, proximo_numero, status, criado_por, atualizado_por)
-                 VALUES (:environment, :model, :series, :next_number, \'ativa\', :user_id, :user_id)
-                 ON DUPLICATE KEY UPDATE
-                    proximo_numero = GREATEST(proximo_numero, VALUES(proximo_numero)),
-                    status = \'ativa\', atualizado_por = VALUES(atualizado_por)'
-            )->execute([
+            $lookup = $this->connection->prepare(
+                'SELECT id FROM fiscal_series
+                  WHERE empresa_id = :empresa_id AND ambiente = :environment
+                    AND modelo = :model AND serie = :series
+                  LIMIT 1 FOR UPDATE'
+            );
+            $lookup->execute([
+                'empresa_id' => $this->companyScope->id(),
                 'environment' => $data['environment'], 'model' => $data['model'],
-                'series' => $data['series'], 'next_number' => $data['next_number'], 'user_id' => $userId,
+                'series' => $data['series'],
             ]);
+            $seriesId = $lookup->fetchColumn();
+
+            if ($seriesId === false) {
+                $this->connection->prepare(
+                    'INSERT INTO fiscal_series
+                        (empresa_id, ambiente, modelo, serie, proximo_numero, status, criado_por, atualizado_por)
+                     VALUES
+                        (:empresa_id, :environment, :model, :series, :next_number, \'ativa\', :created_by, :updated_by)'
+                )->execute([
+                    'empresa_id' => $this->companyScope->id(),
+                    'environment' => $data['environment'],
+                    'model' => $data['model'],
+                    'series' => $data['series'],
+                    'next_number' => $data['next_number'],
+                    'created_by' => $userId,
+                    'updated_by' => $userId,
+                ]);
+            } else {
+                $this->connection->prepare(
+                    'UPDATE fiscal_series
+                        SET proximo_numero = GREATEST(proximo_numero, :next_number),
+                            status = \'ativa\', atualizado_por = :updated_by
+                      WHERE id = :id AND empresa_id = :empresa_id'
+                )->execute([
+                    'next_number' => $data['next_number'],
+                    'updated_by' => $userId,
+                    'id' => (int) $seriesId,
+                    'empresa_id' => $this->companyScope->id(),
+                ]);
+            }
             $this->audit('serie', null, 'configurada', $data['environment'], $data['model'], $userId, [
                 'series' => $data['series'], 'next_number' => $data['next_number'],
             ]);
@@ -304,13 +378,30 @@ final class FiscalConfigurationRepository
             $this->connection->prepare(
                 'UPDATE fiscal_configuracoes SET status = \'inativa\', desativado_por = :user_id,
                         desativado_em = CURRENT_TIMESTAMP
-                  WHERE ambiente = :environment AND modelo = :model AND status = \'ativa\''
-            )->execute(['user_id' => $userId, 'environment' => $environment, 'model' => $model]);
-            $this->connection->prepare(
+                  WHERE empresa_id = :empresa_id
+                    AND ambiente = :environment AND modelo = :model AND status = \'ativa\''
+            )->execute([
+                'user_id' => $userId,
+                'empresa_id' => $this->companyScope->id(),
+                'environment' => $environment,
+                'model' => $model,
+            ]);
+            $activation = $this->connection->prepare(
                 'UPDATE fiscal_configuracoes SET status = \'ativa\', ativado_por = :user_id,
                         ativado_em = CURRENT_TIMESTAMP, desativado_por = NULL, desativado_em = NULL
-                  WHERE id = :id AND ambiente = :environment AND modelo = :model'
-            )->execute(['id' => $id, 'user_id' => $userId, 'environment' => $environment, 'model' => $model]);
+                  WHERE id = :id AND empresa_id = :empresa_id
+                    AND ambiente = :environment AND modelo = :model'
+            );
+            $activation->execute([
+                'id' => $id,
+                'user_id' => $userId,
+                'empresa_id' => $this->companyScope->id(),
+                'environment' => $environment,
+                'model' => $model,
+            ]);
+            if ($activation->rowCount() !== 1) {
+                throw new InvalidArgumentException('Configuração fiscal não encontrada.');
+            }
             $this->audit('configuracao', $id, 'ativada', $environment, $model, $userId, []);
         });
     }
@@ -324,17 +415,42 @@ final class FiscalConfigurationRepository
                        cert.titular_cnpj, cert.titular_nome, cert.valido_de, cert.valido_ate,
                        cert.status AS certificado_status
                   FROM fiscal_configuracoes cfg
-                  JOIN fiscal_certificados cert ON cert.id = cfg.certificado_id';
+                  JOIN fiscal_certificados cert
+                    ON cert.id = cfg.certificado_id AND cert.empresa_id = cfg.empresa_id';
     }
 
     private function nextConfigurationVersion(string $environment, string $model): int
     {
         $statement = $this->connection->prepare(
             'SELECT COALESCE(MAX(versao), 0) FROM fiscal_configuracoes
-              WHERE ambiente = :environment AND modelo = :model FOR UPDATE'
+              WHERE empresa_id = :empresa_id
+                AND ambiente = :environment AND modelo = :model FOR UPDATE'
         );
-        $statement->execute(['environment' => $environment, 'model' => $model]);
+        $statement->execute([
+            'empresa_id' => $this->companyScope->id(),
+            'environment' => $environment,
+            'model' => $model,
+        ]);
         return ((int) $statement->fetchColumn()) + 1;
+    }
+
+    private function assertCertificateBelongsToCompany(int $certificateId): void
+    {
+        if ($certificateId <= 0) {
+            throw new InvalidArgumentException('Certificado fiscal inválido.');
+        }
+        $statement = $this->connection->prepare(
+            'SELECT id FROM fiscal_certificados
+              WHERE id = :id AND empresa_id = :empresa_id
+              LIMIT 1 FOR UPDATE'
+        );
+        $statement->execute([
+            'id' => $certificateId,
+            'empresa_id' => $this->companyScope->id(),
+        ]);
+        if ($statement->fetchColumn() === false) {
+            throw new InvalidArgumentException('Certificado fiscal não encontrado.');
+        }
     }
 
     /** @param array<string,mixed> $details */
@@ -342,9 +458,10 @@ final class FiscalConfigurationRepository
     {
         $this->connection->prepare(
             'INSERT INTO fiscal_auditoria
-                (entidade_tipo, entidade_id, acao, ambiente, modelo, usuario_id, detalhes)
-             VALUES (:type, :id, :action, :environment, :model, :user_id, :details)'
+                (empresa_id, entidade_tipo, entidade_id, acao, ambiente, modelo, usuario_id, detalhes)
+             VALUES (:empresa_id, :type, :id, :action, :environment, :model, :user_id, :details)'
         )->execute([
+            'empresa_id' => $this->companyScope->id(),
             'type' => $type, 'id' => $id, 'action' => $action,
             'environment' => $environment, 'model' => $model, 'user_id' => $userId,
             'details' => json_encode($details, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),

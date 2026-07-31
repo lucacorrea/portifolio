@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\ServiceOrder\Service;
 
+use App\Company\DTO\CompanyScope;
 use App\Catalog\Repository\ProductRepository;
 use App\Catalog\Repository\ServiceRepository;
 use App\CRM\Repository\ClientRepository;
@@ -39,6 +40,7 @@ final class ServiceOrderManagementService
 
     public function __construct(
         private readonly PDO $connection,
+        private readonly CompanyScope $companyScope,
         private readonly ServiceOrderRepository $orders,
         private readonly EmployeeRepository $employees,
         private readonly ClientRepository $clients,
@@ -223,10 +225,11 @@ final class ServiceOrderManagementService
             $this->connection->prepare(
                 'UPDATE ordens_servico
                     SET valor_aprovado_orcamento = :approved_value
-                  WHERE id = :order_id'
+                  WHERE id = :order_id AND empresa_id = :company_id'
             )->execute([
                 'approved_value' => $budget->total(),
                 'order_id' => $order->id(),
+                'company_id' => $this->companyScope->id(),
             ]);
 
             return $this->getOrder($order->id());
@@ -358,11 +361,12 @@ final class ServiceOrderManagementService
 
             $statement = $this->connection->prepare(
                 'INSERT INTO ordem_servico_cancelamentos
-                    (ordem_servico_id, opcao, motivo, observacao, orcamento_liberado, cancelado_por)
+                    (empresa_id, ordem_servico_id, opcao, motivo, observacao, orcamento_liberado, cancelado_por)
                  VALUES
-                    (:order_id, :option, :reason, :notes, :release_budget, :user_id)'
+                    (:company_id, :order_id, :option, :reason, :notes, :release_budget, :user_id)'
             );
             $statement->execute([
+                'company_id' => $this->companyScope->id(),
                 'order_id' => $orderId,
                 'option' => $option,
                 'reason' => $reason,
@@ -377,8 +381,8 @@ final class ServiceOrderManagementService
                     SET status = 'cancelada',
                         cancelada_em = COALESCE(cancelada_em, CURRENT_TIMESTAMP),
                         orcamento_liberado = :release_budget
-                  WHERE id = :order_id"
-            )->execute(['order_id' => $orderId, 'release_budget' => $releaseBudget]);
+                  WHERE id = :order_id AND empresa_id = :company_id"
+            )->execute(['order_id' => $orderId, 'company_id' => $this->companyScope->id(), 'release_budget' => $releaseBudget]);
             $this->orders->syncOperationalBudgetKey($orderId);
 
             if ($option === 'criar_substituta') {
@@ -386,18 +390,20 @@ final class ServiceOrderManagementService
                 $this->connection->prepare(
                     'UPDATE ordem_servico_cancelamentos
                         SET ordem_substituta_id = :replacement_id
-                      WHERE id = :cancellation_id'
+                      WHERE id = :cancellation_id AND empresa_id = :company_cancellation'
                 )->execute([
                     'replacement_id' => $replacement->id(),
                     'cancellation_id' => $cancellationId,
+                    'company_cancellation' => $this->companyScope->id(),
                 ]);
                 $this->connection->prepare(
                     'UPDATE ordens_servico
                         SET ordem_substituta_id = :replacement_id
-                      WHERE id = :order_id'
+                      WHERE id = :order_id AND empresa_id = :company_order'
                 )->execute([
                     'replacement_id' => $replacement->id(),
                     'order_id' => $orderId,
+                    'company_order' => $this->companyScope->id(),
                 ]);
             }
         });
@@ -460,7 +466,21 @@ final class ServiceOrderManagementService
     {
         $client = $this->clients->findByIdForUpdate($data->clientId());
         if ($client === null) throw new InvalidArgumentException('Cliente não encontrado.');
+
+        $budgetItemIds = [];
+        if ($data->budgetId() !== null) {
+            if ($this->budgets === null || $this->budgets->lockById($data->budgetId()) === null) {
+                throw new InvalidArgumentException('Orçamento da OS não encontrado.');
+            }
+            foreach ($this->budgets->findItems($data->budgetId()) as $budgetItem) {
+                $budgetItemIds[$budgetItem->id()] = true;
+            }
+        }
+
         foreach ($data->items() as $item) {
+            if ($item->budgetItemId() !== null && !isset($budgetItemIds[$item->budgetItemId()])) {
+                throw new InvalidArgumentException('Item de orçamento da OS não encontrado.');
+            }
             if ($item->type() === 'servico' && ($item->referenceId() === null || $this->services->findByIdForUpdate($item->referenceId()) === null)) {
                 throw new InvalidArgumentException('Serviço da OS não encontrado.');
             }
@@ -518,13 +538,13 @@ final class ServiceOrderManagementService
     private function hasExecutionLocks(int $orderId): bool
     {
         foreach ([
-            'SELECT id FROM ordem_servico_finalizacoes WHERE ordem_servico_id = :id AND ativa = 1 LIMIT 1 FOR UPDATE',
-            'SELECT id FROM estoque_movimentacoes WHERE ordem_servico_id = :id LIMIT 1 FOR UPDATE',
-            "SELECT id FROM ordem_servico_pagamentos WHERE ordem_servico_id = :id AND status = 'ativo' LIMIT 1 FOR UPDATE",
-            "SELECT id FROM contas_receber WHERE ordem_servico_id = :id AND status <> 'cancelada' LIMIT 1 FOR UPDATE",
+            'SELECT id FROM ordem_servico_finalizacoes WHERE ordem_servico_id = :id AND empresa_id = :company_id AND ativa = 1 LIMIT 1 FOR UPDATE',
+            'SELECT id FROM estoque_movimentacoes WHERE ordem_servico_id = :id AND empresa_id = :company_id LIMIT 1 FOR UPDATE',
+            "SELECT id FROM ordem_servico_pagamentos WHERE ordem_servico_id = :id AND empresa_id = :company_id AND status = 'ativo' LIMIT 1 FOR UPDATE",
+            "SELECT id FROM contas_receber WHERE ordem_servico_id = :id AND empresa_id = :company_id AND status <> 'cancelada' LIMIT 1 FOR UPDATE",
         ] as $sql) {
             $statement = $this->connection->prepare($sql);
-            $statement->execute(['id' => $orderId]);
+            $statement->execute(['id' => $orderId, 'company_id' => $this->companyScope->id()]);
             if ($statement->fetch() !== false) return true;
         }
         return false;

@@ -4,19 +4,26 @@ declare(strict_types=1);
 
 namespace App\Company\Service;
 
+use App\Company\DTO\CompanyScope;
 use InvalidArgumentException;
 use PDO;
 
 final class CompanySettingsService
 {
-    public function __construct(private readonly PDO $connection)
+    public function __construct(
+        private readonly PDO $connection,
+        private readonly CompanyScope $companyScope
+    )
     {
     }
 
     /** @return array<string,mixed> */
     public function get(): array
     {
-        $statement = $this->connection->query('SELECT * FROM configuracoes_empresa WHERE id = 1');
+        $statement = $this->connection->prepare(
+            'SELECT * FROM configuracoes_empresa WHERE empresa_id = :empresa_id LIMIT 1'
+        );
+        $statement->execute(['empresa_id' => $this->companyScope->id()]);
         $row = $statement->fetch();
         return $row === false ? [] : $row;
     }
@@ -24,6 +31,7 @@ final class CompanySettingsService
     public function save(array $data, int $userId): void
     {
         $payload = [
+            'empresa_id' => $this->companyScope->id(),
             'razao_social' => $this->clean($data['razao_social'] ?? null, 150),
             'nome_fantasia' => $this->clean($data['nome_fantasia'] ?? null, 150),
             'documento' => $this->document($data['documento'] ?? null),
@@ -48,12 +56,12 @@ final class CompanySettingsService
 
         $statement = $this->connection->prepare(
             'INSERT INTO configuracoes_empresa
-                (id, razao_social, nome_fantasia, documento, inscricao_estadual,
+                (empresa_id, razao_social, nome_fantasia, documento, inscricao_estadual,
                  inscricao_municipal, email, crt, cnae_principal, telefone, endereco,
                  endereco_logradouro, endereco_numero, endereco_complemento, endereco_bairro,
                  endereco_cidade, endereco_uf, endereco_cep, codigo_municipio_ibge, logo, atualizado_por)
              VALUES
-                (1, :razao_social, :nome_fantasia, :documento, :inscricao_estadual,
+                (:empresa_id, :razao_social, :nome_fantasia, :documento, :inscricao_estadual,
                  :inscricao_municipal, :email, :crt, :cnae_principal, :telefone, :endereco,
                  :endereco_logradouro, :endereco_numero, :endereco_complemento, :endereco_bairro,
                  :endereco_cidade, :endereco_uf, :endereco_cep, :codigo_municipio_ibge, :logo, :user_id)

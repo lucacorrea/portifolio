@@ -4,21 +4,23 @@ declare(strict_types=1);
 
 namespace App\Purchasing\Service;
 
+use App\Company\DTO\CompanyScope;
 use InvalidArgumentException;
 use PDO;
 use Throwable;
 
 final class SupplierManagementService
 {
-    public function __construct(private readonly PDO $connection)
-    {
-    }
+    public function __construct(
+        private readonly PDO $connection,
+        private readonly CompanyScope $companyScope
+    ) {}
 
     /** @return array<int,array<string,mixed>> */
     public function listSuppliers(array $filters = []): array
     {
-        $where = [];
-        $params = [];
+        $where = ['f.empresa_id = :empresa_id'];
+        $params = ['empresa_id' => $this->companyScope->id()];
         $search = $this->filterText($filters['search'] ?? '', 150);
         $type = $this->filterChoice($filters['type'] ?? '', ['', 'fisica', 'juridica']);
         $status = $this->filterChoice($filters['status'] ?? '', ['', 'ativo', 'inativo']);
@@ -55,12 +57,15 @@ final class SupplierManagementService
     /** @return array{total:int,active:int,inactive:int} */
     public function summary(): array
     {
-        $row = $this->connection->query(
+        $statement = $this->connection->prepare(
             "SELECT COUNT(*) AS total,
                     SUM(status = 'ativo') AS active,
                     SUM(status = 'inativo') AS inactive
-               FROM fornecedores"
-        )->fetch() ?: [];
+               FROM fornecedores
+              WHERE empresa_id = :empresa_id"
+        );
+        $statement->execute(['empresa_id' => $this->companyScope->id()]);
+        $row = $statement->fetch() ?: [];
         return [
             'total' => (int) ($row['total'] ?? 0),
             'active' => (int) ($row['active'] ?? 0),
@@ -71,30 +76,37 @@ final class SupplierManagementService
     /** @return array<int,array<string,mixed>> */
     public function activeSuppliers(): array
     {
-        return $this->connection->query(
+        $statement = $this->connection->prepare(
             "SELECT id, codigo, nome, nome_fantasia
                FROM fornecedores
-              WHERE status = 'ativo'
+              WHERE empresa_id = :empresa_id AND status = 'ativo'
               ORDER BY nome, id"
-        )->fetchAll();
+        );
+        $statement->execute(['empresa_id' => $this->companyScope->id()]);
+        return $statement->fetchAll();
     }
 
     /** @return string[] */
     public function cities(): array
     {
-        $rows = $this->connection->query(
+        $statement = $this->connection->prepare(
             "SELECT DISTINCT cidade FROM fornecedores
-              WHERE cidade IS NOT NULL AND cidade <> '' ORDER BY cidade"
-        )->fetchAll(PDO::FETCH_COLUMN);
+              WHERE empresa_id = :empresa_id AND cidade IS NOT NULL AND cidade <> '' ORDER BY cidade"
+        );
+        $statement->execute(['empresa_id' => $this->companyScope->id()]);
+        $rows = $statement->fetchAll(PDO::FETCH_COLUMN);
         return array_map('strval', $rows);
     }
 
     /** @return array<int,array<string,mixed>> */
     public function supplierOptions(): array
     {
-        return $this->connection->query(
-            'SELECT id, codigo, nome, status FROM fornecedores ORDER BY nome, id'
-        )->fetchAll();
+        $statement = $this->connection->prepare(
+            'SELECT id, codigo, nome, status FROM fornecedores
+              WHERE empresa_id = :empresa_id ORDER BY nome, id'
+        );
+        $statement->execute(['empresa_id' => $this->companyScope->id()]);
+        return $statement->fetchAll();
     }
 
     /** @return array{id:int,code:string} */
@@ -115,19 +127,27 @@ final class SupplierManagementService
             if ($supplierId === null) {
                 $statement = $this->connection->prepare(
                     'INSERT INTO fornecedores
-                        (codigo, tipo_pessoa, nome, nome_fantasia, documento, inscricao_estadual, contato,
+                        (empresa_id, codigo, tipo_pessoa, nome, nome_fantasia, documento, inscricao_estadual, contato,
                          telefone, whatsapp, email, cep, endereco, numero, complemento, bairro, cidade,
                          estado, observacao, status, criado_por)
                      VALUES
-                        (NULL, :tipo_pessoa, :nome, :nome_fantasia, :documento, :inscricao_estadual, :contato,
+                        (:empresa_id, NULL, :tipo_pessoa, :nome, :nome_fantasia, :documento, :inscricao_estadual, :contato,
                          :telefone, :whatsapp, :email, :cep, :endereco, :numero, :complemento, :bairro, :cidade,
                          :estado, :observacao, "ativo", :user_id)'
                 );
-                $statement->execute($payload + ['user_id' => $userId]);
+                $statement->execute($payload + [
+                    'empresa_id' => $this->companyScope->id(),
+                    'user_id' => $userId,
+                ]);
                 $supplierId = (int) $this->connection->lastInsertId();
                 $code = sprintf('FOR-%06d', $supplierId);
-                $this->connection->prepare('UPDATE fornecedores SET codigo = :code WHERE id = :id')
-                    ->execute(['code' => $code, 'id' => $supplierId]);
+                $this->connection->prepare(
+                    'UPDATE fornecedores SET codigo = :code WHERE id = :id AND empresa_id = :empresa_id'
+                )->execute([
+                    'code' => $code,
+                    'id' => $supplierId,
+                    'empresa_id' => $this->companyScope->id(),
+                ]);
             } else {
                 $statement = $this->connection->prepare(
                     'UPDATE fornecedores SET
@@ -136,11 +156,19 @@ final class SupplierManagementService
                         telefone = :telefone, whatsapp = :whatsapp, email = :email, cep = :cep,
                         endereco = :endereco, numero = :numero, complemento = :complemento, bairro = :bairro,
                         cidade = :cidade, estado = :estado, observacao = :observacao
-                     WHERE id = :id'
+                     WHERE id = :id AND empresa_id = :empresa_id'
                 );
-                $statement->execute($payload + ['id' => $supplierId]);
-                $codeStatement = $this->connection->prepare('SELECT codigo FROM fornecedores WHERE id = :id');
-                $codeStatement->execute(['id' => $supplierId]);
+                $statement->execute($payload + [
+                    'id' => $supplierId,
+                    'empresa_id' => $this->companyScope->id(),
+                ]);
+                $codeStatement = $this->connection->prepare(
+                    'SELECT codigo FROM fornecedores WHERE id = :id AND empresa_id = :empresa_id'
+                );
+                $codeStatement->execute([
+                    'id' => $supplierId,
+                    'empresa_id' => $this->companyScope->id(),
+                ]);
                 $code = (string) $codeStatement->fetchColumn();
             }
 
@@ -159,8 +187,13 @@ final class SupplierManagementService
         if ($ownsTransaction) $this->connection->beginTransaction();
         try {
             $this->lockSupplier($supplierId);
-            $this->connection->prepare('UPDATE fornecedores SET status = :status WHERE id = :id')
-                ->execute(['status' => $status, 'id' => $supplierId]);
+            $this->connection->prepare(
+                'UPDATE fornecedores SET status = :status WHERE id = :id AND empresa_id = :empresa_id'
+            )->execute([
+                'status' => $status,
+                'id' => $supplierId,
+                'empresa_id' => $this->companyScope->id(),
+            ]);
             if ($ownsTransaction) $this->connection->commit();
         } catch (Throwable $exception) {
             if ($ownsTransaction && $this->connection->inTransaction()) $this->connection->rollBack();
@@ -206,8 +239,13 @@ final class SupplierManagementService
     private function lockSupplier(int $supplierId): array
     {
         if ($supplierId <= 0) throw new InvalidArgumentException('Fornecedor inválido.');
-        $statement = $this->connection->prepare('SELECT * FROM fornecedores WHERE id = :id FOR UPDATE');
-        $statement->execute(['id' => $supplierId]);
+        $statement = $this->connection->prepare(
+            'SELECT * FROM fornecedores WHERE id = :id AND empresa_id = :empresa_id FOR UPDATE'
+        );
+        $statement->execute([
+            'id' => $supplierId,
+            'empresa_id' => $this->companyScope->id(),
+        ]);
         $supplier = $statement->fetch();
         if ($supplier === false) throw new InvalidArgumentException('Fornecedor não encontrado.');
         return $supplier;
@@ -216,8 +254,8 @@ final class SupplierManagementService
     private function assertDocumentAvailable(?string $document, ?int $ignoreId): void
     {
         if ($document === null) return;
-        $sql = 'SELECT id FROM fornecedores WHERE documento = :document';
-        $params = ['document' => $document];
+        $sql = 'SELECT id FROM fornecedores WHERE empresa_id = :empresa_id AND documento = :document';
+        $params = ['empresa_id' => $this->companyScope->id(), 'document' => $document];
         if ($ignoreId !== null) {
             $sql .= ' AND id <> :id';
             $params['id'] = $ignoreId;

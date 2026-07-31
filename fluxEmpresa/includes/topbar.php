@@ -6,6 +6,11 @@ $pageSubtitle = $pageSubtitle ?? 'Gestão de serviços';
 $showPrimaryAction = isset($showPrimaryAction)
   ? (bool) $showPrimaryAction
   : (!isset($primaryActionPermission) || $authorization->can((string) $primaryActionPermission));
+$supportCompany = isset($companyScope)
+  && $companyScope instanceof \App\Company\DTO\CompanyScope
+  && $companyScope->isSupport()
+    ? $companyScope
+    : null;
 ?>
 
 <header class="topbar">
@@ -30,6 +35,19 @@ $showPrimaryAction = isset($showPrimaryAction)
     </div>
   </div>
   <div class="topbar-right">
+    <?php if ($supportCompany !== null): ?>
+      <div class="support-context" role="status" aria-label="Contexto administrativo ativo">
+        <span class="support-context-icon" aria-hidden="true"><i class="bi bi-shield-check"></i></span>
+        <span class="support-context-copy">
+          <small>Contexto de suporte</small>
+          <strong><?= htmlspecialchars($supportCompany->name(), ENT_QUOTES, 'UTF-8') ?></strong>
+        </span>
+        <form method="post" action="adm/actions/empresa-sair.php">
+          <?= $csrf->field() ?>
+          <button type="submit" title="Encerrar o atendimento e voltar à administração">Encerrar e voltar</button>
+        </form>
+      </div>
+    <?php endif; ?>
     <button class="tb-icon-btn" type="button" title="Notificações" aria-label="Notificações">
       <i class="bi bi-bell"></i>
       <span class="notif-dot"></span>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Finance\Service;
 
+use App\Company\DTO\CompanyScope;
 use InvalidArgumentException;
 use PDO;
 use Throwable;
@@ -15,8 +16,16 @@ final class ReceiptService
         'transferencia', 'cheque', 'outro',
     ];
 
-    public function __construct(private readonly PDO $connection)
+    public function __construct(
+        private readonly PDO $connection,
+        private readonly CompanyScope $companyScope
+    )
     {
+    }
+
+    public function companyId(): int
+    {
+        return $this->companyScope->id();
     }
 
     /** @return array{id:int,created:bool} */
@@ -63,17 +72,18 @@ final class ReceiptService
 
             $statement = $this->connection->prepare(
                 'INSERT INTO recibos
-                    (numero, cliente_id, ordem_servico_id, pagamento_id, cliente_nome, cliente_documento,
+                    (empresa_id, numero, cliente_id, ordem_servico_id, pagamento_id, cliente_nome, cliente_documento,
                      os_numero, pagamento_recebido_em, empresa_nome, empresa_documento, empresa_telefone,
                      empresa_endereco, empresa_logo, descricao, valor, forma_pagamento, quantidade_parcelas,
                      status, emitido_por)
                  VALUES
-                    (NULL, :client_id, :order_id, :payment_id, :client_name, :client_document,
+                    (:empresa_id, NULL, :client_id, :order_id, :payment_id, :client_name, :client_document,
                      :order_number, :received_at, :company_name, :company_document, :company_phone,
                      :company_address, :company_logo, :description, :value, :payment_form, :installment_count,
                      "emitido", :user_id)'
             );
             $statement->execute([
+                'empresa_id' => $this->companyScope->id(),
                 'client_id' => $payment['cliente_id'],
                 'order_id' => $payment['ordem_servico_id'],
                 'payment_id' => $paymentId,
@@ -94,8 +104,8 @@ final class ReceiptService
             ]);
             $receiptId = (int) $this->connection->lastInsertId();
             $number = sprintf('REC-%06d', $receiptId);
-            $this->connection->prepare('UPDATE recibos SET numero = :number WHERE id = :id')
-                ->execute(['id' => $receiptId, 'number' => $number]);
+            $this->connection->prepare('UPDATE recibos SET numero = :number WHERE id = :id AND empresa_id = :empresa_id')
+                ->execute(['id' => $receiptId, 'number' => $number, 'empresa_id' => $this->companyScope->id()]);
 
             if ($ownsTransaction) {
                 $this->connection->commit();
@@ -136,16 +146,17 @@ final class ReceiptService
             $company = $this->companySnapshot();
             $statement = $this->connection->prepare(
                 'INSERT INTO recibos
-                    (numero, cliente_id, ordem_servico_id, pagamento_id, cliente_nome, cliente_documento,
+                    (empresa_id, numero, cliente_id, ordem_servico_id, pagamento_id, cliente_nome, cliente_documento,
                      os_numero, pagamento_recebido_em, empresa_nome, empresa_documento, empresa_telefone,
                      empresa_endereco, empresa_logo, descricao, valor, forma_pagamento, quantidade_parcelas,
                      status, emitido_por)
                  VALUES
-                    (NULL, :client_id, NULL, NULL, :client_name, :client_document,
+                    (:empresa_id, NULL, :client_id, NULL, NULL, :client_name, :client_document,
                      NULL, CURRENT_TIMESTAMP, :company_name, :company_document, :company_phone,
                      :company_address, :company_logo, :description, :value, :payment_form, 1, "emitido", :user_id)'
             );
             $statement->execute([
+                'empresa_id' => $this->companyScope->id(),
                 'client_id' => $clientId,
                 'client_name' => $clientName,
                 'client_document' => $clientDocument,
@@ -160,8 +171,8 @@ final class ReceiptService
                 'user_id' => $userId,
             ]);
             $receiptId = (int) $this->connection->lastInsertId();
-            $this->connection->prepare('UPDATE recibos SET numero = :number WHERE id = :id')
-                ->execute(['id' => $receiptId, 'number' => sprintf('REC-%06d', $receiptId)]);
+            $this->connection->prepare('UPDATE recibos SET numero = :number WHERE id = :id AND empresa_id = :empresa_id')
+                ->execute(['id' => $receiptId, 'number' => sprintf('REC-%06d', $receiptId), 'empresa_id' => $this->companyScope->id()]);
             if ($ownsTransaction) $this->connection->commit();
             return ['id' => $receiptId, 'created' => true];
         } catch (Throwable $exception) {
@@ -183,8 +194,8 @@ final class ReceiptService
             throw new InvalidArgumentException('Limite da listagem de recibos inválido.');
         }
 
-        $where = [];
-        $params = [];
+        $where = ['receipt.empresa_id = :empresa_id'];
+        $params = ['empresa_id' => $this->companyScope->id()];
         if ($search !== '') {
             $where[] = '(receipt.numero LIKE :search_number
                 OR receipt.cliente_nome LIKE :search_client
@@ -209,7 +220,7 @@ final class ReceiptService
                        receipt.emitido_em, receipt.ordem_servico_id, receipt.os_numero,
                        receipt.pagamento_id
                   FROM recibos receipt';
-        if ($where !== []) $sql .= ' WHERE ' . implode(' AND ', $where);
+        $sql .= ' WHERE ' . implode(' AND ', $where);
         $sql .= ' ORDER BY receipt.emitido_em DESC, receipt.id DESC LIMIT ' . $limit;
         $statement = $this->connection->prepare($sql);
         $statement->execute($params);
@@ -227,10 +238,10 @@ final class ReceiptService
                FROM recibos receipt
                JOIN usuarios issuer ON issuer.id = receipt.emitido_por
           LEFT JOIN usuarios canceler ON canceler.id = receipt.cancelado_por
-              WHERE receipt.id = :id
+              WHERE receipt.id = :id AND receipt.empresa_id = :empresa_id
               LIMIT 1'
         );
-        $statement->execute(['id' => $receiptId]);
+        $statement->execute(['id' => $receiptId, 'empresa_id' => $this->companyScope->id()]);
         $receipt = $statement->fetch();
         if ($receipt === false) {
             throw new InvalidArgumentException('Recibo não encontrado.');
@@ -249,11 +260,12 @@ final class ReceiptService
                     payment.recebido_em,
                     receipt.id AS recibo_id, receipt.numero AS recibo_numero, receipt.status AS recibo_status
                FROM ordem_servico_pagamentos payment
-          LEFT JOIN recibos receipt ON receipt.pagamento_id = payment.id
+          LEFT JOIN recibos receipt ON receipt.pagamento_id = payment.id AND receipt.empresa_id = payment.empresa_id
               WHERE payment.ordem_servico_id = :order_id AND payment.status = 'ativo'
+                AND payment.empresa_id = :empresa_id
               ORDER BY payment.recebido_em, payment.id"
         );
-        $statement->execute(['order_id' => $orderId]);
+        $statement->execute(['order_id' => $orderId, 'empresa_id' => $this->companyScope->id()]);
         return $statement->fetchAll();
     }
 
@@ -269,7 +281,7 @@ final class ReceiptService
         }
 
         $placeholders = [];
-        $params = [];
+        $params = ['empresa_id' => $this->companyScope->id()];
         foreach ($ids as $index => $id) {
             $key = 'order_' . $index;
             $placeholders[] = ':' . $key;
@@ -282,9 +294,10 @@ final class ReceiptService
                     receipt.id AS recibo_id, receipt.numero AS recibo_numero,
                     receipt.status AS recibo_status
                FROM ordem_servico_pagamentos payment
-          LEFT JOIN recibos receipt ON receipt.pagamento_id = payment.id
+          LEFT JOIN recibos receipt ON receipt.pagamento_id = payment.id AND receipt.empresa_id = payment.empresa_id
               WHERE payment.ordem_servico_id IN (" . implode(', ', $placeholders) . ")
                 AND payment.status = 'ativo'
+                AND payment.empresa_id = :empresa_id
               ORDER BY payment.ordem_servico_id, payment.recebido_em, payment.id"
         );
         $statement->execute($params);
@@ -307,12 +320,12 @@ final class ReceiptService
                     client.id AS cliente_id, client.nome AS cliente_nome,
                     client.documento AS cliente_documento
                FROM ordem_servico_pagamentos payment
-               JOIN ordens_servico service_order ON service_order.id = payment.ordem_servico_id
-               JOIN clientes client ON client.id = service_order.cliente_id
-              WHERE payment.id = :id
+               JOIN ordens_servico service_order ON service_order.id = payment.ordem_servico_id AND service_order.empresa_id = payment.empresa_id
+               JOIN clientes client ON client.id = service_order.cliente_id AND client.empresa_id = service_order.empresa_id
+              WHERE payment.id = :id AND payment.empresa_id = :empresa_id
               FOR UPDATE'
         );
-        $statement->execute(['id' => $paymentId]);
+        $statement->execute(['id' => $paymentId, 'empresa_id' => $this->companyScope->id()]);
         $payment = $statement->fetch();
         if ($payment === false) {
             throw new InvalidArgumentException('Pagamento não encontrado.');
@@ -324,9 +337,10 @@ final class ReceiptService
     private function lockReceiptByPayment(int $paymentId): ?array
     {
         $statement = $this->connection->prepare(
-            'SELECT id, status FROM recibos WHERE pagamento_id = :payment_id LIMIT 1 FOR UPDATE'
+            'SELECT id, status FROM recibos
+              WHERE pagamento_id = :payment_id AND empresa_id = :empresa_id LIMIT 1 FOR UPDATE'
         );
-        $statement->execute(['payment_id' => $paymentId]);
+        $statement->execute(['payment_id' => $paymentId, 'empresa_id' => $this->companyScope->id()]);
         $receipt = $statement->fetch();
         return $receipt === false ? null : $receipt;
     }
@@ -335,9 +349,10 @@ final class ReceiptService
     private function lockClient(int $clientId): array
     {
         $statement = $this->connection->prepare(
-            'SELECT id, nome, documento FROM clientes WHERE id = :id LIMIT 1 FOR UPDATE'
+            'SELECT id, nome, documento FROM clientes
+              WHERE id = :id AND empresa_id = :empresa_id LIMIT 1 FOR UPDATE'
         );
-        $statement->execute(['id' => $clientId]);
+        $statement->execute(['id' => $clientId, 'empresa_id' => $this->companyScope->id()]);
         $client = $statement->fetch();
         if ($client === false) {
             throw new InvalidArgumentException('Cliente cadastrado não encontrado.');
@@ -417,10 +432,12 @@ final class ReceiptService
     /** @return array{name:?string,document:?string,phone:?string,address:?string,logo:?string} */
     private function companySnapshot(): array
     {
-        $company = $this->connection->query(
+        $statement = $this->connection->prepare(
             'SELECT nome_fantasia, razao_social, documento, telefone, endereco, logo
-               FROM configuracoes_empresa WHERE id = 1'
-        )->fetch();
+               FROM configuracoes_empresa WHERE empresa_id = :empresa_id LIMIT 1'
+        );
+        $statement->execute(['empresa_id' => $this->companyScope->id()]);
+        $company = $statement->fetch();
         if ($company === false) {
             return ['name' => null, 'document' => null, 'phone' => null, 'address' => null, 'logo' => null];
         }

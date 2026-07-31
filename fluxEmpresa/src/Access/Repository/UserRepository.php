@@ -93,6 +93,71 @@ final class UserRepository
         return $this->findByUsername($identifier);
     }
 
+    /**
+     * @return array<string,mixed>|null
+     */
+    public function findPrimaryActiveCompanyMembership(int $userId): ?array
+    {
+        $this->assertPositiveId($userId);
+
+        $statement = $this->connection->prepare(
+            "SELECT ue.id AS membership_id,
+                    ue.empresa_id,
+                    ue.perfil_id,
+                    e.uuid AS empresa_uuid,
+                    COALESCE(NULLIF(e.nome_fantasia, ''), e.razao_social) AS empresa_nome,
+                    p.codigo AS perfil_codigo,
+                    p.nome AS perfil_nome
+               FROM usuario_empresas ue
+               INNER JOIN empresas e
+                       ON e.id = ue.empresa_id
+                      AND e.status = 'ativo'
+               INNER JOIN perfis p
+                       ON p.id = ue.perfil_id
+                      AND p.status = 'ativo'
+              WHERE ue.usuario_id = :user_id
+                AND ue.status = 'ativo'
+                AND ue.principal = 1
+              ORDER BY ue.id
+              LIMIT 2"
+        );
+        $statement->execute(['user_id' => $userId]);
+        $rows = $statement->fetchAll();
+
+        if (count($rows) !== 1 || !is_array($rows[0])) {
+            return null;
+        }
+
+        return $rows[0];
+    }
+
+    /** @return string[] */
+    public function findCompanyMembershipPermissions(int $membershipId): array
+    {
+        $this->assertPositiveId($membershipId);
+
+        $statement = $this->connection->prepare(
+            "SELECT DISTINCT pe.codigo
+               FROM usuario_empresas ue
+               INNER JOIN perfis p
+                       ON p.id = ue.perfil_id
+                      AND p.status = 'ativo'
+               INNER JOIN perfil_permissoes pp ON pp.perfil_id = p.id
+               INNER JOIN permissoes pe
+                       ON pe.id = pp.permissao_id
+                      AND pe.status = 'ativo'
+              WHERE ue.id = :membership_id
+                AND ue.status = 'ativo'
+              ORDER BY pe.codigo"
+        );
+        $statement->execute(['membership_id' => $membershipId]);
+
+        return array_values(array_filter(
+            array_map('strval', $statement->fetchAll(PDO::FETCH_COLUMN)),
+            static fn (string $permission): bool => $permission !== ''
+        ));
+    }
+
     public function create(User $user): int
     {
         $statement = $this->connection->prepare(

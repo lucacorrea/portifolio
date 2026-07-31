@@ -301,6 +301,82 @@ textarea {
   flex-wrap: wrap;
 }
 
+.support-context {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 7px 6px 10px;
+  border: 1px solid #bae6fd;
+  border-radius: 12px;
+  background: #f0f9ff;
+  color: #0c4a6e;
+}
+
+.support-context-icon {
+  flex: 0 0 auto;
+  font-size: 18px;
+}
+
+.support-context-copy {
+  min-width: 0;
+  display: grid;
+  line-height: 1.15;
+}
+
+.support-context-copy small {
+  color: #0369a1;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.support-context-copy strong {
+  max-width: 210px;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.support-context form {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.support-context button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid #7dd3fc;
+  border-radius: 8px;
+  background: #fff;
+  color: #075985;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.support-context button:hover,
+.support-context button:focus-visible {
+  border-color: #0284c7;
+  color: #0c4a6e;
+}
+
+.admin-company-access-modal .admin-access-eyebrow {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--brand);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.admin-company-access-modal textarea {
+  min-height: 112px;
+  resize: vertical;
+}
+
 .tb-icon-btn {
   position: relative;
   width: 38px;
@@ -2204,6 +2280,18 @@ body.sidebar-collapsed .nav-link-os {
 
   .topbar-right {
     width: 100%;
+  }
+
+  .support-context {
+    width: 100%;
+  }
+
+  .support-context-copy {
+    flex: 1 1 auto;
+  }
+
+  .support-context-copy strong {
+    max-width: 45vw;
   }
 
   .tb-icon-btn {

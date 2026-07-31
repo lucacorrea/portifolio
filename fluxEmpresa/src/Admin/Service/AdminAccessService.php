@@ -22,8 +22,12 @@ final class AdminAccessService
         int $userId,
         string $ip,
         string $reason,
+        string $sessionBindingHash,
         ActiveCompanyContext $context
     ): void {
+        if ((int) ($company['id'] ?? 0) <= 0 || (string) ($company['status'] ?? '') !== 'ativo') {
+            throw new \InvalidArgumentException('A empresa precisa estar ativa para acessar o painel operacional.');
+        }
         if (str_contains($reason, "\0")) {
             throw new \InvalidArgumentException('Motivo do atendimento inválido.');
         }
@@ -32,15 +36,17 @@ final class AdminAccessService
             throw new \InvalidArgumentException('Informe o motivo do atendimento com 10 a 255 caracteres.');
         }
 
-        $sessionKey = hash('sha256', session_id());
+        if (!preg_match('/^[a-f0-9]{64}$/D', $sessionBindingHash)) {
+            throw new \InvalidArgumentException('Vínculo da sessão administrativa inválido.');
+        }
         $active = $context->current();
         $this->connection->beginTransaction();
         try {
             if ($active !== null && $active->supportUserId === $userId) {
-                $this->repository->close($active->accessId);
+                $this->repository->closeOwned($active->accessId, $userId, $sessionBindingHash);
             }
-            $this->repository->closeOpenForSession($userId, $sessionKey);
-            $accessId = $this->repository->open((int) $company['id'], $userId, $ip, $reason, $sessionKey);
+            $this->repository->closeOpenForSession($userId, $sessionBindingHash);
+            $accessId = $this->repository->open((int) $company['id'], $userId, $ip, $reason, $sessionBindingHash);
             $this->connection->commit();
         } catch (Throwable $exception) {
             if ($this->connection->inTransaction()) {
@@ -49,23 +55,34 @@ final class AdminAccessService
             throw $exception;
         }
 
-        $context->enter(new ActiveCompany(
-            (int) $company['id'],
-            (string) ($company['uuid'] ?? ''),
-            (string) ($company['nome_fantasia'] ?? $company['razao_social'] ?? 'Empresa'),
-            $userId,
-            $accessId,
-            date(DATE_ATOM)
-        ));
+        try {
+            $context->enter(new ActiveCompany(
+                (int) $company['id'],
+                (string) ($company['uuid'] ?? ''),
+                (string) ($company['nome_fantasia'] ?? $company['razao_social'] ?? 'Empresa'),
+                $userId,
+                $accessId,
+                date(DATE_ATOM)
+            ));
+        } catch (Throwable $exception) {
+            $this->repository->closeOwned($accessId, $userId, $sessionBindingHash);
+            throw $exception;
+        }
     }
 
-    public function leave(ActiveCompanyContext $context): void
-    {
+    public function leaveAuthorized(
+        ActiveCompanyContext $context,
+        int $userId,
+        string $sessionBindingHash
+    ): void {
         $active = $context->current();
-        if ($active !== null) {
-            $this->repository->close($active->accessId);
+        try {
+            if ($active !== null) {
+                $this->repository->closeOwned($active->accessId, $userId, $sessionBindingHash);
+            }
+        } finally {
+            $context->clear();
         }
-        $context->clear();
     }
 
     /** @return array{items:array<int,array<string,mixed>>,total:int} */

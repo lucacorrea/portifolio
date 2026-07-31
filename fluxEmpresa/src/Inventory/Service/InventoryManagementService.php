@@ -4,20 +4,29 @@ declare(strict_types=1);
 
 namespace App\Inventory\Service;
 
+use App\Company\DTO\CompanyScope;
 use InvalidArgumentException;
 use PDO;
 
 final class InventoryManagementService
 {
-    public function __construct(private readonly PDO $connection)
+    public function __construct(
+        private readonly PDO $connection,
+        private readonly CompanyScope $companyScope
+    )
     {
+    }
+
+    public function companyId(): int
+    {
+        return $this->companyScope->id();
     }
 
     public function consumeForOrder(int $orderId, int $productId, string $quantity, int $userId, ?int $authorizationId = null): void
     {
         $qty = $this->quantity($quantity);
-        $statement = $this->connection->prepare('SELECT id, nome, estoque FROM produtos WHERE id = :id AND excluido_em IS NULL FOR UPDATE');
-        $statement->execute(['id' => $productId]);
+        $statement = $this->connection->prepare('SELECT id, nome, estoque FROM produtos WHERE id = :id AND empresa_id = :empresa_id AND excluido_em IS NULL FOR UPDATE');
+        $statement->execute(['id' => $productId, 'empresa_id' => $this->companyScope->id()]);
         $product = $statement->fetch();
         if ($product === false) throw new InvalidArgumentException('Produto da finalização não encontrado.');
 
@@ -32,16 +41,18 @@ final class InventoryManagementService
             throw new InvalidArgumentException('Estoque insuficiente para ' . $product['nome'] . '. Disponível: ' . number_format($current, 3, ',', '.') . ', utilizado: ' . number_format($qty, 3, ',', '.') . '.');
         }
 
-        $this->connection->prepare('UPDATE produtos SET estoque = :stock WHERE id = :id')->execute([
+        $this->connection->prepare('UPDATE produtos SET estoque = :stock WHERE id = :id AND empresa_id = :empresa_id')->execute([
             'id' => $productId,
             'stock' => number_format($next, 3, '.', ''),
+            'empresa_id' => $this->companyScope->id(),
         ]);
         $this->connection->prepare(
             'INSERT INTO estoque_movimentacoes
-                (produto_id, ordem_servico_id, tipo, quantidade, saldo_anterior, saldo_posterior, autorizacao_id, usuario_id, observacao)
+                (empresa_id, produto_id, ordem_servico_id, tipo, quantidade, saldo_anterior, saldo_posterior, autorizacao_id, usuario_id, observacao)
              VALUES
-                (:product_id, :order_id, "saida_os", :quantity, :previous, :next, :authorization_id, :user_id, :notes)'
+                (:empresa_id, :product_id, :order_id, "saida_os", :quantity, :previous, :next, :authorization_id, :user_id, :notes)'
         )->execute([
+            'empresa_id' => $this->companyScope->id(),
             'product_id' => $productId,
             'order_id' => $orderId,
             'quantity' => number_format($qty, 3, '.', ''),
@@ -58,10 +69,11 @@ final class InventoryManagementService
                 'UPDATE estoque_autorizacoes
                     SET utilizada_em = CURRENT_TIMESTAMP,
                         movimentacao_id = :movement_id
-                  WHERE id = :authorization_id'
+                  WHERE id = :authorization_id AND empresa_id = :empresa_id'
             )->execute([
                 'movement_id' => $movementId,
                 'authorization_id' => $authorizationId,
+                'empresa_id' => $this->companyScope->id(),
             ]);
         }
     }
@@ -69,8 +81,8 @@ final class InventoryManagementService
     public function consumeForSale(int $saleId, int $productId, string $quantity, int $userId): int
     {
         $qty = $this->quantity($quantity);
-        $statement = $this->connection->prepare('SELECT id, nome, estoque FROM produtos WHERE id = :id AND status = "ativo" AND excluido_em IS NULL FOR UPDATE');
-        $statement->execute(['id' => $productId]);
+        $statement = $this->connection->prepare('SELECT id, nome, estoque FROM produtos WHERE id = :id AND empresa_id = :empresa_id AND status = "ativo" AND excluido_em IS NULL FOR UPDATE');
+        $statement->execute(['id' => $productId, 'empresa_id' => $this->companyScope->id()]);
         $product = $statement->fetch();
         if ($product === false) throw new InvalidArgumentException('Produto do PDV não encontrado ou inativo.');
 
@@ -80,15 +92,17 @@ final class InventoryManagementService
             throw new InvalidArgumentException('Estoque insuficiente para ' . $product['nome'] . '. Disponível: ' . number_format($current, 3, ',', '.') . '.');
         }
 
-        $this->connection->prepare('UPDATE produtos SET estoque = :stock WHERE id = :id')->execute([
+        $this->connection->prepare('UPDATE produtos SET estoque = :stock WHERE id = :id AND empresa_id = :empresa_id')->execute([
             'id' => $productId,
             'stock' => number_format($next, 3, '.', ''),
+            'empresa_id' => $this->companyScope->id(),
         ]);
         $this->connection->prepare(
             'INSERT INTO estoque_movimentacoes
-                (produto_id, ordem_servico_id, tipo, quantidade, saldo_anterior, saldo_posterior, usuario_id, observacao)
-             VALUES (:product_id, NULL, "saida_venda", :quantity, :previous, :next, :user_id, :notes)'
+                (empresa_id, produto_id, ordem_servico_id, tipo, quantidade, saldo_anterior, saldo_posterior, usuario_id, observacao)
+             VALUES (:empresa_id, :product_id, NULL, "saida_venda", :quantity, :previous, :next, :user_id, :notes)'
         )->execute([
+            'empresa_id' => $this->companyScope->id(),
             'product_id' => $productId,
             'quantity' => number_format($qty, 3, '.', ''),
             'previous' => number_format($current, 3, '.', ''),
@@ -104,32 +118,34 @@ final class InventoryManagementService
         $statement = $this->connection->prepare(
             'SELECT movimento.*, produto.estoque, produto.nome
                FROM estoque_movimentacoes movimento
-               JOIN produtos produto ON produto.id = movimento.produto_id
-              WHERE movimento.id = :id
+               JOIN produtos produto ON produto.id = movimento.produto_id AND produto.empresa_id = movimento.empresa_id
+              WHERE movimento.id = :id AND movimento.empresa_id = :empresa_id
               FOR UPDATE'
         );
-        $statement->execute(['id' => $movementId]);
+        $statement->execute(['id' => $movementId, 'empresa_id' => $this->companyScope->id()]);
         $movement = $statement->fetch();
         if ($movement === false || (string) $movement['tipo'] !== 'saida_venda') {
             throw new InvalidArgumentException('Movimentação de estoque da venda não encontrada.');
         }
-        $statement = $this->connection->prepare('SELECT id FROM estoque_movimentacoes WHERE estornado_de_id = :id LIMIT 1');
-        $statement->execute(['id' => $movementId]);
+        $statement = $this->connection->prepare('SELECT id FROM estoque_movimentacoes WHERE estornado_de_id = :id AND empresa_id = :empresa_id LIMIT 1');
+        $statement->execute(['id' => $movementId, 'empresa_id' => $this->companyScope->id()]);
         if ($statement->fetchColumn() !== false) throw new InvalidArgumentException('Estoque desta venda já foi estornado.');
 
         $current = (float) $movement['estoque'];
         $quantity = (float) $movement['quantidade'];
         $next = $current + $quantity;
-        $this->connection->prepare('UPDATE produtos SET estoque = :stock WHERE id = :id')->execute([
+        $this->connection->prepare('UPDATE produtos SET estoque = :stock WHERE id = :id AND empresa_id = :empresa_id')->execute([
             'id' => $movement['produto_id'],
             'stock' => number_format($next, 3, '.', ''),
+            'empresa_id' => $this->companyScope->id(),
         ]);
         $this->connection->prepare(
             'INSERT INTO estoque_movimentacoes
-                (produto_id, ordem_servico_id, tipo, quantidade, saldo_anterior, saldo_posterior,
+                (empresa_id, produto_id, ordem_servico_id, tipo, quantidade, saldo_anterior, saldo_posterior,
                  estornado_de_id, usuario_id, observacao)
-             VALUES (:product_id, NULL, "estorno", :quantity, :previous, :next, :source_id, :user_id, :notes)'
+             VALUES (:empresa_id, :product_id, NULL, "estorno", :quantity, :previous, :next, :source_id, :user_id, :notes)'
         )->execute([
+            'empresa_id' => $this->companyScope->id(),
             'product_id' => $movement['produto_id'],
             'quantity' => $movement['quantidade'],
             'previous' => number_format($current, 3, '.', ''),
@@ -154,13 +170,30 @@ final class InventoryManagementService
             throw new InvalidArgumentException('Informe justificativa válida para autorização.');
         }
 
+        $scopeCheck = $this->connection->prepare(
+            'SELECT ordem.id
+               FROM ordens_servico ordem
+               JOIN produtos produto ON produto.id = :product_id AND produto.empresa_id = ordem.empresa_id
+              WHERE ordem.id = :order_id AND ordem.empresa_id = :empresa_id
+              LIMIT 1'
+        );
+        $scopeCheck->execute([
+            'product_id' => $productId,
+            'order_id' => $orderId,
+            'empresa_id' => $this->companyScope->id(),
+        ]);
+        if ($scopeCheck->fetchColumn() === false) {
+            throw new InvalidArgumentException('OS ou produto não encontrado para a empresa ativa.');
+        }
+
         $statement = $this->connection->prepare(
             'INSERT INTO estoque_autorizacoes
-                (ordem_servico_id, produto_id, quantidade_solicitada, saldo_disponivel, quantidade_excedente, solicitado_por, autorizado_por, motivo)
+                (empresa_id, ordem_servico_id, produto_id, quantidade_solicitada, saldo_disponivel, quantidade_excedente, solicitado_por, autorizado_por, motivo)
              VALUES
-                (:order_id, :product_id, :requested, :available, :excess, :requested_by, :authorized_by, :reason)'
+                (:empresa_id, :order_id, :product_id, :requested, :available, :excess, :requested_by, :authorized_by, :reason)'
         );
         $statement->execute([
+            'empresa_id' => $this->companyScope->id(),
             'order_id' => $orderId,
             'product_id' => $productId,
             'requested' => number_format($req, 3, '.', ''),
@@ -197,6 +230,7 @@ final class InventoryManagementService
                JOIN perfil_permissoes pp ON pp.perfil_id = u.perfil_id
                JOIN permissoes pe ON pe.id = pp.permissao_id
               WHERE ea.id = :authorization_id
+                AND ea.empresa_id = :empresa_id
                 AND ea.ordem_servico_id = :order_id
                 AND ea.produto_id = :product_id
                 AND pe.codigo = "estoque.autorizar_saldo_negativo"
@@ -207,6 +241,7 @@ final class InventoryManagementService
             'authorization_id' => $authorizationId,
             'order_id' => $orderId,
             'product_id' => $productId,
+            'empresa_id' => $this->companyScope->id(),
         ]);
         $authorization = $statement->fetch();
         if ($authorization === false) {

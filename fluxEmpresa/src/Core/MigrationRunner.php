@@ -164,7 +164,7 @@ final class MigrationRunner
 
     public static function supportsVersion(int $version): bool
     {
-        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], true);
+        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25], true);
     }
 
     private function acquireLock(string $name, int $waitSeconds): bool
@@ -409,8 +409,87 @@ final class MigrationRunner
                     ['empresas', 'uk_empresas_documento'],
                     ['empresa_integracoes', 'uk_empresa_integracao_externa'],
                 ]),
+            25 => $this->migrationTwentyFiveSatisfied(),
             default => null,
         };
+    }
+
+    private function migrationTwentyFiveSatisfied(): bool
+    {
+        $tenantTables = [
+            'funcionarios', 'produtos', 'servicos', 'clientes', 'orcamentos', 'orcamento_itens',
+            'ordens_servico', 'ordem_servico_itens', 'agenda_lembretes', 'ordem_servico_funcionarios',
+            'ordem_servico_cancelamentos', 'ordem_servico_finalizacoes', 'ordem_servico_execucao_itens',
+            'estoque_autorizacoes', 'estoque_movimentacoes', 'caixa_movimentacoes',
+            'ordem_servico_pagamentos', 'contas_receber', 'contas_receber_eventos',
+            'configuracoes_empresa', 'configuracoes_fiscais', 'documentos_fiscais', 'recibos', 'boletos',
+            'vendas_avulsas', 'venda_avulsa_itens', 'fornecedores', 'contas_pagar',
+            'metas_comissao_mensais', 'contas_pagar_parcelas', 'contas_pagar_parcela_eventos',
+            'caixa_sessoes', 'fiscal_certificados', 'fiscal_configuracoes', 'fiscal_series', 'fiscal_auditoria',
+        ];
+        foreach ($tenantTables as $table) {
+            if (!$this->allColumns($table, ['empresa_id'])) {
+                return false;
+            }
+        }
+
+        $tenantIndexes = [
+            ['funcionarios', 'idx_funcionarios_empresa'], ['produtos', 'idx_produtos_empresa'],
+            ['servicos', 'idx_servicos_empresa'], ['clientes', 'idx_clientes_empresa'],
+            ['orcamentos', 'idx_orcamentos_empresa'], ['orcamento_itens', 'idx_orcamento_itens_empresa'],
+            ['ordens_servico', 'idx_ordens_servico_empresa'], ['ordem_servico_itens', 'idx_os_itens_empresa'],
+            ['agenda_lembretes', 'idx_agenda_lembretes_empresa'],
+            ['ordem_servico_funcionarios', 'idx_os_funcionarios_empresa'],
+            ['ordem_servico_cancelamentos', 'idx_os_cancelamentos_empresa'],
+            ['ordem_servico_finalizacoes', 'idx_os_finalizacoes_empresa'],
+            ['ordem_servico_execucao_itens', 'idx_os_execucao_itens_empresa'],
+            ['estoque_autorizacoes', 'idx_estoque_autorizacoes_empresa'],
+            ['estoque_movimentacoes', 'idx_estoque_movimentacoes_empresa'],
+            ['caixa_movimentacoes', 'idx_caixa_movimentacoes_empresa'],
+            ['ordem_servico_pagamentos', 'idx_os_pagamentos_empresa'],
+            ['contas_receber', 'idx_contas_receber_empresa'],
+            ['contas_receber_eventos', 'idx_contas_receber_eventos_empresa'],
+            ['configuracoes_empresa', 'uq_configuracoes_empresa_empresa'],
+            ['configuracoes_fiscais', 'uq_configuracoes_fiscais_empresa'],
+            ['documentos_fiscais', 'idx_documentos_fiscais_empresa'], ['recibos', 'idx_recibos_empresa'],
+            ['boletos', 'idx_boletos_empresa'], ['vendas_avulsas', 'idx_vendas_avulsas_empresa'],
+            ['venda_avulsa_itens', 'idx_venda_avulsa_itens_empresa'],
+            ['fornecedores', 'idx_fornecedores_empresa'], ['contas_pagar', 'idx_contas_pagar_empresa'],
+            ['metas_comissao_mensais', 'idx_metas_comissao_empresa'],
+            ['contas_pagar_parcelas', 'idx_contas_pagar_parcelas_empresa'],
+            ['contas_pagar_parcela_eventos', 'idx_contas_pagar_eventos_empresa'],
+            ['caixa_sessoes', 'idx_caixa_sessoes_empresa'],
+            ['fiscal_certificados', 'idx_fiscal_certificados_empresa'],
+            ['fiscal_configuracoes', 'idx_fiscal_configuracoes_empresa'],
+            ['fiscal_series', 'idx_fiscal_series_empresa'], ['fiscal_auditoria', 'idx_fiscal_auditoria_empresa'],
+        ];
+
+        return $this->allTables(['usuario_empresas', 'empresa_auditoria_operacional'])
+            && $this->columnDataTypeIs('configuracoes_empresa', 'id', 'int')
+            && $this->columnExtraContains('configuracoes_empresa', 'id', 'auto_increment')
+            && $this->columnDataTypeIs('configuracoes_fiscais', 'id', 'int')
+            && $this->columnExtraContains('configuracoes_fiscais', 'id', 'auto_increment')
+            && $this->allColumns('usuario_empresas', ['empresa_id', 'usuario_id', 'perfil_id', 'status', 'principal'])
+            && $this->allColumns('empresa_auditoria_operacional', [
+                'empresa_id', 'usuario_id', 'acesso_administrativo_id', 'acao', 'entidade_tipo',
+                'entidade_id', 'sessao_chave', 'ip', 'detalhes', 'criado_em',
+            ])
+            && $this->allIndexes(array_merge($tenantIndexes, [
+                ['usuario_empresas', 'uq_usuario_empresas_empresa_usuario'],
+                ['empresa_auditoria_operacional', 'idx_empresa_auditoria_empresa_data'],
+                ['funcionarios', 'uk_funcionarios_empresa_codigo'],
+                ['produtos', 'uk_produtos_empresa_codigo'],
+                ['clientes', 'uk_clientes_empresa_codigo'],
+                ['orcamentos', 'uk_orcamentos_empresa_numero'],
+                ['ordens_servico', 'uk_ordens_servico_empresa_numero'],
+                ['caixa_sessoes', 'uq_caixa_sessao_empresa_aberta'],
+                ['fiscal_configuracoes', 'uq_fiscal_configuracao_empresa_ativa'],
+                ['fiscal_series', 'uq_fiscal_serie_empresa_ambiente_modelo'],
+            ]))
+            && $this->allForeignKeys([
+                'fk_usuario_empresas_empresa', 'fk_usuario_empresas_usuario', 'fk_usuario_empresas_perfil',
+                'fk_empresa_auditoria_empresa', 'fk_empresa_auditoria_usuario', 'fk_empresa_auditoria_acesso',
+            ]);
     }
 
     private function migrationElevenSatisfied(): bool
@@ -507,6 +586,26 @@ final class MigrationRunner
         $statement->execute(['table_name' => $table, 'column_name' => $column]);
         $type = $statement->fetchColumn();
         return is_string($type) && str_contains(strtolower($type), strtolower($expected));
+    }
+
+    private function columnDataTypeIs(string $table, string $column, string $expected): bool
+    {
+        $statement = $this->connection->prepare(
+            'SELECT DATA_TYPE FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table_name AND COLUMN_NAME = :column_name'
+        );
+        $statement->execute(['table_name' => $table, 'column_name' => $column]);
+        return strtolower((string) $statement->fetchColumn()) === strtolower($expected);
+    }
+
+    private function columnExtraContains(string $table, string $column, string $expected): bool
+    {
+        $statement = $this->connection->prepare(
+            'SELECT EXTRA FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table_name AND COLUMN_NAME = :column_name'
+        );
+        $statement->execute(['table_name' => $table, 'column_name' => $column]);
+        return str_contains(strtolower((string) $statement->fetchColumn()), strtolower($expected));
     }
 
     /** @param array<int, array{0:string,1:string}> $indexes */

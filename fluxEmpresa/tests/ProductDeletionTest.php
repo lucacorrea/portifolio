@@ -43,7 +43,10 @@ foreach (['ordem_servico_itens', 'orcamento_itens', 'estoque_autorizacoes', 'est
 }
 productDeletionAssert(str_contains($repository, 'excluido_em = CURRENT_TIMESTAMP'), 'Exclusão deve preservar auditoria temporal.');
 productDeletionAssert(!str_contains(strtoupper($repository), 'DELETE FROM PRODUTOS'), 'Produto nunca deve ser apagado fisicamente.');
-productDeletionAssert(str_contains($repository, "\$sql = 'SELECT COUNT(*) FROM produtos WHERE codigo_barras = :barcode'"), 'Código de barras excluído deve continuar reservado no histórico.');
+productDeletionAssert(
+    str_contains($repository, "\$sql = 'SELECT COUNT(*) FROM produtos WHERE empresa_id = :empresa_id AND codigo_barras = :barcode'"),
+    'Código de barras excluído deve continuar reservado no histórico da empresa.'
+);
 
 foreach ([$inventory, $pointOfSale, $dashboard, $fiscal] as $operationalQuery) {
     productDeletionAssert(str_contains($operationalQuery, 'excluido_em IS NULL'), 'Consultas operacionais não podem reutilizar produto excluído.');

@@ -11,11 +11,14 @@ trait PointOfSaleOperations
     /** @return array<int,array<string,mixed>> */
     public function availableProducts(): array
     {
-        return $this->connection->query(
+        $statement = $this->connection->prepare(
             'SELECT id, codigo, nome, unidade, codigo_barras, preco_venda, estoque
-               FROM produtos WHERE status = "ativo" AND excluido_em IS NULL AND estoque > 0 AND preco_venda > 0
+               FROM produtos
+              WHERE empresa_id = :empresa_id AND status = "ativo" AND excluido_em IS NULL AND estoque > 0 AND preco_venda > 0
               ORDER BY nome, id'
-        )->fetchAll();
+        );
+        $statement->execute(['empresa_id' => $this->companyScope->id()]);
+        return $statement->fetchAll();
     }
 
     /** @return array<int,array<string,mixed>> */
@@ -24,17 +27,17 @@ trait PointOfSaleOperations
         $statement = $this->connection->prepare(
             'SELECT venda.*, cliente.nome AS cliente_nome, usuario.nome AS usuario_nome,
                     sessao.codigo AS sessao_codigo,
-                    (SELECT COUNT(*) FROM venda_avulsa_itens item WHERE item.venda_avulsa_id = venda.id) AS itens,
+                    (SELECT COUNT(*) FROM venda_avulsa_itens item WHERE item.venda_avulsa_id = venda.id AND item.empresa_id = venda.empresa_id) AS itens,
                     (SELECT GROUP_CONCAT(CONCAT(item.quantidade, "x ", item.descricao) ORDER BY item.ordem SEPARATOR " · ")
-                       FROM venda_avulsa_itens item WHERE item.venda_avulsa_id = venda.id) AS itens_resumo
+                       FROM venda_avulsa_itens item WHERE item.venda_avulsa_id = venda.id AND item.empresa_id = venda.empresa_id) AS itens_resumo
                FROM vendas_avulsas venda
-               LEFT JOIN clientes cliente ON cliente.id = venda.cliente_id
+               LEFT JOIN clientes cliente ON cliente.id = venda.cliente_id AND cliente.empresa_id = venda.empresa_id
                JOIN usuarios usuario ON usuario.id = venda.criada_por
-               LEFT JOIN caixa_sessoes sessao ON sessao.id = venda.caixa_sessao_id
-              WHERE DATE(venda.criada_em) = :date
+               LEFT JOIN caixa_sessoes sessao ON sessao.id = venda.caixa_sessao_id AND sessao.empresa_id = venda.empresa_id
+              WHERE DATE(venda.criada_em) = :date AND venda.empresa_id = :empresa_id
               ORDER BY venda.id DESC'
         );
-        $statement->execute(['date' => $this->validDate($date)]);
+        $statement->execute(['date' => $this->validDate($date), 'empresa_id' => $this->companyScope->id()]);
         return $statement->fetchAll();
     }
 
@@ -52,16 +55,16 @@ trait PointOfSaleOperations
         return $this->transactional(function () use ($items, $form, $discount, $increase, $clientId, $receivedValue, $userId): array {
             $session = $this->requireOpenSession(true);
             if ($clientId !== null) {
-                $statement = $this->connection->prepare('SELECT id FROM clientes WHERE id = :id AND status = "ativo"');
-                $statement->execute(['id' => $clientId]);
+                $statement = $this->connection->prepare('SELECT id FROM clientes WHERE id = :id AND empresa_id = :empresa_id AND status = "ativo"');
+                $statement->execute(['id' => $clientId, 'empresa_id' => $this->companyScope->id()]);
                 if ($statement->fetchColumn() === false) throw new InvalidArgumentException('Cliente do PDV não encontrado ou inativo.');
             }
 
             $products = [];
             $subtotal = 0;
             foreach ($items as $item) {
-                $statement = $this->connection->prepare('SELECT id, nome, unidade, preco_venda, estoque FROM produtos WHERE id = :id AND status = "ativo" AND excluido_em IS NULL FOR UPDATE');
-                $statement->execute(['id' => $item['product_id']]);
+                $statement = $this->connection->prepare('SELECT id, nome, unidade, preco_venda, estoque FROM produtos WHERE id = :id AND empresa_id = :empresa_id AND status = "ativo" AND excluido_em IS NULL FOR UPDATE');
+                $statement->execute(['id' => $item['product_id'], 'empresa_id' => $this->companyScope->id()]);
                 $product = $statement->fetch();
                 if ($product === false) throw new InvalidArgumentException('Produto do PDV não encontrado ou inativo.');
                 if ((float) $product['estoque'] < $item['quantity']) throw new InvalidArgumentException('Estoque insuficiente para ' . $product['nome'] . '.');
@@ -81,11 +84,12 @@ trait PointOfSaleOperations
 
             $this->connection->prepare(
                 'INSERT INTO vendas_avulsas
-                    (caixa_sessao_id, numero, cliente_id, subtotal, desconto, acrescimo, total,
+                    (empresa_id, caixa_sessao_id, numero, cliente_id, subtotal, desconto, acrescimo, total,
                      forma_pagamento, status, criada_por)
-                 VALUES (:session_id, NULL, :client_id, :subtotal, :discount, :increase, :total,
+                 VALUES (:empresa_id, :session_id, NULL, :client_id, :subtotal, :discount, :increase, :total,
                          :form, "emitida", :user_id)'
             )->execute([
+                'empresa_id' => $this->companyScope->id(),
                 'session_id' => $session['id'], 'client_id' => $clientId,
                 'subtotal' => $this->centsToDecimal($subtotal), 'discount' => $this->centsToDecimal($discount),
                 'increase' => $this->centsToDecimal($increase), 'total' => $this->centsToDecimal($total),
@@ -93,18 +97,21 @@ trait PointOfSaleOperations
             ]);
             $saleId = (int) $this->connection->lastInsertId();
             $number = sprintf('PDV-%06d', $saleId);
-            $this->connection->prepare('UPDATE vendas_avulsas SET numero = :number WHERE id = :id')->execute(['number' => $number, 'id' => $saleId]);
+            $this->connection->prepare('UPDATE vendas_avulsas SET numero = :number WHERE id = :id AND empresa_id = :empresa_id')->execute([
+                'number' => $number, 'id' => $saleId, 'empresa_id' => $this->companyScope->id(),
+            ]);
 
             $insertItem = $this->connection->prepare(
                 'INSERT INTO venda_avulsa_itens
-                    (venda_avulsa_id, produto_id, descricao, unidade, quantidade, valor_unitario,
+                    (empresa_id, venda_avulsa_id, produto_id, descricao, unidade, quantidade, valor_unitario,
                      desconto, subtotal, estoque_movimentacao_id, ordem)
-                 VALUES (:sale_id, :product_id, :description, :unit, :quantity, :unit_price,
+                 VALUES (:empresa_id, :sale_id, :product_id, :description, :unit, :quantity, :unit_price,
                          0, :subtotal, :stock_movement_id, :sort_order)'
             );
             foreach ($products as $index => $product) {
                 $stockId = $this->inventory->consumeForSale($saleId, $product['product_id'], number_format($product['quantity'], 3, '.', ''), $userId);
                 $insertItem->execute([
+                    'empresa_id' => $this->companyScope->id(),
                     'sale_id' => $saleId, 'product_id' => $product['product_id'],
                     'description' => $product['row']['nome'], 'unit' => $product['row']['unidade'],
                     'quantity' => number_format($product['quantity'], 3, '.', ''),
@@ -114,7 +121,9 @@ trait PointOfSaleOperations
                 ]);
             }
             $cashId = $this->insertMovement((int) $session['id'], 'entrada', 'venda_avulsa', $saleId, 'Venda ' . $number . ' no PDV', $form, $total, $userId);
-            $this->connection->prepare('UPDATE vendas_avulsas SET caixa_movimentacao_id = :cash_id WHERE id = :id')->execute(['cash_id' => $cashId, 'id' => $saleId]);
+            $this->connection->prepare('UPDATE vendas_avulsas SET caixa_movimentacao_id = :cash_id WHERE id = :id AND empresa_id = :empresa_id')->execute([
+                'cash_id' => $cashId, 'id' => $saleId, 'empresa_id' => $this->companyScope->id(),
+            ]);
             return ['id' => $saleId, 'numero' => $number];
         });
     }
@@ -124,13 +133,13 @@ trait PointOfSaleOperations
         $reason = $this->requiredText($reason, 255, 'Informe o motivo do estorno.');
         $this->transactional(function () use ($saleId, $reason, $userId): void {
             $this->requireOpenSession(true);
-            $statement = $this->connection->prepare('SELECT * FROM vendas_avulsas WHERE id = :id FOR UPDATE');
-            $statement->execute(['id' => $saleId]);
+            $statement = $this->connection->prepare('SELECT * FROM vendas_avulsas WHERE id = :id AND empresa_id = :empresa_id FOR UPDATE');
+            $statement->execute(['id' => $saleId, 'empresa_id' => $this->companyScope->id()]);
             $sale = $statement->fetch();
             if ($sale === false) throw new InvalidArgumentException('Venda do PDV não encontrada.');
             if ((string) $sale['status'] !== 'emitida') throw new InvalidArgumentException('Somente venda emitida pode ser estornada.');
-            $statement = $this->connection->prepare('SELECT * FROM venda_avulsa_itens WHERE venda_avulsa_id = :id ORDER BY produto_id, id FOR UPDATE');
-            $statement->execute(['id' => $saleId]);
+            $statement = $this->connection->prepare('SELECT * FROM venda_avulsa_itens WHERE venda_avulsa_id = :id AND empresa_id = :empresa_id ORDER BY produto_id, id FOR UPDATE');
+            $statement->execute(['id' => $saleId, 'empresa_id' => $this->companyScope->id()]);
             foreach ($statement->fetchAll() as $item) {
                 if ($item['estoque_movimentacao_id'] === null) throw new InvalidArgumentException('Venda sem vínculo de estoque auditável.');
                 $this->inventory->restoreSaleMovement((int) $item['estoque_movimentacao_id'], $saleId, $userId, $reason);
@@ -139,8 +148,9 @@ trait PointOfSaleOperations
             $this->reverseMovement((int) $sale['caixa_movimentacao_id'], 'venda_avulsa_estorno', $saleId, 'Estorno da venda ' . $sale['numero'] . ': ' . $reason, $userId);
             $this->connection->prepare(
                 'UPDATE vendas_avulsas SET status = "estornada", estornada_por = :user_id,
-                        estornada_em = CURRENT_TIMESTAMP, motivo_estorno = :reason WHERE id = :id'
-            )->execute(['id' => $saleId, 'user_id' => $userId, 'reason' => $reason]);
+                        estornada_em = CURRENT_TIMESTAMP, motivo_estorno = :reason
+                  WHERE id = :id AND empresa_id = :empresa_id'
+            )->execute(['id' => $saleId, 'user_id' => $userId, 'reason' => $reason, 'empresa_id' => $this->companyScope->id()]);
         });
     }
 

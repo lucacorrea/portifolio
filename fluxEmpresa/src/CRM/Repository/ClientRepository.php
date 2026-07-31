@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\CRM\Repository;
 
+use App\Company\DTO\CompanyScope;
 use App\CRM\DTO\ClientFormData;
 use App\CRM\Entity\Client;
 use InvalidArgumentException;
@@ -13,15 +14,18 @@ use Throwable;
 
 final class ClientRepository
 {
-    public function __construct(private readonly PDO $connection)
+    public function __construct(
+        private readonly PDO $connection,
+        private readonly CompanyScope $companyScope
+    )
     {
     }
 
     /** @return Client[] */
     public function findAll(array $filters = []): array
     {
-        $where = ['excluido_em IS NULL'];
-        $params = [];
+        $where = ['empresa_id = :empresa_id', 'excluido_em IS NULL'];
+        $params = ['empresa_id' => $this->companyScope->id()];
         $search = trim((string) ($filters['search'] ?? ''));
         $limit = null;
         if (array_key_exists('limit', $filters)) {
@@ -85,10 +89,11 @@ final class ClientRepository
                     status, criado_em, atualizado_em
                FROM clientes
               WHERE id = :id
+                AND empresa_id = :empresa_id
                 AND excluido_em IS NULL
               LIMIT 1'
         );
-        $statement->execute(['id' => $id]);
+        $statement->execute(['id' => $id, 'empresa_id' => $this->companyScope->id()]);
         $row = $statement->fetch();
 
         return $row === false ? null : Client::fromArray($row);
@@ -102,10 +107,10 @@ final class ClientRepository
                     endereco, numero, complemento, bairro, cidade, uf, cep, observacoes,
                     status, criado_em, atualizado_em
                FROM clientes
-              WHERE id = :id AND excluido_em IS NULL
+              WHERE id = :id AND empresa_id = :empresa_id AND excluido_em IS NULL
               LIMIT 1 FOR UPDATE'
         );
-        $statement->execute(['id' => $id]);
+        $statement->execute(['id' => $id, 'empresa_id' => $this->companyScope->id()]);
         $row = $statement->fetch();
         return $row === false ? null : Client::fromArray($row);
     }
@@ -113,14 +118,15 @@ final class ClientRepository
     /** @return array{total:int,active:int,inactive:int,new_month:int} */
     public function summary(): array
     {
-        $statement = $this->connection->query(
+        $statement = $this->connection->prepare(
             "SELECT COUNT(*) AS total,
                     SUM(CASE WHEN status = 'ativo' THEN 1 ELSE 0 END) AS active,
                     SUM(CASE WHEN status = 'inativo' THEN 1 ELSE 0 END) AS inactive,
                     SUM(CASE WHEN criado_em >= DATE_FORMAT(CURRENT_DATE, '%Y-%m-01') THEN 1 ELSE 0 END) AS new_month
                FROM clientes
-              WHERE excluido_em IS NULL"
+              WHERE empresa_id = :empresa_id AND excluido_em IS NULL"
         );
+        $statement->execute(['empresa_id' => $this->companyScope->id()]);
         $row = $statement->fetch() ?: [];
 
         return [
@@ -137,20 +143,21 @@ final class ClientRepository
         try {
             $statement = $this->connection->prepare(
                 'INSERT INTO clientes
-                    (tipo_pessoa, nome, documento, telefone, whatsapp, email, endereco, numero,
+                    (empresa_id, tipo_pessoa, nome, documento, telefone, whatsapp, email, endereco, numero,
                      complemento, bairro, cidade, uf, cep, observacoes, status)
                  VALUES
-                    (:person_type, :name, :document, :phone, :whatsapp, :email, :address, :number,
+                    (:empresa_id, :person_type, :name, :document, :phone, :whatsapp, :email, :address, :number,
                      :complement, :district, :city, :state, :zip_code, :notes, :status)'
             );
+            $statement->bindValue('empresa_id', $this->companyScope->id(), PDO::PARAM_INT);
             $this->bindForm($statement, $data);
             $statement->execute();
 
             $id = (int) $this->connection->lastInsertId();
             $this->assertPositiveId($id);
             $code = sprintf('CLI-%06d', $id);
-            $update = $this->connection->prepare('UPDATE clientes SET codigo = :code WHERE id = :id');
-            $update->execute(['code' => $code, 'id' => $id]);
+            $update = $this->connection->prepare('UPDATE clientes SET codigo = :code WHERE id = :id AND empresa_id = :empresa_id');
+            $update->execute(['code' => $code, 'id' => $id, 'empresa_id' => $this->companyScope->id()]);
             $this->connection->commit();
         } catch (Throwable $exception) {
             if ($this->connection->inTransaction()) $this->connection->rollBack();
@@ -184,9 +191,10 @@ final class ClientRepository
                     cep = :zip_code,
                     observacoes = :notes,
                     status = :status
-              WHERE id = :id'
+              WHERE id = :id AND empresa_id = :empresa_id'
         );
         $statement->bindValue('id', $id, PDO::PARAM_INT);
+        $statement->bindValue('empresa_id', $this->companyScope->id(), PDO::PARAM_INT);
         $this->bindForm($statement, $data);
         $statement->execute();
     }
@@ -197,8 +205,8 @@ final class ClientRepository
         if (!in_array($status, ['ativo', 'inativo'], true)) {
             throw new InvalidArgumentException('Status inválido.');
         }
-        $statement = $this->connection->prepare('UPDATE clientes SET status = :status WHERE id = :id AND excluido_em IS NULL');
-        $statement->execute(['status' => $status, 'id' => $id]);
+        $statement = $this->connection->prepare('UPDATE clientes SET status = :status WHERE id = :id AND empresa_id = :empresa_id AND excluido_em IS NULL');
+        $statement->execute(['status' => $status, 'id' => $id, 'empresa_id' => $this->companyScope->id()]);
     }
 
     public function softDelete(int $id, int $userId): void
@@ -208,9 +216,9 @@ final class ClientRepository
         $this->connection->beginTransaction();
         try {
             $statement = $this->connection->prepare(
-                'SELECT id, excluido_em FROM clientes WHERE id = :id FOR UPDATE'
+                'SELECT id, excluido_em FROM clientes WHERE id = :id AND empresa_id = :empresa_id FOR UPDATE'
             );
-            $statement->execute(['id' => $id]);
+            $statement->execute(['id' => $id, 'empresa_id' => $this->companyScope->id()]);
             $client = $statement->fetch();
             if ($client === false) {
                 throw new InvalidArgumentException('Cliente não encontrado.');
@@ -226,9 +234,9 @@ final class ClientRepository
             $update = $this->connection->prepare(
                 "UPDATE clientes
                     SET status = 'inativo', excluido_em = CURRENT_TIMESTAMP, excluido_por = :user_id
-                  WHERE id = :id AND excluido_em IS NULL"
+                  WHERE id = :id AND empresa_id = :empresa_id AND excluido_em IS NULL"
             );
-            $update->execute(['id' => $id, 'user_id' => $userId]);
+            $update->execute(['id' => $id, 'user_id' => $userId, 'empresa_id' => $this->companyScope->id()]);
             $this->connection->commit();
         } catch (Throwable $exception) {
             if ($this->connection->inTransaction()) {
@@ -242,8 +250,8 @@ final class ClientRepository
     {
         $document = preg_replace('/\D+/', '', $document) ?? '';
         if ($document === '') return false;
-        $sql = 'SELECT COUNT(*) FROM clientes WHERE documento = :document';
-        $params = ['document' => $document];
+        $sql = 'SELECT COUNT(*) FROM clientes WHERE empresa_id = :empresa_id AND documento = :document';
+        $params = ['empresa_id' => $this->companyScope->id(), 'document' => $document];
         if ($ignoreId !== null) {
             $this->assertPositiveId($ignoreId);
             $sql .= ' AND id <> :ignore_id';
@@ -257,7 +265,8 @@ final class ClientRepository
     /** @return array<string, true> */
     public function importedSourceCodes(): array
     {
-        $statement = $this->connection->query("SELECT codigo FROM clientes WHERE codigo LIKE 'A7-%'");
+        $statement = $this->connection->prepare("SELECT codigo FROM clientes WHERE empresa_id = :empresa_id AND codigo LIKE 'A7-%'");
+        $statement->execute(['empresa_id' => $this->companyScope->id()]);
         $codes = [];
         foreach ($statement->fetchAll(PDO::FETCH_COLUMN) as $code) {
             $codes[(string) $code] = true;
@@ -268,9 +277,10 @@ final class ClientRepository
     /** @return array<int, array{nome:string,telefone:?string}> */
     public function clientIdentityData(): array
     {
-        $statement = $this->connection->query(
-            "SELECT nome, telefone FROM clientes WHERE excluido_em IS NULL AND telefone IS NOT NULL AND telefone <> ''"
+        $statement = $this->connection->prepare(
+            "SELECT nome, telefone FROM clientes WHERE empresa_id = :empresa_id AND excluido_em IS NULL AND telefone IS NOT NULL AND telefone <> ''"
         );
+        $statement->execute(['empresa_id' => $this->companyScope->id()]);
         return $statement->fetchAll();
     }
 
@@ -291,10 +301,10 @@ final class ClientRepository
 
             $statement = $this->connection->prepare(
                 'INSERT INTO clientes
-                    (codigo, tipo_pessoa, nome, documento, telefone, whatsapp, email, endereco, numero,
+                    (empresa_id, codigo, tipo_pessoa, nome, documento, telefone, whatsapp, email, endereco, numero,
                      complemento, bairro, cidade, uf, cep, observacoes, status)
                  VALUES
-                    (:code, :person_type, :name, :document, :phone, :whatsapp, :email, :address, :number,
+                    (:empresa_id, :code, :person_type, :name, :document, :phone, :whatsapp, :email, :address, :number,
                      :complement, :district, :city, :state, :zip_code, :notes, :status)'
             );
 
@@ -305,6 +315,7 @@ final class ClientRepository
                     throw new InvalidArgumentException('Registro de importação inválido.');
                 }
                 $statement->bindValue('code', $code);
+                $statement->bindValue('empresa_id', $this->companyScope->id(), PDO::PARAM_INT);
                 $this->bindForm($statement, $data);
                 $statement->execute();
             }
@@ -347,17 +358,17 @@ final class ClientRepository
     {
         $queries = [
             "SELECT id FROM orcamentos
-              WHERE cliente_id = :id AND excluido_em IS NULL
+              WHERE empresa_id = :empresa_id AND cliente_id = :id AND excluido_em IS NULL
                 AND status NOT IN ('aprovado', 'recusado')
               LIMIT 1 FOR UPDATE",
             "SELECT id FROM ordens_servico
-              WHERE cliente_id = :id AND excluida_em IS NULL
+              WHERE empresa_id = :empresa_id AND cliente_id = :id AND excluida_em IS NULL
                 AND status NOT IN ('finalizada', 'cancelada')
               LIMIT 1 FOR UPDATE",
         ];
         foreach ($queries as $sql) {
             $statement = $this->connection->prepare($sql);
-            $statement->execute(['id' => $id]);
+            $statement->execute(['id' => $id, 'empresa_id' => $this->companyScope->id()]);
             if ($statement->fetch() !== false) {
                 return true;
             }

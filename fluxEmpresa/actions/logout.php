@@ -23,9 +23,13 @@ try {
 }
 
 try {
-    $application->authentication()->requireAuthenticatedUser();
+    $currentUser = $application->authentication()->requireAuthenticatedUser();
     try {
-        $application->adminAccesses()->leave($application->activeCompanyContext());
+        $application->adminAccesses()->leaveAuthorized(
+            $application->activeCompanyContext(),
+            $currentUser->id(),
+            $currentUser->sessionBindingHash()
+        );
     } catch (Throwable $exception) {
         error_log('Could not close administrative access on logout: ' . get_class($exception));
     }

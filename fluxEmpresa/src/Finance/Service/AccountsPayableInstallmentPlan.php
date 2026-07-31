@@ -17,8 +17,12 @@ trait AccountsPayableInstallmentPlan
 
     private function accountHasPaymentHistory(int $accountId): bool
     {
-        $statement = $this->connection->prepare('SELECT EXISTS(SELECT 1 FROM contas_pagar_parcela_eventos evento JOIN contas_pagar_parcelas parcela ON parcela.id = evento.parcela_id WHERE parcela.conta_pagar_id = :id)');
-        $statement->execute(['id' => $accountId]);
+        $statement = $this->connection->prepare(
+            'SELECT EXISTS(SELECT 1 FROM contas_pagar_parcela_eventos evento
+                JOIN contas_pagar_parcelas parcela ON parcela.id = evento.parcela_id AND parcela.empresa_id = evento.empresa_id
+               WHERE parcela.conta_pagar_id = :id AND parcela.empresa_id = :empresa_id)'
+        );
+        $statement->execute(['id' => $accountId, 'empresa_id' => $this->companyScope->id()]);
         return (int) $statement->fetchColumn() === 1;
     }
 

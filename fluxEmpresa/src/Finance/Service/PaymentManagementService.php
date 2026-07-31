@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Finance\Service;
 
+use App\Company\DTO\CompanyScope;
 use PDO;
 use Throwable;
 
@@ -12,9 +13,13 @@ final class PaymentManagementService
     public function __construct(
         private readonly PDO $connection,
         private readonly AccountsReceivableManagementService $accounts,
-        private readonly ReceiptService $receipts
+        private readonly ReceiptService $receipts,
+        private readonly CompanyScope $companyScope
     )
     {
+        if ($accounts->companyId() !== $companyScope->id() || $receipts->companyId() !== $companyScope->id()) {
+            throw new \InvalidArgumentException('Serviços financeiros pertencem a empresas diferentes.');
+        }
     }
 
     public function registerAccountsReceivablePayment(int $accountId, string $value, string $form, ?string $notes, int $userId): int

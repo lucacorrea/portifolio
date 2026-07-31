@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\ServiceOrder\Repository;
 
+use App\Company\DTO\CompanyScope;
 use App\ServiceOrder\DTO\ServiceOrderFormData;
 use App\ServiceOrder\DTO\ServiceOrderItemData;
 use App\ServiceOrder\DTO\ServiceOrderTeamData;
@@ -20,7 +21,10 @@ final class ServiceOrderRepository
 
     private ?bool $hasOperationalBudgetKeyColumn = null;
 
-    public function __construct(private readonly PDO $connection)
+    public function __construct(
+        private readonly PDO $connection,
+        private readonly CompanyScope $companyScope
+    )
     {
     }
 
@@ -34,7 +38,7 @@ final class ServiceOrderRepository
     /** @return array<string,int> */
     public function summary(): array
     {
-        $statement = $this->connection->query(
+        $statement = $this->connection->prepare(
             "SELECT
                 SUM(CASE WHEN status IN ('rascunho','aberta') THEN 1 ELSE 0 END) AS open_count,
                 SUM(CASE WHEN status = 'aguardando_agendamento' THEN 1 ELSE 0 END) AS waiting_schedule,
@@ -44,8 +48,9 @@ final class ServiceOrderRepository
                 SUM(CASE WHEN status = 'finalizada' AND finalizada_em >= DATE_FORMAT(CURRENT_DATE, '%Y-%m-01') THEN 1 ELSE 0 END) AS finished_month,
                 SUM(CASE WHEN prioridade = 'urgente' AND status NOT IN ('finalizada','cancelada') THEN 1 ELSE 0 END) AS urgent
              FROM ordens_servico
-             WHERE excluida_em IS NULL"
+             WHERE empresa_id = :company_id AND excluida_em IS NULL"
         );
+        $statement->execute(['company_id' => $this->companyScope->id()]);
         $row = $statement->fetch() ?: [];
         return [
             'open_count' => (int) ($row['open_count'] ?? 0),
@@ -72,6 +77,7 @@ final class ServiceOrderRepository
             "SELECT id
                FROM ordens_servico
               WHERE orcamento_id = :budget_id
+                AND empresa_id = :company_id
                 AND excluida_em IS NULL
                 AND (
                     status <> 'cancelada'
@@ -80,7 +86,7 @@ final class ServiceOrderRepository
               LIMIT 1
               FOR UPDATE"
         );
-        $statement->execute(['budget_id' => $budgetId]);
+        $statement->execute(['budget_id' => $budgetId, 'company_id' => $this->companyScope->id()]);
         return $statement->fetch() !== false;
     }
 
@@ -92,6 +98,7 @@ final class ServiceOrderRepository
             "SELECT id
                FROM ordens_servico
               WHERE orcamento_id = :budget_id
+                AND empresa_id = :company_id
                 AND id <> :ignore_order_id
                 AND excluida_em IS NULL
                 AND (
@@ -101,7 +108,7 @@ final class ServiceOrderRepository
               LIMIT 1
               FOR UPDATE"
         );
-        $statement->execute(['budget_id' => $budgetId, 'ignore_order_id' => $ignoreOrderId]);
+        $statement->execute(['budget_id' => $budgetId, 'ignore_order_id' => $ignoreOrderId, 'company_id' => $this->companyScope->id()]);
         return $statement->fetch() !== false;
     }
 
@@ -119,11 +126,12 @@ final class ServiceOrderRepository
         $statement = $this->connection->prepare(
             'SELECT id, ordem_servico_id, tipo, origem, referencia_id, orcamento_item_id, descricao, unidade, quantidade,
                     valor_unitario, desconto, subtotal, ordem
-               FROM ordem_servico_itens
+              FROM ordem_servico_itens
               WHERE ordem_servico_id = :id
+                AND empresa_id = :company_id
               ORDER BY ordem ASC, id ASC'
         );
-        $statement->execute(['id' => $orderId]);
+        $statement->execute(['id' => $orderId, 'company_id' => $this->companyScope->id()]);
         return array_map(static fn(array $row): ServiceOrderItem => ServiceOrderItem::fromArray($row), $statement->fetchAll());
     }
 
@@ -144,10 +152,12 @@ final class ServiceOrderRepository
         $statement = $this->connection->prepare(
             'SELECT id, ordem_servico_id, tipo, origem, referencia_id, orcamento_item_id, descricao, unidade, quantidade,
                     valor_unitario, desconto, subtotal, ordem
-               FROM ordem_servico_itens
+              FROM ordem_servico_itens
               WHERE ordem_servico_id IN (' . implode(', ', $placeholders) . ')
+                AND empresa_id = :company_id
               ORDER BY ordem_servico_id ASC, ordem ASC, id ASC'
         );
+        $params['company_id'] = $this->companyScope->id();
         $statement->execute($params);
 
         $grouped = [];
@@ -165,18 +175,19 @@ final class ServiceOrderRepository
         $totals = $data->totals();
         $statement = $this->connection->prepare(
             'INSERT INTO ordens_servico
-                (numero, cliente_id, orcamento_id, funcionario_principal_id, funcionario_apoio_id, agendado_inicio, agendado_fim,
+                (empresa_id, numero, cliente_id, orcamento_id, funcionario_principal_id, funcionario_apoio_id, agendado_inicio, agendado_fim,
                  status, prioridade, equipamento_tipo, equipamento_marca, equipamento_modelo, equipamento_capacidade,
                  equipamento_numero_serie, equipamento_ambiente, equipamento_local, problema_relatado, problema_identificado,
                  diagnostico, solucao, recomendacao, observacoes_internas, observacoes, subtotal_servicos,
                  subtotal_produtos, subtotal_outros, desconto, acrescimo, total)
              VALUES
-                (NULL, :client_id, :budget_id, :primary_employee_id, :support_employee_id, :scheduled_start, :scheduled_end,
+                (:company_id, NULL, :client_id, :budget_id, :primary_employee_id, :support_employee_id, :scheduled_start, :scheduled_end,
                  :status, :priority, :equipment_type, :equipment_brand, :equipment_model, :equipment_capacity,
                  :equipment_serial_number, :equipment_environment, :equipment_location, :reported_problem, :identified_problem,
                  :diagnosis, :solution, :recommendation, :internal_notes, :notes, :services_subtotal,
                  :products_subtotal, :others_subtotal, :discount, :increase, :total)'
         );
+        $statement->bindValue('company_id', $this->companyScope->id(), PDO::PARAM_INT);
         $this->bindForm($statement, $data, $totals);
         $statement->bindValue('primary_employee_id', $primaryEmployeeId, $primaryEmployeeId === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
         $statement->bindValue('support_employee_id', $supportEmployeeId, $supportEmployeeId === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
@@ -186,8 +197,8 @@ final class ServiceOrderRepository
 
         $id = (int) $this->connection->lastInsertId();
         $this->assertPositiveId($id);
-        $this->connection->prepare('UPDATE ordens_servico SET numero = :number WHERE id = :id')
-            ->execute(['number' => sprintf('OS-%06d', $id), 'id' => $id]);
+        $this->connection->prepare('UPDATE ordens_servico SET numero = :number WHERE id = :id AND empresa_id = :company_id')
+            ->execute(['number' => sprintf('OS-%06d', $id), 'id' => $id, 'company_id' => $this->companyScope->id()]);
         $this->syncOperationalBudgetKey($id);
         $this->replaceItems($id, $data->items());
         if ($team !== null && $team->hasMembers()) {
@@ -202,6 +213,7 @@ final class ServiceOrderRepository
     public function updateCore(int $id, ServiceOrderFormData $data): void
     {
         $this->assertPositiveId($id);
+        $this->assertOwnedOrder($id);
         $totals = $data->totals();
         $statement = $this->connection->prepare(
             'UPDATE ordens_servico
@@ -228,9 +240,10 @@ final class ServiceOrderRepository
                     desconto = :discount,
                     acrescimo = :increase,
                     total = :total
-              WHERE id = :id'
+              WHERE id = :id AND empresa_id = :company_id'
         );
         $statement->bindValue('id', $id, PDO::PARAM_INT);
+        $statement->bindValue('company_id', $this->companyScope->id(), PDO::PARAM_INT);
         $this->bindForm($statement, $data, $totals, false);
         $statement->execute();
         $this->syncOperationalBudgetKey($id);
@@ -241,15 +254,17 @@ final class ServiceOrderRepository
     public function replaceItems(int $orderId, array $items): void
     {
         $this->assertPositiveId($orderId);
-        $this->connection->prepare('DELETE FROM ordem_servico_itens WHERE ordem_servico_id = :id')->execute(['id' => $orderId]);
+        $this->assertOwnedOrder($orderId);
+        $this->connection->prepare('DELETE FROM ordem_servico_itens WHERE ordem_servico_id = :id AND empresa_id = :company_id')->execute(['id' => $orderId, 'company_id' => $this->companyScope->id()]);
         $statement = $this->connection->prepare(
             'INSERT INTO ordem_servico_itens
-                (ordem_servico_id, tipo, origem, referencia_id, orcamento_item_id, descricao, unidade, quantidade, valor_unitario, desconto, subtotal, ordem)
+                (empresa_id, ordem_servico_id, tipo, origem, referencia_id, orcamento_item_id, descricao, unidade, quantidade, valor_unitario, desconto, subtotal, ordem)
              VALUES
-                (:order_id, :type, :origin, :reference_id, :budget_item_id, :description, :unit, :quantity, :unit_price, :discount, :subtotal, :order_index)'
+                (:company_id, :order_id, :type, :origin, :reference_id, :budget_item_id, :description, :unit, :quantity, :unit_price, :discount, :subtotal, :order_index)'
         );
         foreach ($items as $item) {
             $statement->execute([
+                'company_id' => $this->companyScope->id(),
                 'order_id' => $orderId,
                 'type' => $item->type(),
                 'origin' => $item->origin(),
@@ -287,7 +302,13 @@ final class ServiceOrderRepository
         if ($employeeIds === []) return [];
 
         $employeePlaceholders = [];
-        $parameters = ['start' => $this->formatDateTime($start), 'end' => $this->formatDateTime($end)];
+        $parameters = [
+            'start' => $this->formatDateTime($start),
+            'end' => $this->formatDateTime($end),
+            'company_employee' => $this->companyScope->id(),
+            'company_team' => $this->companyScope->id(),
+            'company_order' => $this->companyScope->id(),
+        ];
         foreach ($employeeIds as $index => $employeeId) {
             $placeholder = 'employee_' . $index;
             $employeePlaceholders[] = ':' . $placeholder;
@@ -301,12 +322,13 @@ final class ServiceOrderRepository
         }
 
         $sql = 'SELECT DISTINCT f.id, f.nome
-                  FROM funcionarios f
+                 FROM funcionarios f
                   JOIN ordem_servico_funcionarios osf
-                    ON osf.funcionario_id = f.id AND osf.ativo = 1
+                    ON osf.funcionario_id = f.id AND osf.empresa_id = :company_team AND osf.ativo = 1
                   JOIN ordens_servico os
-                    ON os.id = osf.ordem_servico_id
-                 WHERE f.id IN (' . implode(', ', $employeePlaceholders) . ')
+                    ON os.id = osf.ordem_servico_id AND os.empresa_id = :company_order
+                 WHERE f.empresa_id = :company_employee
+                   AND f.id IN (' . implode(', ', $employeePlaceholders) . ')
                    AND os.excluida_em IS NULL
                    AND os.status IN (' . implode(', ', $statusPlaceholders) . ')
                    AND os.agendado_inicio IS NOT NULL
@@ -341,21 +363,23 @@ final class ServiceOrderRepository
     public function replaceTeam(int $orderId, ServiceOrderTeamData $team): void
     {
         $this->assertPositiveId($orderId);
+        $this->assertOwnedOrder($orderId);
         $this->connection->prepare(
             'UPDATE ordem_servico_funcionarios
                 SET ativo = 0, removido_em = CURRENT_TIMESTAMP
-              WHERE ordem_servico_id = :order_id AND ativo = 1'
-        )->execute(['order_id' => $orderId]);
+              WHERE ordem_servico_id = :order_id AND empresa_id = :company_id AND ativo = 1'
+        )->execute(['order_id' => $orderId, 'company_id' => $this->companyScope->id()]);
 
         $statement = $this->connection->prepare(
             'INSERT INTO ordem_servico_funcionarios
-                (ordem_servico_id, funcionario_id, funcao, principal, ativo, adicionado_em, removido_em)
+                (empresa_id, ordem_servico_id, funcionario_id, funcao, principal, ativo, adicionado_em, removido_em)
              VALUES
-                (:order_id, :employee_id, :role, :primary_member, 1, CURRENT_TIMESTAMP, NULL)'
+                (:company_id, :order_id, :employee_id, :role, :primary_member, 1, CURRENT_TIMESTAMP, NULL)'
         );
 
         foreach ($team->members() as $member) {
             $statement->execute([
+                'company_id' => $this->companyScope->id(),
                 'order_id' => $orderId,
                 'employee_id' => $member->employeeId(),
                 'role' => $member->role(),
@@ -367,10 +391,11 @@ final class ServiceOrderRepository
             'UPDATE ordens_servico
                 SET funcionario_principal_id = :primary_employee_id,
                     funcionario_apoio_id = :support_employee_id
-              WHERE id = :order_id'
+              WHERE id = :order_id AND empresa_id = :company_id'
         );
         $statement->execute([
             'order_id' => $orderId,
+            'company_id' => $this->companyScope->id(),
             'primary_employee_id' => $team->primaryEmployeeId(),
             'support_employee_id' => $team->firstSupportEmployeeId(),
         ]);
@@ -394,11 +419,14 @@ final class ServiceOrderRepository
             'SELECT osf.id, osf.ordem_servico_id, osf.funcionario_id, f.codigo AS funcionario_codigo,
                     f.nome AS funcionario_nome, osf.funcao, osf.principal, osf.ativo
                FROM ordem_servico_funcionarios osf
-               JOIN funcionarios f ON f.id = osf.funcionario_id
+               JOIN funcionarios f ON f.id = osf.funcionario_id AND f.empresa_id = :company_employee
               WHERE osf.ativo = 1
+                AND osf.empresa_id = :company_team
                 AND osf.ordem_servico_id IN (' . implode(', ', $placeholders) . ')
               ORDER BY osf.ordem_servico_id ASC, osf.principal DESC, f.nome ASC'
         );
+        $params['company_employee'] = $this->companyScope->id();
+        $params['company_team'] = $this->companyScope->id();
         $statement->execute($params);
 
         $grouped = [];
@@ -420,23 +448,23 @@ final class ServiceOrderRepository
     {
         $this->assertPositiveId($orderId);
         $statement = $this->connection->prepare(
-            'UPDATE ordens_servico SET agendado_inicio = :start, agendado_fim = :end WHERE id = :order_id'
+            'UPDATE ordens_servico SET agendado_inicio = :start, agendado_fim = :end WHERE id = :order_id AND empresa_id = :company_id'
         );
-        $statement->execute(['order_id' => $orderId, 'start' => $this->formatDateTime($start), 'end' => $this->formatDateTime($end)]);
+        $statement->execute(['order_id' => $orderId, 'company_id' => $this->companyScope->id(), 'start' => $this->formatDateTime($start), 'end' => $this->formatDateTime($end)]);
     }
 
     public function updateStatus(int $orderId, string $status): void
     {
         $this->assertPositiveId($orderId);
         $sets = ['status = :status'];
-        $params = ['order_id' => $orderId, 'status' => $status];
+        $params = ['order_id' => $orderId, 'company_id' => $this->companyScope->id(), 'status' => $status];
         if ($status === 'finalizada') $sets[] = 'finalizada_em = COALESCE(finalizada_em, CURRENT_TIMESTAMP)';
         if ($status === 'cancelada') $sets[] = 'cancelada_em = COALESCE(cancelada_em, CURRENT_TIMESTAMP)';
         if (!in_array($status, ['finalizada', 'cancelada'], true)) {
             $sets[] = 'finalizada_em = NULL';
             $sets[] = 'cancelada_em = NULL';
         }
-        $statement = $this->connection->prepare('UPDATE ordens_servico SET ' . implode(', ', $sets) . ' WHERE id = :order_id');
+        $statement = $this->connection->prepare('UPDATE ordens_servico SET ' . implode(', ', $sets) . ' WHERE id = :order_id AND empresa_id = :company_id');
         $statement->execute($params);
         $this->syncOperationalBudgetKey($orderId);
     }
@@ -445,8 +473,8 @@ final class ServiceOrderRepository
     {
         $this->assertPositiveId($orderId);
         $this->connection->prepare(
-            'UPDATE ordens_servico SET orcamento_liberado = :released WHERE id = :order_id'
-        )->execute(['order_id' => $orderId, 'released' => $released ? 1 : 0]);
+            'UPDATE ordens_servico SET orcamento_liberado = :released WHERE id = :order_id AND empresa_id = :company_id'
+        )->execute(['order_id' => $orderId, 'company_id' => $this->companyScope->id(), 'released' => $released ? 1 : 0]);
         $this->syncOperationalBudgetKey($orderId);
     }
 
@@ -465,8 +493,8 @@ final class ServiceOrderRepository
                     THEN orcamento_id
                     ELSE NULL
                 END
-              WHERE id = :order_id"
-        )->execute(['order_id' => $orderId]);
+              WHERE id = :order_id AND empresa_id = :company_id"
+        )->execute(['order_id' => $orderId, 'company_id' => $this->companyScope->id()]);
     }
 
     /** @return array{0:array<int,string>,1:array<string,mixed>} */
@@ -501,8 +529,9 @@ final class ServiceOrderRepository
         }
         $employeeId = trim((string) ($filters['employee_id'] ?? ''));
         if ($employeeId !== '') {
-            $where[] = 'EXISTS (SELECT 1 FROM ordem_servico_funcionarios osf_filter WHERE osf_filter.ordem_servico_id = os.id AND osf_filter.ativo = 1 AND osf_filter.funcionario_id = :employee_id)';
+            $where[] = 'EXISTS (SELECT 1 FROM ordem_servico_funcionarios osf_filter WHERE osf_filter.ordem_servico_id = os.id AND osf_filter.empresa_id = :company_filter_team AND osf_filter.ativo = 1 AND osf_filter.funcionario_id = :employee_id)';
             $params['employee_id'] = (int) $employeeId;
+            $params['company_filter_team'] = $this->companyScope->id();
         }
         if (trim((string) ($filters['date_from'] ?? '')) !== '') {
             $where[] = 'os.agendado_inicio >= :date_from';
@@ -518,17 +547,23 @@ final class ServiceOrderRepository
         }
         $serviceId = filter_var($filters['service_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
         if (is_int($serviceId)) {
-            $where[] = "EXISTS (SELECT 1 FROM ordem_servico_itens osi_service WHERE osi_service.ordem_servico_id = os.id AND osi_service.tipo = 'servico' AND osi_service.referencia_id = :service_id)";
+            $where[] = "EXISTS (SELECT 1 FROM ordem_servico_itens osi_service WHERE osi_service.ordem_servico_id = os.id AND osi_service.empresa_id = :company_filter_service AND osi_service.tipo = 'servico' AND osi_service.referencia_id = :service_id)";
             $params['service_id'] = $serviceId;
+            $params['company_filter_service'] = $this->companyScope->id();
         }
         $serviceCategory = trim((string) ($filters['service_category'] ?? ''));
         if ($serviceCategory !== '') {
-            $where[] = "EXISTS (SELECT 1 FROM ordem_servico_itens osi_category JOIN servicos srv_category ON srv_category.id = osi_category.referencia_id WHERE osi_category.ordem_servico_id = os.id AND osi_category.tipo = 'servico' AND srv_category.categoria = :service_category)";
+            $where[] = "EXISTS (SELECT 1 FROM ordem_servico_itens osi_category JOIN servicos srv_category ON srv_category.id = osi_category.referencia_id AND srv_category.empresa_id = :company_filter_category_service WHERE osi_category.ordem_servico_id = os.id AND osi_category.empresa_id = :company_filter_category_item AND osi_category.tipo = 'servico' AND srv_category.categoria = :service_category)";
             $params['service_category'] = $serviceCategory;
+            $params['company_filter_category_service'] = $this->companyScope->id();
+            $params['company_filter_category_item'] = $this->companyScope->id();
         }
         if (trim((string) ($filters['equipment'] ?? '')) !== '') {
-            $where[] = '(os.equipamento_tipo LIKE :equipment_filter OR os.equipamento_marca LIKE :equipment_filter OR os.equipamento_modelo LIKE :equipment_filter)';
-            $params['equipment_filter'] = '%' . trim((string) $filters['equipment']) . '%';
+            $where[] = '(os.equipamento_tipo LIKE :equipment_filter_type OR os.equipamento_marca LIKE :equipment_filter_brand OR os.equipamento_modelo LIKE :equipment_filter_model)';
+            $equipmentLike = '%' . trim((string) $filters['equipment']) . '%';
+            $params['equipment_filter_type'] = $equipmentLike;
+            $params['equipment_filter_brand'] = $equipmentLike;
+            $params['equipment_filter_model'] = $equipmentLike;
         }
         return [$where, $params];
     }
@@ -536,7 +571,12 @@ final class ServiceOrderRepository
     /** @param array<int,string> $where @return ServiceOrder[] */
     private function selectOrders(array $where, array $parameters, string $orderBy, bool $forUpdate = false): array
     {
-        $where = array_merge(['os.excluida_em IS NULL'], $where);
+        $where = array_merge(['os.empresa_id = :company_order', 'os.excluida_em IS NULL'], $where);
+        $parameters['company_order'] = $this->companyScope->id();
+        $parameters['company_client'] = $this->companyScope->id();
+        $parameters['company_primary'] = $this->companyScope->id();
+        $parameters['company_support'] = $this->companyScope->id();
+        $parameters['company_item_summary'] = $this->companyScope->id();
         $sql = 'SELECT os.id, os.numero, os.cliente_id, c.nome AS cliente_nome,
                        c.telefone AS cliente_telefone, c.whatsapp AS cliente_whatsapp, c.endereco AS cliente_endereco,
                        c.numero AS cliente_numero, c.bairro AS cliente_bairro, c.cidade AS cliente_cidade, c.uf AS cliente_uf,
@@ -551,15 +591,16 @@ final class ServiceOrderRepository
                        os.criado_em, os.atualizado_em, COALESCE(item_summary.itens_total, 0) AS itens_total,
                        item_summary.servico_principal
                   FROM ordens_servico os
-                  JOIN clientes c ON c.id = os.cliente_id
-             LEFT JOIN funcionarios fp ON fp.id = os.funcionario_principal_id
-             LEFT JOIN funcionarios fa ON fa.id = os.funcionario_apoio_id
+                  JOIN clientes c ON c.id = os.cliente_id AND c.empresa_id = :company_client
+             LEFT JOIN funcionarios fp ON fp.id = os.funcionario_principal_id AND fp.empresa_id = :company_primary
+             LEFT JOIN funcionarios fa ON fa.id = os.funcionario_apoio_id AND fa.empresa_id = :company_support
              LEFT JOIN (
                     SELECT ordem_servico_id,
                            COUNT(*) AS itens_total,
                            MIN(CASE WHEN tipo = "servico" THEN descricao ELSE NULL END) AS servico_principal,
                            GROUP_CONCAT(CASE WHEN tipo = "servico" THEN descricao ELSE NULL END SEPARATOR ", ") AS servicos
                       FROM ordem_servico_itens
+                      WHERE empresa_id = :company_item_summary
                      GROUP BY ordem_servico_id
              ) item_summary ON item_summary.ordem_servico_id = os.id';
         if ($where !== []) $sql .= ' WHERE ' . implode(' AND ', $where);
@@ -609,6 +650,20 @@ final class ServiceOrderRepository
     private function assertPositiveId(int $id): void
     {
         if ($id <= 0) throw new InvalidArgumentException('ID de ordem de serviço inválido.');
+    }
+
+    private function assertOwnedOrder(int $orderId): void
+    {
+        $statement = $this->connection->prepare(
+            'SELECT id FROM ordens_servico WHERE id = :order_id AND empresa_id = :company_id FOR UPDATE'
+        );
+        $statement->execute([
+            'order_id' => $orderId,
+            'company_id' => $this->companyScope->id(),
+        ]);
+        if ($statement->fetch() === false) {
+            throw new InvalidArgumentException('OS não encontrada.');
+        }
     }
 
     private function hasOperationalBudgetKeyColumn(): bool

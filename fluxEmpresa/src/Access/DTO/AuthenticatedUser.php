@@ -16,7 +16,8 @@ final class AuthenticatedUser
         private readonly string $name,
         private readonly string $username,
         private readonly string $email,
-        private readonly array $permissions
+        private readonly array $permissions,
+        private readonly string $sessionBindingHash = ''
     ) {
     }
 
@@ -76,6 +77,11 @@ final class AuthenticatedUser
     public function permissions(): array
     {
         return $this->permissions;
+    }
+
+    public function sessionBindingHash(): string
+    {
+        return $this->sessionBindingHash;
     }
 
     public function initials(): string

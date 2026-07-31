@@ -65,9 +65,11 @@ function user_action_context(
 
         $currentUser = $authorization->requireLogin();
 
-        $authorization->requirePermission(
-            $permission
-        );
+        $authorization->requirePermission($permission);
+        $companyScope = $application->operationalCompanyContext()->resolve($currentUser);
+        if (!$companyScope->allows($permission)) {
+            throw new AuthorizationException('Acesso negado.');
+        }
     } catch (AuthenticationException $exception) {
         $session->flash(
             'warning',

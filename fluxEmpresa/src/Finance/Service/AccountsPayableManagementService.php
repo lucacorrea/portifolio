@@ -6,6 +6,7 @@ namespace App\Finance\Service;
 
 require_once __DIR__ . '/AccountsPayableInstallmentPlan.php';
 
+use App\Company\DTO\CompanyScope;
 use DateTimeImmutable;
 use InvalidArgumentException;
 use PDO;
@@ -14,23 +15,37 @@ use Throwable;
 final class AccountsPayableManagementService
 {
     use AccountsPayableInstallmentPlan;
-    public function __construct(private readonly PDO $connection, private readonly CashManagementService $cash)
+    public function __construct(
+        private readonly PDO $connection,
+        private readonly CashManagementService $cash,
+        private readonly CompanyScope $companyScope
+    )
     {
+        if ($cash->companyId() !== $companyScope->id()) {
+            throw new InvalidArgumentException('Serviços financeiros pertencem a empresas diferentes.');
+        }
+    }
+
+    public function companyId(): int
+    {
+        return $this->companyScope->id();
     }
 
     /** @return array{open:string,overdue:string,today:string,week:string} */
     public function indicators(): array
     {
-        $row = $this->connection->query(
+        $statement = $this->connection->prepare(
             "SELECT
                 COALESCE(SUM(CASE WHEN parcela.status = 'pendente' THEN parcela.valor ELSE 0 END), 0) AS open,
                 COALESCE(SUM(CASE WHEN parcela.status = 'pendente' AND parcela.vencimento_em < CURRENT_DATE THEN parcela.valor ELSE 0 END), 0) AS overdue,
                 COALESCE(SUM(CASE WHEN parcela.status = 'pendente' AND parcela.vencimento_em = CURRENT_DATE THEN parcela.valor ELSE 0 END), 0) AS today,
                 COALESCE(SUM(CASE WHEN parcela.status = 'pendente' AND parcela.vencimento_em BETWEEN CURRENT_DATE AND DATE_ADD(CURRENT_DATE, INTERVAL 7 DAY) THEN parcela.valor ELSE 0 END), 0) AS week
              FROM contas_pagar_parcelas parcela
-             JOIN contas_pagar conta ON conta.id = parcela.conta_pagar_id
-            WHERE conta.status <> 'cancelada'"
-        )->fetch() ?: [];
+             JOIN contas_pagar conta ON conta.id = parcela.conta_pagar_id AND conta.empresa_id = parcela.empresa_id
+            WHERE conta.status <> 'cancelada' AND conta.empresa_id = :empresa_id"
+        );
+        $statement->execute(['empresa_id' => $this->companyScope->id()]);
+        $row = $statement->fetch() ?: [];
         return [
             'open' => $this->decimal((string) ($row['open'] ?? '0')),
             'overdue' => $this->decimal((string) ($row['overdue'] ?? '0')),
@@ -42,8 +57,11 @@ final class AccountsPayableManagementService
     /** @return array<int,array<string,mixed>> */
     public function listAccounts(array $filters = []): array
     {
-        $where = [];
-        $params = [];
+        $where = ['cp.empresa_id = :empresa_id'];
+        $params = [
+            'empresa_id' => $this->companyScope->id(),
+            'parcelas_empresa_id' => $this->companyScope->id(),
+        ];
         $search = $this->filterText($filters['search'] ?? '', 150);
         $status = $this->filterChoice($filters['status'] ?? '', ['', 'pendente', 'vencida', 'parcial', 'paga', 'cancelada']);
         $bucket = $this->filterChoice($filters['bucket'] ?? '', ['', 'vencidos', 'hoje', 'semana', '15dias']);
@@ -76,12 +94,12 @@ final class AccountsPayableManagementService
                        parcelas.parcelas_pagas, parcelas.parcelas_pendentes, parcelas.valor_pago,
                        parcelas.proximo_vencimento, parcelas.vencidas,
                        EXISTS(SELECT 1 FROM contas_pagar_parcela_eventos evento
-                               JOIN contas_pagar_parcelas p_evento ON p_evento.id = evento.parcela_id
-                              WHERE p_evento.conta_pagar_id = cp.id) AS possui_movimentacao,
+                               JOIN contas_pagar_parcelas p_evento ON p_evento.id = evento.parcela_id AND p_evento.empresa_id = evento.empresa_id
+                              WHERE p_evento.conta_pagar_id = cp.id AND evento.empresa_id = cp.empresa_id) AS possui_movimentacao,
                        CASE WHEN cp.status IN ('pendente', 'parcial') AND parcelas.vencidas > 0
                             THEN 'vencida' ELSE cp.status END AS status_exibicao
                   FROM contas_pagar cp
-                  JOIN fornecedores f ON f.id = cp.fornecedor_id
+                  JOIN fornecedores f ON f.id = cp.fornecedor_id AND f.empresa_id = cp.empresa_id
                   JOIN (
                        SELECT conta_pagar_id,
                               SUM(status = 'paga') AS parcelas_pagas,
@@ -93,9 +111,10 @@ final class AccountsPayableManagementService
                               SUM(status = 'pendente' AND vencimento_em BETWEEN CURRENT_DATE AND DATE_ADD(CURRENT_DATE, INTERVAL 7 DAY)) AS proximos_7,
                               SUM(status = 'pendente' AND vencimento_em BETWEEN CURRENT_DATE AND DATE_ADD(CURRENT_DATE, INTERVAL 15 DAY)) AS proximos_15
                          FROM contas_pagar_parcelas
+                        WHERE empresa_id = :parcelas_empresa_id
                         GROUP BY conta_pagar_id
                   ) parcelas ON parcelas.conta_pagar_id = cp.id";
-        if ($where !== []) $sql .= ' WHERE ' . implode(' AND ', $where);
+        $sql .= ' WHERE ' . implode(' AND ', $where);
         $sql .= " ORDER BY
                     CASE WHEN cp.status IN ('pendente', 'parcial') AND parcelas.vencidas > 0 THEN 1
                          WHEN cp.status = 'parcial' THEN 2 WHEN cp.status = 'pendente' THEN 3
@@ -137,17 +156,17 @@ final class AccountsPayableManagementService
             if ($accountId === null) {
                 $statement = $this->connection->prepare(
                     'INSERT INTO contas_pagar
-                        (codigo, fornecedor_id, descricao, documento, data_emissao, vencimento_em, valor,
+                        (empresa_id, codigo, fornecedor_id, descricao, documento, data_emissao, vencimento_em, valor,
                          tipo_pagamento, quantidade_parcelas, forma_pagamento, status, observacao, criado_por)
                      VALUES
-                        (NULL, :fornecedor_id, :descricao, :documento, :data_emissao, :vencimento_em, :valor,
+                        (:empresa_id, NULL, :fornecedor_id, :descricao, :documento, :data_emissao, :vencimento_em, :valor,
                          :tipo_pagamento, :quantidade_parcelas, :forma_pagamento, "pendente", :observacao, :user_id)'
                 );
-                $statement->execute($payload + ['user_id' => $userId]);
+                $statement->execute($payload + ['user_id' => $userId, 'empresa_id' => $this->companyScope->id()]);
                 $accountId = (int) $this->connection->lastInsertId();
                 $code = sprintf('CP-%06d', $accountId);
-                $this->connection->prepare('UPDATE contas_pagar SET codigo = :code WHERE id = :id')
-                    ->execute(['code' => $code, 'id' => $accountId]);
+                $this->connection->prepare('UPDATE contas_pagar SET codigo = :code WHERE id = :id AND empresa_id = :empresa_id')
+                    ->execute(['code' => $code, 'id' => $accountId, 'empresa_id' => $this->companyScope->id()]);
                 $this->replaceInstallments($accountId, $payload);
             } else {
                 $statement = $this->connection->prepare(
@@ -157,9 +176,9 @@ final class AccountsPayableManagementService
                         tipo_pagamento = :tipo_pagamento, quantidade_parcelas = :quantidade_parcelas,
                         forma_pagamento = :forma_pagamento,
                         observacao = :observacao
-                     WHERE id = :id'
+                     WHERE id = :id AND empresa_id = :empresa_id'
                 );
-                $statement->execute($payload + ['id' => $accountId]);
+                $statement->execute($payload + ['id' => $accountId, 'empresa_id' => $this->companyScope->id()]);
                 $code = (string) $existing['codigo'];
                 $this->replaceInstallments($accountId, $payload);
             }
@@ -185,12 +204,12 @@ final class AccountsPayableManagementService
                 'UPDATE contas_pagar
                     SET status = "cancelada", cancelada_em = NOW(), cancelada_por = :user_id,
                         motivo_cancelamento = :reason
-                  WHERE id = :id'
-            )->execute(['id' => $accountId, 'user_id' => $userId, 'reason' => $reason]);
+                  WHERE id = :id AND empresa_id = :empresa_id'
+            )->execute(['id' => $accountId, 'user_id' => $userId, 'reason' => $reason, 'empresa_id' => $this->companyScope->id()]);
             $this->connection->prepare(
                 'UPDATE contas_pagar_parcelas SET status = "cancelada"
-                  WHERE conta_pagar_id = :id AND status = "pendente"'
-            )->execute(['id' => $accountId]);
+                  WHERE conta_pagar_id = :id AND empresa_id = :empresa_id AND status = "pendente"'
+            )->execute(['id' => $accountId, 'empresa_id' => $this->companyScope->id()]);
             if ($ownsTransaction) $this->connection->commit();
         } catch (Throwable $exception) {
             if ($ownsTransaction && $this->connection->inTransaction()) $this->connection->rollBack();
@@ -212,8 +231,8 @@ final class AccountsPayableManagementService
                 'UPDATE contas_pagar_parcelas
                     SET status = "paga", quitada_em = NOW(), quitada_por = :user_id,
                         forma_pagamento_quitacao = :payment_method, caixa_movimentacao_id = :cash_id
-                  WHERE id = :id'
-            )->execute(['id' => $installmentId, 'user_id' => $userId, 'payment_method' => $paymentMethod, 'cash_id' => $cashId]);
+                  WHERE id = :id AND empresa_id = :empresa_id'
+            )->execute(['id' => $installmentId, 'user_id' => $userId, 'payment_method' => $paymentMethod, 'cash_id' => $cashId, 'empresa_id' => $this->companyScope->id()]);
             $this->recordInstallmentEvent($installmentId, 'quitacao', $paymentMethod, null, $userId, $cashId);
             $this->recalculateAccountStatus((int) $installment['conta_pagar_id']);
             $this->connection->commit();
@@ -238,8 +257,8 @@ final class AccountsPayableManagementService
                 'UPDATE contas_pagar_parcelas
                     SET status = "pendente", quitada_em = NULL, quitada_por = NULL,
                         forma_pagamento_quitacao = NULL, caixa_movimentacao_id = NULL
-                  WHERE id = :id'
-            )->execute(['id' => $installmentId]);
+                  WHERE id = :id AND empresa_id = :empresa_id'
+            )->execute(['id' => $installmentId, 'empresa_id' => $this->companyScope->id()]);
             $this->recordInstallmentEvent($installmentId, 'estorno', $method, $reason, $userId, $cashId);
             $this->recalculateAccountStatus((int) $installment['conta_pagar_id']);
             $this->connection->commit();
@@ -280,11 +299,11 @@ final class AccountsPayableManagementService
     /** @param array<string,mixed> $payload */
     private function replaceInstallments(int $accountId, array $payload): void
     {
-        $this->connection->prepare('DELETE FROM contas_pagar_parcelas WHERE conta_pagar_id = :id')
-            ->execute(['id' => $accountId]);
+        $this->connection->prepare('DELETE FROM contas_pagar_parcelas WHERE conta_pagar_id = :id AND empresa_id = :empresa_id')
+            ->execute(['id' => $accountId, 'empresa_id' => $this->companyScope->id()]);
         $statement = $this->connection->prepare(
-            'INSERT INTO contas_pagar_parcelas (conta_pagar_id, numero, vencimento_em, valor)
-             VALUES (:account_id, :number, :due_date, :amount)'
+            'INSERT INTO contas_pagar_parcelas (empresa_id, conta_pagar_id, numero, vencimento_em, valor)
+             VALUES (:empresa_id, :account_id, :number, :due_date, :amount)'
         );
         foreach (self::installmentPlan(
             (string) $payload['valor'],
@@ -292,6 +311,7 @@ final class AccountsPayableManagementService
             (int) $payload['quantidade_parcelas']
         ) as $installment) {
             $statement->execute([
+                'empresa_id' => $this->companyScope->id(),
                 'account_id' => $accountId,
                 'number' => $installment['numero'],
                 'due_date' => $installment['vencimento_em'],
@@ -305,15 +325,21 @@ final class AccountsPayableManagementService
     {
         $ids = array_values(array_filter(array_map('intval', $accountIds), static fn(int $id): bool => $id > 0));
         if ($ids === []) return [];
-        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $placeholders = [];
+        $params = ['empresa_id' => $this->companyScope->id()];
+        foreach ($ids as $index => $id) {
+            $key = 'account_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $id;
+        }
         $statement = $this->connection->prepare(
             "SELECT id, conta_pagar_id, numero, vencimento_em, valor, status,
                     quitada_em, forma_pagamento_quitacao, caixa_movimentacao_id
                FROM contas_pagar_parcelas
-              WHERE conta_pagar_id IN ($placeholders)
+              WHERE conta_pagar_id IN (" . implode(', ', $placeholders) . ") AND empresa_id = :empresa_id
               ORDER BY conta_pagar_id, numero"
         );
-        $statement->execute($ids);
+        $statement->execute($params);
         $grouped = [];
         foreach ($statement->fetchAll() as $installment) {
             $grouped[(int) $installment['conta_pagar_id']][] = $installment;
@@ -329,11 +355,11 @@ final class AccountsPayableManagementService
             'SELECT parcela.*, conta.status AS account_status, conta.codigo AS account_code,
                     conta.descricao AS account_description, fornecedor.nome AS supplier_name
                FROM contas_pagar_parcelas parcela
-               JOIN contas_pagar conta ON conta.id = parcela.conta_pagar_id
-               JOIN fornecedores fornecedor ON fornecedor.id = conta.fornecedor_id
-              WHERE parcela.id = :id FOR UPDATE'
+               JOIN contas_pagar conta ON conta.id = parcela.conta_pagar_id AND conta.empresa_id = parcela.empresa_id
+               JOIN fornecedores fornecedor ON fornecedor.id = conta.fornecedor_id AND fornecedor.empresa_id = conta.empresa_id
+              WHERE parcela.id = :id AND parcela.empresa_id = :empresa_id FOR UPDATE'
         );
-        $statement->execute(['id' => $installmentId]);
+        $statement->execute(['id' => $installmentId, 'empresa_id' => $this->companyScope->id()]);
         $installment = $statement->fetch();
         if ($installment === false) throw new InvalidArgumentException('Parcela não encontrada.');
         return $installment;
@@ -343,9 +369,10 @@ final class AccountsPayableManagementService
     {
         $this->connection->prepare(
             'INSERT INTO contas_pagar_parcela_eventos
-                (parcela_id, tipo, forma_pagamento, observacao, usuario_id, caixa_movimentacao_id)
-             VALUES (:installment_id, :event_type, :payment_method, :notes, :user_id, :cash_id)'
+                (empresa_id, parcela_id, tipo, forma_pagamento, observacao, usuario_id, caixa_movimentacao_id)
+             VALUES (:empresa_id, :installment_id, :event_type, :payment_method, :notes, :user_id, :cash_id)'
         )->execute([
+            'empresa_id' => $this->companyScope->id(),
             'installment_id' => $installmentId,
             'event_type' => $type,
             'payment_method' => $method,
@@ -359,23 +386,23 @@ final class AccountsPayableManagementService
     {
         $statement = $this->connection->prepare(
             "SELECT SUM(status = 'paga') AS paid, SUM(status = 'pendente') AS pending
-               FROM contas_pagar_parcelas WHERE conta_pagar_id = :id"
+               FROM contas_pagar_parcelas WHERE conta_pagar_id = :id AND empresa_id = :empresa_id"
         );
-        $statement->execute(['id' => $accountId]);
+        $statement->execute(['id' => $accountId, 'empresa_id' => $this->companyScope->id()]);
         $totals = $statement->fetch() ?: [];
         $paid = (int) ($totals['paid'] ?? 0);
         $pending = (int) ($totals['pending'] ?? 0);
         $status = $pending === 0 ? 'paga' : ($paid > 0 ? 'parcial' : 'pendente');
-        $this->connection->prepare('UPDATE contas_pagar SET status = :status WHERE id = :id')
-            ->execute(['status' => $status, 'id' => $accountId]);
+        $this->connection->prepare('UPDATE contas_pagar SET status = :status WHERE id = :id AND empresa_id = :empresa_id')
+            ->execute(['status' => $status, 'id' => $accountId, 'empresa_id' => $this->companyScope->id()]);
     }
 
     /** @return array<string,mixed> */
     private function lockAccount(int $accountId): array
     {
         if ($accountId <= 0) throw new InvalidArgumentException('Conta a pagar inválida.');
-        $statement = $this->connection->prepare('SELECT * FROM contas_pagar WHERE id = :id FOR UPDATE');
-        $statement->execute(['id' => $accountId]);
+        $statement = $this->connection->prepare('SELECT * FROM contas_pagar WHERE id = :id AND empresa_id = :empresa_id FOR UPDATE');
+        $statement->execute(['id' => $accountId, 'empresa_id' => $this->companyScope->id()]);
         $account = $statement->fetch();
         if ($account === false) throw new InvalidArgumentException('Conta a pagar não encontrada.');
         return $account;
@@ -383,8 +410,8 @@ final class AccountsPayableManagementService
 
     private function assertSupplierAllowed(int $supplierId, bool $allowInactive): void
     {
-        $statement = $this->connection->prepare('SELECT status FROM fornecedores WHERE id = :id FOR UPDATE');
-        $statement->execute(['id' => $supplierId]);
+        $statement = $this->connection->prepare('SELECT status FROM fornecedores WHERE id = :id AND empresa_id = :empresa_id FOR UPDATE');
+        $statement->execute(['id' => $supplierId, 'empresa_id' => $this->companyScope->id()]);
         $status = $statement->fetchColumn();
         if ($status === false) throw new InvalidArgumentException('Fornecedor não encontrado.');
         if (!$allowInactive && $status !== 'ativo') throw new InvalidArgumentException('Selecione um fornecedor ativo.');
@@ -393,8 +420,8 @@ final class AccountsPayableManagementService
     private function assertDocumentAvailable(int $supplierId, ?string $document, ?int $ignoreId): void
     {
         if ($document === null) return;
-        $sql = 'SELECT id FROM contas_pagar WHERE fornecedor_id = :supplier_id AND documento = :document';
-        $params = ['supplier_id' => $supplierId, 'document' => $document];
+        $sql = 'SELECT id FROM contas_pagar WHERE fornecedor_id = :supplier_id AND documento = :document AND empresa_id = :empresa_id';
+        $params = ['supplier_id' => $supplierId, 'document' => $document, 'empresa_id' => $this->companyScope->id()];
         if ($ignoreId !== null) {
             $sql .= ' AND id <> :id';
             $params['id'] = $ignoreId;

@@ -32,7 +32,7 @@ trait FiscalApplicationServices
             $connection = $this->database->connection();
             $projectRoot = (string) ($this->settings['project_root'] ?? dirname(__DIR__, 2));
             $this->fiscalConfigurationService = new FiscalConfigurationService(
-                new FiscalConfigurationRepository($connection),
+                new FiscalConfigurationRepository($connection, $this->companyScope()),
                 $vault,
                 FiscalCertificateStorage::forProjectRoot($projectRoot),
                 $this->fiscalRuntimeReadiness()
@@ -60,7 +60,7 @@ trait FiscalApplicationServices
             $connection = $this->database->connection();
             $projectRoot = (string) ($this->settings['project_root'] ?? dirname(__DIR__, 2));
             $this->fiscalSefazConnectionService = new FiscalSefazConnectionService(
-                new FiscalConfigurationRepository($connection),
+                new FiscalConfigurationRepository($connection, $this->companyScope()),
                 FiscalSecretVault::fromEnvironment(),
                 FiscalCertificateStorage::forProjectRoot($projectRoot),
                 $this->fiscalRuntimeReadiness()

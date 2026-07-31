@@ -17,6 +17,8 @@ use App\Catalog\Repository\ServiceRepository;
 use App\Catalog\Service\ProductManagementService;
 use App\Catalog\Service\ServiceManagementService;
 use App\Company\Service\CompanySettingsService;
+use App\Company\DTO\CompanyScope;
+use App\Company\Service\OperationalCompanyContextResolver;
 use App\CRM\Import\A7ClientReportMapper;
 use App\CRM\Import\ClientPdfParser;
 use App\CRM\Repository\ClientRepository;
@@ -108,6 +110,8 @@ final class Application
     private ?AdminDashboardService $adminDashboardService = null;
     private ?SoSupplierService $soSupplierService = null;
     private ?ActiveCompanyContext $activeCompanyContext = null;
+    private ?OperationalCompanyContextResolver $operationalCompanyContext = null;
+    private ?CompanyScope $companyScope = null;
     private ?PlatformAdminPolicy $platformAdminPolicy = null;
 
     public function __construct(
@@ -243,7 +247,7 @@ final class Application
             $connection = $this->database->connection();
 
             $this->employeeManagement = new EmployeeManagementService(
-                new EmployeeRepository($connection)
+                new EmployeeRepository($connection, $this->companyScope())
             );
         }
 
@@ -256,7 +260,7 @@ final class Application
             $connection = $this->database->connection();
 
             $this->productManagement = new ProductManagementService(
-                new ProductRepository($connection)
+                new ProductRepository($connection, $this->companyScope())
             );
         }
 
@@ -269,7 +273,7 @@ final class Application
             $connection = $this->database->connection();
 
             $this->serviceManagement = new ServiceManagementService(
-                new ServiceRepository($connection)
+                new ServiceRepository($connection, $this->companyScope())
             );
         }
 
@@ -282,7 +286,7 @@ final class Application
             $connection = $this->database->connection();
 
             $this->clientManagement = new ClientManagementService(
-                new ClientRepository($connection)
+                new ClientRepository($connection, $this->companyScope())
             );
         }
 
@@ -294,7 +298,7 @@ final class Application
         if ($this->clientImport === null) {
             $connection = $this->database->connection();
             $this->clientImport = new ClientImportService(
-                new ClientRepository($connection),
+                new ClientRepository($connection, $this->companyScope()),
                 new ClientPdfParser(new A7ClientReportMapper())
             );
         }
@@ -308,10 +312,10 @@ final class Application
             $connection = $this->database->connection();
 
             $this->budgetManagement = new BudgetManagementService(
-                new BudgetRepository($connection),
-                new ClientRepository($connection),
-                new ProductRepository($connection),
-                new ServiceRepository($connection)
+                new BudgetRepository($connection, $this->companyScope()),
+                new ClientRepository($connection, $this->companyScope()),
+                new ProductRepository($connection, $this->companyScope()),
+                new ServiceRepository($connection, $this->companyScope())
             );
         }
 
@@ -325,12 +329,13 @@ final class Application
 
             $this->serviceOrderManagement = new ServiceOrderManagementService(
                 $connection,
-                new ServiceOrderRepository($connection),
-                new EmployeeRepository($connection),
-                new ClientRepository($connection),
-                new ServiceRepository($connection),
-                new ProductRepository($connection),
-                new BudgetRepository($connection)
+                $this->companyScope(),
+                new ServiceOrderRepository($connection, $this->companyScope()),
+                new EmployeeRepository($connection, $this->companyScope()),
+                new ClientRepository($connection, $this->companyScope()),
+                new ServiceRepository($connection, $this->companyScope()),
+                new ProductRepository($connection, $this->companyScope()),
+                new BudgetRepository($connection, $this->companyScope())
             );
         }
 
@@ -343,7 +348,7 @@ final class Application
             $connection = $this->database->connection();
 
             $this->agendaManagement = new AgendaManagementService(
-                new AgendaReminderRepository($connection)
+                new AgendaReminderRepository($connection, $this->companyScope())
             );
         }
 
@@ -353,7 +358,10 @@ final class Application
     public function inventoryManagement(): InventoryManagementService
     {
         if ($this->inventoryManagement === null) {
-            $this->inventoryManagement = new InventoryManagementService($this->database->connection());
+            $this->inventoryManagement = new InventoryManagementService(
+                $this->database->connection(),
+                $this->companyScope()
+            );
         }
 
         return $this->inventoryManagement;
@@ -362,7 +370,11 @@ final class Application
     public function cashManagement(): CashManagementService
     {
         if ($this->cashManagement === null) {
-            $this->cashManagement = new CashManagementService($this->database->connection(), $this->inventoryManagement());
+            $this->cashManagement = new CashManagementService(
+                $this->database->connection(),
+                $this->companyScope(),
+                $this->inventoryManagement()
+            );
         }
 
         return $this->cashManagement;
@@ -373,7 +385,8 @@ final class Application
         if ($this->accountsReceivableManagement === null) {
             $this->accountsReceivableManagement = new AccountsReceivableManagementService(
                 $this->database->connection(),
-                $this->cashManagement()
+                $this->cashManagement(),
+                $this->companyScope()
             );
         }
 
@@ -383,7 +396,11 @@ final class Application
     public function accountsPayableManagement(): AccountsPayableManagementService
     {
         if ($this->accountsPayableManagement === null) {
-            $this->accountsPayableManagement = new AccountsPayableManagementService($this->database->connection(), $this->cashManagement());
+            $this->accountsPayableManagement = new AccountsPayableManagementService(
+                $this->database->connection(),
+                $this->cashManagement(),
+                $this->companyScope()
+            );
         }
 
         return $this->accountsPayableManagement;
@@ -392,7 +409,10 @@ final class Application
     public function supplierManagement(): SupplierManagementService
     {
         if ($this->supplierManagement === null) {
-            $this->supplierManagement = new SupplierManagementService($this->database->connection());
+            $this->supplierManagement = new SupplierManagementService(
+                $this->database->connection(),
+                $this->companyScope()
+            );
         }
 
         return $this->supplierManagement;
@@ -404,7 +424,8 @@ final class Application
             $this->paymentManagement = new PaymentManagementService(
                 $this->database->connection(),
                 $this->accountsReceivableManagement(),
-                $this->receiptService()
+                $this->receiptService(),
+                $this->companyScope()
             );
         }
 
@@ -414,7 +435,10 @@ final class Application
     public function receiptService(): ReceiptService
     {
         if ($this->receiptService === null) {
-            $this->receiptService = new ReceiptService($this->database->connection());
+            $this->receiptService = new ReceiptService(
+                $this->database->connection(),
+                $this->companyScope()
+            );
         }
 
         return $this->receiptService;
@@ -423,7 +447,10 @@ final class Application
     public function companySettings(): CompanySettingsService
     {
         if ($this->companySettings === null) {
-            $this->companySettings = new CompanySettingsService($this->database->connection());
+            $this->companySettings = new CompanySettingsService(
+                $this->database->connection(),
+                $this->companyScope()
+            );
         }
 
         return $this->companySettings;
@@ -449,7 +476,8 @@ final class Application
             $connection = $this->database->connection();
             $this->serviceOrderFinalization = new ServiceOrderFinalizationService(
                 $connection,
-                new ServiceOrderRepository($connection),
+                $this->companyScope(),
+                new ServiceOrderRepository($connection, $this->companyScope()),
                 $this->inventoryManagement(),
                 $this->accountsReceivableManagement()
             );
@@ -461,7 +489,11 @@ final class Application
     public function serviceOrderLifecycle(): ServiceOrderLifecycleService
     {
         if ($this->serviceOrderLifecycle === null) {
-            $this->serviceOrderLifecycle = new ServiceOrderLifecycleService($this->database->connection(), $this->cashManagement());
+            $this->serviceOrderLifecycle = new ServiceOrderLifecycleService(
+                $this->database->connection(),
+                $this->companyScope(),
+                $this->cashManagement()
+            );
         }
 
         return $this->serviceOrderLifecycle;
@@ -471,7 +503,9 @@ final class Application
     {
         if ($this->dashboardService === null) {
             $connection = $this->database->connection();
-            $this->dashboardService = new DashboardService(new DashboardRepository($connection));
+            $this->dashboardService = new DashboardService(
+                new DashboardRepository($connection, $this->companyScope())
+            );
         }
 
         return $this->dashboardService;
@@ -482,7 +516,7 @@ final class Application
         if ($this->productionReportService === null) {
             $connection = $this->database->connection();
             $this->productionReportService = new ProductionReportService(
-                new ProductionReportRepository($connection)
+                new ProductionReportRepository($connection, $this->companyScope())
             );
         }
 
@@ -509,4 +543,24 @@ final class Application
     public function adminDashboard(): AdminDashboardService { return $this->adminDashboardService ??= new AdminDashboardService(new AdminDashboardRepository($this->database->connection()), $this->adminCompanies()); }
     public function soSuppliers(): SoSupplierService { return $this->soSupplierService ??= new SoSupplierService(new SoDatabase((string) ($this->settings['project_root'] ?? ''))); }
     public function activeCompanyContext(): ActiveCompanyContext { return $this->activeCompanyContext ??= new ActiveCompanyContext($this->session()); }
+    public function operationalCompanyContext(): OperationalCompanyContextResolver
+    {
+        if ($this->operationalCompanyContext === null) {
+            $connection = $this->database->connection();
+            $this->operationalCompanyContext = new OperationalCompanyContextResolver(
+                new UserRepository($connection),
+                new AdminAccessRepository($connection),
+                $this->activeCompanyContext()
+            );
+        }
+
+        return $this->operationalCompanyContext;
+    }
+
+    public function companyScope(): CompanyScope
+    {
+        return $this->companyScope ??= $this->operationalCompanyContext()->resolve(
+            $this->authorization()->requireLogin()
+        );
+    }
 }

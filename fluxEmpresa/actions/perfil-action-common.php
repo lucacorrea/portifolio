@@ -27,8 +27,12 @@ function profile_action_context(string $permission): array
 
     try {
         $authorization = $application->authorization();
-        $authorization->requireLogin();
+        $currentUser = $authorization->requireLogin();
         $authorization->requirePermission($permission);
+        $companyScope = $application->operationalCompanyContext()->resolve($currentUser);
+        if (!$companyScope->allows($permission)) {
+            throw new AuthorizationException('Acesso negado.');
+        }
     } catch (AuthenticationException $exception) {
         $session->flash('warning', 'Sua sessão expirou. Entre novamente.');
         header('Location: ' . $application->redirect()->loginUrl(), true, 303);

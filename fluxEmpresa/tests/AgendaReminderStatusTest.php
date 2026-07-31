@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require dirname(__DIR__) . '/src/Schedule/Entity/AgendaReminder.php';
+require dirname(__DIR__) . '/src/Company/DTO/CompanyScope.php';
 require dirname(__DIR__) . '/src/Schedule/DTO/AgendaReminderFormData.php';
 require dirname(__DIR__) . '/src/Schedule/Repository/AgendaReminderRepository.php';
 require dirname(__DIR__) . '/src/Schedule/Service/AgendaManagementService.php';
@@ -11,6 +12,7 @@ require dirname(__DIR__) . '/src/Schedule/Service/AgendaDayBoard.php';
 use App\Schedule\Repository\AgendaReminderRepository;
 use App\Schedule\Service\AgendaDayBoard;
 use App\Schedule\Service\AgendaManagementService;
+use App\Company\DTO\CompanyScope;
 
 function agendaReminderAssert(bool $condition, string $message): void
 {
@@ -53,7 +55,7 @@ final class AgendaReminderFakeStatement extends PDOStatement
         if (str_contains($this->query, "SET status = 'cancelado'")) {
             $id = (int) ($params['id'] ?? 0);
             foreach ($this->connection->rows as &$row) {
-                if ((int) $row['id'] !== $id || $row['status'] !== 'ativo') continue;
+                if ((int) $row['id'] !== $id || (int) $row['empresa_id'] !== (int) ($params['empresa_id'] ?? 0) || $row['status'] !== 'ativo') continue;
                 $row['status'] = 'cancelado';
                 $this->affectedRows = 1;
                 break;
@@ -65,7 +67,7 @@ final class AgendaReminderFakeStatement extends PDOStatement
         if (str_contains($this->query, "SET status = 'concluido'")) {
             $id = (int) ($params['id'] ?? 0);
             foreach ($this->connection->rows as &$row) {
-                if ((int) $row['id'] !== $id || $row['status'] !== 'ativo') continue;
+                if ((int) $row['id'] !== $id || (int) $row['empresa_id'] !== (int) ($params['empresa_id'] ?? 0) || $row['status'] !== 'ativo') continue;
                 $row['status'] = 'concluido';
                 $row['concluido_em'] ??= '2026-07-20 10:30:00';
                 $row['concluido_por'] = (int) $params['user_id'];
@@ -76,10 +78,10 @@ final class AgendaReminderFakeStatement extends PDOStatement
             return true;
         }
 
-        if (str_contains($this->query, 'WHERE id = :id LIMIT 1')) {
+        if (str_contains($this->query, 'WHERE id = :id')) {
             $id = (int) ($params['id'] ?? 0);
             foreach ($this->connection->rows as $row) {
-                if ((int) $row['id'] === $id) {
+                if ((int) $row['id'] === $id && (int) $row['empresa_id'] === (int) ($params['empresa_id'] ?? 0)) {
                     $this->result = $row;
                     break;
                 }
@@ -95,6 +97,7 @@ final class AgendaReminderFakeStatement extends PDOStatement
             $this->results = array_values(array_filter(
                 $this->connection->rows,
                 static fn(array $row): bool => in_array($row['status'], $statuses, true)
+                    && (int) $row['empresa_id'] === (int) ($params['empresa_id'] ?? 0)
                     && $row['inicio'] >= $params['start']
                     && $row['inicio'] < $params['end']
             ));
@@ -122,12 +125,13 @@ final class AgendaReminderFakeStatement extends PDOStatement
 }
 
 $rows = [
-    1 => ['id'=>1, 'titulo'=>'Pendente', 'descricao'=>null, 'inicio'=>'2026-07-20 08:00:00', 'fim'=>null, 'status'=>'ativo'],
-    2 => ['id'=>2, 'titulo'=>'Cancelado', 'descricao'=>null, 'inicio'=>'2026-07-20 09:00:00', 'fim'=>null, 'status'=>'cancelado'],
-    3 => ['id'=>3, 'titulo'=>'Feito', 'descricao'=>null, 'inicio'=>'2026-07-20 10:00:00', 'fim'=>null, 'status'=>'concluido', 'concluido_por'=>5],
+    1 => ['id'=>1, 'empresa_id'=>10, 'titulo'=>'Pendente', 'descricao'=>null, 'inicio'=>'2026-07-20 08:00:00', 'fim'=>null, 'status'=>'ativo'],
+    2 => ['id'=>2, 'empresa_id'=>10, 'titulo'=>'Cancelado', 'descricao'=>null, 'inicio'=>'2026-07-20 09:00:00', 'fim'=>null, 'status'=>'cancelado'],
+    3 => ['id'=>3, 'empresa_id'=>10, 'titulo'=>'Feito', 'descricao'=>null, 'inicio'=>'2026-07-20 10:00:00', 'fim'=>null, 'status'=>'concluido', 'concluido_por'=>5],
 ];
 $connection = new AgendaReminderFakePdo($rows);
-$repository = new AgendaReminderRepository($connection);
+$scope = new CompanyScope(10, 'test-uuid', 'Empresa Teste', 9, 'member', [], 1);
+$repository = new AgendaReminderRepository($connection, $scope);
 $service = new AgendaManagementService($repository);
 
 try {

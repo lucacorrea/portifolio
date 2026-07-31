@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Report\Repository;
 
+use App\Company\DTO\CompanyScope;
 use PDO;
 use Throwable;
 
 final class ProductionReportRepository
 {
-    public function __construct(private readonly PDO $connection)
+    public function __construct(
+        private readonly PDO $connection,
+        private readonly CompanyScope $companyScope
+    )
     {
     }
 
@@ -20,10 +24,10 @@ final class ProductionReportRepository
             'SELECT id, competencia, versao, valor_meta, percentual_comissao,
                     criada_por, criada_em
                FROM metas_comissao_mensais
-              WHERE competencia = :competence AND ativa = 1
+              WHERE empresa_id = :empresa_id AND competencia = :competence AND ativa = 1
               LIMIT 1'
         );
-        $statement->execute(['competence' => $competence]);
+        $statement->execute(['empresa_id' => $this->companyScope->id(), 'competence' => $competence]);
         $row = $statement->fetch();
 
         return $row === false ? null : $row;
@@ -40,10 +44,10 @@ final class ProductionReportRepository
             $versionStatement = $this->connection->prepare(
                 'SELECT COALESCE(MAX(versao), 0) AS ultima_versao
                    FROM metas_comissao_mensais
-                  WHERE competencia = :competence
+                  WHERE empresa_id = :empresa_id AND competencia = :competence
                   FOR UPDATE'
             );
-            $versionStatement->execute(['competence' => $competence]);
+            $versionStatement->execute(['empresa_id' => $this->companyScope->id(), 'competence' => $competence]);
             $version = ((int) ($versionStatement->fetchColumn() ?: 0)) + 1;
 
             $this->connection->prepare(
@@ -51,18 +55,20 @@ final class ProductionReportRepository
                     SET ativa = 0,
                         desativada_por = :user_id,
                         desativada_em = CURRENT_TIMESTAMP
-                  WHERE competencia = :competence AND ativa = 1'
+                  WHERE empresa_id = :empresa_id AND competencia = :competence AND ativa = 1'
             )->execute([
+                'empresa_id' => $this->companyScope->id(),
                 'competence' => $competence,
                 'user_id' => $userId,
             ]);
 
             $this->connection->prepare(
                 'INSERT INTO metas_comissao_mensais
-                    (competencia, versao, valor_meta, percentual_comissao, ativa, criada_por)
+                    (empresa_id, competencia, versao, valor_meta, percentual_comissao, ativa, criada_por)
                  VALUES
-                    (:competence, :version, :goal_amount, :commission_percentage, 1, :user_id)'
+                    (:empresa_id, :competence, :version, :goal_amount, :commission_percentage, 1, :user_id)'
             )->execute([
+                'empresa_id' => $this->companyScope->id(),
                 'competence' => $competence,
                 'version' => $version,
                 'goal_amount' => $goalAmount,
@@ -87,13 +93,14 @@ final class ProductionReportRepository
                     COALESCE(SUM(fin.total_executado), 0.00) AS company_total,
                     COALESCE(SUM(fin.subtotal_servicos), 0.00) AS service_total
                FROM ordem_servico_finalizacoes fin
-               JOIN ordens_servico os ON os.id = fin.ordem_servico_id
-              WHERE fin.ativa = 1
+               JOIN ordens_servico os ON os.id = fin.ordem_servico_id AND os.empresa_id = fin.empresa_id
+              WHERE fin.empresa_id = :empresa_id AND fin.ativa = 1
                 AND os.excluida_em IS NULL
                 AND fin.finalizado_em >= :start_at
                 AND fin.finalizado_em < :end_at'
         );
         $statement->execute([
+            'empresa_id' => $this->companyScope->id(),
             'start_at' => $start,
             'end_at' => $endExclusive,
         ]);
@@ -120,22 +127,26 @@ final class ProductionReportRepository
                            COALESCE(SUM(fin.total_executado), 0.00) AS realized,
                            COALESCE(SUM(fin.subtotal_servicos), 0.00) AS service_total
                       FROM ordem_servico_finalizacoes fin
-                      JOIN ordens_servico os ON os.id = fin.ordem_servico_id
+                      JOIN ordens_servico os ON os.id = fin.ordem_servico_id AND os.empresa_id = fin.empresa_id
                       JOIN (
                            SELECT ordem_servico_id, funcionario_id
                              FROM ordem_servico_funcionarios
-                            WHERE ativo = 1
+                            WHERE empresa_id = :empresa_team AND ativo = 1
                             GROUP BY ordem_servico_id, funcionario_id
                       ) equipe ON equipe.ordem_servico_id = os.id
-                     WHERE fin.ativa = 1
+                     WHERE fin.empresa_id = :empresa_finalization AND fin.ativa = 1
                        AND os.excluida_em IS NULL
                        AND fin.finalizado_em >= :start_at
                        AND fin.finalizado_em < :end_at
                      GROUP BY equipe.funcionario_id
                ) producao ON producao.funcionario_id = f.id
+              WHERE f.empresa_id = :empresa_employee
               ORDER BY realized DESC, f.nome ASC, f.id ASC'
         );
         $statement->execute([
+            'empresa_team' => $this->companyScope->id(),
+            'empresa_finalization' => $this->companyScope->id(),
+            'empresa_employee' => $this->companyScope->id(),
             'start_at' => $start,
             'end_at' => $endExclusive,
         ]);
@@ -154,22 +165,24 @@ final class ProductionReportRepository
                     fin.subtotal_servicos AS service_total,
                     fin.total_executado AS executed_total
                FROM ordem_servico_finalizacoes fin
-               JOIN ordens_servico os ON os.id = fin.ordem_servico_id
-               JOIN clientes c ON c.id = os.cliente_id
+               JOIN ordens_servico os ON os.id = fin.ordem_servico_id AND os.empresa_id = fin.empresa_id
+               JOIN clientes c ON c.id = os.cliente_id AND c.empresa_id = os.empresa_id
                JOIN (
                     SELECT ordem_servico_id, funcionario_id, MAX(funcao) AS funcao
                       FROM ordem_servico_funcionarios
-                     WHERE ativo = 1
+                     WHERE empresa_id = :empresa_team AND ativo = 1
                      GROUP BY ordem_servico_id, funcionario_id
                ) osf ON osf.ordem_servico_id = os.id
-               JOIN funcionarios f ON f.id = osf.funcionario_id
-              WHERE fin.ativa = 1
+               JOIN funcionarios f ON f.id = osf.funcionario_id AND f.empresa_id = fin.empresa_id
+              WHERE fin.empresa_id = :empresa_finalization AND fin.ativa = 1
                 AND os.excluida_em IS NULL
                 AND fin.finalizado_em >= :start_at
                 AND fin.finalizado_em < :end_at
               ORDER BY f.nome ASC, fin.finalizado_em DESC, os.id DESC'
         );
         $statement->execute([
+            'empresa_team' => $this->companyScope->id(),
+            'empresa_finalization' => $this->companyScope->id(),
             'start_at' => $start,
             'end_at' => $endExclusive,
         ]);

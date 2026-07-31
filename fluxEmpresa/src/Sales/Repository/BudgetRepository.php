@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Sales\Repository;
 
+use App\Company\DTO\CompanyScope;
 use App\Sales\DTO\BudgetFormData;
 use App\Sales\Entity\Budget;
 use App\Sales\Entity\BudgetItem;
@@ -13,7 +14,10 @@ use Throwable;
 
 final class BudgetRepository
 {
-    public function __construct(private readonly PDO $connection)
+    public function __construct(
+        private readonly PDO $connection,
+        private readonly CompanyScope $companyScope
+    )
     {
     }
 
@@ -36,9 +40,9 @@ final class BudgetRepository
         $this->assertPositiveId($id);
 
         $statement = $this->connection->prepare(
-            'SELECT id FROM orcamentos WHERE id = :id LIMIT 1 FOR UPDATE'
+            'SELECT id FROM orcamentos WHERE id = :id AND empresa_id = :company_id LIMIT 1 FOR UPDATE'
         );
-        $statement->execute(['id' => $id]);
+        $statement->execute(['id' => $id, 'company_id' => $this->companyScope->id()]);
 
         if ($statement->fetch() === false) {
             return null;
@@ -50,19 +54,21 @@ final class BudgetRepository
     /** @return array<int,array<string,mixed>> */
     public function availableApprovedForServiceOrder(): array
     {
-        $statement = $this->connection->query(
+        $statement = $this->connection->prepare(
             "SELECT o.id, o.numero, o.cliente_id, c.nome AS cliente_nome, o.aprovado_em,
                     o.total, COUNT(i.id) AS itens_total,
                     GROUP_CONCAT(CASE WHEN i.tipo = 'servico' THEN i.descricao ELSE NULL END ORDER BY i.ordem SEPARATOR ', ') AS servicos_resumo
                FROM orcamentos o
-               JOIN clientes c ON c.id = o.cliente_id
-               JOIN orcamento_itens i ON i.orcamento_id = o.id
-              WHERE o.status = 'aprovado'
+               JOIN clientes c ON c.id = o.cliente_id AND c.empresa_id = :company_client
+               JOIN orcamento_itens i ON i.orcamento_id = o.id AND i.empresa_id = :company_item
+              WHERE o.empresa_id = :company_budget
+                AND o.status = 'aprovado'
                 AND o.excluido_em IS NULL
                 AND EXISTS (
                     SELECT 1
                       FROM ordens_servico os_liberada
                      WHERE os_liberada.orcamento_id = o.id
+                       AND os_liberada.empresa_id = :company_released_order
                        AND os_liberada.orcamento_liberado = 1
                        AND (os_liberada.status = 'cancelada' OR os_liberada.excluida_em IS NOT NULL)
                 )
@@ -70,6 +76,7 @@ final class BudgetRepository
                     SELECT 1
                      FROM ordens_servico os
                      WHERE os.orcamento_id = o.id
+                       AND os.empresa_id = :company_active_order
                        AND os.excluida_em IS NULL
                        AND os.status <> 'cancelada'
                 )
@@ -77,6 +84,7 @@ final class BudgetRepository
                     SELECT 1
                      FROM ordens_servico os
                      WHERE os.orcamento_id = o.id
+                       AND os.empresa_id = :company_cancelled_order
                        AND os.excluida_em IS NULL
                        AND os.status = 'cancelada'
                        AND os.orcamento_liberado = 0
@@ -84,6 +92,14 @@ final class BudgetRepository
               GROUP BY o.id, o.numero, o.cliente_id, c.nome, o.aprovado_em, o.total
               ORDER BY o.aprovado_em DESC, o.id DESC"
         );
+        $statement->execute([
+            'company_client' => $this->companyScope->id(),
+            'company_item' => $this->companyScope->id(),
+            'company_budget' => $this->companyScope->id(),
+            'company_released_order' => $this->companyScope->id(),
+            'company_active_order' => $this->companyScope->id(),
+            'company_cancelled_order' => $this->companyScope->id(),
+        ]);
 
         return $statement->fetchAll();
     }
@@ -104,6 +120,7 @@ final class BudgetRepository
             "SELECT orcamento_id, id, numero, status
               FROM ordens_servico
               WHERE orcamento_id IN (" . implode(', ', $placeholders) . ")
+                AND empresa_id = :company_id
                 AND excluida_em IS NULL
                 AND (
                     status <> 'cancelada'
@@ -111,6 +128,7 @@ final class BudgetRepository
                 )
               ORDER BY id DESC"
         );
+        $params['company_id'] = $this->companyScope->id();
         $statement->execute($params);
         $map = [];
         foreach ($statement->fetchAll() as $row) {
@@ -127,18 +145,19 @@ final class BudgetRepository
         $statement = $this->connection->prepare(
             'SELECT id, orcamento_id, tipo, referencia_id, descricao, unidade, quantidade,
                     valor_unitario, desconto, subtotal, ordem
-               FROM orcamento_itens
+              FROM orcamento_itens
               WHERE orcamento_id = :id
+                AND empresa_id = :company_id
               ORDER BY ordem ASC, id ASC'
         );
-        $statement->execute(['id' => $budgetId]);
+        $statement->execute(['id' => $budgetId, 'company_id' => $this->companyScope->id()]);
         return array_map(static fn(array $row): BudgetItem => BudgetItem::fromArray($row), $statement->fetchAll());
     }
 
     /** @return array{draft:int,sent:int,waiting:int,approved:int,expired:int,approved_value:string} */
     public function summary(): array
     {
-        $statement = $this->connection->query(
+        $statement = $this->connection->prepare(
             "SELECT
                 SUM(CASE WHEN status = 'rascunho' THEN 1 ELSE 0 END) AS draft,
                 SUM(CASE WHEN status = 'enviado' THEN 1 ELSE 0 END) AS sent,
@@ -147,8 +166,9 @@ final class BudgetRepository
                 SUM(CASE WHEN status IN ('enviado', 'aguardando_aprovacao') AND validade < CURRENT_DATE THEN 1 ELSE 0 END) AS expired,
                 SUM(CASE WHEN status = 'aprovado' THEN total ELSE 0 END) AS approved_value
              FROM orcamentos
-             WHERE excluido_em IS NULL"
+             WHERE empresa_id = :company_id AND excluido_em IS NULL"
         );
+        $statement->execute(['company_id' => $this->companyScope->id()]);
         $row = $statement->fetch() ?: [];
         return [
             'draft' => (int) ($row['draft'] ?? 0),
@@ -168,19 +188,20 @@ final class BudgetRepository
             $totals = $data->totals();
             $statement = $this->connection->prepare(
                 'INSERT INTO orcamentos
-                    (cliente_id, data_emissao, validade, status, observacoes,
+                    (empresa_id, cliente_id, data_emissao, validade, status, observacoes,
                      subtotal_servicos, subtotal_produtos, subtotal_outros, desconto, acrescimo, total)
                  VALUES
-                    (:client_id, :issue_date, :valid_until, :status, :notes,
+                    (:company_id, :client_id, :issue_date, :valid_until, :status, :notes,
                      :services_subtotal, :products_subtotal, :others_subtotal, :discount, :increase, :total)'
             );
+            $statement->bindValue('company_id', $this->companyScope->id(), PDO::PARAM_INT);
             $this->bindForm($statement, $data, $totals);
             $statement->execute();
 
             $id = (int) $this->connection->lastInsertId();
             $this->assertPositiveId($id);
             $number = sprintf('ORC-%06d', $id);
-            $this->connection->prepare('UPDATE orcamentos SET numero = :number WHERE id = :id')->execute(['number' => $number, 'id' => $id]);
+            $this->connection->prepare('UPDATE orcamentos SET numero = :number WHERE id = :id AND empresa_id = :company_id')->execute(['number' => $number, 'id' => $id, 'company_id' => $this->companyScope->id()]);
             $this->insertItems($id, $data);
             $this->connection->commit();
         } catch (Throwable $exception) {
@@ -198,6 +219,9 @@ final class BudgetRepository
         $this->assertPositiveId($id);
         $this->connection->beginTransaction();
         try {
+            if ($this->lockById($id) === null) {
+                throw new InvalidArgumentException('Orçamento não encontrado.');
+            }
             $this->lockProductReferences($data);
             $totals = $data->totals();
             $statement = $this->connection->prepare(
@@ -215,12 +239,14 @@ final class BudgetRepository
                         acrescimo = :increase,
                         total = :total
                   WHERE id = :id
+                    AND empresa_id = :company_id
                     AND excluido_em IS NULL'
             );
             $statement->bindValue('id', $id, PDO::PARAM_INT);
+            $statement->bindValue('company_id', $this->companyScope->id(), PDO::PARAM_INT);
             $this->bindForm($statement, $data, $totals);
             $statement->execute();
-            $this->connection->prepare('DELETE FROM orcamento_itens WHERE orcamento_id = :id')->execute(['id' => $id]);
+            $this->connection->prepare('DELETE FROM orcamento_itens WHERE orcamento_id = :id AND empresa_id = :company_id')->execute(['id' => $id, 'company_id' => $this->companyScope->id()]);
             $this->insertItems($id, $data);
             $this->connection->commit();
         } catch (Throwable $exception) {
@@ -235,9 +261,9 @@ final class BudgetRepository
         $statement = $this->connection->prepare(
             "UPDATE orcamentos
                 SET status = 'aprovado', aprovado_em = COALESCE(aprovado_em, CURRENT_TIMESTAMP), recusado_em = NULL, motivo_recusa = NULL
-              WHERE id = :id AND status <> 'aprovado' AND excluido_em IS NULL"
+              WHERE id = :id AND empresa_id = :company_id AND status <> 'aprovado' AND excluido_em IS NULL"
         );
-        $statement->execute(['id' => $id]);
+        $statement->execute(['id' => $id, 'company_id' => $this->companyScope->id()]);
     }
 
     public function reject(int $id, ?string $reason = null): void
@@ -246,9 +272,9 @@ final class BudgetRepository
         $statement = $this->connection->prepare(
             "UPDATE orcamentos
                 SET status = 'recusado', recusado_em = COALESCE(recusado_em, CURRENT_TIMESTAMP), motivo_recusa = :reason
-              WHERE id = :id AND status <> 'recusado' AND excluido_em IS NULL"
+              WHERE id = :id AND empresa_id = :company_id AND status <> 'recusado' AND excluido_em IS NULL"
         );
-        $statement->execute(['id' => $id, 'reason' => $reason]);
+        $statement->execute(['id' => $id, 'company_id' => $this->companyScope->id(), 'reason' => $reason]);
     }
 
     public function softDelete(int $id, int $userId): void
@@ -261,9 +287,9 @@ final class BudgetRepository
                 $this->connection->beginTransaction();
             }
             $statement = $this->connection->prepare(
-                'SELECT id, status, excluido_em FROM orcamentos WHERE id = :id FOR UPDATE'
+                'SELECT id, status, excluido_em FROM orcamentos WHERE id = :id AND empresa_id = :company_id FOR UPDATE'
             );
-            $statement->execute(['id' => $id]);
+            $statement->execute(['id' => $id, 'company_id' => $this->companyScope->id()]);
             $budget = $statement->fetch();
             if ($budget === false) {
                 throw new InvalidArgumentException('Orçamento não encontrado.');
@@ -281,9 +307,10 @@ final class BudgetRepository
             $linkedOrder = $this->connection->prepare(
                 'SELECT id FROM ordens_servico
                   WHERE orcamento_id = :id AND excluida_em IS NULL
+                    AND empresa_id = :company_order
                   LIMIT 1 FOR UPDATE'
             );
-            $linkedOrder->execute(['id' => $id]);
+            $linkedOrder->execute(['id' => $id, 'company_order' => $this->companyScope->id()]);
             if ($linkedOrder->fetch() !== false) {
                 throw new InvalidArgumentException('Orçamento com OS vinculada não pode ser excluído.');
             }
@@ -291,9 +318,9 @@ final class BudgetRepository
             $update = $this->connection->prepare(
                 'UPDATE orcamentos
                     SET excluido_em = CURRENT_TIMESTAMP, excluido_por = :user_id
-                  WHERE id = :id AND excluido_em IS NULL'
+                  WHERE id = :id AND empresa_id = :company_id AND excluido_em IS NULL'
             );
-            $update->execute(['id' => $id, 'user_id' => $userId]);
+            $update->execute(['id' => $id, 'company_id' => $this->companyScope->id(), 'user_id' => $userId]);
             if ($ownsTransaction) {
                 $this->connection->commit();
             }
@@ -380,7 +407,11 @@ final class BudgetRepository
     /** @param array<int,string> $where @return Budget[] */
     private function selectBudgets(array $where, array $params, string $orderBy, bool $forUpdate = false): array
     {
+        array_unshift($where, 'o.empresa_id = :company_budget');
         array_unshift($where, 'o.excluido_em IS NULL');
+        $params['company_budget'] = $this->companyScope->id();
+        $params['company_client'] = $this->companyScope->id();
+        $params['company_item'] = $this->companyScope->id();
         $sql = 'SELECT o.id, o.numero, o.cliente_id, c.codigo AS cliente_codigo, c.nome AS cliente_nome,
                        c.documento AS cliente_documento,
                        o.data_emissao, o.validade, o.status, o.observacoes, o.motivo_recusa,
@@ -388,8 +419,8 @@ final class BudgetRepository
                        o.desconto, o.acrescimo, o.total, o.aprovado_em, o.recusado_em,
                        o.criado_em, o.atualizado_em, COUNT(i.id) AS itens_total
                   FROM orcamentos o
-                  JOIN clientes c ON c.id = o.cliente_id
-             LEFT JOIN orcamento_itens i ON i.orcamento_id = o.id';
+                  JOIN clientes c ON c.id = o.cliente_id AND c.empresa_id = :company_client
+             LEFT JOIN orcamento_itens i ON i.orcamento_id = o.id AND i.empresa_id = :company_item';
         if ($where !== []) $sql .= ' WHERE ' . implode(' AND ', $where);
         $sql .= ' GROUP BY o.id, o.numero, o.cliente_id, c.codigo, c.nome, c.documento,
                          o.data_emissao, o.validade, o.status,
@@ -422,12 +453,13 @@ final class BudgetRepository
     {
         $statement = $this->connection->prepare(
             'INSERT INTO orcamento_itens
-                (orcamento_id, tipo, referencia_id, descricao, unidade, quantidade, valor_unitario, desconto, subtotal, ordem)
+                (empresa_id, orcamento_id, tipo, referencia_id, descricao, unidade, quantidade, valor_unitario, desconto, subtotal, ordem)
              VALUES
-                (:budget_id, :type, :reference_id, :description, :unit, :quantity, :unit_price, :discount, :subtotal, :order)'
+                (:company_id, :budget_id, :type, :reference_id, :description, :unit, :quantity, :unit_price, :discount, :subtotal, :order)'
         );
         foreach ($data->items() as $item) {
             $statement->execute([
+                'company_id' => $this->companyScope->id(),
                 'budget_id' => $budgetId,
                 'type' => $item->type(),
                 'reference_id' => $item->referenceId(),
@@ -445,9 +477,9 @@ final class BudgetRepository
     private function lockProductReferences(BudgetFormData $data): void
     {
         $client = $this->connection->prepare(
-            'SELECT id FROM clientes WHERE id = :id AND excluido_em IS NULL FOR UPDATE'
+            'SELECT id FROM clientes WHERE id = :id AND empresa_id = :company_id AND excluido_em IS NULL FOR UPDATE'
         );
-        $client->execute(['id' => $data->clientId()]);
+        $client->execute(['id' => $data->clientId(), 'company_id' => $this->companyScope->id()]);
         if ($client->fetch() === false) {
             throw new InvalidArgumentException('Cliente não encontrado.');
         }
@@ -470,8 +502,9 @@ final class BudgetRepository
             }
             $statement = $this->connection->prepare(
                 'SELECT id FROM ' . $table . ' WHERE id IN (' . implode(', ', $placeholders) . ')
-                  AND excluido_em IS NULL ORDER BY id FOR UPDATE'
+                  AND empresa_id = :company_id AND excluido_em IS NULL ORDER BY id FOR UPDATE'
             );
+            $parameters['company_id'] = $this->companyScope->id();
             $statement->execute($parameters);
             if (count($statement->fetchAll()) !== count($ids)) {
                 throw new InvalidArgumentException($label . ' do orçamento não encontrado.');

@@ -6,21 +6,25 @@ namespace App\Catalog\Repository;
 
 use App\Catalog\DTO\ServiceFormData;
 use App\Catalog\Entity\ServiceDefinition;
+use App\Company\DTO\CompanyScope;
 use InvalidArgumentException;
 use PDO;
 use Throwable;
 
 final class ServiceRepository
 {
-    public function __construct(private readonly PDO $connection)
+    public function __construct(
+        private readonly PDO $connection,
+        private readonly CompanyScope $companyScope
+    )
     {
     }
 
     /** @return ServiceDefinition[] */
     public function findAll(array $filters = []): array
     {
-        $where = ['excluido_em IS NULL'];
-        $params = [];
+        $where = ['empresa_id = :empresa_id', 'excluido_em IS NULL'];
+        $params = ['empresa_id' => $this->companyScope->id()];
         $search = trim((string) ($filters['search'] ?? ''));
 
         if ($search !== '') {
@@ -68,10 +72,11 @@ final class ServiceRepository
                     duracao_minutos, valor, descricao, status, criado_em, atualizado_em
                FROM servicos
               WHERE id = :id
+                AND empresa_id = :empresa_id
                 AND excluido_em IS NULL
               LIMIT 1'
         );
-        $statement->execute(['id' => $id]);
+        $statement->execute(['id' => $id, 'empresa_id' => $this->companyScope->id()]);
         $row = $statement->fetch();
 
         return $row === false ? null : ServiceDefinition::fromArray($row);
@@ -84,10 +89,10 @@ final class ServiceRepository
             'SELECT id, codigo, nome, categoria, equipamentos_compativeis,
                     duracao_minutos, valor, descricao, status, criado_em, atualizado_em
                FROM servicos
-              WHERE id = :id AND excluido_em IS NULL
+              WHERE id = :id AND empresa_id = :empresa_id AND excluido_em IS NULL
               LIMIT 1 FOR UPDATE'
         );
-        $statement->execute(['id' => $id]);
+        $statement->execute(['id' => $id, 'empresa_id' => $this->companyScope->id()]);
         $row = $statement->fetch();
         return $row === false ? null : ServiceDefinition::fromArray($row);
     }
@@ -95,13 +100,14 @@ final class ServiceRepository
     /** @return array{total:int,active:int,inactive:int} */
     public function summary(): array
     {
-        $statement = $this->connection->query(
+        $statement = $this->connection->prepare(
             "SELECT COUNT(*) AS total,
                     SUM(CASE WHEN status = 'ativo' THEN 1 ELSE 0 END) AS active,
                     SUM(CASE WHEN status = 'inativo' THEN 1 ELSE 0 END) AS inactive
                FROM servicos
-              WHERE excluido_em IS NULL"
+              WHERE empresa_id = :empresa_id AND excluido_em IS NULL"
         );
+        $statement->execute(['empresa_id' => $this->companyScope->id()]);
         $row = $statement->fetch() ?: [];
 
         return [
@@ -118,10 +124,11 @@ final class ServiceRepository
         try {
             $statement = $this->connection->prepare(
                 'INSERT INTO servicos
-                    (nome, categoria, equipamentos_compativeis, duracao_minutos, valor, descricao, status)
+                    (empresa_id, nome, categoria, equipamentos_compativeis, duracao_minutos, valor, descricao, status)
                  VALUES
-                    (:name, :category, :compatible_equipment, :duration_minutes, :value, :description, :status)'
+                    (:empresa_id, :name, :category, :compatible_equipment, :duration_minutes, :value, :description, :status)'
             );
+            $statement->bindValue('empresa_id', $this->companyScope->id(), PDO::PARAM_INT);
             $this->bindForm($statement, $data);
             $statement->execute();
 
@@ -130,9 +137,9 @@ final class ServiceRepository
             $code = sprintf('SRV-%06d', $id);
 
             $update = $this->connection->prepare(
-                'UPDATE servicos SET codigo = :code WHERE id = :id'
+                'UPDATE servicos SET codigo = :code WHERE id = :id AND empresa_id = :empresa_id'
             );
-            $update->execute(['id' => $id, 'code' => $code]);
+            $update->execute(['id' => $id, 'code' => $code, 'empresa_id' => $this->companyScope->id()]);
             $this->connection->commit();
         } catch (Throwable $exception) {
             if ($this->connection->inTransaction()) {
@@ -164,9 +171,11 @@ final class ServiceRepository
                     descricao = :description,
                     status = :status
               WHERE id = :id
+                AND empresa_id = :empresa_id
                 AND excluido_em IS NULL'
         );
         $statement->bindValue('id', $id);
+        $statement->bindValue('empresa_id', $this->companyScope->id(), PDO::PARAM_INT);
         $this->bindForm($statement, $data);
         $statement->execute();
     }
@@ -178,9 +187,9 @@ final class ServiceRepository
         $statement = $this->connection->prepare(
             "UPDATE servicos
                 SET status = 'inativo', excluido_em = CURRENT_TIMESTAMP, excluido_por = :user_id
-              WHERE id = :id AND excluido_em IS NULL"
+              WHERE id = :id AND empresa_id = :empresa_id AND excluido_em IS NULL"
         );
-        $statement->execute(['id' => $id, 'user_id' => $userId]);
+        $statement->execute(['id' => $id, 'user_id' => $userId, 'empresa_id' => $this->companyScope->id()]);
         if ($statement->rowCount() !== 1) {
             throw new InvalidArgumentException('Serviço não encontrado.');
         }

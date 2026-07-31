@@ -28,19 +28,42 @@ try {
 }
 
 try {
+  $companyScope = $application->operationalCompanyContext()->resolve($currentUser);
+  $operationalCompany = $companyScope;
+  $requireScopedPermission = static function (string $permission) use ($companyScope): void {
+    if (!$companyScope->allows($permission)) {
+      throw new AuthorizationException('Acesso negado.');
+    }
+  };
+
   if (isset($requiredPermission) && is_string($requiredPermission) && $requiredPermission !== '') {
-    $authorization->requirePermission($requiredPermission);
+    $requireScopedPermission($requiredPermission);
   } elseif (isset($requiredAllPermissions) && is_array($requiredAllPermissions) && $requiredAllPermissions !== []) {
     foreach ($requiredAllPermissions as $permission) {
-      $authorization->requirePermission((string) $permission);
+      $requireScopedPermission((string) $permission);
     }
   } elseif (isset($requiredAnyPermission) && is_array($requiredAnyPermission) && $requiredAnyPermission !== []) {
-    $authorization->requireAnyPermission($requiredAnyPermission);
+    $allowed = false;
+    foreach ($requiredAnyPermission as $permission) {
+      if ($companyScope->allows((string) $permission)) {
+        $allowed = true;
+        break;
+      }
+    }
+    if (!$allowed) {
+      throw new AuthorizationException('Acesso negado.');
+    }
   } else {
     error_log('Internal page without required permission declaration: ' . ($_SERVER['SCRIPT_NAME'] ?? 'unknown'));
     throw new AuthorizationException('Acesso negado.');
   }
 } catch (AuthorizationException $exception) {
+  $session->flash('warning', $exception->getMessage());
+  header('Location: ' . $application->redirect()->applicationUrl('acesso-negado.php'), true, 303);
+  exit;
+} catch (Throwable $exception) {
+  error_log('Operational company context failed: ' . get_class($exception));
+  $session->flash('danger', 'Não foi possível validar a empresa ativa. Tente novamente.');
   header('Location: ' . $application->redirect()->applicationUrl('acesso-negado.php'), true, 303);
   exit;
 }

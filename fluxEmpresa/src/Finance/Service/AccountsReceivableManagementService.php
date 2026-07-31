@@ -6,6 +6,7 @@ namespace App\Finance\Service;
 
 require_once __DIR__ . '/AccountsReceivableOrderPayments.php';
 
+use App\Company\DTO\CompanyScope;
 use DateTimeImmutable;
 use InvalidArgumentException;
 use PDO;
@@ -19,26 +20,39 @@ final class AccountsReceivableManagementService
 
     public function __construct(
         private readonly PDO $connection,
-        private readonly CashManagementService $cash
+        private readonly CashManagementService $cash,
+        private readonly CompanyScope $companyScope
     ) {
+        if ($cash->companyId() !== $companyScope->id()) {
+            throw new InvalidArgumentException('Serviços financeiros pertencem a empresas diferentes.');
+        }
+    }
+
+    public function companyId(): int
+    {
+        return $this->companyScope->id();
     }
 
     /** @return array{total:string,overdue:string,today:string,week:string,next15:string,received:string} */
     public function indicators(): array
     {
-        $statement = $this->connection->query(
+        $statement = $this->connection->prepare(
             "SELECT
                 SUM(CASE WHEN status IN ('pendente','parcial','vencida') THEN saldo ELSE 0 END) AS total,
                 SUM(CASE WHEN status IN ('pendente','parcial','vencida') AND vencimento_em < CURRENT_DATE THEN saldo ELSE 0 END) AS overdue,
                 SUM(CASE WHEN status IN ('pendente','parcial','vencida') AND vencimento_em = CURRENT_DATE THEN saldo ELSE 0 END) AS today,
                 SUM(CASE WHEN status IN ('pendente','parcial','vencida') AND vencimento_em BETWEEN CURRENT_DATE AND DATE_ADD(CURRENT_DATE, INTERVAL 7 DAY) THEN saldo ELSE 0 END) AS week,
                 SUM(CASE WHEN status IN ('pendente','parcial','vencida') AND vencimento_em BETWEEN CURRENT_DATE AND DATE_ADD(CURRENT_DATE, INTERVAL 15 DAY) THEN saldo ELSE 0 END) AS next15
-             FROM contas_receber"
+             FROM contas_receber WHERE empresa_id = :empresa_id"
         );
+        $statement->execute(['empresa_id' => $this->companyScope->id()]);
         $row = $statement->fetch() ?: [];
-        $received = $this->connection->query(
-            "SELECT SUM(valor) FROM ordem_servico_pagamentos WHERE status = 'ativo' AND DATE(recebido_em) = CURRENT_DATE"
-        )->fetchColumn();
+        $receivedStatement = $this->connection->prepare(
+            "SELECT SUM(valor) FROM ordem_servico_pagamentos
+              WHERE status = 'ativo' AND DATE(recebido_em) = CURRENT_DATE AND empresa_id = :empresa_id"
+        );
+        $receivedStatement->execute(['empresa_id' => $this->companyScope->id()]);
+        $received = $receivedStatement->fetchColumn();
 
         return [
             'total' => $this->format($row['total'] ?? 0),
@@ -53,8 +67,8 @@ final class AccountsReceivableManagementService
     /** @return array<int,array<string,mixed>> */
     public function listAccounts(array $filters = []): array
     {
-        $where = [];
-        $params = [];
+        $where = ['cr.empresa_id = :empresa_id'];
+        $params = ['empresa_id' => $this->companyScope->id()];
         $bucket = $this->filterValue($filters, 'bucket', ['', 'vencidos', 'hoje', 'semana', '15dias', 'sem_vencimento']);
         if ($bucket === 'vencidos') $where[] = "cr.vencimento_em < CURRENT_DATE AND cr.status IN ('pendente','parcial','vencida')";
         if ($bucket === 'hoje') $where[] = "cr.vencimento_em = CURRENT_DATE";
@@ -77,9 +91,9 @@ final class AccountsReceivableManagementService
         $sql = 'SELECT cr.*, os.numero AS os_numero, c.id AS cliente_id,
                        c.nome AS cliente_nome, c.telefone AS cliente_telefone
                   FROM contas_receber cr
-                  JOIN ordens_servico os ON os.id = cr.ordem_servico_id
-                  JOIN clientes c ON c.id = os.cliente_id';
-        if ($where !== []) $sql .= ' WHERE ' . implode(' AND ', $where);
+                  JOIN ordens_servico os ON os.id = cr.ordem_servico_id AND os.empresa_id = cr.empresa_id
+                  JOIN clientes c ON c.id = os.cliente_id AND c.empresa_id = os.empresa_id';
+        $sql .= ' WHERE ' . implode(' AND ', $where);
         $sql .= " ORDER BY
                     CASE
                         WHEN cr.vencimento_em < CURRENT_DATE AND cr.status IN ('pendente','parcial','vencida') THEN 1
@@ -107,7 +121,7 @@ final class AccountsReceivableManagementService
         if ($ids === []) return [];
 
         $placeholders = [];
-        $params = [];
+        $params = ['empresa_id' => $this->companyScope->id()];
         foreach ($ids as $index => $id) {
             $key = 'order_' . $index;
             $placeholders[] = ':' . $key;
@@ -116,7 +130,8 @@ final class AccountsReceivableManagementService
         $statement = $this->connection->prepare(
             'SELECT id, ordem_servico_id, status, valor_total, valor_recebido, saldo
                FROM contas_receber
-              WHERE ordem_servico_id IN (' . implode(', ', $placeholders) . ')'
+              WHERE ordem_servico_id IN (' . implode(', ', $placeholders) . ')
+                AND empresa_id = :empresa_id'
         );
         $statement->execute($params);
         $balances = [];
@@ -141,6 +156,14 @@ final class AccountsReceivableManagementService
             throw new InvalidArgumentException('Valor recebido maior que o total da OS.');
         }
 
+        $order = $this->connection->prepare(
+            'SELECT id FROM ordens_servico WHERE id = :id AND empresa_id = :empresa_id FOR UPDATE'
+        );
+        $order->execute(['id' => $orderId, 'empresa_id' => $this->companyScope->id()]);
+        if ($order->fetchColumn() === false) {
+            throw new InvalidArgumentException('OS não encontrada para a empresa ativa.');
+        }
+
         $status = $balance <= 0.0 ? 'paga' : ($receivedValue > 0.0 ? 'parcial' : 'pendente');
         if ($balance > 0.0 && $dueDate !== null && $dueDate !== '' && $dueDate < date('Y-m-d')) {
             $status = 'vencida';
@@ -148,9 +171,9 @@ final class AccountsReceivableManagementService
 
         $statement = $this->connection->prepare(
             'INSERT INTO contas_receber
-                (ordem_servico_id, valor_total, valor_recebido, saldo, vencimento_em, proximo_lembrete_em, status, observacao, criado_por)
+                (empresa_id, ordem_servico_id, valor_total, valor_recebido, saldo, vencimento_em, proximo_lembrete_em, status, observacao, criado_por)
              VALUES
-                (:order_id, :total, :received, :balance, :due_date, :reminder_date, :status, :notes, :user_id)
+                (:empresa_id, :order_id, :total, :received, :balance, :due_date, :reminder_date, :status, :notes, :user_id)
              ON DUPLICATE KEY UPDATE
                 valor_total = VALUES(valor_total),
                 valor_recebido = VALUES(valor_recebido),
@@ -161,6 +184,7 @@ final class AccountsReceivableManagementService
                 observacao = VALUES(observacao)'
         );
         $statement->execute([
+            'empresa_id' => $this->companyScope->id(),
             'order_id' => $orderId,
             'total' => number_format($totalValue, 2, '.', ''),
             'received' => number_format($receivedValue, 2, '.', ''),
@@ -282,8 +306,8 @@ final class AccountsReceivableManagementService
 
     private function lockAccount(int $id): array
     {
-        $statement = $this->connection->prepare('SELECT * FROM contas_receber WHERE id = :id FOR UPDATE');
-        $statement->execute(['id' => $id]);
+        $statement = $this->connection->prepare('SELECT * FROM contas_receber WHERE id = :id AND empresa_id = :empresa_id FOR UPDATE');
+        $statement->execute(['id' => $id, 'empresa_id' => $this->companyScope->id()]);
         $row = $statement->fetch();
         if ($row === false) throw new InvalidArgumentException('Conta a receber não encontrada.');
         return $row;
@@ -293,7 +317,7 @@ final class AccountsReceivableManagementService
     private function lockAccountsForBatch(array $ids): array
     {
         $placeholders = [];
-        $params = [];
+        $params = ['empresa_id' => $this->companyScope->id()];
         foreach ($ids as $index => $id) {
             $key = 'id_' . $index;
             $placeholders[] = ':' . $key;
@@ -304,9 +328,10 @@ final class AccountsReceivableManagementService
             'SELECT cr.*, os.status AS os_status, os.excluida_em AS os_excluida_em,
                     c.id AS cliente_id, c.nome AS cliente_nome
                FROM contas_receber cr
-               JOIN ordens_servico os ON os.id = cr.ordem_servico_id
-               JOIN clientes c ON c.id = os.cliente_id
+               JOIN ordens_servico os ON os.id = cr.ordem_servico_id AND os.empresa_id = cr.empresa_id
+               JOIN clientes c ON c.id = os.cliente_id AND c.empresa_id = os.empresa_id
               WHERE cr.id IN (' . implode(', ', $placeholders) . ')
+                AND cr.empresa_id = :empresa_id
               ORDER BY cr.id
               FOR UPDATE'
         );
@@ -340,11 +365,12 @@ final class AccountsReceivableManagementService
         );
         $statement = $this->connection->prepare(
             'INSERT INTO ordem_servico_pagamentos
-                (ordem_servico_id, valor, forma_pagamento, quantidade_parcelas, recebido_em, observacao, status,
+                (empresa_id, ordem_servico_id, valor, forma_pagamento, quantidade_parcelas, recebido_em, observacao, status,
                  registrado_por, caixa_movimentacao_id, payment_token)
-             VALUES (:order_id, :value, :form, :installment_count, NOW(), :notes, "ativo", :user_id, :cash_id, :payment_token)'
+             VALUES (:empresa_id, :order_id, :value, :form, :installment_count, NOW(), :notes, "ativo", :user_id, :cash_id, :payment_token)'
         );
         $statement->execute([
+            'empresa_id' => $this->companyScope->id(),
             'order_id' => $account['ordem_servico_id'],
             'value' => $value,
             'form' => $form,
@@ -361,12 +387,14 @@ final class AccountsReceivableManagementService
         $balance = max(0, $total - $received);
         $status = $balance === 0 ? 'paga' : 'parcial';
         $this->connection->prepare(
-            'UPDATE contas_receber SET valor_recebido = :received, saldo = :balance, status = :status WHERE id = :id'
+            'UPDATE contas_receber SET valor_recebido = :received, saldo = :balance, status = :status
+              WHERE id = :id AND empresa_id = :empresa_id'
         )->execute([
             'id' => $accountId,
             'received' => $this->centsToDecimal($received),
             'balance' => $this->centsToDecimal($balance),
             'status' => $status,
+            'empresa_id' => $this->companyScope->id(),
         ]);
         $this->event($accountId, $status === 'paga' ? 'quitacao' : 'pagamento', 'Pagamento registrado.', $value, $userId);
         return $paymentId;
@@ -374,18 +402,21 @@ final class AccountsReceivableManagementService
 
     private function findIdByOrder(int $orderId): int
     {
-        $statement = $this->connection->prepare('SELECT id FROM contas_receber WHERE ordem_servico_id = :id');
-        $statement->execute(['id' => $orderId]);
+        $statement = $this->connection->prepare('SELECT id FROM contas_receber WHERE ordem_servico_id = :id AND empresa_id = :empresa_id');
+        $statement->execute(['id' => $orderId, 'empresa_id' => $this->companyScope->id()]);
         return (int) $statement->fetchColumn();
     }
 
     private function event(int $accountId, string $type, string $description, ?string $value, int $userId): void
     {
         $statement = $this->connection->prepare(
-            'INSERT INTO contas_receber_eventos (conta_receber_id, tipo, descricao, valor, data_evento, usuario_id)
-             VALUES (:account_id, :type, :description, :value, NOW(), :user_id)'
+            'INSERT INTO contas_receber_eventos (empresa_id, conta_receber_id, tipo, descricao, valor, data_evento, usuario_id)
+             VALUES (:empresa_id, :account_id, :type, :description, :value, NOW(), :user_id)'
         );
-        $statement->execute(['account_id' => $accountId, 'type' => $type, 'description' => $description, 'value' => $value, 'user_id' => $userId]);
+        $statement->execute([
+            'empresa_id' => $this->companyScope->id(), 'account_id' => $accountId,
+            'type' => $type, 'description' => $description, 'value' => $value, 'user_id' => $userId,
+        ]);
     }
 
     private function money(string $value): float

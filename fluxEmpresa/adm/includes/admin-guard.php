@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 use App\Access\Exception\AuthenticationException;
+use App\Access\Exception\AuthorizationException;
 
 if (!isset($application)) {
     $bootstrap = require dirname(__DIR__, 2) . '/bootstrap.php';
@@ -28,16 +29,15 @@ try {
 if (!$currentUser->isPlatformAdministrator()) { header('Location: ' . $application->redirect()->applicationUrl('acesso-negado.php'), true, 303); exit; }
 $activeCompany = $application->activeCompanyContext()->current();
 if ($activeCompany !== null) {
-    $enteredAt = strtotime($activeCompany->enteredAt);
-    $expired = $enteredAt === false || $enteredAt < time() - 14400 || $activeCompany->supportUserId !== $currentUser->id();
-    if ($expired) {
-        try {
-            $application->adminAccesses()->leave($application->activeCompanyContext());
-        } catch (Throwable $exception) {
-            error_log('Could not close expired administrative access: ' . get_class($exception));
-            $application->activeCompanyContext()->clear();
-        }
+    try {
+        $application->operationalCompanyContext()->resolve($currentUser);
+        $activeCompany = $application->activeCompanyContext()->current();
+    } catch (AuthorizationException) {
+        $activeCompany = null;
         $session->flash('info', 'O atendimento administrativo anterior foi encerrado por segurança.');
+    } catch (Throwable $exception) {
+        error_log('Could not validate administrative access: ' . get_class($exception));
+        $activeCompany = null;
     }
 }
 function admin_url(string $path = 'index.php'): string { global $application; return $application->redirect()->applicationUrl('adm/' . ltrim($path, '/')); }

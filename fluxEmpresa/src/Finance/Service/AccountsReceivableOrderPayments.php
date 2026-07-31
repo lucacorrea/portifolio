@@ -101,11 +101,11 @@ trait AccountsReceivableOrderPayments
             'SELECT cr.*, os.numero AS os_numero, os.status AS os_status,
                     os.excluida_em AS os_excluida_em
                FROM contas_receber cr
-               JOIN ordens_servico os ON os.id = cr.ordem_servico_id
-              WHERE cr.ordem_servico_id = :order_id
+               JOIN ordens_servico os ON os.id = cr.ordem_servico_id AND os.empresa_id = cr.empresa_id
+              WHERE cr.ordem_servico_id = :order_id AND cr.empresa_id = :empresa_id
               FOR UPDATE'
         );
-        $statement->execute(['order_id' => $orderId]);
+        $statement->execute(['order_id' => $orderId, 'empresa_id' => $this->companyScope->id()]);
         $row = $statement->fetch();
         if ($row === false) throw new InvalidArgumentException('Conta a receber da OS não encontrada.');
         return $row;
@@ -118,11 +118,11 @@ trait AccountsReceivableOrderPayments
             'SELECT id, ordem_servico_id, valor, forma_pagamento, quantidade_parcelas,
                     observacao, status
                FROM ordem_servico_pagamentos
-              WHERE payment_token = :payment_token
+              WHERE payment_token = :payment_token AND empresa_id = :empresa_id
               LIMIT 1
               FOR UPDATE'
         );
-        $statement->execute(['payment_token' => $paymentToken]);
+        $statement->execute(['payment_token' => $paymentToken, 'empresa_id' => $this->companyScope->id()]);
         $row = $statement->fetch();
         return $row === false ? null : $row;
     }

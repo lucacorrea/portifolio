@@ -14,17 +14,18 @@ trait CashSessionOperations
         return $this->transactional(function () use ($cents, $notes, $userId): int {
             if ($this->currentSession() !== null) throw new InvalidArgumentException('Já existe um Caixa aberto. Feche-o antes de iniciar outro.');
             $statement = $this->connection->prepare(
-                'INSERT INTO caixa_sessoes (codigo, valor_abertura, observacao_abertura, aberto_por)
-                 VALUES (NULL, :opening_value, :notes, :user_id)'
+                'INSERT INTO caixa_sessoes (empresa_id, codigo, valor_abertura, observacao_abertura, aberto_por)
+                 VALUES (:empresa_id, NULL, :opening_value, :notes, :user_id)'
             );
             $statement->execute([
+                'empresa_id' => $this->companyScope->id(),
                 'opening_value' => $this->centsToDecimal($cents),
                 'notes' => $this->optionalText($notes, 255),
                 'user_id' => $userId,
             ]);
             $id = (int) $this->connection->lastInsertId();
-            $this->connection->prepare('UPDATE caixa_sessoes SET codigo = :code WHERE id = :id')->execute([
-                'id' => $id, 'code' => sprintf('CX-%06d', $id),
+            $this->connection->prepare('UPDATE caixa_sessoes SET codigo = :code WHERE id = :id AND empresa_id = :empresa_id')->execute([
+                'id' => $id, 'code' => sprintf('CX-%06d', $id), 'empresa_id' => $this->companyScope->id(),
             ]);
             return $id;
         });
@@ -41,12 +42,13 @@ trait CashSessionOperations
                     SET status = "fechada", saldo_esperado = :expected, saldo_informado = :counted,
                         diferenca = :difference, observacao_fechamento = :notes,
                         fechado_por = :user_id, fechado_em = CURRENT_TIMESTAMP
-                  WHERE id = :id AND status = "aberta"'
+                  WHERE id = :id AND empresa_id = :empresa_id AND status = "aberta"'
             )->execute([
                 'id' => $session['id'], 'expected' => $this->centsToDecimal($expected),
                 'counted' => $this->centsToDecimal($counted),
                 'difference' => $this->centsToDecimal($counted - $expected),
                 'notes' => $this->optionalText($notes, 255), 'user_id' => $userId,
+                'empresa_id' => $this->companyScope->id(),
             ]);
         });
     }
@@ -80,8 +82,8 @@ trait CashSessionOperations
             $sessionId = (int) $current['id'];
             $opening = (int) round((float) $current['valor_abertura'] * 100);
         } else {
-            $statement = $this->connection->prepare('SELECT valor_abertura FROM caixa_sessoes WHERE id = :id');
-            $statement->execute(['id' => $sessionId]);
+            $statement = $this->connection->prepare('SELECT valor_abertura FROM caixa_sessoes WHERE id = :id AND empresa_id = :empresa_id');
+            $statement->execute(['id' => $sessionId, 'empresa_id' => $this->companyScope->id()]);
             $opening = (int) round((float) ($statement->fetchColumn() ?: 0) * 100);
         }
         $statement = $this->connection->prepare(
@@ -90,9 +92,11 @@ trait CashSessionOperations
                     SUM(CASE WHEN tipo = "saida" THEN valor ELSE 0 END) saida,
                     SUM(CASE WHEN tipo = "estorno_entrada" THEN valor ELSE 0 END) estorno_entrada,
                     SUM(CASE WHEN tipo = "estorno_saida" THEN valor ELSE 0 END) estorno_saida
-               FROM caixa_movimentacoes WHERE caixa_sessao_id = :id GROUP BY forma_pagamento'
+               FROM caixa_movimentacoes
+              WHERE caixa_sessao_id = :id AND empresa_id = :empresa_id
+              GROUP BY forma_pagamento'
         );
-        $statement->execute(['id' => $sessionId]);
+        $statement->execute(['id' => $sessionId, 'empresa_id' => $this->companyScope->id()]);
         $totals = ['entrada' => 0, 'saida' => 0, 'estorno_entrada' => 0, 'estorno_saida' => 0];
         $forms = [];
         foreach ($statement->fetchAll() as $row) {
@@ -119,12 +123,15 @@ trait CashSessionOperations
     public function recentSessions(int $limit = 10): array
     {
         $limit = max(1, min(30, $limit));
-        return $this->connection->query(
+        $statement = $this->connection->prepare(
             'SELECT sessao.*, abertura.nome AS aberto_por_nome, fechamento.nome AS fechado_por_nome
                FROM caixa_sessoes sessao JOIN usuarios abertura ON abertura.id = sessao.aberto_por
                LEFT JOIN usuarios fechamento ON fechamento.id = sessao.fechado_por
+              WHERE sessao.empresa_id = :empresa_id
               ORDER BY sessao.id DESC LIMIT ' . $limit
-        )->fetchAll();
+        );
+        $statement->execute(['empresa_id' => $this->companyScope->id()]);
+        return $statement->fetchAll();
     }
 
     private function cashPositionCents(int $sessionId, int $opening): int
@@ -133,9 +140,10 @@ trait CashSessionOperations
             'SELECT COALESCE(SUM(CASE
                     WHEN tipo = "entrada" THEN valor WHEN tipo = "saida" THEN -valor
                     WHEN tipo = "estorno_entrada" THEN -valor WHEN tipo = "estorno_saida" THEN valor ELSE 0 END), 0)
-               FROM caixa_movimentacoes WHERE caixa_sessao_id = :id AND forma_pagamento = "dinheiro"'
+               FROM caixa_movimentacoes
+              WHERE caixa_sessao_id = :id AND empresa_id = :empresa_id AND forma_pagamento = "dinheiro"'
         );
-        $statement->execute(['id' => $sessionId]);
+        $statement->execute(['id' => $sessionId, 'empresa_id' => $this->companyScope->id()]);
         return $opening + (int) round((float) $statement->fetchColumn() * 100);
     }
 }

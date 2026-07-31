@@ -13,7 +13,11 @@ try {
     $application->adminCompanies()->status((int) $id, $status);
     $active = $application->activeCompanyContext()->current();
     if ($active !== null && $active->id === (int) $id && in_array($status, ['inativo', 'bloqueado'], true)) {
-        $application->adminAccesses()->leave($application->activeCompanyContext());
+        $application->adminAccesses()->leaveAuthorized(
+            $application->activeCompanyContext(),
+            $currentUser->id(),
+            $currentUser->sessionBindingHash()
+        );
     }
     $session->flash('success', 'Status atualizado.');
     admin_action_redirect('adm/empresa.php?id=' . $id);

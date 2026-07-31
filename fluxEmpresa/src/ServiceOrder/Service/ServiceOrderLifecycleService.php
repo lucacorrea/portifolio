@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\ServiceOrder\Service;
 
+use App\Company\DTO\CompanyScope;
 use App\Finance\Service\CashManagementService;
 use InvalidArgumentException;
 use PDO;
@@ -13,7 +14,11 @@ final class ServiceOrderLifecycleService
 {
     private const REVERSIBLE_STATUSES = ['agendada', 'em_execucao', 'aguardando_peca'];
 
-    public function __construct(private readonly PDO $connection, private readonly CashManagementService $cash)
+    public function __construct(
+        private readonly PDO $connection,
+        private readonly CompanyScope $companyScope,
+        private readonly CashManagementService $cash
+    )
     {
     }
 
@@ -46,9 +51,10 @@ final class ServiceOrderLifecycleService
                         estornado_por = :user_id,
                         estornado_em = CURRENT_TIMESTAMP,
                         motivo_estorno = :reason
-                  WHERE id = :id AND ativa = 1'
+                  WHERE id = :id AND empresa_id = :company_id AND ativa = 1'
             )->execute([
                 'id' => $finalization['id'],
+                'company_id' => $this->companyScope->id(),
                 'user_id' => $userId,
                 'reason' => $reason,
             ]);
@@ -66,9 +72,10 @@ final class ServiceOrderLifecycleService
                         desconto = COALESCE(:discount, desconto),
                         acrescimo = COALESCE(:increase, acrescimo),
                         total = COALESCE(:total, total)
-                  WHERE id = :id'
+                  WHERE id = :id AND empresa_id = :company_id'
             )->execute([
                 'id' => $orderId,
+                'company_id' => $this->companyScope->id(),
                 'status' => $status,
                 'services' => $finalization['subtotal_servicos_origem'],
                 'products' => $finalization['subtotal_produtos_origem'],
@@ -101,9 +108,10 @@ final class ServiceOrderLifecycleService
                         motivo_exclusao = NULL,
                         orcamento_liberado = CASE WHEN orcamento_id IS NULL THEN orcamento_liberado ELSE 1 END,
                         orcamento_operacional_chave = NULL
-                  WHERE id = :id AND excluida_em IS NULL'
+                  WHERE id = :id AND empresa_id = :company_id AND excluida_em IS NULL'
             )->execute([
                 'id' => $orderId,
+                'company_id' => $this->companyScope->id(),
                 'user_id' => $userId,
             ]);
         });
@@ -117,11 +125,12 @@ final class ServiceOrderLifecycleService
         }
         $statement = $this->connection->prepare(
             'SELECT id, numero, status, excluida_em
-               FROM ordens_servico
+              FROM ordens_servico
               WHERE id = :id
+                AND empresa_id = :company_id
               FOR UPDATE'
         );
-        $statement->execute(['id' => $orderId]);
+        $statement->execute(['id' => $orderId, 'company_id' => $this->companyScope->id()]);
         $order = $statement->fetch();
         if ($order === false) {
             throw new InvalidArgumentException('OS não encontrada.');
@@ -136,12 +145,12 @@ final class ServiceOrderLifecycleService
             'SELECT id, status_origem,
                     subtotal_servicos_origem, subtotal_produtos_origem, subtotal_outros_origem,
                     desconto_origem, acrescimo_origem, total_origem
-               FROM ordem_servico_finalizacoes
-              WHERE ordem_servico_id = :order_id AND ativa = 1
+              FROM ordem_servico_finalizacoes
+              WHERE ordem_servico_id = :order_id AND empresa_id = :company_id AND ativa = 1
               LIMIT 1
               FOR UPDATE'
         );
-        $statement->execute(['order_id' => $orderId]);
+        $statement->execute(['order_id' => $orderId, 'company_id' => $this->companyScope->id()]);
         $row = $statement->fetch();
         return $row === false ? null : $row;
     }
@@ -151,32 +160,38 @@ final class ServiceOrderLifecycleService
     {
         $statement = $this->connection->prepare(
             "SELECT movement.id, movement.produto_id, movement.quantidade
-               FROM estoque_movimentacoes movement
+              FROM estoque_movimentacoes movement
               WHERE movement.ordem_servico_id = :order_id
+                AND movement.empresa_id = :company_movement
                 AND movement.tipo = 'saida_os'
                 AND NOT EXISTS (
                     SELECT 1 FROM estoque_movimentacoes reversal
                      WHERE reversal.estornado_de_id = movement.id
+                       AND reversal.empresa_id = :company_reversal
                 )
               ORDER BY movement.id
               FOR UPDATE"
         );
-        $statement->execute(['order_id' => $order['id']]);
+        $statement->execute([
+            'order_id' => $order['id'],
+            'company_movement' => $this->companyScope->id(),
+            'company_reversal' => $this->companyScope->id(),
+        ]);
         $movements = $statement->fetchAll();
 
-        $lockProduct = $this->connection->prepare('SELECT estoque FROM produtos WHERE id = :id FOR UPDATE');
-        $updateProduct = $this->connection->prepare('UPDATE produtos SET estoque = :stock WHERE id = :id');
+        $lockProduct = $this->connection->prepare('SELECT estoque FROM produtos WHERE id = :id AND empresa_id = :company_id FOR UPDATE');
+        $updateProduct = $this->connection->prepare('UPDATE produtos SET estoque = :stock WHERE id = :id AND empresa_id = :company_id');
         $insertReversal = $this->connection->prepare(
             'INSERT INTO estoque_movimentacoes
-                (produto_id, ordem_servico_id, tipo, quantidade, saldo_anterior, saldo_posterior,
+                (empresa_id, produto_id, ordem_servico_id, tipo, quantidade, saldo_anterior, saldo_posterior,
                  autorizacao_id, estornado_de_id, usuario_id, observacao)
              VALUES
-                (:product_id, :order_id, "estorno", :quantity, :previous, :next,
+                (:company_id, :product_id, :order_id, "estorno", :quantity, :previous, :next,
                  NULL, :source_id, :user_id, :notes)'
         );
 
         foreach ($movements as $movement) {
-            $lockProduct->execute(['id' => $movement['produto_id']]);
+            $lockProduct->execute(['id' => $movement['produto_id'], 'company_id' => $this->companyScope->id()]);
             $current = $lockProduct->fetchColumn();
             if ($current === false) {
                 throw new InvalidArgumentException('Produto de uma baixa da OS não foi encontrado.');
@@ -185,9 +200,11 @@ final class ServiceOrderLifecycleService
             $next = $previous + (float) $movement['quantidade'];
             $updateProduct->execute([
                 'id' => $movement['produto_id'],
+                'company_id' => $this->companyScope->id(),
                 'stock' => number_format($next, 3, '.', ''),
             ]);
             $insertReversal->execute([
+                'company_id' => $this->companyScope->id(),
                 'product_id' => $movement['produto_id'],
                 'order_id' => $order['id'],
                 'quantity' => $movement['quantidade'],
@@ -205,19 +222,19 @@ final class ServiceOrderLifecycleService
     {
         $statement = $this->connection->prepare(
             "SELECT id, caixa_movimentacao_id
-               FROM ordem_servico_pagamentos
-              WHERE ordem_servico_id = :order_id AND status = 'ativo'
+              FROM ordem_servico_pagamentos
+              WHERE ordem_servico_id = :order_id AND empresa_id = :company_id AND status = 'ativo'
               ORDER BY id
               FOR UPDATE"
         );
-        $statement->execute(['order_id' => $order['id']]);
+        $statement->execute(['order_id' => $order['id'], 'company_id' => $this->companyScope->id()]);
         $payments = $statement->fetchAll();
 
         $reversePayment = $this->connection->prepare(
             "UPDATE ordem_servico_pagamentos
                 SET status = 'estornado', estornado_em = CURRENT_TIMESTAMP,
                     estornado_por = :user_id, motivo_estorno = :reason
-              WHERE id = :id AND status = 'ativo'"
+              WHERE id = :id AND empresa_id = :company_id AND status = 'ativo'"
         );
 
         $ids = [];
@@ -231,6 +248,7 @@ final class ServiceOrderLifecycleService
             }
             $reversePayment->execute([
                 'id' => $payment['id'],
+                'company_id' => $this->companyScope->id(),
                 'user_id' => $userId,
                 'reason' => $reason,
             ]);
@@ -249,9 +267,9 @@ final class ServiceOrderLifecycleService
             "UPDATE recibos
                 SET status = 'cancelado', cancelado_por = ?, cancelado_em = CURRENT_TIMESTAMP,
                     motivo_cancelamento = ?
-              WHERE status = 'emitido' AND pagamento_id IN ($placeholders)"
+              WHERE empresa_id = ? AND status = 'emitido' AND pagamento_id IN ($placeholders)"
         );
-        $statement->execute([$userId, $reason, ...$paymentIds]);
+        $statement->execute([$userId, $reason, $this->companyScope->id(), ...$paymentIds]);
     }
 
     /** @return array<string,mixed>|null */
@@ -259,11 +277,12 @@ final class ServiceOrderLifecycleService
     {
         $statement = $this->connection->prepare(
             'SELECT id, valor_total
-               FROM contas_receber
+              FROM contas_receber
               WHERE ordem_servico_id = :order_id
+                AND empresa_id = :company_id
               FOR UPDATE'
         );
-        $statement->execute(['order_id' => $orderId]);
+        $statement->execute(['order_id' => $orderId, 'company_id' => $this->companyScope->id()]);
         $account = $statement->fetch();
         return $account === false ? null : $account;
     }
@@ -276,13 +295,14 @@ final class ServiceOrderLifecycleService
         }
 
         $this->connection->prepare(
-            "UPDATE contas_receber SET status = 'estornada' WHERE id = :id"
-        )->execute(['id' => $account['id']]);
+            "UPDATE contas_receber SET status = 'estornada' WHERE id = :id AND empresa_id = :company_id"
+        )->execute(['id' => $account['id'], 'company_id' => $this->companyScope->id()]);
         $this->connection->prepare(
             'INSERT INTO contas_receber_eventos
-                (conta_receber_id, tipo, descricao, valor, data_evento, usuario_id)
-             VALUES (:account_id, "estorno", :description, :value, CURRENT_TIMESTAMP, :user_id)'
+                (empresa_id, conta_receber_id, tipo, descricao, valor, data_evento, usuario_id)
+             VALUES (:company_id, :account_id, "estorno", :description, :value, CURRENT_TIMESTAMP, :user_id)'
         )->execute([
+            'company_id' => $this->companyScope->id(),
             'account_id' => $account['id'],
             'description' => 'Finalização da OS estornada. Motivo: ' . $reason,
             'value' => $account['valor_total'],
@@ -293,21 +313,36 @@ final class ServiceOrderLifecycleService
     private function hasActiveOperationalLinks(int $orderId): bool
     {
         $queries = [
-            'SELECT id FROM ordem_servico_finalizacoes WHERE ordem_servico_id = :id AND ativa = 1 LIMIT 1 FOR UPDATE',
-            "SELECT id FROM ordem_servico_pagamentos WHERE ordem_servico_id = :id AND status = 'ativo' LIMIT 1 FOR UPDATE",
-            "SELECT id FROM contas_receber WHERE ordem_servico_id = :id AND status NOT IN ('estornada','cancelada') LIMIT 1 FOR UPDATE",
-            "SELECT movement.id FROM estoque_movimentacoes movement
-              WHERE movement.ordem_servico_id = :id AND movement.tipo = 'saida_os'
-                AND NOT EXISTS (SELECT 1 FROM estoque_movimentacoes reversal WHERE reversal.estornado_de_id = movement.id)
-              LIMIT 1 FOR UPDATE",
-            "SELECT receipt.id FROM recibos receipt
-                JOIN ordem_servico_pagamentos payment ON payment.id = receipt.pagamento_id
-              WHERE payment.ordem_servico_id = :id AND receipt.status = 'emitido'
-              LIMIT 1 FOR UPDATE",
+            [
+                'SELECT id FROM ordem_servico_finalizacoes WHERE ordem_servico_id = :id AND empresa_id = :company_id AND ativa = 1 LIMIT 1 FOR UPDATE',
+                ['company_id' => $this->companyScope->id()],
+            ],
+            [
+                "SELECT id FROM ordem_servico_pagamentos WHERE ordem_servico_id = :id AND empresa_id = :company_id AND status = 'ativo' LIMIT 1 FOR UPDATE",
+                ['company_id' => $this->companyScope->id()],
+            ],
+            [
+                "SELECT id FROM contas_receber WHERE ordem_servico_id = :id AND empresa_id = :company_id AND status NOT IN ('estornada','cancelada') LIMIT 1 FOR UPDATE",
+                ['company_id' => $this->companyScope->id()],
+            ],
+            [
+                "SELECT movement.id FROM estoque_movimentacoes movement
+                  WHERE movement.ordem_servico_id = :id AND movement.empresa_id = :company_movement AND movement.tipo = 'saida_os'
+                    AND NOT EXISTS (SELECT 1 FROM estoque_movimentacoes reversal WHERE reversal.estornado_de_id = movement.id AND reversal.empresa_id = :company_reversal)
+                  LIMIT 1 FOR UPDATE",
+                ['company_movement' => $this->companyScope->id(), 'company_reversal' => $this->companyScope->id()],
+            ],
+            [
+                "SELECT receipt.id FROM recibos receipt
+                    JOIN ordem_servico_pagamentos payment ON payment.id = receipt.pagamento_id AND payment.empresa_id = :company_payment
+                  WHERE payment.ordem_servico_id = :id AND receipt.empresa_id = :company_receipt AND receipt.status = 'emitido'
+                  LIMIT 1 FOR UPDATE",
+                ['company_payment' => $this->companyScope->id(), 'company_receipt' => $this->companyScope->id()],
+            ],
         ];
-        foreach ($queries as $sql) {
+        foreach ($queries as [$sql, $params]) {
             $statement = $this->connection->prepare($sql);
-            $statement->execute(['id' => $orderId]);
+            $statement->execute(['id' => $orderId] + $params);
             if ($statement->fetch() !== false) {
                 return true;
             }

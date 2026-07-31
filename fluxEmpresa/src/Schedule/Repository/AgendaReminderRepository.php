@@ -6,13 +6,17 @@ namespace App\Schedule\Repository;
 
 use App\Schedule\DTO\AgendaReminderFormData;
 use App\Schedule\Entity\AgendaReminder;
+use App\Company\DTO\CompanyScope;
 use DateTimeImmutable;
 use InvalidArgumentException;
 use PDO;
 
 final class AgendaReminderRepository
 {
-    public function __construct(private readonly PDO $connection)
+    public function __construct(
+        private readonly PDO $connection,
+        private readonly CompanyScope $companyScope
+    )
     {
     }
 
@@ -29,6 +33,7 @@ final class AgendaReminderRepository
 
         $statusPlaceholders = [];
         $parameters = [
+            'empresa_id' => $this->companyScope->id(),
             'start' => $start->format('Y-m-d H:i:s'),
             'end' => $end->format('Y-m-d H:i:s'),
         ];
@@ -41,7 +46,8 @@ final class AgendaReminderRepository
         $statement = $this->connection->prepare(
             'SELECT id, titulo, descricao, inicio, fim, status
                FROM agenda_lembretes
-              WHERE inicio >= :start AND inicio < :end
+              WHERE empresa_id = :empresa_id
+                AND inicio >= :start AND inicio < :end
                 AND status IN (' . implode(', ', $statusPlaceholders) . ')
               ORDER BY inicio ASC, id ASC'
         );
@@ -52,8 +58,8 @@ final class AgendaReminderRepository
     public function findById(int $id): ?AgendaReminder
     {
         if ($id <= 0) throw new InvalidArgumentException('ID de lembrete inválido.');
-        $statement = $this->connection->prepare('SELECT id, titulo, descricao, inicio, fim, status FROM agenda_lembretes WHERE id = :id LIMIT 1');
-        $statement->execute(['id' => $id]);
+        $statement = $this->connection->prepare('SELECT id, titulo, descricao, inicio, fim, status FROM agenda_lembretes WHERE id = :id AND empresa_id = :empresa_id LIMIT 1');
+        $statement->execute(['id' => $id, 'empresa_id' => $this->companyScope->id()]);
         $row = $statement->fetch();
         return $row === false ? null : AgendaReminder::fromArray($row);
     }
@@ -61,7 +67,7 @@ final class AgendaReminderRepository
     public function create(AgendaReminderFormData $data): void
     {
         $statement = $this->connection->prepare(
-            'INSERT INTO agenda_lembretes (titulo, descricao, inicio, fim) VALUES (:title, :description, :start, :end)'
+            'INSERT INTO agenda_lembretes (empresa_id, titulo, descricao, inicio, fim) VALUES (:empresa_id, :title, :description, :start, :end)'
         );
         $statement->execute($this->params($data));
     }
@@ -74,7 +80,7 @@ final class AgendaReminderRepository
         $statement = $this->connection->prepare(
             "UPDATE agenda_lembretes
                 SET titulo = :title, descricao = :description, inicio = :start, fim = :end
-              WHERE id = :id AND status = 'ativo'"
+              WHERE id = :id AND empresa_id = :empresa_id AND status = 'ativo'"
         );
         $statement->execute($params);
         return $statement->rowCount() === 1;
@@ -83,8 +89,8 @@ final class AgendaReminderRepository
     public function cancel(int $id): bool
     {
         if ($id <= 0) throw new InvalidArgumentException('ID de lembrete inválido.');
-        $statement = $this->connection->prepare("UPDATE agenda_lembretes SET status = 'cancelado' WHERE id = :id AND status = 'ativo'");
-        $statement->execute(['id' => $id]);
+        $statement = $this->connection->prepare("UPDATE agenda_lembretes SET status = 'cancelado' WHERE id = :id AND empresa_id = :empresa_id AND status = 'ativo'");
+        $statement->execute(['id' => $id, 'empresa_id' => $this->companyScope->id()]);
         return $statement->rowCount() === 1;
     }
 
@@ -96,15 +102,16 @@ final class AgendaReminderRepository
         $statement = $this->connection->prepare(
             "UPDATE agenda_lembretes
                 SET status = 'concluido', concluido_em = COALESCE(concluido_em, CURRENT_TIMESTAMP), concluido_por = :user_id
-              WHERE id = :id AND status = 'ativo'"
+              WHERE id = :id AND empresa_id = :empresa_id AND status = 'ativo'"
         );
-        $statement->execute(['id' => $id, 'user_id' => $userId]);
+        $statement->execute(['id' => $id, 'user_id' => $userId, 'empresa_id' => $this->companyScope->id()]);
         return $statement->rowCount() === 1;
     }
 
     private function params(AgendaReminderFormData $data): array
     {
         return [
+            'empresa_id' => $this->companyScope->id(),
             'title' => $data->title(),
             'description' => $data->description(),
             'start' => $data->start()->format('Y-m-d H:i:s'),

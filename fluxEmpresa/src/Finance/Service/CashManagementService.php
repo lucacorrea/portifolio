@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Finance\Service;
 
+use App\Company\DTO\CompanyScope;
 use App\Inventory\Service\InventoryManagementService;
 use DateTimeImmutable;
 use InvalidArgumentException;
@@ -19,9 +20,21 @@ final class CashManagementService
 
     private readonly InventoryManagementService $inventory;
 
-    public function __construct(private readonly PDO $connection, ?InventoryManagementService $inventory = null)
+    public function __construct(
+        private readonly PDO $connection,
+        private readonly CompanyScope $companyScope,
+        ?InventoryManagementService $inventory = null
+    )
     {
-        $this->inventory = $inventory ?? new InventoryManagementService($connection);
+        if ($inventory !== null && $inventory->companyId() !== $companyScope->id()) {
+            throw new InvalidArgumentException('Serviços financeiros pertencem a empresas diferentes.');
+        }
+        $this->inventory = $inventory ?? new InventoryManagementService($connection, $companyScope);
+    }
+
+    public function companyId(): int
+    {
+        return $this->companyScope->id();
     }
 
     /** @return string[] */
@@ -52,14 +65,14 @@ final class CashManagementService
     {
         return $this->transactional(function () use ($sourceId, $originType, $originId, $description, $userId): int {
             $session = $this->requireOpenSession(true);
-            $statement = $this->connection->prepare('SELECT * FROM caixa_movimentacoes WHERE id = :id FOR UPDATE');
-            $statement->execute(['id' => $sourceId]);
+            $statement = $this->connection->prepare('SELECT * FROM caixa_movimentacoes WHERE id = :id AND empresa_id = :empresa_id FOR UPDATE');
+            $statement->execute(['id' => $sourceId, 'empresa_id' => $this->companyScope->id()]);
             $source = $statement->fetch();
             if ($source === false || !in_array((string) $source['tipo'], ['entrada', 'saida'], true)) {
                 throw new InvalidArgumentException('Movimentação original do Caixa não encontrada.');
             }
-            $statement = $this->connection->prepare('SELECT id FROM caixa_movimentacoes WHERE estornado_de_id = :id LIMIT 1');
-            $statement->execute(['id' => $sourceId]);
+            $statement = $this->connection->prepare('SELECT id FROM caixa_movimentacoes WHERE estornado_de_id = :id AND empresa_id = :empresa_id LIMIT 1');
+            $statement->execute(['id' => $sourceId, 'empresa_id' => $this->companyScope->id()]);
             if ($statement->fetchColumn() !== false) throw new InvalidArgumentException('Movimentação do Caixa já estornada.');
 
             $type = $source['tipo'] === 'entrada' ? 'estorno_entrada' : 'estorno_saida';
@@ -83,24 +96,25 @@ final class CashManagementService
             'SELECT movimento.*, usuario.nome AS usuario_nome, sessao.codigo AS sessao_codigo
                FROM caixa_movimentacoes movimento
                JOIN usuarios usuario ON usuario.id = movimento.usuario_id
-               LEFT JOIN caixa_sessoes sessao ON sessao.id = movimento.caixa_sessao_id
-              WHERE DATE(movimento.data_movimento) = :date
+               LEFT JOIN caixa_sessoes sessao ON sessao.id = movimento.caixa_sessao_id AND sessao.empresa_id = movimento.empresa_id
+              WHERE DATE(movimento.data_movimento) = :date AND movimento.empresa_id = :empresa_id
               ORDER BY movimento.data_movimento DESC, movimento.id DESC'
         );
-        $statement->execute(['date' => $date]);
+        $statement->execute(['date' => $date, 'empresa_id' => $this->companyScope->id()]);
         return $statement->fetchAll();
     }
 
     /** @return array<string,mixed>|null */
     public function currentSession(): ?array
     {
-        $statement = $this->connection->query(
+        $statement = $this->connection->prepare(
             'SELECT sessao.*, abertura.nome AS aberto_por_nome, fechamento.nome AS fechado_por_nome
                FROM caixa_sessoes sessao
                JOIN usuarios abertura ON abertura.id = sessao.aberto_por
                LEFT JOIN usuarios fechamento ON fechamento.id = sessao.fechado_por
-              WHERE sessao.status = "aberta" LIMIT 1'
+              WHERE sessao.status = "aberta" AND sessao.empresa_id = :empresa_id LIMIT 1'
         );
+        $statement->execute(['empresa_id' => $this->companyScope->id()]);
         $row = $statement->fetch();
         return $row === false ? null : $row;
     }
@@ -108,8 +122,10 @@ final class CashManagementService
     /** @return array<string,mixed> */
     private function requireOpenSession(bool $lock): array
     {
-        $sql = 'SELECT * FROM caixa_sessoes WHERE status = "aberta" LIMIT 1' . ($lock ? ' FOR UPDATE' : '');
-        $row = $this->connection->query($sql)->fetch();
+        $sql = 'SELECT * FROM caixa_sessoes WHERE status = "aberta" AND empresa_id = :empresa_id LIMIT 1' . ($lock ? ' FOR UPDATE' : '');
+        $statement = $this->connection->prepare($sql);
+        $statement->execute(['empresa_id' => $this->companyScope->id()]);
+        $row = $statement->fetch();
         if ($row === false) throw new InvalidArgumentException('Abra o Caixa antes de registrar esta operação.');
         return $row;
     }
@@ -122,12 +138,13 @@ final class CashManagementService
         $originType = $this->requiredIdentifier($originType);
         $statement = $this->connection->prepare(
             'INSERT INTO caixa_movimentacoes
-                (caixa_sessao_id, tipo, origem_tipo, origem_id, descricao, forma_pagamento, valor,
+                (empresa_id, caixa_sessao_id, tipo, origem_tipo, origem_id, descricao, forma_pagamento, valor,
                  data_movimento, usuario_id, estornado_de_id)
-             VALUES (:session_id, :type, :origin_type, :origin_id, :description, :form, :value,
+             VALUES (:empresa_id, :session_id, :type, :origin_type, :origin_id, :description, :form, :value,
                      :movement_date, :user_id, :reversed_from)'
         );
         $statement->execute([
+            'empresa_id' => $this->companyScope->id(),
             'session_id' => $sessionId, 'type' => $type, 'origin_type' => $originType,
             'origin_id' => $originId, 'description' => $description, 'form' => $form,
             'value' => $this->centsToDecimal($cents),

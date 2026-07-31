@@ -15,6 +15,8 @@ use Throwable;
 
 final class AuthenticationService
 {
+    private const OPERATIONAL_BINDING_KEY = 'operational_session_binding';
+
     private ?AuthenticatedUser $currentUser = null;
     private bool $currentUserResolved = false;
 
@@ -82,6 +84,7 @@ final class AuthenticationService
         $this->users->resetFailedAttempts($user->id());
         $this->users->updateLastAccess($user->id(), $now);
         $this->session->authenticate($user->id());
+        $sessionBindingHash = $this->renewOperationalBinding();
 
         $authenticatedUser = new AuthenticatedUser(
             $user->id(),
@@ -91,7 +94,8 @@ final class AuthenticationService
             $user->name(),
             $user->username(),
             $user->email(),
-            $this->profilePermissions->findPermissionCodesByProfile($user->profileId())
+            $this->profilePermissions->findPermissionCodesByProfile($user->profileId()),
+            $sessionBindingHash
         );
 
         $this->currentUser = $authenticatedUser;
@@ -151,7 +155,8 @@ final class AuthenticationService
                 $user->name(),
                 $user->username(),
                 $user->email(),
-                $this->profilePermissions->findPermissionCodesByProfile($user->profileId())
+                $this->profilePermissions->findPermissionCodesByProfile($user->profileId()),
+                $this->operationalBindingHash()
             );
 
             return $this->currentUser;
@@ -189,5 +194,23 @@ final class AuthenticationService
         $this->currentUser = null;
         $this->session->destroy();
         $this->session->flash('warning', 'Não foi possível manter o acesso ao sistema. Entre em contato com o administrador.');
+    }
+
+    private function renewOperationalBinding(): string
+    {
+        $binding = bin2hex(random_bytes(32));
+        $this->session->set(self::OPERATIONAL_BINDING_KEY, $binding);
+
+        return hash('sha256', $binding);
+    }
+
+    private function operationalBindingHash(): string
+    {
+        $binding = $this->session->get(self::OPERATIONAL_BINDING_KEY);
+        if (!is_string($binding) || !preg_match('/^[a-f0-9]{64}$/D', $binding)) {
+            return $this->renewOperationalBinding();
+        }
+
+        return hash('sha256', $binding);
     }
 }

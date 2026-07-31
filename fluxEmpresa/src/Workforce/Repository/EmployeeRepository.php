@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Workforce\Repository;
 
+use App\Company\DTO\CompanyScope;
 use App\Workforce\DTO\EmployeeFormData;
 use App\Workforce\Entity\Employee;
 use InvalidArgumentException;
@@ -47,7 +48,10 @@ final class EmployeeRepository
         'cnh_numero_registro', 'cnh_categoria', 'cnh_data_vencimento',
     ];
 
-    public function __construct(private readonly PDO $connection)
+    public function __construct(
+        private readonly PDO $connection,
+        private readonly CompanyScope $companyScope
+    )
     {
     }
 
@@ -55,15 +59,15 @@ final class EmployeeRepository
     public function findAll(string $search = ''): array
     {
         $search = trim($search);
-        $sql = 'SELECT ' . implode(', ', self::LIST_COLUMNS) . ' FROM funcionarios';
-        $parameters = [];
+        $sql = 'SELECT ' . implode(', ', self::LIST_COLUMNS) . ' FROM funcionarios WHERE empresa_id = :empresa_id';
+        $parameters = ['empresa_id' => $this->companyScope->id()];
 
         if ($search !== '') {
-            $sql .= ' WHERE codigo LIKE :search_code
+            $sql .= ' AND (codigo LIKE :search_code
                        OR nome LIKE :search_name
-                       OR funcao LIKE :search_function';
+                       OR funcao LIKE :search_function)';
             $like = '%' . $search . '%';
-            $parameters = [
+            $parameters += [
                 'search_code' => $like,
                 'search_name' => $like,
                 'search_function' => $like,
@@ -86,10 +90,10 @@ final class EmployeeRepository
         $statement = $this->connection->prepare(
             'SELECT ' . implode(', ', self::COLUMNS) . '
                FROM funcionarios
-              WHERE id = :id
+              WHERE id = :id AND empresa_id = :empresa_id
               LIMIT 1'
         );
-        $statement->execute(['id' => $id]);
+        $statement->execute(['id' => $id, 'empresa_id' => $this->companyScope->id()]);
         $row = $statement->fetch();
 
         return $row === false ? null : Employee::fromArray($row);
@@ -102,6 +106,7 @@ final class EmployeeRepository
 
         try {
             $this->assertCpfAvailable($values['cpf_numero'] ?? null, null);
+            $values['empresa_id'] = $this->companyScope->id();
             $columns = array_keys($values);
             $placeholders = array_map(static fn(string $column): string => ':' . $column, $columns);
             $statement = $this->connection->prepare(
@@ -114,9 +119,9 @@ final class EmployeeRepository
             $this->assertPositiveId($id);
             $code = sprintf('FUN-%06d', $id);
             $update = $this->connection->prepare(
-                'UPDATE funcionarios SET codigo = :code WHERE id = :id'
+                'UPDATE funcionarios SET codigo = :code WHERE id = :id AND empresa_id = :empresa_id'
             );
-            $update->execute(['id' => $id, 'code' => $code]);
+            $update->execute(['id' => $id, 'code' => $code, 'empresa_id' => $this->companyScope->id()]);
             $this->connection->commit();
         } catch (Throwable $exception) {
             if ($this->connection->inTransaction()) {
@@ -158,9 +163,10 @@ final class EmployeeRepository
                 $assignments[] = $column . ' = :' . $column;
             }
             $values['employee_id'] = $id;
+            $values['empresa_id'] = $this->companyScope->id();
             $statement = $this->connection->prepare(
                 'UPDATE funcionarios SET ' . implode(', ', $assignments) . '
-                  WHERE id = :employee_id'
+                  WHERE id = :employee_id AND empresa_id = :empresa_id'
             );
             $statement->execute($values);
             $this->connection->commit();
@@ -176,9 +182,9 @@ final class EmployeeRepository
     {
         $this->assertPositiveId($id);
         $statement = $this->connection->prepare(
-            'UPDATE funcionarios SET nome = :name WHERE id = :id'
+            'UPDATE funcionarios SET nome = :name WHERE id = :id AND empresa_id = :empresa_id'
         );
-        $statement->execute(['id' => $id, 'name' => $name]);
+        $statement->execute(['id' => $id, 'name' => $name, 'empresa_id' => $this->companyScope->id()]);
     }
 
     public function updateEmployeePhoto(int $id, ?string $photoPath): void
@@ -188,9 +194,9 @@ final class EmployeeRepository
             throw new InvalidArgumentException('Caminho da foto do funcionário é inválido.');
         }
         $statement = $this->connection->prepare(
-            'UPDATE funcionarios SET foto = :photo WHERE id = :id'
+            'UPDATE funcionarios SET foto = :photo WHERE id = :id AND empresa_id = :empresa_id'
         );
-        $statement->execute(['id' => $id, 'photo' => $photoPath]);
+        $statement->execute(['id' => $id, 'photo' => $photoPath, 'empresa_id' => $this->companyScope->id()]);
     }
 
     /**
@@ -224,8 +230,8 @@ final class EmployeeRepository
         if ($cpf === null || $cpf === '') {
             return;
         }
-        $sql = 'SELECT id FROM funcionarios WHERE cpf_numero = :cpf';
-        $parameters = ['cpf' => $cpf];
+        $sql = 'SELECT id FROM funcionarios WHERE empresa_id = :empresa_id AND cpf_numero = :cpf';
+        $parameters = ['empresa_id' => $this->companyScope->id(), 'cpf' => $cpf];
         if ($ignoredId !== null) {
             $sql .= ' AND id <> :ignored_id';
             $parameters['ignored_id'] = $ignoredId;

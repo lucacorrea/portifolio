@@ -88,12 +88,12 @@ $adminContent = static function () use ($company, $supplier, $supplierId, $match
         <?php $companyForm($company, 'actions/empresa-editar.php', 'Salvar alterações', (int) $company['id']); ?>
     </section>
     <section class="admin-panel admin-support-panel">
-        <h2>Atendimento administrativo</h2>
-        <p>Este modo registra o acompanhamento da empresa na área administrativa. Ele não altera o escopo dos dados do painel operacional.</p>
+        <h2>Acessar painel operacional</h2>
+        <p>Abra o painel no contexto desta empresa. O motivo e o período do acesso ficarão registrados no histórico administrativo.</p>
         <form method="post" action="<?= admin_url('actions/empresa-entrar.php') ?>" class="admin-form">
             <?= $csrf->field() ?><input type="hidden" name="id" value="<?= (int) $company['id'] ?>">
-            <label class="admin-form-wide">Motivo ou chamado<textarea name="motivo" minlength="10" maxlength="255" required placeholder="Ex.: Chamado 1234 — conferir integração com o SO"></textarea></label>
-            <div class="admin-form-actions"><button class="btn btn-primary" type="submit" <?= in_array((string) ($company['status'] ?? ''), ['ativo', 'pendente'], true) ? '' : 'disabled' ?>>Iniciar atendimento</button></div>
+            <label class="admin-form-wide">Motivo ou chamado<textarea name="motivo" minlength="10" maxlength="255" required placeholder="Ex.: Chamado 1234 — verificar dados operacionais"></textarea></label>
+            <div class="admin-form-actions"><button class="btn btn-primary" type="submit" <?= (string) ($company['status'] ?? '') === 'ativo' ? '' : 'disabled aria-disabled="true" title="Disponível somente para empresas ativas"' ?>><i class="bi bi-box-arrow-in-right"></i> Entrar no painel operacional</button></div>
         </form>
     </section>
 <?php };

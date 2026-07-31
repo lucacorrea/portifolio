@@ -6,21 +6,25 @@ namespace App\Catalog\Repository;
 
 use App\Catalog\DTO\ProductFormData;
 use App\Catalog\Entity\Product;
+use App\Company\DTO\CompanyScope;
 use InvalidArgumentException;
 use PDO;
 use Throwable;
 
 final class ProductRepository
 {
-    public function __construct(private readonly PDO $connection)
+    public function __construct(
+        private readonly PDO $connection,
+        private readonly CompanyScope $companyScope
+    )
     {
     }
 
     /** @return Product[] */
     public function findAll(array $filters = []): array
     {
-        $where = ['excluido_em IS NULL'];
-        $params = [];
+        $where = ['empresa_id = :empresa_id', 'excluido_em IS NULL'];
+        $params = ['empresa_id' => $this->companyScope->id()];
         $search = trim((string) ($filters['search'] ?? ''));
 
         if ($search !== '') {
@@ -82,10 +86,11 @@ final class ProductRepository
                     localizacao, status, criado_em, atualizado_em
                FROM produtos
               WHERE id = :id
+                AND empresa_id = :empresa_id
                 AND excluido_em IS NULL
               LIMIT 1'
         );
-        $statement->execute(['id' => $id]);
+        $statement->execute(['id' => $id, 'empresa_id' => $this->companyScope->id()]);
         $row = $statement->fetch();
 
         return $row === false ? null : Product::fromArray($row);
@@ -101,11 +106,12 @@ final class ProductRepository
                     localizacao, status, criado_em, atualizado_em
                FROM produtos
               WHERE id = :id
+                AND empresa_id = :empresa_id
                 AND excluido_em IS NULL
               LIMIT 1
               FOR UPDATE'
         );
-        $statement->execute(['id' => $id]);
+        $statement->execute(['id' => $id, 'empresa_id' => $this->companyScope->id()]);
         $row = $statement->fetch();
 
         return $row === false ? null : Product::fromArray($row);
@@ -114,14 +120,16 @@ final class ProductRepository
     /** @return array{total:int,active:int,low_stock:int,out_of_stock:int} */
     public function summary(): array
     {
-        $statement = $this->connection->query(
+        $statement = $this->connection->prepare(
             "SELECT COUNT(*) AS total,
                     SUM(CASE WHEN status = 'ativo' THEN 1 ELSE 0 END) AS active,
                     SUM(CASE WHEN estoque > 0 AND estoque <= estoque_minimo THEN 1 ELSE 0 END) AS low_stock,
                     SUM(CASE WHEN estoque <= 0 THEN 1 ELSE 0 END) AS out_of_stock
                FROM produtos
-              WHERE excluido_em IS NULL"
+              WHERE empresa_id = :empresa_id
+                AND excluido_em IS NULL"
         );
+        $statement->execute(['empresa_id' => $this->companyScope->id()]);
         $row = $statement->fetch() ?: [];
 
         return [
@@ -139,12 +147,13 @@ final class ProductRepository
         try {
             $statement = $this->connection->prepare(
                 'INSERT INTO produtos
-                    (nome, descricao, categoria, fabricante, unidade, ncm, codigo_barras,
+                    (empresa_id, nome, descricao, categoria, fabricante, unidade, ncm, codigo_barras,
                      preco_custo, preco_venda, estoque, estoque_minimo, localizacao, status)
                  VALUES
-                    (:name, :description, :category, :manufacturer, :unit, :ncm, :barcode,
+                    (:empresa_id, :name, :description, :category, :manufacturer, :unit, :ncm, :barcode,
                      :cost_price, :sale_price, :stock, :minimum_stock, :location, :status)'
             );
+            $statement->bindValue('empresa_id', $this->companyScope->id(), PDO::PARAM_INT);
             $this->bindForm($statement, $data);
             $statement->execute();
 
@@ -153,9 +162,9 @@ final class ProductRepository
             $code = sprintf('PRD-%06d', $id);
 
             $update = $this->connection->prepare(
-                'UPDATE produtos SET codigo = :code WHERE id = :id'
+                'UPDATE produtos SET codigo = :code WHERE id = :id AND empresa_id = :empresa_id'
             );
-            $update->execute(['id' => $id, 'code' => $code]);
+            $update->execute(['id' => $id, 'code' => $code, 'empresa_id' => $this->companyScope->id()]);
             $this->connection->commit();
         } catch (Throwable $exception) {
             if ($this->connection->inTransaction()) {
@@ -194,9 +203,11 @@ final class ProductRepository
                     localizacao = :location,
                     status = :status
               WHERE id = :id
+                AND empresa_id = :empresa_id
                 AND excluido_em IS NULL'
         );
         $statement->bindValue('id', $id);
+        $statement->bindValue('empresa_id', $this->companyScope->id(), PDO::PARAM_INT);
         $this->bindForm($statement, $data);
         $statement->execute();
     }
@@ -209,8 +220,8 @@ final class ProductRepository
             return false;
         }
 
-        $sql = 'SELECT COUNT(*) FROM produtos WHERE codigo_barras = :barcode';
-        $params = ['barcode' => $barcode];
+        $sql = 'SELECT COUNT(*) FROM produtos WHERE empresa_id = :empresa_id AND codigo_barras = :barcode';
+        $params = ['empresa_id' => $this->companyScope->id(), 'barcode' => $barcode];
 
         if ($ignoreId !== null) {
             $this->assertPositiveId($ignoreId);
@@ -235,9 +246,10 @@ final class ProductRepository
                 'SELECT id, estoque, excluido_em
                    FROM produtos
                   WHERE id = :id
+                    AND empresa_id = :empresa_id
                   FOR UPDATE'
             );
-            $statement->execute(['id' => $id]);
+            $statement->execute(['id' => $id, 'empresa_id' => $this->companyScope->id()]);
             $product = $statement->fetch();
 
             if ($product === false || $product['excluido_em'] !== null) {
@@ -257,9 +269,10 @@ final class ProductRepository
                         excluido_por = :user_id,
                         motivo_exclusao = NULL
                   WHERE id = :id
+                    AND empresa_id = :empresa_id
                     AND excluido_em IS NULL'
             );
-            $update->execute(['id' => $id, 'user_id' => $userId]);
+            $update->execute(['id' => $id, 'user_id' => $userId, 'empresa_id' => $this->companyScope->id()]);
             if ($update->rowCount() !== 1) {
                 throw new InvalidArgumentException('Produto não encontrado.');
             }
@@ -276,16 +289,16 @@ final class ProductRepository
     private function hasOperationalHistory(int $id): bool
     {
         $checks = [
-            "SELECT 1 FROM ordem_servico_itens WHERE tipo = 'produto' AND referencia_id = :id LIMIT 1",
-            "SELECT 1 FROM orcamento_itens WHERE tipo = 'produto' AND referencia_id = :id LIMIT 1",
-            'SELECT 1 FROM estoque_autorizacoes WHERE produto_id = :id LIMIT 1',
-            'SELECT 1 FROM estoque_movimentacoes WHERE produto_id = :id LIMIT 1',
-            'SELECT 1 FROM venda_avulsa_itens WHERE produto_id = :id LIMIT 1',
+            "SELECT 1 FROM ordem_servico_itens WHERE empresa_id = :empresa_id AND tipo = 'produto' AND referencia_id = :id LIMIT 1",
+            "SELECT 1 FROM orcamento_itens WHERE empresa_id = :empresa_id AND tipo = 'produto' AND referencia_id = :id LIMIT 1",
+            'SELECT 1 FROM estoque_autorizacoes WHERE empresa_id = :empresa_id AND produto_id = :id LIMIT 1',
+            'SELECT 1 FROM estoque_movimentacoes WHERE empresa_id = :empresa_id AND produto_id = :id LIMIT 1',
+            'SELECT 1 FROM venda_avulsa_itens WHERE empresa_id = :empresa_id AND produto_id = :id LIMIT 1',
         ];
 
         foreach ($checks as $sql) {
             $statement = $this->connection->prepare($sql);
-            $statement->execute(['id' => $id]);
+            $statement->execute(['id' => $id, 'empresa_id' => $this->companyScope->id()]);
             if ($statement->fetchColumn() !== false) {
                 return true;
             }

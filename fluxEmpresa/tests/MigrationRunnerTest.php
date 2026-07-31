@@ -29,7 +29,7 @@ migrationAssertSame(true, str_contains($sampleStatements[0], "valor;interno"), '
 
 $migrationPaths = glob(dirname(__DIR__) . '/database/migrations/*.sql') ?: [];
 sort($migrationPaths, SORT_NATURAL | SORT_FLAG_CASE);
-migrationAssertSame(24, count($migrationPaths), 'A sequência atual deve conter 24 migrations.');
+migrationAssertSame(25, count($migrationPaths), 'A sequência atual deve conter 25 migrations.');
 
 $expectedVersion = 1;
 foreach ($migrationPaths as $path) {
@@ -139,6 +139,42 @@ $adminMigration = file_get_contents(dirname(__DIR__) . '/database/migrations/024
 migrationAssertSame(true, is_string($adminMigration), 'A migration da administração deve ser legível.');
 foreach (['empresas', 'empresa_integracoes', 'empresa_acessos_administrativos', 'sessao_chave', 'uk_empresas_documento'] as $required) {
     migrationAssertSame(true, str_contains((string) $adminMigration, $required), 'A migration administrativa deve conter ' . $required . '.');
+}
+
+$tenantMigration = file_get_contents(dirname(__DIR__) . '/database/migrations/025_tenant_operational_scope.sql');
+migrationAssertSame(true, is_string($tenantMigration), 'A migration de escopo operacional deve ser legível.');
+foreach (['usuario_empresas', 'empresa_auditoria_operacional'] as $requiredTable) {
+    migrationAssertSame(true, str_contains((string) $tenantMigration, 'CREATE TABLE IF NOT EXISTS ' . $requiredTable), 'A migration deve criar ' . $requiredTable . '.');
+}
+$tenantTables = [
+    'funcionarios', 'produtos', 'servicos', 'clientes', 'orcamentos', 'orcamento_itens',
+    'ordens_servico', 'ordem_servico_itens', 'agenda_lembretes', 'ordem_servico_funcionarios',
+    'ordem_servico_cancelamentos', 'ordem_servico_finalizacoes', 'ordem_servico_execucao_itens',
+    'estoque_autorizacoes', 'estoque_movimentacoes', 'caixa_movimentacoes', 'ordem_servico_pagamentos',
+    'contas_receber', 'contas_receber_eventos', 'configuracoes_empresa', 'configuracoes_fiscais',
+    'documentos_fiscais', 'recibos', 'boletos', 'vendas_avulsas', 'venda_avulsa_itens',
+    'fornecedores', 'contas_pagar', 'metas_comissao_mensais', 'contas_pagar_parcelas',
+    'contas_pagar_parcela_eventos', 'caixa_sessoes', 'fiscal_certificados', 'fiscal_configuracoes',
+    'fiscal_series', 'fiscal_auditoria',
+];
+foreach ($tenantTables as $table) {
+    $columnDefinition = in_array($table, ['configuracoes_empresa', 'configuracoes_fiscais'], true)
+        ? 'ADD COLUMN IF NOT EXISTS empresa_id INT UNSIGNED NULL'
+        : 'ALTER TABLE ' . $table . ' ADD COLUMN IF NOT EXISTS empresa_id';
+    migrationAssertSame(true, str_contains((string) $tenantMigration, $columnDefinition), 'A migration deve adicionar empresa_id em ' . $table . '.');
+}
+migrationAssertSame(34, substr_count((string) $tenantMigration, 'ADD INDEX IF NOT EXISTS'), 'As tabelas operacionais devem possuir índices simples por empresa.');
+migrationAssertSame(true, str_contains((string) $tenantMigration, 'MODIFY COLUMN id INT UNSIGNED NOT NULL AUTO_INCREMENT'), 'Configuração da empresa deve aceitar uma linha por tenant.');
+migrationAssertSame(true, str_contains((string) $tenantMigration, 'ADD UNIQUE INDEX IF NOT EXISTS uq_configuracoes_empresa_empresa (empresa_id)'), 'Cada empresa deve possuir no máximo uma configuração.');
+foreach (['uk_produtos_empresa_codigo', 'uk_clientes_empresa_documento', 'uk_ordens_servico_empresa_numero', 'uq_caixa_sessao_empresa_aberta', 'uq_fiscal_configuracao_empresa_ativa'] as $tenantUniqueIndex) {
+    migrationAssertSame(true, str_contains((string) $tenantMigration, $tenantUniqueIndex), 'Índice único deve ser isolado por empresa: ' . $tenantUniqueIndex . '.');
+}
+migrationAssertSame(false, preg_match('/UPDATE\s+\w+\s+SET\s+empresa_id/iu', (string) $tenantMigration) === 1, 'A migration não pode escolher automaticamente a empresa dos dados legados.');
+
+$tenantBackfill = file_get_contents(dirname(__DIR__) . '/scripts/backfill-tenant-operational-scope.php');
+migrationAssertSame(true, is_string($tenantBackfill), 'O backfill controlado deve ser legível.');
+foreach (['empresa-id:', 'beginTransaction', 'FOR UPDATE', 'LEFT JOIN', 'empresa_auditoria_operacional', 'usuario_empresas', "NOT IN ('suporte', 'super_admin')"] as $requiredBackfillGuard) {
+    migrationAssertSame(true, str_contains((string) $tenantBackfill, $requiredBackfillGuard), 'O backfill deve conter a proteção ' . $requiredBackfillGuard . '.');
 }
 
 echo "MigrationRunnerTest: OK\n";

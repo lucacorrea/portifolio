@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\ServiceOrder\Service;
 
+use App\Company\DTO\CompanyScope;
 use App\Finance\Service\AccountsReceivableManagementService;
 use App\Inventory\Service\InventoryManagementService;
 use App\ServiceOrder\Repository\ServiceOrderRepository;
@@ -15,6 +16,7 @@ final class ServiceOrderFinalizationService
 {
     public function __construct(
         private readonly PDO $connection,
+        private readonly CompanyScope $companyScope,
         private readonly ServiceOrderRepository $orders,
         private readonly InventoryManagementService $inventory,
         private readonly AccountsReceivableManagementService $accounts
@@ -37,6 +39,7 @@ final class ServiceOrderFinalizationService
 
             $items = $this->executionItems($data);
             if ($items === []) throw new InvalidArgumentException('Informe ao menos um item executado.');
+            $this->lockExecutionReferences($orderId, $items);
 
             $totals = ['servico' => 0.0, 'produto' => 0.0, 'outro' => 0.0];
             foreach ($items as $item) {
@@ -57,18 +60,19 @@ final class ServiceOrderFinalizationService
 
             $this->connection->prepare(
                 'INSERT INTO ordem_servico_finalizacoes
-                    (ordem_servico_id, status_origem,
+                    (empresa_id, ordem_servico_id, status_origem,
                      subtotal_servicos_origem, subtotal_produtos_origem, subtotal_outros_origem,
                      desconto_origem, acrescimo_origem, total_origem,
                      subtotal_servicos, subtotal_produtos, subtotal_outros,
                      desconto, acrescimo, total_executado, observacao, finalizado_por)
                  VALUES
-                    (:order_id, :source_status,
+                    (:company_id, :order_id, :source_status,
                      :source_services, :source_products, :source_others,
                      :source_discount, :source_increase, :source_total,
                      :services, :products, :others, :discount, :increase,
                      :total, :notes, :user_id)'
             )->execute([
+                'company_id' => $this->companyScope->id(),
                 'order_id' => $orderId,
                 'source_status' => $order->status(),
                 'source_services' => $order->servicesSubtotal(),
@@ -90,15 +94,16 @@ final class ServiceOrderFinalizationService
 
             $insertItem = $this->connection->prepare(
                 'INSERT INTO ordem_servico_execucao_itens
-                    (ordem_servico_id, finalizacao_id, ordem_servico_item_id, tipo, referencia_id,
+                    (empresa_id, ordem_servico_id, finalizacao_id, ordem_servico_item_id, tipo, referencia_id,
                      descricao, unidade, quantidade, valor_unitario, desconto, subtotal, adicional, ordem)
                  VALUES
-                    (:order_id, :finalization_id, :source_item_id, :type, :reference_id,
+                    (:company_id, :order_id, :finalization_id, :source_item_id, :type, :reference_id,
                      :description, :unit, :quantity, :unit_price, :discount, :subtotal, :additional, :sort_order)'
             );
             foreach ($items as $index => $item) {
                 $subtotal = max(0.0, $item['quantity'] * $item['unit_price'] - $item['discount']);
                 $insertItem->execute([
+                    'company_id' => $this->companyScope->id(),
                     'order_id' => $orderId,
                     'finalization_id' => $finalizationId,
                     'source_item_id' => $item['source_item_id'],
@@ -127,9 +132,10 @@ final class ServiceOrderFinalizationService
                         desconto = :discount,
                         acrescimo = :increase,
                         total = :total
-                  WHERE id = :id'
+                  WHERE id = :id AND empresa_id = :company_id'
             )->execute([
                 'id' => $orderId,
+                'company_id' => $this->companyScope->id(),
                 'services' => number_format($totals['servico'], 2, '.', ''),
                 'products' => number_format($totals['produto'], 2, '.', ''),
                 'others' => number_format($totals['outro'], 2, '.', ''),
@@ -163,8 +169,8 @@ final class ServiceOrderFinalizationService
 
     private function hasActiveFinalization(int $orderId): bool
     {
-        $statement = $this->connection->prepare('SELECT id FROM ordem_servico_finalizacoes WHERE ordem_servico_id = :id AND ativa = 1 LIMIT 1 FOR UPDATE');
-        $statement->execute(['id' => $orderId]);
+        $statement = $this->connection->prepare('SELECT id FROM ordem_servico_finalizacoes WHERE ordem_servico_id = :id AND empresa_id = :company_id AND ativa = 1 LIMIT 1 FOR UPDATE');
+        $statement->execute(['id' => $orderId, 'company_id' => $this->companyScope->id()]);
         return $statement->fetch() !== false;
     }
 
@@ -191,6 +197,46 @@ final class ServiceOrderFinalizationService
             ];
         }
         return $items;
+    }
+
+    /** @param array<int,array<string,mixed>> $items */
+    private function lockExecutionReferences(int $orderId, array $items): void
+    {
+        $sourceItem = $this->connection->prepare(
+            'SELECT id FROM ordem_servico_itens
+              WHERE id = :item_id AND ordem_servico_id = :order_id AND empresa_id = :company_id
+              FOR UPDATE'
+        );
+        $references = [
+            'produto' => $this->connection->prepare(
+                'SELECT id FROM produtos WHERE id = :reference_id AND empresa_id = :company_id AND excluido_em IS NULL FOR UPDATE'
+            ),
+            'servico' => $this->connection->prepare(
+                'SELECT id FROM servicos WHERE id = :reference_id AND empresa_id = :company_id AND excluido_em IS NULL FOR UPDATE'
+            ),
+        ];
+
+        foreach ($items as $item) {
+            if ($item['source_item_id'] !== null) {
+                $sourceItem->execute([
+                    'item_id' => $item['source_item_id'],
+                    'order_id' => $orderId,
+                    'company_id' => $this->companyScope->id(),
+                ]);
+                if ($sourceItem->fetch() === false) {
+                    throw new InvalidArgumentException('Item original da OS não encontrado.');
+                }
+            }
+            if ($item['reference_id'] !== null && isset($references[$item['type']])) {
+                $references[$item['type']]->execute([
+                    'reference_id' => $item['reference_id'],
+                    'company_id' => $this->companyScope->id(),
+                ]);
+                if ($references[$item['type']]->fetch() === false) {
+                    throw new InvalidArgumentException('Referência executada não encontrada.');
+                }
+            }
+        }
     }
 
     private function optionalInt(mixed $value): ?int

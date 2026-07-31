@@ -105,6 +105,11 @@ final class User
         return $this->status;
     }
 
+    public function isActive(): bool
+    {
+        return $this->status === 'ativo';
+    }
+
     public function mustChangePassword(): bool
     {
         return $this->mustChangePassword;
