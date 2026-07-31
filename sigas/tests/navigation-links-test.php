@@ -30,12 +30,13 @@ function navigation_assert(bool $condition, string $message): void
 navigation_assert(count($registry) === 6, 'o portal deve possuir seis ambientes');
 
 foreach ($registry as $environmentKey => $environment) {
-    foreach (['key', 'name', 'kind', 'icon', 'theme', 'home_page', 'home', 'pages', 'assets'] as $field) {
+    foreach (['key', 'name', 'kind', 'icon', 'theme', 'home_page', 'home', 'pages', 'menu', 'assets'] as $field) {
         navigation_assert(isset($environment[$field]) && $environment[$field] !== '', "{$environmentKey}: campo {$field} ausente");
     }
 
     navigation_assert(($environment['key'] ?? null) === $environmentKey, "{$environmentKey}: chave interna divergente");
     navigation_assert(isset($environment['pages'][$environment['home_page']]), "{$environmentKey}: página inicial não registrada");
+    navigation_assert(is_file($root . '/' . $environment['menu']), "{$environmentKey}: arquivo próprio de menu ausente");
     navigation_assert(count(array_filter($environment['pages'], static fn (array $page): bool => $page['mobile'] ?? false)) <= 4, "{$environmentKey}: mais de quatro itens prioritários no mobile");
 
     foreach (['css', 'js'] as $assetType) {

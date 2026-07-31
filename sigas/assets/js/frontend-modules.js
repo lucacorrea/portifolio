@@ -1,7 +1,7 @@
 'use strict';
 
 (() => {
-    const shell = document.querySelector('[data-frontend-shell]');
+    const shell = document.querySelector('[data-module-shell]');
     const toastContainer = document.querySelector('#frontendToastContainer');
     const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
 
@@ -21,12 +21,13 @@
         if (!shell) return;
         shell.classList.toggle('module-menu-open', open);
         document.body.classList.toggle('module-menu-is-open', open);
-        document.querySelectorAll('[data-frontend-menu-toggle]').forEach(button => button.setAttribute('aria-expanded', String(open)));
+        document.querySelectorAll('[data-module-menu-toggle]').forEach(button => button.setAttribute('aria-expanded', String(open)));
     };
 
     document.addEventListener('click', event => {
-        if (event.target.closest('[data-frontend-menu-toggle]')) setMenu(true);
-        if (event.target.closest('[data-frontend-menu-close]')) setMenu(false);
+        if (event.target.closest('[data-module-menu-toggle]')) setMenu(true);
+        if (event.target.closest('[data-module-menu-close]')) setMenu(false);
+        if (shell?.classList.contains('module-menu-open') && event.target === shell) setMenu(false);
 
         const action = event.target.closest('[data-demo-action]');
         if (action) {
@@ -43,6 +44,10 @@
             if (content) content.innerHTML = Object.entries(record).map(([key, value]) => `<div><dt>${escapeHTML(key.replaceAll('_', ' '))}</dt><dd>${escapeHTML(value)}</dd></div>`).join('');
             bootstrap.Modal.getOrCreateInstance('#frontendDetailModal').show();
         }
+    });
+
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && shell?.classList.contains('module-menu-open')) setMenu(false);
     });
 
     document.querySelectorAll('[data-frontend-filter]').forEach(form => {

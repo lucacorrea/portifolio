@@ -7,6 +7,7 @@ use App\Core\PageContext;
 require_once __DIR__ . '/bootstrap.php';
 
 $frontendContext = PageContext::requireAuthenticatedFrontendContext();
+$pageKey = 'solicitacoes';
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -24,10 +25,10 @@ $frontendContext = PageContext::requireAuthenticatedFrontendContext();
     <link href="assets/css/module-navigation.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/module-navigation.css') ?>" rel="stylesheet">
 </head>
 <body data-page="solicitacoes" data-module="protecao-social-basica">
-    <div class="app-shell">
-        <aside class="app-sidebar" id="appSidebar" aria-label="Menu principal"></aside>
-        <div class="app-main">
-            <header class="app-topbar" id="appTopbar"></header>
+    <div class="app-shell module-shell module-shell--basic" data-module-shell data-menu-environment="protecao-social-basica">
+        <?php $menuSurface = 'sidebar'; $menuPageKey = $pageKey; require __DIR__ . '/frontend/modules/protecao-social-basica/menu.php'; ?>
+        <div class="app-main module-main">
+            <?php require __DIR__ . '/frontend/layouts/module-topbar.php'; ?>
             <main class="app-content">
                 <header class="page-header"><div><div class="eyebrow"><i class="bi bi-inboxes"></i>Gestão Social</div><h1>Solicitações</h1><p>Triagem, análise técnica, prazos e decisões sobre demandas e benefícios sociais.</p></div><div class="page-actions"><button class="btn btn-light" type="button" data-demo-action="exportar dados"><i class="bi bi-download"></i><span class="optional">Exportar</span></button><button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#newServiceModal"><i class="bi bi-plus-lg"></i>Nova solicitação</button></div></header>
                 <section data-tabs-group aria-label="Áreas de Solicitações">
@@ -55,7 +56,7 @@ $frontendContext = PageContext::requireAuthenticatedFrontendContext();
             </main>
             <footer class="app-footer"><span>Dados demonstrativos utilizados apenas para prototipação.</span><span>SIGAS Coari — SEMAS Coari/AM</span></footer>
         </div>
-        <div id="bottomNavigation"></div>
+        <?php $menuSurface = 'mobile'; require __DIR__ . '/frontend/modules/protecao-social-basica/menu.php'; ?>
     </div>
 
     <button class="btn btn-primary floating-action" type="button" data-bs-toggle="modal" data-bs-target="#newServiceModal" aria-label="Nova solicitação"><i class="bi bi-plus-lg"></i></button>

@@ -208,6 +208,7 @@ final class ModuleRegistry
             'home_page' => $first,
             'home' => $pages[$first]['href'],
             'pages' => $pages,
+            'menu' => 'frontend/modules/' . $key . '/menu.php',
             // Compatibilidade temporária com os consumidores existentes.
             'items' => array_values($pages),
             'assets' => [

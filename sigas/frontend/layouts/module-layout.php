@@ -5,7 +5,7 @@ $pageDefinition = sigas_frontend_page($pageDefinition);
 require __DIR__ . '/head.php';
 ?>
 <body class="frontend-module-page" data-module="<?= sigas_frontend_escape($environmentKey) ?>" data-page="<?= sigas_frontend_escape($pageKey) ?>">
-    <div class="module-shell module-shell--<?= sigas_frontend_escape($environment['theme']) ?>" data-frontend-shell>
+    <div class="module-shell module-shell--<?= sigas_frontend_escape($environment['theme']) ?>" data-module-shell data-menu-environment="<?= sigas_frontend_escape($environmentKey) ?>">
         <?php require __DIR__ . '/module-sidebar.php'; ?>
         <div class="module-main">
             <?php require __DIR__ . '/module-topbar.php'; ?>

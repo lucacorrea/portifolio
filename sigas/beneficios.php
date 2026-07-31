@@ -7,6 +7,7 @@ use App\Core\PageContext;
 require_once __DIR__ . '/bootstrap.php';
 
 $frontendContext = PageContext::requireAuthenticatedFrontendContext();
+$pageKey = 'beneficios-eventuais';
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -24,10 +25,10 @@ $frontendContext = PageContext::requireAuthenticatedFrontendContext();
     <link href="assets/css/module-navigation.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/module-navigation.css') ?>" rel="stylesheet">
 </head>
 <body data-page="beneficios-eventuais" data-module="protecao-social-basica">
-    <div class="app-shell">
-        <aside class="app-sidebar" id="appSidebar" aria-label="Menu principal"></aside>
-        <div class="app-main">
-            <header class="app-topbar" id="appTopbar"></header>
+    <div class="app-shell module-shell module-shell--basic" data-module-shell data-menu-environment="protecao-social-basica">
+        <?php $menuSurface = 'sidebar'; $menuPageKey = $pageKey; require __DIR__ . '/frontend/modules/protecao-social-basica/menu.php'; ?>
+        <div class="app-main module-main">
+            <?php require __DIR__ . '/frontend/layouts/module-topbar.php'; ?>
             <main class="app-content">
                 <section class="module-hero" aria-labelledby="moduleTitle">
                     <div class="module-hero-content"><div><div class="eyebrow text-warning mb-1"><i class="bi bi-gift"></i>Benefícios</div><h1 id="moduleTitle">Programas e Benefícios</h1><p>Visão consolidada dos programas prioritários e dos benefícios eventuais, sem duplicar opções no menu principal.</p></div>
@@ -67,7 +68,7 @@ $frontendContext = PageContext::requireAuthenticatedFrontendContext();
             </main>
             <footer class="app-footer"><span>Dados demonstrativos utilizados apenas para prototipação.</span><span>SIGAS Coari — SEMAS Coari/AM</span></footer>
         </div>
-        <div id="bottomNavigation"></div>
+        <?php $menuSurface = 'mobile'; require __DIR__ . '/frontend/modules/protecao-social-basica/menu.php'; ?>
     </div>
 
     <button class="btn btn-primary floating-action" type="button" data-bs-toggle="modal" data-bs-target="#newServiceModal" aria-label="Nova concessão"><i class="bi bi-plus-lg"></i></button>

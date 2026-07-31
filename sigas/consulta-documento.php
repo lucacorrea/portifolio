@@ -113,6 +113,7 @@ $frontendContext = [
         ],
     ],
 ];
+$pageKey = ($_GET['acao'] ?? '') === 'entrega' ? 'registrar-entrega' : 'consulta-cpf';
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -131,11 +132,11 @@ $frontendContext = [
     <link href="assets/css/consulta-documento-ocr.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/consulta-documento-ocr.css')) ?>" rel="stylesheet">
     <link href="assets/css/consulta-result-modal.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/consulta-result-modal.css')) ?>" rel="stylesheet">
 </head>
-<body data-page="consulta" data-module="comida-mesa" data-module-page="<?= ($_GET['acao'] ?? '') === 'entrega' ? 'registrar-entrega' : 'consulta-cpf' ?>">
-    <div class="app-shell">
-        <aside class="app-sidebar" id="appSidebar" aria-label="Menu principal"></aside>
-        <div class="app-main">
-            <header class="app-topbar" id="appTopbar"></header>
+<body data-page="consulta" data-module="comida-mesa" data-module-page="<?= e($pageKey) ?>">
+    <div class="app-shell module-shell module-shell--food" data-module-shell data-menu-environment="comida-mesa">
+        <?php $menuSurface = 'sidebar'; $menuPageKey = $pageKey; require __DIR__ . '/frontend/modules/comida-mesa/menu.php'; ?>
+        <div class="app-main module-main">
+            <?php require __DIR__ . '/frontend/layouts/module-topbar.php'; ?>
             <main class="app-content document-scan-page" data-consulta-documento>
                 <header class="page-header scan-page-header">
                     <div>
@@ -222,7 +223,7 @@ $frontendContext = [
             </main>
             <footer class="app-footer"><span>Consulta real no banco do SIGAS.</span><span>SIGAS Coari - SEMAS Coari/AM</span></footer>
         </div>
-        <div id="bottomNavigation"></div>
+        <?php $menuSurface = 'mobile'; require __DIR__ . '/frontend/modules/comida-mesa/menu.php'; ?>
     </div>
 
     <div class="modal fade consulta-result-modal" id="consultaResultModal" tabindex="-1" aria-labelledby="consultaResultModalTitle" aria-hidden="true">

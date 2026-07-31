@@ -255,6 +255,7 @@ $frontendContext = [
         ],
     ],
 ];
+$pageKey = $action === 'new' ? 'nova-inscricao' : 'beneficiarios';
 $stats = [
     ['Famílias cadastradas', $statistics['familias_cadastradas']],
     ['Beneficiárias ativas', $statistics['beneficiarias_ativas']],
@@ -367,11 +368,11 @@ function render_registration_form_fields(array $poles, array $programStatuses, s
     <link href="assets/css/module-navigation.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/module-navigation.css')) ?>" rel="stylesheet">
     <link href="assets/css/anexo-detail-modal.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/anexo-detail-modal.css')) ?>" rel="stylesheet">
 </head>
-<body data-page="modulo" data-module="comida-mesa" data-module-page="beneficiarios">
-    <div class="app-shell">
-        <aside class="app-sidebar" id="appSidebar" aria-label="Menu principal"></aside>
-        <div class="app-main">
-            <header class="app-topbar" id="appTopbar"></header>
+<body data-page="modulo" data-module="comida-mesa" data-module-page="<?= e($pageKey) ?>">
+    <div class="app-shell module-shell module-shell--food" data-module-shell data-menu-environment="comida-mesa">
+        <?php $menuSurface = 'sidebar'; $menuPageKey = $pageKey; require __DIR__ . '/frontend/modules/comida-mesa/menu.php'; ?>
+        <div class="app-main module-main">
+            <?php require __DIR__ . '/frontend/layouts/module-topbar.php'; ?>
             <main class="app-content">
                 <section class="module-hero" aria-labelledby="moduleTitle">
                     <div class="module-hero-content">
@@ -560,7 +561,7 @@ function render_registration_form_fields(array $poles, array $programStatuses, s
             </main>
             <footer class="app-footer"><span>Dados carregados do banco do SIGAS.</span><span>SIGAS Coari - SEMAS Coari/AM</span></footer>
         </div>
-        <div id="bottomNavigation"></div>
+        <?php $menuSurface = 'mobile'; require __DIR__ . '/frontend/modules/comida-mesa/menu.php'; ?>
     </div>
 
     <?php if (!$isNewRegistrationPage): ?>

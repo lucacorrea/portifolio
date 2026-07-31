@@ -7,6 +7,7 @@ use App\Core\PageContext;
 require_once __DIR__ . '/bootstrap.php';
 
 $frontendContext = PageContext::requireAuthenticatedFrontendContext();
+$pageKey = 'relatorios';
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -24,10 +25,10 @@ $frontendContext = PageContext::requireAuthenticatedFrontendContext();
     <link href="assets/css/module-navigation.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/module-navigation.css') ?>" rel="stylesheet">
 </head>
 <body data-page="relatorios" data-module="protecao-social-basica">
-    <div class="app-shell">
-        <aside class="app-sidebar" id="appSidebar" aria-label="Menu principal"></aside>
-        <div class="app-main">
-            <header class="app-topbar" id="appTopbar"></header>
+    <div class="app-shell module-shell module-shell--basic" data-module-shell data-menu-environment="protecao-social-basica">
+        <?php $menuSurface = 'sidebar'; $menuPageKey = $pageKey; require __DIR__ . '/frontend/modules/protecao-social-basica/menu.php'; ?>
+        <div class="app-main module-main">
+            <?php require __DIR__ . '/frontend/layouts/module-topbar.php'; ?>
             <main class="app-content">
                 <header class="page-header"><div><div class="eyebrow"><i class="bi bi-bar-chart"></i>Administração</div><h1>Relatórios</h1><p>Central de indicadores, extrações operacionais e relatórios gerenciais da assistência social.</p></div><div class="page-actions"><button class="btn btn-light" type="button" data-demo-action="agendar relatório"><i class="bi bi-calendar2-plus"></i>Agendar</button><button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#reportModal"><i class="bi bi-file-earmark-plus"></i>Novo relatório</button></div></header>
                 <section class="report-card-grid" aria-label="Modelos de relatório"><button class="report-option" type="button" data-demo-action="gerar relatório de atendimentos"><span class="report-icon"><i class="bi bi-clipboard2-data"></i></span><strong>Atendimentos</strong><span>Produção por período, unidade e profissional.</span><b>Gerar agora <i class="bi bi-arrow-right"></i></b></button><button class="report-option" type="button" data-demo-action="gerar relatório de famílias"><span class="report-icon"><i class="bi bi-house-heart"></i></span><strong>Famílias e territórios</strong><span>Perfil familiar, vulnerabilidades e cobertura.</span><b>Gerar agora <i class="bi bi-arrow-right"></i></b></button><button class="report-option" type="button" data-demo-action="gerar relatório de benefícios"><span class="report-icon"><i class="bi bi-gift"></i></span><strong>Benefícios</strong><span>Solicitações, concessões e valores demonstrativos.</span><b>Gerar agora <i class="bi bi-arrow-right"></i></b></button><button class="report-option" type="button" data-demo-action="gerar relatório de programas"><span class="report-icon"><i class="bi bi-grid-1x2"></i></span><strong>Programas prioritários</strong><span>Metas, cobertura, entregas e acompanhamento.</span><b>Gerar agora <i class="bi bi-arrow-right"></i></b></button></section>
@@ -35,7 +36,7 @@ $frontendContext = PageContext::requireAuthenticatedFrontendContext();
             </main>
             <footer class="app-footer"><span>Dados demonstrativos utilizados apenas para prototipação.</span><span>SIGAS Coari — SEMAS Coari/AM</span></footer>
         </div>
-        <div id="bottomNavigation"></div>
+        <?php $menuSurface = 'mobile'; require __DIR__ . '/frontend/modules/protecao-social-basica/menu.php'; ?>
     </div>
 <div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportTitle" aria-hidden="true"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content"><div class="modal-header"><div><div class="eyebrow mb-1"><i class="bi bi-file-earmark-bar-graph"></i>Relatórios</div><h2 class="modal-title fs-5" id="reportTitle">Gerar novo relatório</h2></div><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><div class="form-grid"><div class="field-6"><label class="form-label" for="reportType">Modelo</label><select class="form-select" id="reportType" required><option value="">Selecione</option><option>Atendimentos</option><option>Famílias e territórios</option><option>Benefícios</option><option>Programas prioritários</option></select></div><div class="field-3"><label class="form-label" for="reportStart">Data inicial</label><input class="form-control" id="reportStart" type="date" required></div><div class="field-3"><label class="form-label" for="reportEnd">Data final</label><input class="form-control" id="reportEnd" type="date" required></div><div class="field-6"><label class="form-label" for="reportUnit">Unidade</label><select class="form-select" id="reportUnit"><option>Todas as unidades</option><option>CRAS 1</option><option>CRAS 2</option><option>CREAS</option></select></div><div class="field-6"><label class="form-label" for="reportFormat">Formato</label><select class="form-select" id="reportFormat"><option>PDF</option><option>XLSX</option><option>CSV</option></select></div></div></div><div class="modal-footer"><button class="btn btn-light" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" type="button" data-submit-demo="Relatório gerado e adicionado ao histórico."><i class="bi bi-gear"></i>Gerar relatório</button></div></div></div></div>
 

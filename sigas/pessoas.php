@@ -7,6 +7,7 @@ use App\Core\PageContext;
 require_once __DIR__ . '/bootstrap.php';
 
 $frontendContext = PageContext::requireAuthenticatedFrontendContext();
+$pageKey = 'pessoas-prontuarios';
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -24,10 +25,10 @@ $frontendContext = PageContext::requireAuthenticatedFrontendContext();
     <link href="assets/css/module-navigation.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/module-navigation.css') ?>" rel="stylesheet">
 </head>
 <body data-page="pessoas-prontuarios" data-module="protecao-social-basica">
-    <div class="app-shell">
-        <aside class="app-sidebar" id="appSidebar" aria-label="Menu principal"></aside>
-        <div class="app-main">
-            <header class="app-topbar" id="appTopbar"></header>
+    <div class="app-shell module-shell module-shell--basic" data-module-shell data-menu-environment="protecao-social-basica">
+        <?php $menuSurface = 'sidebar'; $menuPageKey = $pageKey; require __DIR__ . '/frontend/modules/protecao-social-basica/menu.php'; ?>
+        <div class="app-main module-main">
+            <?php require __DIR__ . '/frontend/layouts/module-topbar.php'; ?>
 
             <main class="app-content">
                 <header class="page-header">
@@ -102,7 +103,7 @@ $frontendContext = PageContext::requireAuthenticatedFrontendContext();
 
             <footer class="app-footer"><span>Dados demonstrativos utilizados apenas para prototipação.</span><span>SIGAS Coari — SEMAS Coari/AM</span></footer>
         </div>
-        <div id="bottomNavigation"></div>
+        <?php $menuSurface = 'mobile'; require __DIR__ . '/frontend/modules/protecao-social-basica/menu.php'; ?>
     </div>
 
     <a class="btn btn-primary floating-action" href="cadastro-anexo.php" aria-label="Novo Cadastro ANEXO"><i class="bi bi-plus-lg"></i></a>
