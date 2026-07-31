@@ -16,7 +16,7 @@ function company_branding_assert(bool $condition, string $message): void
 }
 
 company_branding_assert(
-    CompanyBranding::shortName('K. Yamaguchi Produtos e Serviços') === 'K. Yamaguchi Produtos',
+    CompanyBranding::shortName('Flux Empresas Produtos e Serviços') === 'Flux Empresas Produtos',
     'O nome do menu deve conter somente as três primeiras palavras.'
 );
 company_branding_assert(
@@ -24,7 +24,7 @@ company_branding_assert(
     'O nome do menu deve normalizar os espaços.'
 );
 company_branding_assert(
-    CompanyBranding::shortName('') === 'K. Yamaguchi',
+    CompanyBranding::shortName('') === 'Flux Empresas',
     'O nome do menu deve usar o valor padrão quando estiver vazio.'
 );
 company_branding_assert(
@@ -48,9 +48,9 @@ company_branding_assert(
     'Uma rota local que não seja imagem deve ser rejeitada.'
 );
 company_branding_assert(
-    str_replace('\\', '/', CompanyLogoStorage::resolveStorageRoot('/home/usuario/public_html/YK'))
-        === '/home/usuario/configuracoes/yk/assets/img',
-    'A logo deve ser armazenada fora do public_html, no diretório privado configuracoes/yk/assets/img.'
+    str_replace('\\', '/', CompanyLogoStorage::resolveStorageRoot('/home/usuario/public_html/fluxEmpresa'))
+        === '/home/usuario/configuracoes/fluxempresa/assets/img',
+    'A logo deve ser armazenada fora do public_html, no diretório privado configuracoes/fluxempresa/assets/img.'
 );
 
 $storageTestRoot = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'yk-company-logo-' . bin2hex(random_bytes(6));

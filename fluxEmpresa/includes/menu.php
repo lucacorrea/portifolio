@@ -18,7 +18,7 @@ if ($companyName === '') {
     $companyName = trim((string) ($companySettings['razao_social'] ?? ''));
 }
 if ($companyName === '') {
-    $companyName = 'K. Yamaguchi';
+    $companyName = 'Flux Empresas';
 }
 $companyLogo = CompanyBranding::safeLogoUrl($companySettings['logo'] ?? null);
 
@@ -267,7 +267,7 @@ $canSeeItem = static function (
                     alt=""
                 >
             <?php else: ?>
-                <i class="bi bi-snow2"></i>
+                <i class="bi bi-buildings"></i>
             <?php endif; ?>
         </div>
 

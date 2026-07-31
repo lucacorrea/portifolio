@@ -48,20 +48,20 @@ final class Environment
      *
      * /home/usuario/
      * ├── configuracoes/
-     * │   └── yk/
+     * │   └── fluxempresa/
      * │       └── .env
      * └── public_html/
-     *     └── YK/
+     *     └── fluxEmpresa/
      *
      * Quando $projectRoot for:
-     * /home/usuario/public_html/YK
+     * /home/usuario/public_html/fluxEmpresa
      *
      * O resultado será:
-     * /home/usuario/configuracoes/yk/.env
+     * /home/usuario/configuracoes/fluxempresa/.env
      */
     public static function resolveFilePath(string $projectRoot): string
     {
-        $configuredPath = getenv('YK_ENV_PATH');
+        $configuredPath = getenv('FLUXEMPRESA_ENV_PATH');
 
         if (
             is_string($configuredPath)
@@ -78,7 +78,7 @@ final class Environment
         /*
          * Sobe dois níveis:
          *
-         * /home/usuario/public_html/YK
+         * /home/usuario/public_html/fluxEmpresa
          *              ↓ 1
          * /home/usuario/public_html
          *              ↓ 2
@@ -90,7 +90,7 @@ final class Environment
             . DIRECTORY_SEPARATOR
             . 'configuracoes'
             . DIRECTORY_SEPARATOR
-            . 'yk'
+            . 'fluxempresa'
             . DIRECTORY_SEPARATOR
             . '.env';
     }

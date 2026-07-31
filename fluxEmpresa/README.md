@@ -1,4 +1,4 @@
-# K. Yamaguchi Refrigeração
+# Flux Empresas
 
 Layout visual em PHP, Bootstrap 5 e Bootstrap Icons para gestão de serviços de refrigeração.
 
@@ -34,11 +34,11 @@ Acesse `http://localhost:8000/dashboard.php`.
 
 ## Estrutura
 
-- `includes/menu.php`: menu lateral e identidade K. Yamaguchi.
+- `includes/menu.php`: menu lateral e identidade Flux Empresas.
 - `includes/topbar.php`: breadcrumb, título, descrição e ação principal visual.
 - `includes/shell.php`: estrutura base compartilhada.
 - `includes/ui.php`: componentes e layouts visuais reutilizáveis.
 - `pages/dashboard.php`: renderização do dashboard.
 - `pages/operational.php`: renderização das páginas internas.
 - `assets/css/dashboard.css`: design system e responsividade.
-- `assets/js/osmais-app.js`: interações visuais mínimas.
+- `assets/js/fluxempresa-app.js`: interações visuais mínimas.

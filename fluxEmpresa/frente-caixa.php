@@ -31,7 +31,7 @@ $cash = $application->cashManagement();
 $cashSession = $cash->currentSession();
 $products = $cashSession === null ? [] : $cash->availableProducts();
 $settings = $application->companySettings()->get();
-$companyName = trim((string) ($settings['nome_fantasia'] ?? $settings['razao_social'] ?? '')) ?: 'K. Yamaguchi';
+$companyName = trim((string) ($settings['nome_fantasia'] ?? $settings['razao_social'] ?? '')) ?: 'Flux Empresas';
 $companyDocument = trim((string) ($settings['documento'] ?? ''));
 $canSearchClients = $authorization->can('cliente.visualizar');
 $returnPage = $authorization->can('caixa.visualizar') ? 'caixa.php' : 'dashboard.php';

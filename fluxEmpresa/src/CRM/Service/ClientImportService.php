@@ -226,7 +226,7 @@ final class ClientImportService
     private function stagingDirectory(string $ownerKey): string
     {
         return rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR)
-            . DIRECTORY_SEPARATOR . 'yk-client-imports'
+            . DIRECTORY_SEPARATOR . 'fluxempresa-client-imports'
             . DIRECTORY_SEPARATOR . hash('sha256', $ownerKey);
     }
 

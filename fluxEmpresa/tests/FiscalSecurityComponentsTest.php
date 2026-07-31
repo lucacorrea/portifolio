@@ -67,9 +67,9 @@ try {
         : putenv('FISCAL_MASTER_KEY=' . $previousMasterKey);
 }
 
-$root = str_replace('\\', '/', FiscalCertificateStorage::resolveStorageRoot('/home/user/public_html/YK'));
+$root = str_replace('\\', '/', FiscalCertificateStorage::resolveStorageRoot('/home/user/public_html/fluxEmpresa'));
 fiscalSecurityAssert(
-    $root === '/home/user/configuracoes/yk/fiscal/certificados',
+    $root === '/home/user/configuracoes/fluxempresa/fiscal/certificados',
     'O certificado deve ficar fora do public_html.'
 );
 fiscalSecurityAssert(

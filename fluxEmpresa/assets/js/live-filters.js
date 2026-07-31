@@ -63,8 +63,8 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   if (actionDialog && actionHost && typeof actionDialog.showModal === 'function') {
-    window.OSMais = window.OSMais || {};
-    window.OSMais.refreshRecordActions = enhanceRecordActions;
+    window.FluxEmpresa = window.FluxEmpresa || {};
+    window.FluxEmpresa.refreshRecordActions = enhanceRecordActions;
     document.addEventListener('click', (event) => {
       const record = event.target.closest('[data-record-actions].record-actions-trigger');
       const selection = window.getSelection()?.toString().trim();
@@ -198,18 +198,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         if (sequence !== state.sequence) return;
 
-        window.OSMais?.refreshActionTables?.();
-        window.OSMais?.refreshRecordActions?.();
+        window.FluxEmpresa?.refreshActionTables?.();
+        window.FluxEmpresa?.refreshRecordActions?.();
         replacements.forEach(({ current, incoming }) => current.replaceWith(incoming));
-        window.OSMais?.refreshActionTables?.();
-        window.OSMais?.refreshRecordActions?.();
+        window.FluxEmpresa?.refreshActionTables?.();
+        window.FluxEmpresa?.refreshRecordActions?.();
 
         const relativeUrl = url.pathname.split('/').pop() + url.search;
         if (updateHistory) window.history.replaceState({ liveFilter: key }, '', relativeUrl);
         document.querySelectorAll('input[name="return_to"]').forEach((field) => { field.value = relativeUrl; });
         status.textContent = 'Resultados atualizados.';
         errorBox.classList.add('d-none');
-        document.dispatchEvent(new CustomEvent('osmais:live-filter-updated', {
+        document.dispatchEvent(new CustomEvent('fluxempresa:live-filter-updated', {
           detail: { key, form, regions: replacements.map(({ incoming }) => incoming) },
         }));
       } catch (error) {

@@ -8,11 +8,11 @@ final class SessionManager
     private bool $started = false;
 
     public function __construct(
-        private readonly string $name = 'YKSESSID',
+        private readonly string $name = 'FLUXEMPRESASESSID',
         private readonly int $idleTimeout = 86400,
         private readonly int $absoluteTimeout = 86400,
         private readonly int $regenerateInterval = 900,
-        private readonly string $cookiePath = '/YK',
+        private readonly string $cookiePath = '/fluxEmpresa',
         private readonly bool $secureCookie = true
     ) {
     }

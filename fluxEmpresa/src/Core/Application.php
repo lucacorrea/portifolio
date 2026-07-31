@@ -119,7 +119,7 @@ final class Application
             $this->session = new SessionManager(
                 (string) (
                     $this->settings['session_name']
-                    ?? 'YKSESSID'
+                    ?? 'FLUXEMPRESASESSID'
                 ),
                 (int) (
                     $this->settings['session_timeout']
@@ -135,7 +135,7 @@ final class Application
                 ),
                 (string) (
                     $this->settings['session_cookie_path']
-                    ?? '/YK'
+                    ?? '/fluxEmpresa'
                 ),
                 $secure
             );

@@ -58,7 +58,7 @@ if (strcasecmp((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''), 'XMLHttpReque
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>K. Yamaguchi — <?= htmlspecialchars($pageTitle ?? 'Sistema', ENT_QUOTES, 'UTF-8') ?></title>
+  <title>Flux Empresas — <?= htmlspecialchars($pageTitle ?? 'Sistema', ENT_QUOTES, 'UTF-8') ?></title>
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
@@ -108,7 +108,7 @@ if (strcasecmp((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''), 'XMLHttpReque
   </dialog>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="assets/js/osmais-app.js?v=<?= (int) filemtime(dirname(__DIR__) . '/assets/js/osmais-app.js') ?>"></script>
+  <script src="assets/js/fluxempresa-app.js?v=<?= (int) filemtime(dirname(__DIR__) . '/assets/js/fluxempresa-app.js') ?>"></script>
   <script src="assets/js/live-filters.js?v=<?= (int) filemtime(dirname(__DIR__) . '/assets/js/live-filters.js') ?>"></script>
   <?php foreach (($pageScripts ?? []) as $script): ?>
   <?php $scriptPath = dirname(__DIR__) . '/' . ltrim((string) $script, '/'); ?>

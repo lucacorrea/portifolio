@@ -35,7 +35,7 @@ final class FiscalCertificateStorage
 
         return dirname($projectRoot, 2)
             . DIRECTORY_SEPARATOR . 'configuracoes'
-            . DIRECTORY_SEPARATOR . 'yk'
+            . DIRECTORY_SEPARATOR . 'fluxempresa'
             . DIRECTORY_SEPARATOR . 'fiscal'
             . DIRECTORY_SEPARATOR . 'certificados';
     }

@@ -36,7 +36,7 @@ final class CompanyLogoStorage
 
         return dirname($projectRoot, 2)
             . DIRECTORY_SEPARATOR . 'configuracoes'
-            . DIRECTORY_SEPARATOR . 'yk'
+            . DIRECTORY_SEPARATOR . 'fluxempresa'
             . DIRECTORY_SEPARATOR . 'assets'
             . DIRECTORY_SEPARATOR . 'img';
     }

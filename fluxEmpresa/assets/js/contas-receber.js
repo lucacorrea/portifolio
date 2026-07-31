@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (ids.length < 2) { event.preventDefault(); updateBatchSelection('Seleção inválida. Escolha novamente as contas.'); return; }
     const submit = event.currentTarget.querySelector('[type="submit"]'); if (submit) submit.disabled = true;
   });
-  document.addEventListener('osmais:live-filter-updated', function (event) {
+  document.addEventListener('fluxempresa:live-filter-updated', function (event) {
     if (event.detail?.key === 'receivables') updateBatchSelection();
   });
   updateBatchSelection();

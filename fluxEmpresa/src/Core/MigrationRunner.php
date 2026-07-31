@@ -159,7 +159,7 @@ final class MigrationRunner
     private function lockName(): string
     {
         $database = (string) $this->connection->query('SELECT DATABASE()')->fetchColumn();
-        return 'yk_migrate_' . substr(hash('sha256', $database), 0, 40);
+        return 'fluxempresa_migrate_' . substr(hash('sha256', $database), 0, 40);
     }
 
     public static function supportsVersion(int $version): bool

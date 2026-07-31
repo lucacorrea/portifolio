@@ -333,7 +333,7 @@ document.addEventListener('DOMContentLoaded', function () {
         button.appendChild(element('i', 'bi ' + iconClass)); button.appendChild(document.createTextNode(' ' + label)); item.appendChild(button); return item;
     }
     function renderClients(rows) {
-        window.OSMais?.refreshActionTables?.();
+        window.FluxEmpresa?.refreshActionTables?.();
         const fragment = document.createDocumentFragment();
         clients = Object.fromEntries(rows.map(function (client) { return [String(client.id), client]; }));
         if (rows.length === 0) {
@@ -352,7 +352,7 @@ document.addEventListener('DOMContentLoaded', function () {
             dropdown.appendChild(menu); actionsCell.appendChild(dropdown); row.appendChild(actionsCell); fragment.appendChild(row);
         });
         clientsBody.replaceChildren(fragment);
-        window.OSMais?.refreshActionTables?.();
+        window.FluxEmpresa?.refreshActionTables?.();
     }
     function currentFilterParams() { const params = new URLSearchParams(new FormData(filterForm)); Array.from(params.keys()).forEach(function (key) { if (!params.get(key)) params.delete(key); }); return params; }
     function syncClientStatusButtons(status) { document.querySelectorAll('.js-client-status-filter').forEach(function (button) { const active = (button.dataset.status || '') === status; button.classList.toggle('active', active); if (active) button.setAttribute('aria-current', 'true'); else button.removeAttribute('aria-current'); }); }

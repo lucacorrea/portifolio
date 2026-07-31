@@ -70,7 +70,7 @@ function budget_print_company_name(array $company): string
         $name = trim((string) ($company['razao_social'] ?? ''));
     }
 
-    return $name !== '' ? $name : 'K. Yamaguchi Refrigeração';
+    return $name !== '' ? $name : 'Flux Empresas';
 }
 
 function budget_print_logo_url(mixed $value): ?string

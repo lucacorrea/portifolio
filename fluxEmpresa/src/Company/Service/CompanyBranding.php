@@ -6,7 +6,7 @@ namespace App\Company\Service;
 
 final class CompanyBranding
 {
-    public static function shortName(mixed $value, string $fallback = 'K. Yamaguchi'): string
+    public static function shortName(mixed $value, string $fallback = 'Flux Empresas'): string
     {
         $name = trim((string) ($value ?? ''));
         if ($name === '') {

@@ -186,7 +186,7 @@ final class FiscalSecretVault
 
     private function additionalData(string $algorithm): string
     {
-        return 'yk:fiscal-secret:' . $this->keyVersion . ':' . $algorithm;
+        return 'fluxempresa:fiscal-secret:' . $this->keyVersion . ':' . $algorithm;
     }
 
     private function supportsSodium(): bool
