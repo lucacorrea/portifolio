@@ -28,7 +28,7 @@ $authService = new AuthService(
 );
 
 if ($authService->currentUser() !== null) {
-    header('Location: dashboard.php');
+    header('Location: portal.php');
     exit;
 }
 
@@ -62,7 +62,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     try {
         $authService->attempt($identity, $password);
 
-        header('Location: dashboard.php');
+        header('Location: portal.php');
         exit;
     } catch (AuthenticationException $exception) {
         Session::flash('login_error', $exception->getMessage());

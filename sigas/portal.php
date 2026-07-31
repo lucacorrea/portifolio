@@ -21,7 +21,7 @@ $frontendContext = PageContext::requireAuthenticatedFrontendContext();
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
-    <link href="assets/css/portal.css" rel="stylesheet">
+    <link href="assets/css/portal.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/portal.css') ?>" rel="stylesheet">
 </head>
 <body class="portal-page" data-page="portal">
     <main class="portal-shell">
@@ -44,7 +44,7 @@ $frontendContext = PageContext::requireAuthenticatedFrontendContext();
 
         <section id="modulos" aria-labelledby="modulesTitle"><div class="portal-section-heading"><div><h2 id="modulesTitle">Setores e módulos disponíveis</h2><p>Os quatro primeiros cards são setores organizadores da SEMAS; os dois últimos são módulos independentes.</p></div><span class="status-badge status-info"><i class="bi bi-info-circle"></i>Estrutura visual</span></div><div class="module-card-grid" id="moduleCards" aria-live="polite"></div></section>
     </main>
-    <script><?= PageContext::script($frontendContext) ?></script>
-    <script src="assets/js/module-portal.js"></script>
+    <?= PageContext::script($frontendContext) ?>
+    <script src="assets/js/module-portal.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/module-portal.js') ?>"></script>
 </body>
 </html>
