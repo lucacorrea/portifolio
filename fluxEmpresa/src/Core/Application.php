@@ -12,12 +12,20 @@ use App\Access\Service\AuthenticationService;
 use App\Access\Service\AuthorizationService;
 use App\Access\Service\ProfileManagementService;
 use App\Access\Service\UserManagementService;
+use App\Admin\Repository\AdminAccessRepository;
+use App\Admin\Repository\AdminCompanyRepository;
+use App\Admin\Repository\AdminDashboardRepository;
+use App\Admin\Service\AdminAccessService;
+use App\Admin\Service\AdminCompanyService;
+use App\Admin\Service\AdminDashboardService;
+use App\Admin\Service\PlatformAdminPolicy;
 use App\Catalog\Repository\ProductRepository;
 use App\Catalog\Repository\ServiceRepository;
 use App\Catalog\Service\ProductManagementService;
 use App\Catalog\Service\ServiceManagementService;
-use App\Company\Service\CompanySettingsService;
 use App\Company\DTO\CompanyScope;
+use App\Company\Service\ActiveCompanyContext;
+use App\Company\Service\CompanySettingsService;
 use App\Company\Service\OperationalCompanyContextResolver;
 use App\CRM\Import\A7ClientReportMapper;
 use App\CRM\Import\ClientPdfParser;
@@ -26,39 +34,32 @@ use App\CRM\Service\ClientImportService;
 use App\CRM\Service\ClientManagementService;
 use App\Dashboard\Repository\DashboardRepository;
 use App\Dashboard\Service\DashboardService;
-use App\Finance\Service\AccountsReceivableManagementService;
 use App\Finance\Service\AccountsPayableManagementService;
+use App\Finance\Service\AccountsReceivableManagementService;
 use App\Finance\Service\CashManagementService;
 use App\Finance\Service\PaymentManagementService;
 use App\Finance\Service\ReceiptService;
+use App\Integration\SO\Service\SoSupplierService;
+use App\Integration\SO\SoApiClient;
+use App\Integration\SO\SoDatabase;
 use App\Inventory\Service\InventoryManagementService;
 use App\Purchasing\Service\SupplierManagementService;
 use App\Report\Repository\ProductionReportRepository;
 use App\Report\Service\ProductionReportService;
+use App\Sales\Repository\BudgetRepository;
+use App\Sales\Service\BudgetManagementService;
+use App\Schedule\Repository\AgendaReminderRepository;
+use App\Schedule\Service\AgendaManagementService;
 use App\Security\CsrfTokenManager;
 use App\Security\PrivilegedAuthorizationService;
 use App\Security\SafeRedirect;
 use App\Security\SessionManager;
-use App\Schedule\Repository\AgendaReminderRepository;
-use App\Schedule\Service\AgendaManagementService;
 use App\ServiceOrder\Repository\ServiceOrderRepository;
 use App\ServiceOrder\Service\ServiceOrderFinalizationService;
 use App\ServiceOrder\Service\ServiceOrderLifecycleService;
 use App\ServiceOrder\Service\ServiceOrderManagementService;
-use App\Sales\Repository\BudgetRepository;
-use App\Sales\Service\BudgetManagementService;
 use App\Workforce\Repository\EmployeeRepository;
 use App\Workforce\Service\EmployeeManagementService;
-use App\Admin\Service\AdminCompanyService;
-use App\Admin\Service\AdminAccessService;
-use App\Admin\Service\AdminDashboardService;
-use App\Admin\Service\PlatformAdminPolicy;
-use App\Admin\Repository\AdminCompanyRepository;
-use App\Admin\Repository\AdminAccessRepository;
-use App\Admin\Repository\AdminDashboardRepository;
-use App\Company\Service\ActiveCompanyContext;
-use App\Integration\SO\Service\SoSupplierService;
-use App\Integration\SO\SoDatabase;
 
 final class Application
 {
@@ -91,27 +92,51 @@ final class Application
     private ?ServiceOrderManagementService $serviceOrderManagement = null;
 
     private ?AgendaManagementService $agendaManagement = null;
+
     private ?InventoryManagementService $inventoryManagement = null;
+
     private ?CashManagementService $cashManagement = null;
+
     private ?AccountsReceivableManagementService $accountsReceivableManagement = null;
+
     private ?AccountsPayableManagementService $accountsPayableManagement = null;
+
     private ?SupplierManagementService $supplierManagement = null;
+
     private ?PaymentManagementService $paymentManagement = null;
+
     private ?ReceiptService $receiptService = null;
+
     private ?CompanySettingsService $companySettings = null;
+
     private ?PrivilegedAuthorizationService $privilegedAuthorization = null;
+
     private ?ServiceOrderFinalizationService $serviceOrderFinalization = null;
+
     private ?ServiceOrderLifecycleService $serviceOrderLifecycle = null;
+
     private ?DashboardService $dashboardService = null;
+
     private ?ProductionReportService $productionReportService = null;
+
     private ?SafeRedirect $redirect = null;
+
     private ?AdminCompanyService $adminCompanyService = null;
+
     private ?AdminAccessService $adminAccessService = null;
+
     private ?AdminDashboardService $adminDashboardService = null;
+
     private ?SoSupplierService $soSupplierService = null;
+
+    private ?SoApiClient $soApiClient = null;
+
     private ?ActiveCompanyContext $activeCompanyContext = null;
+
     private ?OperationalCompanyContextResolver $operationalCompanyContext = null;
+
     private ?CompanyScope $companyScope = null;
+
     private ?PlatformAdminPolicy $platformAdminPolicy = null;
 
     public function __construct(
@@ -129,7 +154,8 @@ final class Application
     {
         if ($this->session === null) {
             $secure = (
-                $this->settings['app_env'] ?? 'production'
+                $this->settings['app_env']
+                ?? 'production'
             ) === 'production'
                 || (
                     !empty($_SERVER['HTTPS'])
@@ -247,7 +273,10 @@ final class Application
             $connection = $this->database->connection();
 
             $this->employeeManagement = new EmployeeManagementService(
-                new EmployeeRepository($connection, $this->companyScope())
+                new EmployeeRepository(
+                    $connection,
+                    $this->companyScope()
+                )
             );
         }
 
@@ -260,7 +289,10 @@ final class Application
             $connection = $this->database->connection();
 
             $this->productManagement = new ProductManagementService(
-                new ProductRepository($connection, $this->companyScope())
+                new ProductRepository(
+                    $connection,
+                    $this->companyScope()
+                )
             );
         }
 
@@ -273,7 +305,10 @@ final class Application
             $connection = $this->database->connection();
 
             $this->serviceManagement = new ServiceManagementService(
-                new ServiceRepository($connection, $this->companyScope())
+                new ServiceRepository(
+                    $connection,
+                    $this->companyScope()
+                )
             );
         }
 
@@ -286,7 +321,10 @@ final class Application
             $connection = $this->database->connection();
 
             $this->clientManagement = new ClientManagementService(
-                new ClientRepository($connection, $this->companyScope())
+                new ClientRepository(
+                    $connection,
+                    $this->companyScope()
+                )
             );
         }
 
@@ -297,9 +335,15 @@ final class Application
     {
         if ($this->clientImport === null) {
             $connection = $this->database->connection();
+
             $this->clientImport = new ClientImportService(
-                new ClientRepository($connection, $this->companyScope()),
-                new ClientPdfParser(new A7ClientReportMapper())
+                new ClientRepository(
+                    $connection,
+                    $this->companyScope()
+                ),
+                new ClientPdfParser(
+                    new A7ClientReportMapper()
+                )
             );
         }
 
@@ -312,10 +356,22 @@ final class Application
             $connection = $this->database->connection();
 
             $this->budgetManagement = new BudgetManagementService(
-                new BudgetRepository($connection, $this->companyScope()),
-                new ClientRepository($connection, $this->companyScope()),
-                new ProductRepository($connection, $this->companyScope()),
-                new ServiceRepository($connection, $this->companyScope())
+                new BudgetRepository(
+                    $connection,
+                    $this->companyScope()
+                ),
+                new ClientRepository(
+                    $connection,
+                    $this->companyScope()
+                ),
+                new ProductRepository(
+                    $connection,
+                    $this->companyScope()
+                ),
+                new ServiceRepository(
+                    $connection,
+                    $this->companyScope()
+                )
             );
         }
 
@@ -330,12 +386,30 @@ final class Application
             $this->serviceOrderManagement = new ServiceOrderManagementService(
                 $connection,
                 $this->companyScope(),
-                new ServiceOrderRepository($connection, $this->companyScope()),
-                new EmployeeRepository($connection, $this->companyScope()),
-                new ClientRepository($connection, $this->companyScope()),
-                new ServiceRepository($connection, $this->companyScope()),
-                new ProductRepository($connection, $this->companyScope()),
-                new BudgetRepository($connection, $this->companyScope())
+                new ServiceOrderRepository(
+                    $connection,
+                    $this->companyScope()
+                ),
+                new EmployeeRepository(
+                    $connection,
+                    $this->companyScope()
+                ),
+                new ClientRepository(
+                    $connection,
+                    $this->companyScope()
+                ),
+                new ServiceRepository(
+                    $connection,
+                    $this->companyScope()
+                ),
+                new ProductRepository(
+                    $connection,
+                    $this->companyScope()
+                ),
+                new BudgetRepository(
+                    $connection,
+                    $this->companyScope()
+                )
             );
         }
 
@@ -348,7 +422,10 @@ final class Application
             $connection = $this->database->connection();
 
             $this->agendaManagement = new AgendaManagementService(
-                new AgendaReminderRepository($connection, $this->companyScope())
+                new AgendaReminderRepository(
+                    $connection,
+                    $this->companyScope()
+                )
             );
         }
 
@@ -383,11 +460,12 @@ final class Application
     public function accountsReceivableManagement(): AccountsReceivableManagementService
     {
         if ($this->accountsReceivableManagement === null) {
-            $this->accountsReceivableManagement = new AccountsReceivableManagementService(
-                $this->database->connection(),
-                $this->cashManagement(),
-                $this->companyScope()
-            );
+            $this->accountsReceivableManagement =
+                new AccountsReceivableManagementService(
+                    $this->database->connection(),
+                    $this->cashManagement(),
+                    $this->companyScope()
+                );
         }
 
         return $this->accountsReceivableManagement;
@@ -396,11 +474,12 @@ final class Application
     public function accountsPayableManagement(): AccountsPayableManagementService
     {
         if ($this->accountsPayableManagement === null) {
-            $this->accountsPayableManagement = new AccountsPayableManagementService(
-                $this->database->connection(),
-                $this->cashManagement(),
-                $this->companyScope()
-            );
+            $this->accountsPayableManagement =
+                new AccountsPayableManagementService(
+                    $this->database->connection(),
+                    $this->cashManagement(),
+                    $this->companyScope()
+                );
         }
 
         return $this->accountsPayableManagement;
@@ -460,11 +539,13 @@ final class Application
     {
         if ($this->privilegedAuthorization === null) {
             $connection = $this->database->connection();
-            $this->privilegedAuthorization = new PrivilegedAuthorizationService(
-                new UserRepository($connection),
-                new ProfilePermissionRepository($connection),
-                new ProfileRepository($connection)
-            );
+
+            $this->privilegedAuthorization =
+                new PrivilegedAuthorizationService(
+                    new UserRepository($connection),
+                    new ProfilePermissionRepository($connection),
+                    new ProfileRepository($connection)
+                );
         }
 
         return $this->privilegedAuthorization;
@@ -474,13 +555,18 @@ final class Application
     {
         if ($this->serviceOrderFinalization === null) {
             $connection = $this->database->connection();
-            $this->serviceOrderFinalization = new ServiceOrderFinalizationService(
-                $connection,
-                $this->companyScope(),
-                new ServiceOrderRepository($connection, $this->companyScope()),
-                $this->inventoryManagement(),
-                $this->accountsReceivableManagement()
-            );
+
+            $this->serviceOrderFinalization =
+                new ServiceOrderFinalizationService(
+                    $connection,
+                    $this->companyScope(),
+                    new ServiceOrderRepository(
+                        $connection,
+                        $this->companyScope()
+                    ),
+                    $this->inventoryManagement(),
+                    $this->accountsReceivableManagement()
+                );
         }
 
         return $this->serviceOrderFinalization;
@@ -489,11 +575,12 @@ final class Application
     public function serviceOrderLifecycle(): ServiceOrderLifecycleService
     {
         if ($this->serviceOrderLifecycle === null) {
-            $this->serviceOrderLifecycle = new ServiceOrderLifecycleService(
-                $this->database->connection(),
-                $this->companyScope(),
-                $this->cashManagement()
-            );
+            $this->serviceOrderLifecycle =
+                new ServiceOrderLifecycleService(
+                    $this->database->connection(),
+                    $this->companyScope(),
+                    $this->cashManagement()
+                );
         }
 
         return $this->serviceOrderLifecycle;
@@ -503,8 +590,12 @@ final class Application
     {
         if ($this->dashboardService === null) {
             $connection = $this->database->connection();
+
             $this->dashboardService = new DashboardService(
-                new DashboardRepository($connection, $this->companyScope())
+                new DashboardRepository(
+                    $connection,
+                    $this->companyScope()
+                )
             );
         }
 
@@ -515,9 +606,14 @@ final class Application
     {
         if ($this->productionReportService === null) {
             $connection = $this->database->connection();
-            $this->productionReportService = new ProductionReportService(
-                new ProductionReportRepository($connection, $this->companyScope())
-            );
+
+            $this->productionReportService =
+                new ProductionReportService(
+                    new ProductionReportRepository(
+                        $connection,
+                        $this->companyScope()
+                    )
+                );
         }
 
         return $this->productionReportService;
@@ -531,27 +627,164 @@ final class Application
     public function redirect(): SafeRedirect
     {
         if ($this->redirect === null) {
-            $this->redirect = new SafeRedirect((string) ($this->settings['app_base_path'] ?? '/fluxEmpresa'));
+            $this->redirect = new SafeRedirect(
+                (string) (
+                    $this->settings['app_base_path']
+                    ?? '/fluxEmpresa'
+                )
+            );
         }
 
         return $this->redirect;
     }
 
-    public function platformAdminPolicy(): PlatformAdminPolicy { return $this->platformAdminPolicy ??= new PlatformAdminPolicy(); }
-    public function adminCompanies(): AdminCompanyService { return $this->adminCompanyService ??= new AdminCompanyService($this->database->connection(), new AdminCompanyRepository($this->database->connection())); }
-    public function adminAccesses(): AdminAccessService { return $this->adminAccessService ??= new AdminAccessService($this->database->connection(), new AdminAccessRepository($this->database->connection())); }
-    public function adminDashboard(): AdminDashboardService { return $this->adminDashboardService ??= new AdminDashboardService(new AdminDashboardRepository($this->database->connection()), $this->adminCompanies()); }
-    public function soSuppliers(): SoSupplierService { return $this->soSupplierService ??= new SoSupplierService(new SoDatabase((string) ($this->settings['project_root'] ?? ''))); }
-    public function activeCompanyContext(): ActiveCompanyContext { return $this->activeCompanyContext ??= new ActiveCompanyContext($this->session()); }
+    public function platformAdminPolicy(): PlatformAdminPolicy
+    {
+        return $this->platformAdminPolicy
+            ??= new PlatformAdminPolicy();
+    }
+
+    public function adminCompanies(): AdminCompanyService
+    {
+        if ($this->adminCompanyService === null) {
+            $connection = $this->database->connection();
+
+            $this->adminCompanyService = new AdminCompanyService(
+                $connection,
+                new AdminCompanyRepository($connection)
+            );
+        }
+
+        return $this->adminCompanyService;
+    }
+
+    public function adminAccesses(): AdminAccessService
+    {
+        if ($this->adminAccessService === null) {
+            $connection = $this->database->connection();
+
+            $this->adminAccessService = new AdminAccessService(
+                $connection,
+                new AdminAccessRepository($connection)
+            );
+        }
+
+        return $this->adminAccessService;
+    }
+
+    public function adminDashboard(): AdminDashboardService
+    {
+        if ($this->adminDashboardService === null) {
+            $connection = $this->database->connection();
+
+            $this->adminDashboardService = new AdminDashboardService(
+                new AdminDashboardRepository($connection),
+                $this->adminCompanies()
+            );
+        }
+
+        return $this->adminDashboardService;
+    }
+
+    /**
+     * Leitura direta e somente leitura do banco do SO.
+     *
+     * Utilizado para localizar fornecedores e, futuramente,
+     * consultar aquisições já existentes no SO.
+     */
+    public function soSuppliers(): SoSupplierService
+    {
+        if ($this->soSupplierService === null) {
+            $this->soSupplierService = new SoSupplierService(
+                new SoDatabase(
+                    (string) (
+                        $this->settings['project_root']
+                        ?? ''
+                    )
+                )
+            );
+        }
+
+        return $this->soSupplierService;
+    }
+
+    /**
+     * Cliente HTTPS responsável por criar aquisições no SO.
+     *
+     * A comunicação utiliza:
+     * - JSON;
+     * - HTTPS;
+     * - HMAC-SHA256;
+     * - timestamp;
+     * - nonce;
+     * - idempotência.
+     *
+     * O segredo permanece somente no backend.
+     */
+    public function soApiClient(): SoApiClient
+    {
+        if ($this->soApiClient === null) {
+            $this->soApiClient = new SoApiClient(
+                enabled: (bool) (
+                    $this->settings['so_integration_enabled']
+                    ?? false
+                ),
+                baseUrl: (string) (
+                    $this->settings['so_api_base_url']
+                    ?? ''
+                ),
+                acquisitionPath: (string) (
+                    $this->settings['so_api_acquisition_path']
+                    ?? ''
+                ),
+                clientId: (string) (
+                    $this->settings['so_api_client_id']
+                    ?? ''
+                ),
+                secret: (string) (
+                    $this->settings['so_api_secret']
+                    ?? ''
+                ),
+                connectTimeout: (int) (
+                    $this->settings['so_api_connect_timeout']
+                    ?? 5
+                ),
+                timeout: (int) (
+                    $this->settings['so_api_timeout']
+                    ?? 15
+                ),
+                verifyTls: (bool) (
+                    $this->settings['so_api_verify_tls']
+                    ?? true
+                )
+            );
+        }
+
+        return $this->soApiClient;
+    }
+
+    public function activeCompanyContext(): ActiveCompanyContext
+    {
+        if ($this->activeCompanyContext === null) {
+            $this->activeCompanyContext = new ActiveCompanyContext(
+                $this->session()
+            );
+        }
+
+        return $this->activeCompanyContext;
+    }
+
     public function operationalCompanyContext(): OperationalCompanyContextResolver
     {
         if ($this->operationalCompanyContext === null) {
             $connection = $this->database->connection();
-            $this->operationalCompanyContext = new OperationalCompanyContextResolver(
-                new UserRepository($connection),
-                new AdminAccessRepository($connection),
-                $this->activeCompanyContext()
-            );
+
+            $this->operationalCompanyContext =
+                new OperationalCompanyContextResolver(
+                    new UserRepository($connection),
+                    new AdminAccessRepository($connection),
+                    $this->activeCompanyContext()
+                );
         }
 
         return $this->operationalCompanyContext;
@@ -559,8 +792,16 @@ final class Application
 
     public function companyScope(): CompanyScope
     {
-        return $this->companyScope ??= $this->operationalCompanyContext()->resolve(
-            $this->authorization()->requireLogin()
-        );
+        if ($this->companyScope === null) {
+            $this->companyScope = $this
+                ->operationalCompanyContext()
+                ->resolve(
+                    $this
+                        ->authorization()
+                        ->requireLogin()
+                );
+        }
+
+        return $this->companyScope;
     }
 }
