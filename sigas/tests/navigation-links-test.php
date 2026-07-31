@@ -73,7 +73,10 @@ foreach ($registry as $environmentKey => $environment) {
 $controller = file_get_contents($root . '/setor.php') ?: '';
 $authPosition = strpos($controller, 'requireAuthenticatedFrontendContext');
 $inputPosition = strpos($controller, "\$_GET['ambiente']");
+$helperPosition = strpos($controller, "frontend/support/helpers.php");
+$viewPosition = strpos($controller, '$pageDefinition = require $view');
 navigation_assert($authPosition !== false && $inputPosition !== false && $authPosition < $inputPosition, 'setor.php deve autenticar antes de tratar a rota');
+navigation_assert($helperPosition !== false && $viewPosition !== false && $helperPosition < $viewPosition, 'setor.php deve carregar os helpers antes da view');
 navigation_assert(str_contains($controller, 'realpath'), 'setor.php deve resolver views com caminho canônico');
 navigation_assert(str_contains($controller, 'str_starts_with'), 'setor.php deve limitar views ao diretório frontend');
 

@@ -6,6 +6,7 @@ use App\Config\ModuleRegistry;
 use App\Core\PageContext;
 
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/frontend/support/helpers.php';
 
 // Autenticação ocorre antes de qualquer decisão de rota ou resposta visual.
 $frontendContext = PageContext::requireAuthenticatedFrontendContext();
