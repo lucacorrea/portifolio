@@ -909,20 +909,4 @@ const SIGAS = {
 window.SIGAS = SIGAS;
 document.addEventListener('DOMContentLoaded', () => {
     SIGAS.init();
-
-    // Navegação é uma camada visual. A autorização de rotas continua sendo responsabilidade do PHP.
-    const prefix = SIGAS.context.urls?.dashboard?.startsWith('../') ? '../' : '';
-    if (!document.querySelector('link[data-module-navigation]')) {
-        const style = document.createElement('link');
-        style.rel = 'stylesheet';
-        style.href = `${prefix}assets/css/module-navigation.css`;
-        style.dataset.moduleNavigation = 'true';
-        document.head.appendChild(style);
-    }
-    if (!document.querySelector('script[data-module-navigation]')) {
-        const script = document.createElement('script');
-        script.src = `${prefix}assets/js/module-navigation.js`;
-        script.dataset.moduleNavigation = 'true';
-        document.head.appendChild(script);
-    }
 });

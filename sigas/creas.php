@@ -21,6 +21,7 @@ $frontendContext = PageContext::requireAuthenticatedFrontendContext();
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
+    <link href="assets/css/module-navigation.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/module-navigation.css') ?>" rel="stylesheet">
 </head>
 <body data-page="creas" data-module="protecao-social-especial">
     <div class="app-shell">
@@ -73,6 +74,7 @@ $frontendContext = PageContext::requireAuthenticatedFrontendContext();
     <script src="assets/js/integration-demo.js"></script>
     <?= PageContext::script($frontendContext) ?>
     <script src="assets/js/app.js"></script>
+    <script src="assets/js/module-navigation.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/module-navigation.js') ?>"></script>
 </body>
 </html>
 

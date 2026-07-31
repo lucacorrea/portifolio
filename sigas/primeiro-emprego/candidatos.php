@@ -1,1 +1,4 @@
-<?php require __DIR__ . '/_layout.php'; primeiro_emprego_list('primeiro-emprego-candidatos','Candidatos','Pesquisa, filtros e acompanhamento dos candidatos.', ['Candidato','CPF','Idade','Escolaridade','Área de interesse','Situação','Atualização'], [['Ana Clara Souza','***.482.***-**','19','Ensino médio','Administrativo','Ativo','Hoje'],['João Pedro Lima','***.971.***-**','22','Superior incompleto','Comércio','Encaminhado','Ontem'],['Mariana Alves','***.315.***-**','18','Ensino médio','Serviços','Aguardando vaga','28 jul']], 'Novo candidato'); ?>
+<?php
+declare(strict_types=1);
+$pageKey = 'candidatos';
+require __DIR__ . '/_layout.php';

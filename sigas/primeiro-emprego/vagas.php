@@ -1,1 +1,4 @@
-<?php require __DIR__ . '/_layout.php'; primeiro_emprego_list('primeiro-emprego-vagas','Vagas','Vagas disponíveis e candidatos compatíveis.', ['Cargo','Empresa','Área','Escolaridade','Faixa salarial','Prazo','Situação'], [['Auxiliar administrativo','Mercado Coari','Administrativo','Ensino médio','R$ 1.518 a R$ 1.850','02 ago','Aberta'],['Atendente','Farmácia Popular','Comércio','Ensino médio','R$ 1.518','05 ago','Aberta'],['Jovem aprendiz','Logística Norte','Logística','Cursando médio','R$ 850','12 ago','Em seleção']], 'Nova vaga'); ?>
+<?php
+declare(strict_types=1);
+$pageKey = 'vagas';
+require __DIR__ . '/_layout.php';

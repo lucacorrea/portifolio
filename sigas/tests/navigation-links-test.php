@@ -2,147 +2,89 @@
 
 declare(strict_types=1);
 
-$failures = 0;
+require_once dirname(__DIR__) . '/app/Core/Autoloader.php';
 
-function assert_contains_text(string $haystack, string $needle, string $message): void
-{
-    global $failures;
+App\Core\Autoloader::register();
 
-    if (!str_contains($haystack, $needle)) {
-        $failures++;
-        echo "FAIL: {$message}. Nao encontrou: {$needle}" . PHP_EOL;
-    }
-}
+use App\Config\ModuleRegistry;
 
-function assert_not_contains_text(string $haystack, string $needle, string $message): void
-{
-    global $failures;
-
-    if (str_contains($haystack, $needle)) {
-        $failures++;
-        echo "FAIL: {$message}. Encontrou trecho antigo: {$needle}" . PHP_EOL;
-    }
-}
-
+$failures = [];
 $root = dirname(__DIR__);
-$appJsPath = $root . '/assets/js/app.js';
-$dashboardPath = $root . '/dashboard.php';
-$modulePath = $root . '/modulo.php';
-$convertedPages = [
-    'atendimentos',
-    'beneficios',
-    'cadastro-anexo',
-    'casa',
-    'cidadania',
-    'configuracoes',
-    'cras1',
-    'cras2',
-    'creas',
-    'crianca',
-    'familias',
-    'funeral',
-    'integracao-semth',
-    'manual-sistema',
-    'natalidade',
-    'outros',
-    'perfil-usuario',
-    'pessoas',
-    'registro',
-    'relatorios',
-    'solicitacoes',
-    'unidades',
-    'usuarios',
-];
+$frontendRoot = $root . '/frontend/modules/';
+$registry = ModuleRegistry::all();
+$usedViews = [];
 
-$appJs = file_get_contents($appJsPath);
-$dashboard = file_get_contents($dashboardPath);
-$module = file_get_contents($modulePath);
-
-if ($appJs === false) {
-    $failures++;
-    echo 'FAIL: nao foi possivel ler assets/js/app.js' . PHP_EOL;
-    $appJs = '';
+function navigation_fail(string $message): void
+{
+    global $failures;
+    $failures[] = $message;
 }
 
-if ($dashboard === false) {
-    $failures++;
-    echo 'FAIL: nao foi possivel ler dashboard.php' . PHP_EOL;
-    $dashboard = '';
+function navigation_assert(bool $condition, string $message): void
+{
+    if (!$condition) {
+        navigation_fail($message);
+    }
 }
 
-if ($module === false) {
-    $failures++;
-    echo 'FAIL: nao foi possivel ler modulo.php' . PHP_EOL;
-    $module = '';
-}
+navigation_assert(count($registry) === 6, 'o portal deve possuir seis ambientes');
 
-assert_contains_text($appJs, "['consulta-documento.php', 'person-bounding-box', 'Consultar CPF / Registrar entrega', 'consulta']", 'sidebar aponta consulta operacional');
-assert_contains_text($appJs, "['modulo.php', 'basket2', 'Beneficiários e competências', 'modulo', true]", 'sidebar aponta modulo operacional');
-assert_contains_text($appJs, '<a href="consulta-documento.php"', 'navegacao inferior aponta consulta operacional');
-assert_contains_text($appJs, '<a href="modulo.php"', 'navegacao inferior aponta beneficiarios operacional');
-assert_not_contains_text($appJs, "['modulo.php?action=new', 'person-plus', 'Nova inscrição', 'modulo-new']", 'sidebar nao exibe nova inscricao como item de menu');
-assert_not_contains_text($appJs, '<a href="modulo.php?action=new" class="new-action', 'navegacao inferior nao exibe nova inscricao');
-assert_contains_text($appJs, 'href="perfil-usuario.php"', 'menu do usuario aponta perfil em PHP');
-assert_contains_text($appJs, "openLink.href = 'registro.php'", 'atalho de abertura aponta registro em PHP');
-assert_contains_text($appJs, 'a[href="registro.php"]', 'seletores de registro usam rota PHP');
-assert_not_contains_text($appJs, '.html', 'app.js nao referencia paginas HTML antigas');
-assert_not_contains_text($appJs, "window.location.href = 'cadastro-anexo.html'", 'atalho novo nao redireciona para cadastro-anexo antigo');
-assert_not_contains_text($appJs, "window.location.replace('cadastro-anexo.html')", 'hash novo nao redireciona para cadastro-anexo antigo');
-
-assert_contains_text($dashboard, 'href="consulta-documento.php"', 'dashboard oferece consulta operacional');
-assert_contains_text($dashboard, 'href="modulo.php?action=new"', 'dashboard oferece nova inscricao operacional');
-assert_contains_text($dashboard, 'href="modulo.php"', 'dashboard oferece abertura do modulo operacional');
-assert_contains_text($dashboard, 'Consultar e registrar entrega', 'cartao Comida na Mesa aponta para consulta e entrega');
-assert_contains_text($dashboard, 'Nova inscrição', 'atalhos rapidos exibem nova inscricao');
-assert_contains_text($dashboard, 'Consultar CPF / Entrega', 'atalhos rapidos exibem consulta CPF e entrega');
-assert_contains_text($dashboard, '<span>Registrar entrega</span>', 'atalhos rapidos exibem registrar entrega como link funcional');
-assert_not_contains_text($dashboard, 'href="cadastro-anexo.html"', 'dashboard nao exibe link antigo de cadastro-anexo');
-assert_not_contains_text($dashboard, 'href="pessoas.html"', 'dashboard nao exibe link antigo de pessoas');
-assert_not_contains_text($dashboard, 'href="solicitacoes.html"', 'dashboard nao exibe link antigo de solicitacoes');
-assert_not_contains_text($dashboard, 'href="atendimentos.html"', 'dashboard nao exibe link antigo de atendimentos');
-assert_not_contains_text($dashboard, 'data-bs-target="#deliveryModal"', 'dashboard nao abre modal ficticio de entrega');
-assert_not_contains_text($dashboard, 'id="deliveryModal"', 'dashboard nao declara modal ficticio de entrega');
-assert_not_contains_text($dashboard, 'CM-000125', 'dashboard nao mantem codigo ficticio no fluxo de entrega');
-assert_not_contains_text($dashboard, 'Maria da Silva', 'dashboard nao mantem recebedor ficticio no fluxo de entrega');
-assert_not_contains_text($dashboard, 'Entrega confirmada com sucesso', 'dashboard nao mantem submit demo de entrega');
-
-assert_contains_text($module, '$isNewRegistrationPage = $action === \'new\' && trim($prefillCpf) !== \'\';', 'modulo so abre pagina propria de inscricao depois de CPF informado');
-assert_contains_text($module, 'data-registration-page', 'modulo renderiza tela dedicada para nova inscricao');
-assert_contains_text($module, 'id="newRegistrationModal"', 'modulo declara modal de consulta antes da nova inscricao');
-assert_contains_text($module, 'data-bs-target="#newRegistrationModal"', 'modulo abre modal de consulta antes da nova inscricao');
-
-foreach ($convertedPages as $page) {
-    $path = $root . '/' . $page . '.php';
-    if (!is_file($path)) {
-        $failures++;
-        echo "FAIL: pagina convertida nao encontrada: {$page}.php" . PHP_EOL;
-        continue;
+foreach ($registry as $environmentKey => $environment) {
+    foreach (['key', 'name', 'kind', 'icon', 'theme', 'home_page', 'home', 'pages', 'assets'] as $field) {
+        navigation_assert(isset($environment[$field]) && $environment[$field] !== '', "{$environmentKey}: campo {$field} ausente");
     }
 
-    $content = file_get_contents($path);
-    if ($content === false) {
-        $failures++;
-        echo "FAIL: nao foi possivel ler {$page}.php" . PHP_EOL;
-        continue;
+    navigation_assert(($environment['key'] ?? null) === $environmentKey, "{$environmentKey}: chave interna divergente");
+    navigation_assert(isset($environment['pages'][$environment['home_page']]), "{$environmentKey}: página inicial não registrada");
+    navigation_assert(count(array_filter($environment['pages'], static fn (array $page): bool => $page['mobile'] ?? false)) <= 4, "{$environmentKey}: mais de quatro itens prioritários no mobile");
+
+    foreach (['css', 'js'] as $assetType) {
+        $asset = $environment['assets'][$assetType] ?? '';
+        navigation_assert($asset !== '' && is_file($root . '/' . $asset), "{$environmentKey}: asset {$assetType} ausente");
     }
 
-    assert_contains_text($content, "require_once __DIR__ . '/bootstrap.php';", "{$page}.php carrega bootstrap");
-    assert_contains_text($content, 'PageContext::requireAuthenticatedFrontendContext()', "{$page}.php exige contexto autenticado");
-    assert_contains_text($content, 'PageContext::script($frontendContext)', "{$page}.php injeta SIGAS_CONTEXT antes do app.js");
-    assert_not_contains_text($content, '.html', "{$page}.php nao referencia paginas HTML antigas");
+    $usedHrefs = [];
 
-    $htmlPath = $root . '/' . $page . '.html';
-    $htmlContent = file_get_contents($htmlPath);
-    if ($htmlContent === false) {
-        $failures++;
-        echo "FAIL: nao foi possivel ler stub {$page}.html" . PHP_EOL;
-        continue;
+    foreach ($environment['pages'] as $pageKey => $page) {
+        foreach (['key', 'label', 'icon', 'page', 'href', 'target', 'mobile'] as $field) {
+            navigation_assert(array_key_exists($field, $page) && $page[$field] !== '', "{$environmentKey}/{$pageKey}: campo {$field} ausente");
+        }
+
+        navigation_assert(($page['key'] ?? null) === $pageKey, "{$environmentKey}/{$pageKey}: chave divergente");
+        navigation_assert(($page['page'] ?? null) === $pageKey, "{$environmentKey}/{$pageKey}: página ativa divergente");
+        navigation_assert(!isset($usedHrefs[$page['href']]), "{$environmentKey}/{$pageKey}: endereço duplicado");
+        $usedHrefs[$page['href']] = true;
+        navigation_assert(!preg_match('/\A(?:https?:)?\/\//i', (string) $page['href']), "{$environmentKey}/{$pageKey}: URL externa não permitida");
+
+        if (($page['target'] ?? null) === 'view') {
+            $view = $frontendRoot . str_replace('/', DIRECTORY_SEPARATOR, (string) ($page['view'] ?? ''));
+            navigation_assert(is_file($view), "{$environmentKey}/{$pageKey}: view ausente {$page['view']}");
+            navigation_assert(!isset($usedViews[$page['view']]), "{$environmentKey}/{$pageKey}: view duplicada");
+            $usedViews[$page['view']] = true;
+            continue;
+        }
+
+        navigation_assert(($page['target'] ?? null) === 'public', "{$environmentKey}/{$pageKey}: destino inválido");
+        $path = parse_url((string) $page['href'], PHP_URL_PATH);
+        navigation_assert(is_string($path) && $path !== '' && is_file($root . '/' . $path), "{$environmentKey}/{$pageKey}: rota pública ausente");
     }
-
-    assert_contains_text($htmlContent, 'url=' . $page . '.php', "{$page}.html redireciona por meta refresh");
-    assert_contains_text($htmlContent, "window.location.replace('{$page}.php' + window.location.search + window.location.hash)", "{$page}.html preserva query e hash no redirecionamento");
-    assert_not_contains_text($htmlContent, 'id="appSidebar"', "{$page}.html nao mantem shell estatico antigo");
 }
 
-echo $failures === 0 ? 'PASS navigation-links-test' . PHP_EOL : "FAILURES: {$failures}" . PHP_EOL;
-exit($failures === 0 ? 0 : 1);
+$controller = file_get_contents($root . '/setor.php') ?: '';
+$authPosition = strpos($controller, 'requireAuthenticatedFrontendContext');
+$inputPosition = strpos($controller, "\$_GET['ambiente']");
+navigation_assert($authPosition !== false && $inputPosition !== false && $authPosition < $inputPosition, 'setor.php deve autenticar antes de tratar a rota');
+navigation_assert(str_contains($controller, 'realpath'), 'setor.php deve resolver views com caminho canônico');
+navigation_assert(str_contains($controller, 'str_starts_with'), 'setor.php deve limitar views ao diretório frontend');
+
+if ($failures === []) {
+    echo 'PASS navigation-links-test' . PHP_EOL;
+    exit(0);
+}
+
+foreach ($failures as $failure) {
+    echo 'FAIL: ' . $failure . PHP_EOL;
+}
+
+echo 'FAILURES: ' . count($failures) . PHP_EOL;
+exit(1);

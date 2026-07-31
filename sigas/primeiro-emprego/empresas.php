@@ -1,1 +1,5 @@
-<?php require __DIR__ . '/_layout.php'; primeiro_emprego_list('primeiro-emprego-empresas','Empresas','Cadastro e acompanhamento de empresas parceiras.', ['Empresa','CNPJ','Segmento','Responsável','Telefone','Vagas abertas','Parceria'], [['Mercado Coari','**.***.***/****-**','Varejo','Carla Mendes','(97) 9****-1204','6','Ativa'],['Farmácia Popular','**.***.***/****-**','Saúde','Roberto Silva','(97) 9****-8832','3','Ativa'],['Logística Norte','**.***.***/****-**','Logística','Eliane Costa','(97) 9****-4190','2','Em renovação']], 'Nova empresa'); ?>
+<?php
+declare(strict_types=1);
+// Compatibilidade com a URL anterior; o conceito atual abrange todos os parceiros.
+$pageKey = 'parceiros';
+require __DIR__ . '/_layout.php';

@@ -10,4 +10,4 @@ Options -Indexes
     Require all denied
 </FilesMatch>
 
-RedirectMatch 403 "(^|/)(app|database|tests|docs|\.git|\.svn|\.hg|\.idea|\.vscode)(/|$)"
+RedirectMatch 403 "(^|/)(app|database|frontend|tests|docs|\.git|\.svn|\.hg|\.idea|\.vscode)(/|$)"

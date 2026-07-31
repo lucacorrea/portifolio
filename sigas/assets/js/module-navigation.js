@@ -24,7 +24,7 @@
         const prefix = body.dataset.moduleUrlPrefix || (key === 'primeiro-emprego' ? '../' : '');
         const portal = body.dataset.portalUrl || prefixUrl('portal.php', prefix);
         const items = menu.items || [];
-        const mobile = items.slice(0, 4);
+        const mobile = items.filter(item => item.mobile).slice(0, 4);
         sidebar.classList.add('module-sidebar');
         sidebar.innerHTML = `<div class="module-sidebar-head"><a class="module-brand" href="${escapeHTML(prefixUrl(menu.home, prefix))}"><i class="bi bi-${escapeHTML(menu.icon)}"></i><span><small>${menu.kind === 'module' ? 'Módulo SIGAS' : 'Setor SEMAS'}</small><strong>${escapeHTML(menu.name)}</strong></span></a><button class="btn btn-light btn-icon sidebar-close" type="button" data-sidebar-close aria-label="Fechar menu"><i class="bi bi-x-lg"></i></button></div><nav class="module-nav" aria-label="Navegação de ${escapeHTML(menu.name)}">${items.map(item => itemMarkup(item, page, prefix)).join('')}</nav><div class="module-sidebar-footer"><a href="${escapeHTML(portal)}" class="module-switch-link"><i class="bi bi-grid"></i>Trocar setor ou módulo</a></div>`;
         topbar.innerHTML = `<button class="btn btn-light btn-icon" type="button" data-sidebar-toggle aria-label="Abrir menu" aria-expanded="false"><i class="bi bi-list"></i></button><div class="module-existing-title"><span class="module-topbar-kicker">SIGAS / ${menu.kind === 'module' ? 'Módulo' : 'Setor'}</span><strong>${escapeHTML(menu.name)}</strong></div><a class="btn btn-outline-secondary btn-sm module-switch-button ms-auto" href="${escapeHTML(portal)}"><i class="bi bi-grid"></i><span>Trocar setor ou módulo</span></a>`;

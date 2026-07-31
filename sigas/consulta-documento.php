@@ -60,6 +60,7 @@ if (!$authorization->can($user, 'comida_mesa.consultar_cpf')) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
+    <link href="assets/css/module-navigation.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/module-navigation.css') ?>" rel="stylesheet">
     <link href="assets/css/consulta-documento-ocr.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/consulta-documento-ocr.css')) ?>" rel="stylesheet">
     <link href="assets/css/consulta-result-modal.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/consulta-result-modal.css')) ?>" rel="stylesheet">
 </head>
@@ -126,10 +127,11 @@ $frontendContext = [
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
+    <link href="assets/css/module-navigation.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/module-navigation.css') ?>" rel="stylesheet">
     <link href="assets/css/consulta-documento-ocr.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/consulta-documento-ocr.css')) ?>" rel="stylesheet">
     <link href="assets/css/consulta-result-modal.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/consulta-result-modal.css')) ?>" rel="stylesheet">
 </head>
-<body data-page="consulta" data-module="comida-mesa" data-module-page="comida-consulta">
+<body data-page="consulta" data-module="comida-mesa" data-module-page="<?= ($_GET['acao'] ?? '') === 'entrega' ? 'registrar-entrega' : 'consulta-cpf' ?>">
     <div class="app-shell">
         <aside class="app-sidebar" id="appSidebar" aria-label="Menu principal"></aside>
         <div class="app-main">
@@ -269,6 +271,7 @@ $frontendContext = [
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>window.SIGAS_CONTEXT = <?= json_encode($frontendContext, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
     <script src="assets/js/app.js"></script>
+    <script src="assets/js/module-navigation.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/module-navigation.js') ?>"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js"></script>
     <script src="assets/js/cpf-ocr.js?v=<?= e((string) filemtime(__DIR__ . '/assets/js/cpf-ocr.js')) ?>"></script>
     <script src="assets/js/consulta-documento.js?v=<?= e((string) filemtime(__DIR__ . '/assets/js/consulta-documento.js')) ?>"></script>

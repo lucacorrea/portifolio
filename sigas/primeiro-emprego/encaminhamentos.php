@@ -1,1 +1,4 @@
-<?php require __DIR__ . '/_layout.php'; primeiro_emprego_list('primeiro-emprego-encaminhamentos','Encaminhamentos','Controle de indicações, retornos e prazos.', ['Candidato','Vaga','Empresa','Data','Responsável','Situação','Prazo'], [['Ana Clara Souza','Auxiliar administrativo','Mercado Coari','30 jul','Equipe SIGAS','Entrevista marcada','31 jul'],['João Pedro Lima','Atendente','Farmácia Popular','29 jul','Equipe SIGAS','Aguardando retorno','01 ago'],['Mariana Alves','Jovem aprendiz','Logística Norte','28 jul','Equipe SIGAS','Encaminhado','02 ago']], 'Realizar encaminhamento'); ?>
+<?php
+declare(strict_types=1);
+$pageKey = 'encaminhamentos';
+require __DIR__ . '/_layout.php';

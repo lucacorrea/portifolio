@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace App\Config;
 
 /**
- * Catálogo visual único do Portal SIGAS. Não concede acesso: a autorização
- * continua sendo responsabilidade das rotas e serviços no servidor.
+ * Fonte única da navegação visual. O registro não concede autorização.
  */
 final class ModuleRegistry
 {
@@ -14,34 +13,140 @@ final class ModuleRegistry
     public static function all(): array
     {
         return [
-            'planejamento-gestao' => self::area('planejamento-gestao', 'Planejamento e Gestão', 'diagram-3', 'planning', [
-                'Painel', 'Planos de ação', 'Metas', 'Cronogramas', 'Rede de unidades', 'Equipes', 'Documentos', 'Monitoramento', 'Relatórios', 'Configurações',
-            ], ['Painel' => 'administracao.php', 'Rede de unidades' => 'unidades.php', 'Equipes' => 'usuarios.php', 'Configurações' => 'configuracoes.php']),
-            'vigilancia-socioassistencial' => self::area('vigilancia-socioassistencial', 'Vigilância Socioassistencial', 'bar-chart-steps', 'vigilance', [
-                'Painel', 'Indicadores', 'Territórios', 'Bairros e comunidades', 'Diagnósticos', 'Vulnerabilidades', 'Busca ativa', 'Monitoramento', 'Mapas', 'Relatórios',
-            ]),
-            'protecao-social-basica' => self::area('protecao-social-basica', 'Proteção Social Básica', 'house-heart', 'basic', [
-                'Painel', 'Pessoas e prontuários', 'Famílias', 'Atendimentos', 'Solicitações', 'Benefícios Eventuais', 'CRAS 1', 'CRAS 2', 'Cadastro Único', 'Bolsa Família', 'Criança Feliz', 'BPC na Escola', 'Centro de Convivência do Idoso', 'CAIC', 'Centro Integrado Darquilana Amorim', 'Casa do Cidadão', 'INSS Digital', 'Relatórios',
-            ], [
-                'Pessoas e prontuários' => 'pessoas.php', 'Famílias' => 'familias.php', 'Atendimentos' => 'atendimentos.php', 'Solicitações' => 'solicitacoes.php', 'Benefícios Eventuais' => 'beneficios.php', 'CRAS 1' => 'cras1.php', 'CRAS 2' => 'cras2.php', 'Casa do Cidadão' => 'casa.php', 'Relatórios' => 'relatorios.php',
-            ]),
-            'protecao-social-especial' => self::area('protecao-social-especial', 'Proteção Social Especial', 'shield-check', 'special', [
-                'Painel', 'CREAS', 'Casa de Acolhimento', 'Acompanhamentos especializados', 'Violações de direitos', 'Criança e adolescente', 'Proteção à mulher', 'Pessoa idosa', 'Pessoa com deficiência', 'Direitos Humanos', 'Encaminhamentos', 'Relatórios',
-            ], ['CREAS' => 'creas.php']),
-            'comida-mesa' => [
-                'name' => 'Coari Comida na Mesa', 'icon' => 'basket2', 'theme' => 'food', 'kind' => 'module', 'home' => 'modulo.php',
-                'description' => 'Beneficiários, entregas, competências e acompanhamento do programa.',
-                'items' => self::items(['Painel', 'Beneficiários', 'Nova inscrição', 'Consultar CPF', 'Registrar entrega', 'Competências', 'Polos', 'Documentos', 'Histórico', 'Relatórios'], [
-                    'Painel' => 'modulo.php', 'Beneficiários' => 'modulo.php', 'Nova inscrição' => 'modulo.php?action=new', 'Consultar CPF' => 'consulta-documento.php', 'Registrar entrega' => 'consulta-documento.php', 'Competências' => 'modulo.php#competencias', 'Polos' => 'modulo.php#polos', 'Documentos' => 'modulo.php#documentos', 'Histórico' => 'modulo.php#historico', 'Relatórios' => 'modulo.php#relatorios',
-                ]),
-            ],
-            'primeiro-emprego' => [
-                'name' => 'Coari Meu Primeiro Emprego', 'icon' => 'briefcase', 'theme' => 'employment', 'kind' => 'module', 'home' => 'primeiro-emprego/index.php',
-                'description' => 'Candidatos, vagas, parcerias e acompanhamento de empregabilidade.',
-                'items' => self::items(['Painel', 'Candidatos', 'Novo candidato', 'Vagas e oportunidades', 'Órgãos e instituições parceiras', 'Lotações', 'Encaminhamentos', 'Documentação', 'Frequência', 'Bolsas', 'Capacitações', 'Acompanhamentos', 'Relatórios', 'Configurações'], [
-                    'Painel' => 'primeiro-emprego/index.php', 'Candidatos' => 'primeiro-emprego/candidatos.php', 'Novo candidato' => 'primeiro-emprego/cadastro-candidato.php', 'Vagas e oportunidades' => 'primeiro-emprego/vagas.php', 'Órgãos e instituições parceiras' => 'primeiro-emprego/empresas.php', 'Lotações' => 'primeiro-emprego/index.php?pagina=lotacoes', 'Encaminhamentos' => 'primeiro-emprego/encaminhamentos.php', 'Documentação' => 'primeiro-emprego/index.php?pagina=documentacao', 'Frequência' => 'primeiro-emprego/index.php?pagina=frequencia', 'Bolsas' => 'primeiro-emprego/index.php?pagina=bolsas', 'Capacitações' => 'primeiro-emprego/capacitacoes.php', 'Acompanhamentos' => 'primeiro-emprego/index.php?pagina=acompanhamentos', 'Relatórios' => 'primeiro-emprego/relatorios.php', 'Configurações' => 'primeiro-emprego/index.php?pagina=configuracoes',
-                ]),
-            ],
+            'planejamento-gestao' => self::environment(
+                'planejamento-gestao',
+                'Planejamento e Gestão',
+                'diagram-3',
+                'planning',
+                'sector',
+                [
+                    'painel' => ['Painel', 'speedometer2'],
+                    'planos-acao' => ['Planos de ação', 'clipboard2-check'],
+                    'metas' => ['Metas', 'bullseye'],
+                    'cronogramas' => ['Cronogramas', 'calendar3'],
+                    'rede-unidades' => ['Rede de unidades', 'buildings'],
+                    'equipes' => ['Equipes', 'people'],
+                    'documentos' => ['Documentos', 'folder2-open'],
+                    'monitoramento' => ['Monitoramento', 'activity'],
+                    'relatorios' => ['Relatórios', 'bar-chart-line'],
+                    'configuracoes' => ['Configurações', 'gear'],
+                ],
+                ['painel', 'planos-acao', 'metas', 'cronogramas']
+            ),
+            'vigilancia-socioassistencial' => self::environment(
+                'vigilancia-socioassistencial',
+                'Vigilância Socioassistencial',
+                'bar-chart-steps',
+                'vigilance',
+                'sector',
+                [
+                    'painel' => ['Painel', 'speedometer2'],
+                    'indicadores' => ['Indicadores', 'graph-up-arrow'],
+                    'territorios' => ['Territórios', 'map'],
+                    'bairros-comunidades' => ['Bairros e comunidades', 'geo-alt'],
+                    'diagnosticos' => ['Diagnósticos', 'clipboard2-data'],
+                    'vulnerabilidades' => ['Vulnerabilidades', 'exclamation-diamond'],
+                    'busca-ativa' => ['Busca ativa', 'search'],
+                    'monitoramento' => ['Monitoramento', 'activity'],
+                    'mapas' => ['Mapas', 'pin-map'],
+                    'relatorios' => ['Relatórios', 'bar-chart-line'],
+                ],
+                ['painel', 'indicadores', 'territorios', 'busca-ativa']
+            ),
+            'protecao-social-basica' => self::environment(
+                'protecao-social-basica',
+                'Proteção Social Básica',
+                'house-heart',
+                'basic',
+                'sector',
+                [
+                    'painel' => ['Painel', 'speedometer2'],
+                    'pessoas-prontuarios' => ['Pessoas e prontuários', 'people', 'pessoas.php'],
+                    'familias' => ['Famílias', 'house-heart', 'familias.php'],
+                    'atendimentos' => ['Atendimentos', 'clipboard2-pulse', 'atendimentos.php'],
+                    'solicitacoes' => ['Solicitações', 'inboxes', 'solicitacoes.php'],
+                    'beneficios-eventuais' => ['Benefícios Eventuais', 'gift', 'beneficios.php'],
+                    'cras-1' => ['CRAS 1', 'geo-alt', 'cras1.php'],
+                    'cras-2' => ['CRAS 2', 'geo-alt', 'cras2.php'],
+                    'cadastro-unico' => ['Cadastro Único', 'person-vcard'],
+                    'bolsa-familia' => ['Bolsa Família', 'wallet2'],
+                    'crianca-feliz' => ['Criança Feliz', 'emoji-smile'],
+                    'bpc-escola' => ['BPC na Escola', 'mortarboard'],
+                    'centro-convivencia-idoso' => ['Centro de Convivência do Idoso', 'person-hearts'],
+                    'caic' => ['Centro de Atenção Integral à Criança — CAIC', 'building'],
+                    'darquilana-amorim' => ['Centro Integrado Darquilana Amorim', 'buildings'],
+                    'casa-cidadao' => ['Casa do Cidadão', 'house-door', 'casa.php'],
+                    'inss-digital' => ['INSS Digital', 'laptop'],
+                    'relatorios' => ['Relatórios', 'bar-chart-line', 'relatorios.php'],
+                ],
+                ['painel', 'pessoas-prontuarios', 'familias', 'atendimentos']
+            ),
+            'protecao-social-especial' => self::environment(
+                'protecao-social-especial',
+                'Proteção Social Especial',
+                'shield-check',
+                'special',
+                'sector',
+                [
+                    'painel' => ['Painel', 'speedometer2'],
+                    'creas' => ['CREAS', 'shield-check', 'creas.php'],
+                    'casa-acolhimento' => ['Casa de Acolhimento', 'house-lock'],
+                    'acompanhamentos-especializados' => ['Acompanhamentos especializados', 'clipboard2-pulse'],
+                    'violacoes-direitos' => ['Violações de direitos', 'exclamation-octagon'],
+                    'crianca-adolescente' => ['Criança e adolescente', 'emoji-smile'],
+                    'protecao-mulher' => ['Proteção à mulher', 'gender-female'],
+                    'pessoa-idosa' => ['Pessoa idosa', 'person-hearts'],
+                    'pessoa-deficiencia' => ['Pessoa com deficiência', 'universal-access'],
+                    'direitos-humanos' => ['Direitos Humanos', 'people'],
+                    'encaminhamentos' => ['Encaminhamentos', 'send'],
+                    'relatorios' => ['Relatórios', 'bar-chart-line'],
+                ],
+                ['painel', 'creas', 'acompanhamentos-especializados', 'encaminhamentos']
+            ),
+            'comida-mesa' => self::environment(
+                'comida-mesa',
+                'Coari Comida na Mesa',
+                'basket2',
+                'food',
+                'module',
+                [
+                    'painel' => ['Painel', 'speedometer2'],
+                    'beneficiarios' => ['Beneficiários', 'people', 'modulo.php'],
+                    'nova-inscricao' => ['Nova inscrição', 'person-plus', 'modulo.php?action=new'],
+                    'consulta-cpf' => ['Consultar CPF', 'person-bounding-box', 'consulta-documento.php?acao=consultar'],
+                    'registrar-entrega' => ['Registrar entrega', 'box-seam', 'consulta-documento.php?acao=entrega'],
+                    'competencias' => ['Competências', 'calendar3'],
+                    'polos' => ['Polos', 'geo-alt'],
+                    'documentos' => ['Documentos', 'folder2-open'],
+                    'historico' => ['Histórico', 'clock-history'],
+                    'relatorios' => ['Relatórios', 'bar-chart-line'],
+                ],
+                ['painel', 'beneficiarios', 'nova-inscricao', 'registrar-entrega']
+            ),
+            'primeiro-emprego' => self::environment(
+                'primeiro-emprego',
+                'Coari Meu Primeiro Emprego',
+                'briefcase',
+                'employment',
+                'module',
+                [
+                    'painel' => ['Painel', 'speedometer2', 'primeiro-emprego/index.php'],
+                    'candidatos' => ['Candidatos', 'people', 'primeiro-emprego/candidatos.php'],
+                    'novo-candidato' => ['Novo candidato', 'person-plus', 'primeiro-emprego/cadastro-candidato.php'],
+                    'vagas' => ['Vagas e oportunidades', 'briefcase', 'primeiro-emprego/vagas.php'],
+                    'parceiros' => ['Órgãos e instituições parceiras', 'buildings', 'primeiro-emprego/parceiros.php'],
+                    'lotacoes' => ['Lotações', 'diagram-3', 'primeiro-emprego/lotacoes.php'],
+                    'encaminhamentos' => ['Encaminhamentos', 'send', 'primeiro-emprego/encaminhamentos.php'],
+                    'documentacao' => ['Documentação', 'folder2-open', 'primeiro-emprego/documentacao.php'],
+                    'frequencia' => ['Frequência', 'calendar-check', 'primeiro-emprego/frequencia.php'],
+                    'bolsas' => ['Bolsas', 'wallet2', 'primeiro-emprego/bolsas.php'],
+                    'capacitacoes' => ['Capacitações', 'mortarboard', 'primeiro-emprego/capacitacoes.php'],
+                    'acompanhamentos' => ['Acompanhamentos', 'clipboard2-pulse', 'primeiro-emprego/acompanhamentos.php'],
+                    'relatorios' => ['Relatórios', 'bar-chart-line', 'primeiro-emprego/relatorios.php'],
+                    'configuracoes' => ['Configurações', 'gear', 'primeiro-emprego/configuracoes.php'],
+                ],
+                ['painel', 'candidatos', 'novo-candidato', 'vagas']
+            ),
         ];
     }
 
@@ -51,31 +156,64 @@ final class ModuleRegistry
         return self::all()[$key] ?? null;
     }
 
-    /** @return array<string, mixed> */
-    private static function area(string $key, string $name, string $icon, string $theme, array $labels, array $routes = []): array
+    /** @return array<string, mixed>|null */
+    public static function findPage(string $environment, string $page): ?array
     {
-        return ['name' => $name, 'icon' => $icon, 'theme' => $theme, 'kind' => 'sector', 'home' => 'setor.php?ambiente=' . $key, 'description' => 'Ambiente próprio da SEMAS, com indicadores, páginas e fluxos contextuais.', 'items' => self::items($labels, $routes, $key)];
+        return self::find($environment)['pages'][$page] ?? null;
     }
 
-    /** @return list<array<string, string>> */
-    private static function items(array $labels, array $routes = [], string $area = ''): array
-    {
-        return array_map(static function (string $label) use ($routes, $area): array {
-            $slug = self::slug($label);
-            return ['label' => $label, 'icon' => self::icon($label), 'page' => $slug, 'href' => $routes[$label] ?? ('setor.php?ambiente=' . $area . '&pagina=' . $slug)];
-        }, $labels);
-    }
+    /**
+     * @param array<string, array{0: string, 1: string, 2?: string}> $specs
+     * @param list<string> $mobilePages
+     * @return array<string, mixed>
+     */
+    private static function environment(
+        string $key,
+        string $name,
+        string $icon,
+        string $theme,
+        string $kind,
+        array $specs,
+        array $mobilePages
+    ): array {
+        $pages = [];
 
-    private static function slug(string $value): string
-    {
-        $value = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value) ?: $value;
-        return trim(strtolower((string) preg_replace('/[^a-z0-9]+/', '-', $value)), '-');
-    }
+        foreach ($specs as $pageKey => $spec) {
+            $publicHref = $spec[2] ?? null;
+            $href = $publicHref ?? 'setor.php?ambiente=' . rawurlencode($key) . '&pagina=' . rawurlencode($pageKey);
+            $pages[$pageKey] = [
+                'key' => $pageKey,
+                'label' => $spec[0],
+                'icon' => $spec[1],
+                'page' => $pageKey,
+                'href' => $href,
+                'target' => $publicHref === null ? 'view' : 'public',
+                'view' => $publicHref === null ? $key . '/pages/' . $pageKey . '.php' : null,
+                'mobile' => in_array($pageKey, $mobilePages, true),
+            ];
+        }
 
-    private static function icon(string $label): string
-    {
-        return match ($label) {
-            'Painel' => 'speedometer2', 'Relatórios' => 'bar-chart-line', 'Configurações' => 'gear', 'Pessoas e prontuários', 'Candidatos', 'Beneficiários' => 'people', 'Novo candidato', 'Nova inscrição' => 'person-plus', 'Famílias' => 'house-heart', 'Atendimentos', 'Acompanhamentos especializados', 'Acompanhamentos' => 'clipboard2-pulse', 'Documentos', 'Documentação' => 'folder2-open', 'Mapas', 'Territórios', 'Bairros e comunidades', 'Polos' => 'geo-alt', default => 'grid-1x2',
-        };
+        $first = array_key_first($pages);
+        $description = $kind === 'module'
+            ? 'Ambiente independente com fluxos e navegação próprios.'
+            : 'Ambiente próprio da SEMAS, com indicadores e páginas contextuais.';
+
+        return [
+            'key' => $key,
+            'name' => $name,
+            'kind' => $kind,
+            'icon' => $icon,
+            'theme' => $theme,
+            'description' => $description,
+            'home_page' => $first,
+            'home' => $pages[$first]['href'],
+            'pages' => $pages,
+            // Compatibilidade temporária com os consumidores existentes.
+            'items' => array_values($pages),
+            'assets' => [
+                'css' => 'assets/css/modules/' . $key . '.css',
+                'js' => 'assets/js/modules/' . $key . '.js',
+            ],
+        ];
     }
 }

@@ -1,0 +1,2 @@
+<?php declare(strict_types=1); ?>
+<section class="content-card"><div class="card-heading"><div><div class="card-kicker"><?= sigas_frontend_escape($block['kicker'] ?? 'Agenda') ?></div><h2><?= sigas_frontend_escape($block['title']) ?></h2></div></div><ol class="frontend-timeline"><?php foreach ($block['items'] as $item): ?><li><span><?= sigas_frontend_escape($item['date']) ?></span><div><strong><?= sigas_frontend_escape($item['title']) ?></strong><p><?= sigas_frontend_escape($item['text']) ?></p></div></li><?php endforeach; ?></ol></section>
