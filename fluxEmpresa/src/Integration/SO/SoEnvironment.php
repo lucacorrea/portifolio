@@ -33,6 +33,7 @@ final class SoEnvironment
         $path = $this->resolveFilePath();
         $lines = is_readable($path) ? file($path, FILE_IGNORE_NEW_LINES) : false;
         if ($lines === false) {
+            error_log('SO integration environment could not be read.');
             throw new SoIntegrationException('Integração do SO indisponível.');
         }
 
@@ -54,6 +55,7 @@ final class SoEnvironment
         if (($this->values['DB_PORT'] ?? '') === '') $this->values['DB_PORT'] = '3306';
         foreach (self::KEYS as $key) {
             if (($this->values[$key] ?? '') === '') {
+                error_log('SO integration environment is missing required key: ' . $key . '.');
                 throw new SoIntegrationException('Integração do SO indisponível.');
             }
         }
@@ -72,6 +74,7 @@ final class SoEnvironment
         if (is_string($configuredFluxEnvironment) && trim($configuredFluxEnvironment) !== '') {
             $paths[] = dirname(rtrim($configuredFluxEnvironment, DIRECTORY_SEPARATOR), 2)
                 . DIRECTORY_SEPARATOR . 'so' . DIRECTORY_SEPARATOR . '.env';
+            $this->appendAncestorCandidates($paths, dirname(trim($configuredFluxEnvironment)));
         }
 
         $paths[] = dirname($projectRoot, 2) . DIRECTORY_SEPARATOR . 'configuracoes' . DIRECTORY_SEPARATOR . 'so' . DIRECTORY_SEPARATOR . '.env';
@@ -85,10 +88,29 @@ final class SoEnvironment
             $paths[] = dirname((string) $_SERVER['DOCUMENT_ROOT']) . DIRECTORY_SEPARATOR . 'configuracao' . DIRECTORY_SEPARATOR . 'so' . DIRECTORY_SEPARATOR . 'conect' . DIRECTORY_SEPARATOR . '.env';
         }
 
+        $this->appendAncestorCandidates($paths, $projectRoot);
+
         foreach (array_unique($paths) as $path) {
             if (is_file($path) && is_readable($path)) return $path;
         }
 
+        error_log('SO integration environment was not found in the configured locations.');
         throw new SoIntegrationException('Integração do SO indisponível.');
+    }
+
+    private function appendAncestorCandidates(array &$paths, string $start): void
+    {
+        $directory = rtrim(trim($start), "/\\");
+        for ($level = 0; $level < 10 && $directory !== ''; $level++) {
+            $paths[] = $directory
+                . DIRECTORY_SEPARATOR . 'configuracao'
+                . DIRECTORY_SEPARATOR . 'so'
+                . DIRECTORY_SEPARATOR . 'conect'
+                . DIRECTORY_SEPARATOR . '.env';
+
+            $parent = dirname($directory);
+            if ($parent === $directory || $parent === '.') break;
+            $directory = $parent;
+        }
     }
 }

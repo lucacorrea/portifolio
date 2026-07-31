@@ -37,6 +37,7 @@ final class Environment
         'LOGIN_LOCK_MINUTES',
 
         'SO_INTEGRATION_ENABLED',
+        'SO_ENV_PATH',
         'SO_API_BASE_URL',
         'SO_API_ACQUISITION_PATH',
         'SO_API_CLIENT_ID',

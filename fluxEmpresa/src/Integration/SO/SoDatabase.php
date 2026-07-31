@@ -21,9 +21,10 @@ final class SoDatabase
             }
             $dsn .= ';dbname=' . $env->get('DB_DATABASE') . ';charset=' . $env->get('DB_CHARSET');
 
-            return $this->connection = new PDO($dsn, $env->get('DB_USERNAME'), $env->get('DB_PASSWORD'), [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, PDO::ATTR_EMULATE_PREPARES => false]);
+            return $this->connection = new PDO($dsn, $env->get('DB_USERNAME'), $env->get('DB_PASSWORD'), [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, PDO::ATTR_EMULATE_PREPARES => false, PDO::ATTR_STRINGIFY_FETCHES => false, PDO::ATTR_TIMEOUT => 3]);
         } catch (PDOException|SoIntegrationException $exception) {
-            error_log('SO integration connection failed.');
+            $nativeCode = $exception instanceof PDOException ? (int) ($exception->errorInfo[1] ?? 0) : 0;
+            error_log('SO integration connection failed. type=' . $exception::class . ' code=' . $exception->getCode() . ' native=' . $nativeCode . '.');
             throw new SoIntegrationException('Integração do SO indisponível.');
         }
     }

@@ -92,6 +92,11 @@ try {
     ]));
     putenv('SO_ENV_PATH=' . $soEnvironmentFile);
     unset($_SERVER['SO_ENV_PATH']);
+    environmentAssertSame(
+        $soEnvironmentFile,
+        $environment->get('SO_ENV_PATH'),
+        'O ambiente principal deve permitir configurar SO_ENV_PATH.'
+    );
     $soEnvironment = new SoEnvironment(dirname(__DIR__));
     environmentAssertSame(
         'so-db.internal',
@@ -114,7 +119,7 @@ try {
     ]));
     putenv('SO_ENV_PATH');
     putenv('HOME');
-    $_SERVER['DOCUMENT_ROOT'] = $soEnvironmentBase . DIRECTORY_SEPARATOR . 'public_html';
+    $_SERVER['DOCUMENT_ROOT'] = $soEnvironmentBase . DIRECTORY_SEPARATOR . 'domains' . DIRECTORY_SEPARATOR . 'lucascorrea.pro' . DIRECTORY_SEPARATOR . 'public_html';
     $sigasCompatibleEnvironment = new SoEnvironment($_SERVER['DOCUMENT_ROOT'] . DIRECTORY_SEPARATOR . 'fluxEmpresa');
     environmentAssertSame(
         'so-db.internal',
