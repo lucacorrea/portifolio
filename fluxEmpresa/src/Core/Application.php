@@ -39,6 +39,8 @@ use App\Finance\Service\AccountsReceivableManagementService;
 use App\Finance\Service\CashManagementService;
 use App\Finance\Service\PaymentManagementService;
 use App\Finance\Service\ReceiptService;
+use App\Integration\SO\Repository\SoAcquisitionIntegrationRepository;
+use App\Integration\SO\Service\SoAcquisitionQueueService;
 use App\Integration\SO\Service\SoSupplierService;
 use App\Integration\SO\SoApiClient;
 use App\Integration\SO\SoDatabase;
@@ -60,6 +62,7 @@ use App\ServiceOrder\Service\ServiceOrderLifecycleService;
 use App\ServiceOrder\Service\ServiceOrderManagementService;
 use App\Workforce\Repository\EmployeeRepository;
 use App\Workforce\Service\EmployeeManagementService;
+
 
 final class Application
 {
@@ -130,6 +133,10 @@ final class Application
     private ?SoSupplierService $soSupplierService = null;
 
     private ?SoApiClient $soApiClient = null;
+
+    private ?SoAcquisitionIntegrationRepository $soAcquisitionIntegrationRepository = null;
+
+    private ?SoAcquisitionQueueService $soAcquisitionQueueService = null;
 
     private ?ActiveCompanyContext $activeCompanyContext = null;
 
@@ -761,6 +768,47 @@ final class Application
         }
 
         return $this->soApiClient;
+    }
+
+    /**
+     * Repository responsável pelo vínculo local entre:
+     *
+     * - orçamento/OS do Flux Empresas;
+     * - aquisição do SO;
+     * - eventos pendentes da outbox.
+     */
+    public function soAcquisitionIntegrations(): SoAcquisitionIntegrationRepository
+    {
+        if ($this->soAcquisitionIntegrationRepository === null) {
+            $this->soAcquisitionIntegrationRepository =
+                new SoAcquisitionIntegrationRepository(
+                    connection: $this->database->connection(),
+                    companyScope: $this->companyScope()
+                );
+        }
+
+        return $this->soAcquisitionIntegrationRepository;
+    }
+
+    /**
+     * Prepara orçamento ou OS aprovada para criação de aquisição no SO.
+     *
+     * Este serviço monta o payload, gera a chave de idempotência
+     * e registra a integração na outbox. A comunicação HTTP é
+     * executada posteriormente pelo worker.
+     */
+    public function soAcquisitionQueue(): SoAcquisitionQueueService
+    {
+        if ($this->soAcquisitionQueueService === null) {
+            $this->soAcquisitionQueueService =
+                new SoAcquisitionQueueService(
+                    connection: $this->database->connection(),
+                    companyScope: $this->companyScope(),
+                    integrations: $this->soAcquisitionIntegrations()
+                );
+        }
+
+        return $this->soAcquisitionQueueService;
     }
 
     public function activeCompanyContext(): ActiveCompanyContext
