@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Security;
 
 use App\Access\Repository\ProfilePermissionRepository;
+use App\Access\Repository\ProfileRepository;
 use App\Access\Repository\UserRepository;
 use InvalidArgumentException;
 
@@ -12,7 +13,8 @@ final class PrivilegedAuthorizationService
 {
     public function __construct(
         private readonly UserRepository $users,
-        private readonly ProfilePermissionRepository $profilePermissions
+        private readonly ProfilePermissionRepository $profilePermissions,
+        private readonly ProfileRepository $profiles
     ) {
     }
 
@@ -32,8 +34,11 @@ final class PrivilegedAuthorizationService
             throw new InvalidArgumentException('Autorização negada.');
         }
 
+        $profile = $this->profiles->findById($user->profileId());
+        $isPlatformAdministrator = $profile !== null
+            && in_array($profile->code(), ['suporte', 'super_admin'], true);
         $permissions = $this->profilePermissions->findPermissionCodesByProfile($user->profileId());
-        if (!in_array($permission, $permissions, true)) {
+        if (!$isPlatformAdministrator && !in_array($permission, $permissions, true)) {
             throw new InvalidArgumentException('Autorizador sem permissão necessária.');
         }
 

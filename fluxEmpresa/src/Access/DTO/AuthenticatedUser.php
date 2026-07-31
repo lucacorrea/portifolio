@@ -42,7 +42,17 @@ final class AuthenticatedUser
 
     public function isPlatformAdministrator(): bool
     {
-        return in_array($this->profileCode, ['suporte', 'super_admin'], true);
+        return $this->isSupport() || $this->isSuperAdmin();
+    }
+
+    public function isSupport(): bool
+    {
+        return $this->profileCode === 'suporte';
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->profileCode === 'super_admin';
     }
 
     public function name(): string

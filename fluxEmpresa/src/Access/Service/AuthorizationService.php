@@ -29,7 +29,8 @@ final class AuthorizationService
             return false;
         }
 
-        return in_array($permission, $user->permissions(), true);
+        return $user->isPlatformAdministrator()
+            || in_array($permission, $user->permissions(), true);
     }
 
     /**

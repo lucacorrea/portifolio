@@ -419,7 +419,8 @@ final class Application
             $connection = $this->database->connection();
             $this->privilegedAuthorization = new PrivilegedAuthorizationService(
                 new UserRepository($connection),
-                new ProfilePermissionRepository($connection)
+                new ProfilePermissionRepository($connection),
+                new ProfileRepository($connection)
             );
         }
 
