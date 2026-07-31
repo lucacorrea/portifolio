@@ -363,7 +363,7 @@ function render_registration_form_fields(array $poles, array $programStatuses, s
     <link href="assets/css/style.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/style.css')) ?>" rel="stylesheet">
     <link href="assets/css/anexo-detail-modal.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/anexo-detail-modal.css')) ?>" rel="stylesheet">
 </head>
-<body data-page="modulo">
+<body data-page="modulo" data-module="comida-mesa" data-module-page="comida-beneficiarios">
     <div class="app-shell">
         <aside class="app-sidebar" id="appSidebar" aria-label="Menu principal"></aside>
         <div class="app-main">

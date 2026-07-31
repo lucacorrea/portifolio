@@ -127,7 +127,7 @@ $frontendContext = [
     <link href="assets/css/consulta-documento-ocr.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/consulta-documento-ocr.css')) ?>" rel="stylesheet">
     <link href="assets/css/consulta-result-modal.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/consulta-result-modal.css')) ?>" rel="stylesheet">
 </head>
-<body data-page="consulta">
+<body data-page="consulta" data-module="comida-mesa" data-module-page="comida-consulta">
     <div class="app-shell">
         <aside class="app-sidebar" id="appSidebar" aria-label="Menu principal"></aside>
         <div class="app-main">
