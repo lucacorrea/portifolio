@@ -126,6 +126,20 @@ try {
         $sigasCompatibleEnvironment->get('DB_HOST'),
         'A integração deve localizar configuracao/so/conect/.env como o SIGAS.'
     );
+    environmentAssertSame(
+        'environment_not_found',
+        (new App\Integration\SO\SoIntegrationException(reason: 'environment_not_found'))->reason(),
+        'Falhas da integração devem preservar uma causa segura para o diagnóstico administrativo.'
+    );
+
+    $soDiagnosticSource = file_get_contents(dirname(__DIR__) . '/adm/teste-conexao-so.php');
+    environmentAssertSame(
+        true,
+        is_string($soDiagnosticSource)
+            && str_contains($soDiagnosticSource, "admin-guard.php")
+            && str_contains($soDiagnosticSource, "reason()"),
+        'O diagnóstico do SO deve ser protegido e usar somente causas seguras.'
+    );
 
     $bootstrapSource = file_get_contents(dirname(__DIR__) . '/bootstrap.php');
     environmentAssertSame(

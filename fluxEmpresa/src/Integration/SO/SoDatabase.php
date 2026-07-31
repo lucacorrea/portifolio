@@ -13,7 +13,7 @@ final class SoDatabase
         try {
             $env = new SoEnvironment($this->projectRoot);
             $port = filter_var($env->get('DB_PORT'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 65535]]);
-            if ($port === false) throw new SoIntegrationException('Integração do SO indisponível.');
+            if ($port === false) throw new SoIntegrationException(reason: 'configuration_invalid');
             $host = $env->get('DB_HOST');
             $dsn = 'mysql:host=' . $host;
             if (strtolower($host) !== 'localhost') {
@@ -25,7 +25,8 @@ final class SoDatabase
         } catch (PDOException|SoIntegrationException $exception) {
             $nativeCode = $exception instanceof PDOException ? (int) ($exception->errorInfo[1] ?? 0) : 0;
             error_log('SO integration connection failed. type=' . $exception::class . ' code=' . $exception->getCode() . ' native=' . $nativeCode . '.');
-            throw new SoIntegrationException('Integração do SO indisponível.');
+            if ($exception instanceof SoIntegrationException) throw $exception;
+            throw new SoIntegrationException(reason: 'database_connection_failed', previous: $exception);
         }
     }
 }

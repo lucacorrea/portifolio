@@ -20,7 +20,8 @@ final class SoSupplierService
             return $callback();
         } catch (Throwable $exception) {
             error_log('SO supplier query failed. operation=' . $operation . ' type=' . $exception::class . ' code=' . $exception->getCode() . '.');
-            throw new SoIntegrationException('Integração do SO indisponível.');
+            if ($exception instanceof SoIntegrationException) throw $exception;
+            throw new SoIntegrationException(reason: 'query_failed', previous: $exception);
         }
     }
 }

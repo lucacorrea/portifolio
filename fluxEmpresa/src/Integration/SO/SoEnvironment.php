@@ -20,7 +20,7 @@ final class SoEnvironment
     {
         $this->load();
         if (!in_array($key, self::KEYS, true) || !isset($this->values[$key])) {
-            throw new SoIntegrationException('Integração do SO indisponível.');
+            throw new SoIntegrationException(reason: 'configuration_invalid');
         }
 
         return $this->values[$key];
@@ -34,7 +34,7 @@ final class SoEnvironment
         $lines = is_readable($path) ? file($path, FILE_IGNORE_NEW_LINES) : false;
         if ($lines === false) {
             error_log('SO integration environment could not be read.');
-            throw new SoIntegrationException('Integração do SO indisponível.');
+            throw new SoIntegrationException(reason: 'environment_unreadable');
         }
 
         $rawValues = [];
@@ -56,7 +56,7 @@ final class SoEnvironment
         foreach (self::KEYS as $key) {
             if (($this->values[$key] ?? '') === '') {
                 error_log('SO integration environment is missing required key: ' . $key . '.');
-                throw new SoIntegrationException('Integração do SO indisponível.');
+                throw new SoIntegrationException(reason: 'configuration_incomplete');
             }
         }
     }
@@ -95,7 +95,7 @@ final class SoEnvironment
         }
 
         error_log('SO integration environment was not found in the configured locations.');
-        throw new SoIntegrationException('Integração do SO indisponível.');
+        throw new SoIntegrationException(reason: 'environment_not_found');
     }
 
     private function appendAncestorCandidates(array &$paths, string $start): void
