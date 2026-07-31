@@ -11,6 +11,7 @@ final class AuthenticatedUser
     public function __construct(
         private readonly int $id,
         private readonly int $profileId,
+        private readonly string $profileCode,
         private readonly string $profileName,
         private readonly string $name,
         private readonly string $username,
@@ -32,6 +33,16 @@ final class AuthenticatedUser
     public function profileName(): string
     {
         return $this->profileName;
+    }
+
+    public function profileCode(): string
+    {
+        return $this->profileCode;
+    }
+
+    public function isPlatformAdministrator(): bool
+    {
+        return in_array($this->profileCode, ['suporte', 'super_admin'], true);
     }
 
     public function name(): string

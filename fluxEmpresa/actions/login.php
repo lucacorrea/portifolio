@@ -25,6 +25,9 @@ try {
 
     $result = $application->authentication()->attempt($identifier, $password);
     if ($result->success()) {
+        $targetUrl = $result->user()?->isPlatformAdministrator()
+            ? $redirect->applicationUrl('adm/index.php')
+            : $targetUrl;
         header('Location: ' . $targetUrl, true, 303);
         exit;
     }

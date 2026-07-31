@@ -204,6 +204,13 @@ $navGroups = [
 
     'Administração' => [
         [
+            'key' => 'platform-admin',
+            'label' => 'Área administrativa',
+            'icon' => 'bi-buildings',
+            'href' => 'adm/index.php',
+            'platform_admin' => true,
+        ],
+        [
             'key' => 'usuarios',
             'label' => 'Usuários',
             'icon' => 'bi-person-gear',
@@ -222,7 +229,11 @@ $navGroups = [
 
 $canSeeItem = static function (
     array $item
-) use ($authorization): bool {
+) use ($authorization, $currentUser): bool {
+    if (($item['platform_admin'] ?? false) === true) {
+        return $currentUser->isPlatformAdministrator();
+    }
+
     if (isset($item['permission'])) {
         return $authorization->can(
             (string) $item['permission']

@@ -9,7 +9,10 @@ $application = $app['application'];
 $application->session()->start();
 
 try {
-    $target = $application->authentication()->isAuthenticated() ? 'dashboard.php' : 'login.php';
+    $currentUser = $application->authentication()->currentUser();
+    $target = $currentUser === null
+        ? 'login.php'
+        : ($currentUser->isPlatformAdministrator() ? 'adm/index.php' : 'dashboard.php');
 } catch (Throwable $exception) {
     $target = 'login.php';
 }

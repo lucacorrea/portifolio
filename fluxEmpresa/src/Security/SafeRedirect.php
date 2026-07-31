@@ -10,6 +10,7 @@ final class SafeRedirect
 
     private const ALLOWED_TARGETS = [
         'dashboard.php',
+        'adm/index.php',
         'acesso-negado.php',
         'ordens-servico.php',
         'orcamentos.php',

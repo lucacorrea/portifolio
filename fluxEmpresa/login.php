@@ -16,8 +16,10 @@ $redirect = $application->redirect();
 $next = $redirect->sanitize($_GET['next'] ?? 'dashboard.php');
 
 try {
-    if ($application->authentication()->isAuthenticated()) {
-        header('Location: ' . $redirect->applicationUrl($next), true, 303);
+    $currentUser = $application->authentication()->currentUser();
+    if ($currentUser !== null) {
+        $target = $currentUser->isPlatformAdministrator() ? 'adm/index.php' : $next;
+        header('Location: ' . $redirect->applicationUrl($target), true, 303);
         exit;
     }
 } catch (Throwable $exception) {
