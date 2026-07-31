@@ -6,28 +6,46 @@ declare(strict_types=1);
  * Bootstrap da API Flux Empresas → SO.
  *
  * Responsabilidades:
- * - carregar a configuração privada;
- * - carregar o PDO do SO;
- * - aceitar somente HTTPS e JSON;
- * - validar cliente, timestamp, nonce e assinatura HMAC;
- * - impedir replay;
- * - responder sempre em JSON;
+ * - carregar as configurações privadas do SO e da integração;
+ * - criar uma conexão PDO exclusiva para a API;
+ * - aceitar somente HTTPS, POST e JSON;
+ * - validar cliente, timestamp, nonce e assinatura HMAC-SHA256;
+ * - impedir replay da mesma requisição;
+ * - limitar o tamanho do payload;
+ * - responder sempre em JSON sem expor informações internas.
  *
- * Compatível com PHP 7.2.
+ * Local esperado:
+ * SO/api/integracoes/fluxempresa/bootstrap.php
+ *
+ * Compatibilidade: PHP 7.2+.
  */
 
 header('Content-Type: application/json; charset=UTF-8');
 header('X-Content-Type-Options: nosniff');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
+header('Referrer-Policy: no-referrer');
+
+/** @var string $fluxApiRequestId */
+$fluxApiRequestId = '';
+
+try {
+    $fluxApiRequestId = bin2hex(random_bytes(16));
+} catch (Throwable $exception) {
+    $fluxApiRequestId = hash(
+        'sha256',
+        uniqid('', true) . microtime(true)
+    );
+}
+
+header('X-Request-Id: ' . $fluxApiRequestId);
 
 if (
     isset($_SERVER['REQUEST_METHOD'])
     && strtoupper((string) $_SERVER['REQUEST_METHOD']) === 'OPTIONS'
 ) {
     /*
-     * A API é servidor-servidor e não deve ser chamada pelo navegador.
-     * Não liberamos CORS.
+     * A integração é servidor-servidor e não expõe CORS.
      */
     http_response_code(204);
     exit;
@@ -42,6 +60,14 @@ if (
  */
 function flux_api_response($statusCode, array $payload)
 {
+    $requestId = isset($GLOBALS['fluxApiRequestId'])
+        ? (string) $GLOBALS['fluxApiRequestId']
+        : '';
+
+    if ($requestId !== '' && !isset($payload['request_id'])) {
+        $payload['request_id'] = $requestId;
+    }
+
     http_response_code((int) $statusCode);
 
     $json = json_encode(
@@ -53,7 +79,19 @@ function flux_api_response($statusCode, array $payload)
     if ($json === false) {
         http_response_code(500);
 
-        echo '{"success":false,"error":{"code":"JSON_ENCODING_ERROR","message":"Não foi possível gerar a resposta."}}';
+        echo json_encode(
+            array(
+                'success' => false,
+                'error' => array(
+                    'code' => 'JSON_ENCODING_ERROR',
+                    'message' => 'Não foi possível gerar a resposta.',
+                ),
+                'request_id' => $requestId,
+            ),
+            JSON_UNESCAPED_UNICODE
+            | JSON_UNESCAPED_SLASHES
+        );
+
         exit;
     }
 
@@ -64,10 +102,10 @@ function flux_api_response($statusCode, array $payload)
 /**
  * Resposta padronizada de erro.
  *
- * @param int         $statusCode
- * @param string      $code
- * @param string      $message
- * @param array|null  $details
+ * @param int        $statusCode
+ * @param string     $code
+ * @param string     $message
+ * @param array|null $details
  * @return void
  */
 function flux_api_error(
@@ -97,7 +135,7 @@ function flux_api_error(
 /**
  * Retorna um header HTTP.
  *
- * Funciona em Apache, Nginx e FastCGI.
+ * Compatível com Apache, Nginx e FastCGI.
  *
  * @param string $name
  * @return string
@@ -144,12 +182,13 @@ function flux_api_header($name)
 /**
  * Verifica se a requisição chegou por HTTPS.
  *
- * Considera proxy reverso apenas quando X-Forwarded-Proto informa
- * explicitamente "https".
+ * X-Forwarded-Proto só é considerado quando o proxy estiver
+ * explicitamente habilitado na configuração privada.
  *
+ * @param bool $trustProxy
  * @return bool
  */
-function flux_api_is_https()
+function flux_api_is_https($trustProxy)
 {
     if (
         isset($_SERVER['HTTPS'])
@@ -166,9 +205,18 @@ function flux_api_is_https()
         return true;
     }
 
+    if (!$trustProxy) {
+        return false;
+    }
+
     $forwardedProto = strtolower(
         flux_api_header('X-Forwarded-Proto')
     );
+
+    if (strpos($forwardedProto, ',') !== false) {
+        $parts = explode(',', $forwardedProto);
+        $forwardedProto = trim((string) $parts[0]);
+    }
 
     return $forwardedProto === 'https';
 }
@@ -264,56 +312,116 @@ function flux_api_read_env_file($path)
 }
 
 /**
- * Procura o arquivo privado da integração.
+ * Resolve o diretório privado das configurações.
  *
- * Prioriza arquivo fora do public_html. Mantém caminhos alternativos
- * para a estrutura atual da hospedagem.
+ * Estrutura esperada:
+ *
+ * public_html/
+ * ├── SO/
+ * └── configuracoes/so/
+ *     ├── .env
+ *     └── api.env
+ *
+ * O diretório fora de public_html tem prioridade quando existir.
  *
  * @return string
  */
-function flux_api_resolve_env_path()
+function flux_api_resolve_config_directory()
 {
-    $candidates = array();
-
     /*
-     * SO está normalmente em:
-     * public_html/SO/api/integracoes/fluxempresa
+     * __DIR__ = SO/api/integracoes/fluxempresa
      */
-    $projectRoot = dirname(
-        dirname(
-            dirname(
-                dirname(__DIR__)
-            )
-        )
-    );
-
-    $publicHtml = dirname($projectRoot);
+    $soRoot = dirname(__DIR__, 3);
+    $publicHtml = dirname($soRoot);
     $accountRoot = dirname($publicHtml);
 
-    $candidates[] = $accountRoot
-        . '/configuracoes/so/api.env';
+    $explicitDirectory = getenv(
+        'SO_PRIVATE_CONFIG_DIR'
+    );
+
+    $candidates = array();
+
+    if (
+        is_string($explicitDirectory)
+        && trim($explicitDirectory) !== ''
+    ) {
+        $candidates[] = rtrim(
+            trim($explicitDirectory),
+            DIRECTORY_SEPARATOR
+        );
+    }
 
     $candidates[] = $accountRoot
-        . '/configuracoes/so/.env';
+        . '/configuracoes/so';
 
     $candidates[] = $publicHtml
-        . '/configuracoes/so/api.env';
+        . '/configuracoes/so';
 
-    $candidates[] = $publicHtml
-        . '/configuracoes/so/.env';
+    /*
+     * Compatibilidade adicional. Não é o local recomendado.
+     */
+    $candidates[] = $soRoot
+        . '/configuracoes/so';
 
-    foreach ($candidates as $candidate) {
+    foreach ($candidates as $directory) {
+        if (!is_dir($directory)) {
+            continue;
+        }
+
         if (
-            is_file($candidate)
-            && is_readable($candidate)
+            is_readable($directory . '/.env')
+            || is_readable($directory . '/api.env')
         ) {
-            return $candidate;
+            return $directory;
         }
     }
 
     throw new RuntimeException(
-        'Configuração privada da integração não localizada.'
+        'Diretório privado da integração não localizado.'
     );
+}
+
+/**
+ * Carrega .env e api.env. O api.env sobrescreve somente as chaves
+ * repetidas do .env.
+ *
+ * @param string $directory
+ * @return array
+ */
+function flux_api_load_config($directory)
+{
+    $config = array();
+
+    $mainEnv = rtrim(
+        (string) $directory,
+        DIRECTORY_SEPARATOR
+    ) . '/.env';
+
+    $apiEnv = rtrim(
+        (string) $directory,
+        DIRECTORY_SEPARATOR
+    ) . '/api.env';
+
+    if (is_file($mainEnv) && is_readable($mainEnv)) {
+        $config = flux_api_read_env_file(
+            $mainEnv
+        );
+    }
+
+    if (is_file($apiEnv) && is_readable($apiEnv)) {
+        $config = array_merge(
+            $config,
+            flux_api_read_env_file($apiEnv)
+        );
+    }
+
+    if ($config === array()) {
+        throw new RuntimeException(
+            'Nenhuma configuração privada foi carregada.'
+        );
+    }
+
+    return $config;
 }
 
 /**
@@ -332,6 +440,13 @@ function flux_api_config_required(array $config, $key)
     if ($value === '') {
         throw new RuntimeException(
             'Configuração obrigatória ausente: '
+            . $key
+        );
+    }
+
+    if (strpos($value, "\0") !== false) {
+        throw new RuntimeException(
+            'Configuração inválida: '
             . $key
         );
     }
@@ -374,13 +489,156 @@ function flux_api_config_bool(
 }
 
 /**
- * Normaliza o corpo para assinatura.
+ * Converte uma configuração inteira com limites.
  *
- * A assinatura usa exatamente os bytes recebidos no body.
+ * @param array  $config
+ * @param string $key
+ * @param int    $default
+ * @param int    $minimum
+ * @param int    $maximum
+ * @return int
+ */
+function flux_api_config_int(
+    array $config,
+    $key,
+    $default,
+    $minimum,
+    $maximum
+) {
+    $value = isset($config[$key])
+        ? filter_var(
+            $config[$key],
+            FILTER_VALIDATE_INT
+        )
+        : false;
+
+    if ($value === false) {
+        $value = (int) $default;
+    }
+
+    return max(
+        (int) $minimum,
+        min(
+            (int) $maximum,
+            (int) $value
+        )
+    );
+}
+
+/**
+ * Cria uma conexão PDO exclusiva da API.
  *
+ * Não carrega config/database.php, evitando sessão, saída HTML,
+ * automigrações e credenciais versionadas no código legado.
+ *
+ * @param array $config
+ * @return PDO
+ */
+function flux_api_create_pdo(array $config)
+{
+    $host = flux_api_config_required(
+        $config,
+        'DB_HOST'
+    );
+
+    $database = flux_api_config_required(
+        $config,
+        'DB_DATABASE'
+    );
+
+    $username = flux_api_config_required(
+        $config,
+        'DB_USERNAME'
+    );
+
+    $password = isset($config['DB_PASSWORD'])
+        ? (string) $config['DB_PASSWORD']
+        : '';
+
+    $charset = isset($config['DB_CHARSET'])
+        ? strtolower(
+            trim((string) $config['DB_CHARSET'])
+        )
+        : 'utf8mb4';
+
+    $port = flux_api_config_int(
+        $config,
+        'DB_PORT',
+        3306,
+        1,
+        65535
+    );
+
+    if (
+        preg_match(
+            '/^[A-Za-z0-9._:\-]+$/D',
+            $host
+        ) !== 1
+    ) {
+        throw new RuntimeException(
+            'DB_HOST inválido.'
+        );
+    }
+
+    if (
+        preg_match(
+            '/^[A-Za-z0-9_]+$/D',
+            $database
+        ) !== 1
+    ) {
+        throw new RuntimeException(
+            'DB_DATABASE inválido.'
+        );
+    }
+
+    if (
+        preg_match(
+            '/^[A-Za-z0-9_]+$/D',
+            $username
+        ) !== 1
+    ) {
+        throw new RuntimeException(
+            'DB_USERNAME inválido.'
+        );
+    }
+
+    if (!in_array($charset, array('utf8mb4', 'utf8'), true)) {
+        throw new RuntimeException(
+            'DB_CHARSET inválido.'
+        );
+    }
+
+    $dsn = 'mysql:host=' . $host
+        . ';port=' . $port
+        . ';dbname=' . $database
+        . ';charset=' . $charset;
+
+    return new PDO(
+        $dsn,
+        $username,
+        $password,
+        array(
+            PDO::ATTR_ERRMODE
+                => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE
+                => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES
+                => false,
+            PDO::ATTR_STRINGIFY_FETCHES
+                => false,
+        )
+    );
+}
+
+/**
+ * Lê o corpo bruto da requisição.
+ *
+ * A assinatura usa exatamente os bytes recebidos.
+ *
+ * @param int $maxBytes
  * @return string
  */
-function flux_api_raw_body()
+function flux_api_raw_body($maxBytes)
 {
     $body = file_get_contents(
         'php://input'
@@ -394,11 +652,29 @@ function flux_api_raw_body()
         );
     }
 
-    return (string) $body;
+    $body = (string) $body;
+
+    if (strlen($body) > (int) $maxBytes) {
+        flux_api_error(
+            413,
+            'PAYLOAD_TOO_LARGE',
+            'O corpo da requisição excede o limite permitido.'
+        );
+    }
+
+    if ($body === '') {
+        flux_api_error(
+            400,
+            'EMPTY_BODY',
+            'O corpo da requisição não pode estar vazio.'
+        );
+    }
+
+    return $body;
 }
 
 /**
- * Registra falha interna sem vazar segredo ao consumidor.
+ * Registra falha interna sem vazar dados sensíveis ao consumidor.
  *
  * @param string    $event
  * @param Throwable $exception
@@ -408,10 +684,16 @@ function flux_api_log_exception(
     $event,
     Throwable $exception
 ) {
+    $requestId = isset($GLOBALS['fluxApiRequestId'])
+        ? (string) $GLOBALS['fluxApiRequestId']
+        : '';
+
     error_log(
-        '[FluxEmpresa API] '
+        '[FluxEmpresa API] request_id='
+        . $requestId
+        . ' event='
         . preg_replace(
-            '/[^A-Za-z0-9_.:-]/',
+            '/[^A-Za-z0-9_.:\-]/',
             '_',
             (string) $event
         )
@@ -419,14 +701,16 @@ function flux_api_log_exception(
         . get_class($exception)
         . ' code='
         . (string) $exception->getCode()
+        . ' message_hash='
+        . hash(
+            'sha256',
+            (string) $exception->getMessage()
+        )
     );
 }
 
 /**
- * Cria a tabela local de nonces, caso a migration ainda não tenha
- * sido executada.
- *
- * Esta proteção existe para impedir replay da mesma assinatura.
+ * Cria a tabela de nonces caso ela ainda não exista.
  *
  * @param PDO $pdo
  * @return void
@@ -459,7 +743,7 @@ function flux_api_ensure_nonce_table(PDO $pdo)
 }
 
 /**
- * Registra o nonce. Se já existir, a requisição é replay.
+ * Registra o nonce. Nonce repetido caracteriza replay.
  *
  * @param PDO    $pdo
  * @param string $clientId
@@ -475,15 +759,17 @@ function flux_api_register_nonce(
     $timestamp,
     $ttl
 ) {
-    /*
-     * Limpeza probabilística para evitar DELETE em toda requisição.
-     */
     if (mt_rand(1, 100) <= 5) {
         $pdo->exec(
             'DELETE FROM integracao_fluxempresa_nonces
               WHERE expira_em < NOW()'
         );
     }
+
+    $expiresAt = date(
+        'Y-m-d H:i:s',
+        time() + (int) $ttl
+    );
 
     $statement = $pdo->prepare(
         'INSERT INTO integracao_fluxempresa_nonces (
@@ -495,39 +781,19 @@ function flux_api_register_nonce(
             :client_id,
             :nonce,
             :timestamp_requisicao,
-            DATE_ADD(
-                NOW(),
-                INTERVAL :ttl SECOND
-            )
+            :expira_em
         )'
     );
 
     try {
-        $statement->bindValue(
-            ':client_id',
-            $clientId,
-            PDO::PARAM_STR
+        $statement->execute(
+            array(
+                'client_id' => $clientId,
+                'nonce' => $nonce,
+                'timestamp_requisicao' => (int) $timestamp,
+                'expira_em' => $expiresAt,
+            )
         );
-
-        $statement->bindValue(
-            ':nonce',
-            $nonce,
-            PDO::PARAM_STR
-        );
-
-        $statement->bindValue(
-            ':timestamp_requisicao',
-            (int) $timestamp,
-            PDO::PARAM_INT
-        );
-
-        $statement->bindValue(
-            ':ttl',
-            (int) $ttl,
-            PDO::PARAM_INT
-        );
-
-        $statement->execute();
     } catch (PDOException $exception) {
         $nativeCode = isset($exception->errorInfo[1])
             ? (int) $exception->errorInfo[1]
@@ -546,21 +812,46 @@ function flux_api_register_nonce(
 }
 
 /**
+ * Retorna a URI exata usada na assinatura.
+ *
+ * @return string
+ */
+function flux_api_request_uri()
+{
+    $requestUri = isset($_SERVER['REQUEST_URI'])
+        ? (string) $_SERVER['REQUEST_URI']
+        : '';
+
+    if (
+        $requestUri === ''
+        || strlen($requestUri) > 2048
+        || strpos($requestUri, "\r") !== false
+        || strpos($requestUri, "\n") !== false
+    ) {
+        flux_api_error(
+            400,
+            'INVALID_REQUEST_URI',
+            'URI da requisição inválida.'
+        );
+    }
+
+    return $requestUri;
+}
+
+/**
  * Valida a autenticação HMAC.
  *
  * Headers obrigatórios:
+ * - X-Flux-Client-Id
+ * - X-Flux-Timestamp
+ * - X-Flux-Nonce
+ * - X-Flux-Signature
  *
- * X-Flux-Client-Id
- * X-Flux-Timestamp
- * X-Flux-Nonce
- * X-Flux-Signature
- *
- * String assinada:
- *
- * METHOD \n
- * REQUEST_URI \n
- * TIMESTAMP \n
- * NONCE \n
+ * String canônica:
+ * METHOD + "\n"
+ * REQUEST_URI + "\n"
+ * TIMESTAMP + "\n"
+ * NONCE + "\n"
  * SHA256(BODY)
  *
  * @param PDO    $pdo
@@ -573,13 +864,13 @@ function flux_api_authenticate(
     array $config,
     $rawBody
 ) {
-    $enabled = flux_api_config_bool(
-        $config,
-        'FLUXEMPRESA_API_ENABLED',
-        false
-    );
-
-    if (!$enabled) {
+    if (
+        !flux_api_config_bool(
+            $config,
+            'FLUXEMPRESA_API_ENABLED',
+            false
+        )
+    ) {
         flux_api_error(
             503,
             'INTEGRATION_DISABLED',
@@ -592,14 +883,32 @@ function flux_api_authenticate(
         'FLUXEMPRESA_API_CLIENT_ID'
     );
 
-    $secret = flux_api_config_required(
-        $config,
-        'FLUXEMPRESA_API_SECRET'
+    $secret = strtolower(
+        flux_api_config_required(
+            $config,
+            'FLUXEMPRESA_API_SECRET'
+        )
     );
 
-    if (strlen($secret) < 32) {
+    if (
+        preg_match(
+            '/^[A-Za-z0-9_.:\-]{3,100}$/D',
+            $expectedClientId
+        ) !== 1
+    ) {
         throw new RuntimeException(
-            'O segredo da API precisa ter pelo menos 32 caracteres.'
+            'FLUXEMPRESA_API_CLIENT_ID inválido.'
+        );
+    }
+
+    if (
+        preg_match(
+            '/^[a-f0-9]{64}$/D',
+            $secret
+        ) !== 1
+    ) {
+        throw new RuntimeException(
+            'FLUXEMPRESA_API_SECRET deve ser um hexadecimal SHA-256 de 64 caracteres.'
         );
     }
 
@@ -636,7 +945,13 @@ function flux_api_authenticate(
         );
     }
 
-    if (!hash_equals($expectedClientId, $clientId)) {
+    if (
+        strlen($clientId) > 100
+        || !hash_equals(
+            $expectedClientId,
+            $clientId
+        )
+    ) {
         flux_api_error(
             401,
             'INVALID_CLIENT',
@@ -646,7 +961,7 @@ function flux_api_authenticate(
 
     if (
         preg_match(
-            '/^\d{10}$/',
+            '/^\d{10}$/D',
             $timestampHeader
         ) !== 1
     ) {
@@ -685,25 +1000,15 @@ function flux_api_authenticate(
 
     $timestamp = (int) $timestampHeader;
 
-    $tolerance = isset(
-        $config['FLUXEMPRESA_API_TIMESTAMP_TOLERANCE']
-    )
-        ? (int) $config['FLUXEMPRESA_API_TIMESTAMP_TOLERANCE']
-        : 300;
-
-    $tolerance = max(
+    $tolerance = flux_api_config_int(
+        $config,
+        'FLUXEMPRESA_API_TIMESTAMP_TOLERANCE',
+        300,
         60,
-        min(
-            900,
-            $tolerance
-        )
+        900
     );
 
-    if (
-        abs(
-            time() - $timestamp
-        ) > $tolerance
-    ) {
+    if (abs(time() - $timestamp) > $tolerance) {
         flux_api_error(
             401,
             'REQUEST_EXPIRED',
@@ -719,11 +1024,7 @@ function flux_api_authenticate(
         )
     );
 
-    $requestUri = (string) (
-        isset($_SERVER['REQUEST_URI'])
-            ? $_SERVER['REQUEST_URI']
-            : ''
-    );
+    $requestUri = flux_api_request_uri();
 
     $bodyHash = hash(
         'sha256',
@@ -777,6 +1078,7 @@ function flux_api_authenticate(
         'timestamp' => $timestamp,
         'nonce' => $nonce,
         'body_hash' => $bodyHash,
+        'request_uri' => $requestUri,
     );
 }
 
@@ -791,9 +1093,7 @@ if (
         (string) $_SERVER['REQUEST_METHOD']
     ) !== 'POST'
 ) {
-    header(
-        'Allow: POST'
-    );
+    header('Allow: POST');
 
     flux_api_error(
         405,
@@ -821,72 +1121,57 @@ if (
     );
 }
 
-$contentLength = isset(
-    $_SERVER['CONTENT_LENGTH']
-)
-    ? (int) $_SERVER['CONTENT_LENGTH']
-    : 0;
-
-if ($contentLength > 1048576) {
-    flux_api_error(
-        413,
-        'PAYLOAD_TOO_LARGE',
-        'O corpo da requisição excede o limite permitido.'
-    );
-}
-
-if (!flux_api_is_https()) {
-    flux_api_error(
-        400,
-        'HTTPS_REQUIRED',
-        'A integração exige HTTPS.'
-    );
-}
-
 try {
-    $envPath = flux_api_resolve_env_path();
+    $fluxApiConfigDirectory = flux_api_resolve_config_directory();
 
-    $fluxApiConfig = flux_api_read_env_file(
-        $envPath
+    $fluxApiConfig = flux_api_load_config(
+        $fluxApiConfigDirectory
     );
 
-    /*
-     * Carrega o PDO atual do SO.
-     *
-     * Este arquivo também inicia sessão no código legado. A API não
-     * utiliza essa sessão para autorização.
-     */
-    require_once dirname(
-        dirname(
-            dirname(__DIR__)
-        )
-    ) . '/config/database.php';
-
-    if (
-        !isset($pdo)
-        || !($pdo instanceof PDO)
-    ) {
-        throw new RuntimeException(
-            'A conexão com o banco do SO não foi inicializada.'
-        );
-    }
-
-    $pdo->setAttribute(
-        PDO::ATTR_ERRMODE,
-        PDO::ERRMODE_EXCEPTION
-    );
-
-    $pdo->setAttribute(
-        PDO::ATTR_DEFAULT_FETCH_MODE,
-        PDO::FETCH_ASSOC
-    );
-
-    $pdo->setAttribute(
-        PDO::ATTR_EMULATE_PREPARES,
+    $trustProxy = flux_api_config_bool(
+        $fluxApiConfig,
+        'FLUXEMPRESA_API_TRUST_PROXY',
         false
     );
 
-    $rawBody = flux_api_raw_body();
+    if (!flux_api_is_https($trustProxy)) {
+        flux_api_error(
+            400,
+            'HTTPS_REQUIRED',
+            'A integração exige HTTPS.'
+        );
+    }
+
+    $maxBodyBytes = flux_api_config_int(
+        $fluxApiConfig,
+        'FLUXEMPRESA_API_MAX_BODY_BYTES',
+        1048576,
+        1024,
+        5242880
+    );
+
+    $contentLength = isset($_SERVER['CONTENT_LENGTH'])
+        ? (int) $_SERVER['CONTENT_LENGTH']
+        : 0;
+
+    if (
+        $contentLength < 0
+        || $contentLength > $maxBodyBytes
+    ) {
+        flux_api_error(
+            413,
+            'PAYLOAD_TOO_LARGE',
+            'O corpo da requisição excede o limite permitido.'
+        );
+    }
+
+    $pdo = flux_api_create_pdo(
+        $fluxApiConfig
+    );
+
+    $rawBody = flux_api_raw_body(
+        $maxBodyBytes
+    );
 
     $fluxApiAuthentication = flux_api_authenticate(
         $pdo,
