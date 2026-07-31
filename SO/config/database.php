@@ -3,7 +3,7 @@
 
 $host = 'localhost';
 $db_user = 'u784961086_so';
-$db_pass = 'Y>g39k3ql'; // Senha padrão do XAMPP é vazia
+$db_pass = '7#nVCRwF#'; // Senha padrão do XAMPP é vazia
 $dbname = 'u784961086_so';
 $schema_file = __DIR__ . '/../database/schema.sql';
 
