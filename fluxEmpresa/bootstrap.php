@@ -141,7 +141,7 @@ try {
         'session_timeout' => $sessionTimeout,
         'session_absolute_timeout' => $sessionAbsoluteTimeout,
         'session_regenerate_interval' => (int) $environment->get('SESSION_REGENERATE_INTERVAL', '900'),
-        'session_cookie_path' => $environment->get('SESSION_COOKIE_PATH', '/YK'),
+        'session_cookie_path' => $environment->get('SESSION_COOKIE_PATH', '/flux/'),
         'login_max_attempts' => (int) $environment->get('LOGIN_MAX_ATTEMPTS', '5'),
         'login_lock_minutes' => (int) $environment->get('LOGIN_LOCK_MINUTES', '15'),
     ];

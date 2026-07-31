@@ -12,7 +12,7 @@ final class SessionManager
         private readonly int $idleTimeout = 86400,
         private readonly int $absoluteTimeout = 86400,
         private readonly int $regenerateInterval = 900,
-        private readonly string $cookiePath = '/YK',
+        private readonly string $cookiePath = '/flux/',
         private readonly bool $secureCookie = true
     ) {
     }

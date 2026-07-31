@@ -140,7 +140,7 @@ final class Application
                 ),
                 (string) (
                     $this->settings['session_cookie_path']
-                    ?? '/YK'
+                    ?? '/flux/'
                 ),
                 $secure
             );

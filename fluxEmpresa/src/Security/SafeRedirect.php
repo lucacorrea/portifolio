@@ -6,7 +6,7 @@ namespace App\Security;
 final class SafeRedirect
 {
     private const DEFAULT_TARGET = 'dashboard.php';
-    private const BASE_PATH = '/YK/';
+    private const BASE_PATH = '/flux/';
 
     private const ALLOWED_TARGETS = [
         'dashboard.php',
