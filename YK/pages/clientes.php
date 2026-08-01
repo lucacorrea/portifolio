@@ -40,6 +40,7 @@ $canCreate = $authorization->can('cliente.criar');
 $canImport = $authorization->can('cliente.importar');
 $canEdit = $authorization->can('cliente.editar');
 $canStatus = $authorization->can('cliente.desativar');
+$canDelete = $authorization->can('cliente.excluir');
 $canHistory = $authorization->can('cliente.visualizar_historico');
 $canViewBudget = $authorization->can('orcamento.visualizar');
 $clientBudgets = [];
@@ -179,6 +180,7 @@ $editError = client_error($recovery, 'edit');
                         <li><button class="dropdown-item js-client-view" type="button" data-bs-toggle="modal" data-bs-target="#modal-cliente-view" data-client-id="<?= h((string) $client->id()) ?>"><i class="bi bi-eye"></i> Visualizar</button></li>
                         <?php if ($canEdit): ?><li><button class="dropdown-item js-client-edit" type="button" data-bs-toggle="modal" data-bs-target="#modal-cliente-edit" data-client-id="<?= h((string) $client->id()) ?>"><i class="bi bi-pencil"></i> Editar</button></li><?php endif; ?>
                         <?php if ($canStatus): ?><li><hr class="dropdown-divider"></li><li><button class="dropdown-item js-client-status <?= $client->status() === 'ativo' ? 'text-danger' : '' ?>" type="button" data-bs-toggle="modal" data-bs-target="#modal-cliente-status" data-client-id="<?= h((string) $client->id()) ?>" data-client-name="<?= h($client->name()) ?>" data-client-status="<?= $client->status() === 'ativo' ? 'inativo' : 'ativo' ?>"><i class="bi <?= $client->status() === 'ativo' ? 'bi-person-dash' : 'bi-person-check' ?>"></i> <?= $client->status() === 'ativo' ? 'Desativar' : 'Ativar' ?></button></li><?php endif; ?>
+                        <?php if ($canDelete): ?><li><button class="dropdown-item text-danger js-client-delete" type="button" data-bs-toggle="modal" data-bs-target="#modal-cliente-delete" data-client-id="<?= h((string) $client->id()) ?>" data-client-name="<?= h($client->name()) ?>"><i class="bi bi-trash3"></i> Excluir cliente</button></li><?php endif; ?>
                     </ul></div></td>
                 </tr>
             <?php endforeach; ?>
@@ -247,6 +249,7 @@ $statusClass = match ($status) { 'ready' => 'green', 'existing' => 'gray', 'poss
             <button class="btn-modal-secondary justify-content-start js-client-view" id="client-actions-view" type="button" data-bs-toggle="modal" data-bs-target="#modal-cliente-view"><i class="bi bi-eye"></i> Visualizar dados</button>
             <?php if ($canEdit): ?><button class="btn-modal-secondary justify-content-start js-client-edit" id="client-actions-edit" type="button" data-bs-toggle="modal" data-bs-target="#modal-cliente-edit"><i class="bi bi-pencil"></i> Editar cliente</button><?php endif; ?>
             <?php if ($canStatus): ?><button class="btn-modal-secondary justify-content-start js-client-status" id="client-actions-status-button" type="button" data-bs-toggle="modal" data-bs-target="#modal-cliente-status"><i class="bi" id="client-actions-status-icon"></i><span id="client-actions-status-label"></span></button><?php endif; ?>
+            <?php if ($canDelete): ?><button class="btn-modal-secondary justify-content-start text-danger js-client-delete" id="client-actions-delete" type="button" data-bs-toggle="modal" data-bs-target="#modal-cliente-delete"><i class="bi bi-trash3"></i> Excluir cliente</button><?php endif; ?>
         </div>
     </div>
     <div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Fechar</button></div>
@@ -258,6 +261,8 @@ $statusClass = match ($status) { 'ready' => 'green', 'existing' => 'gray', 'poss
 
 <?php if ($canStatus): ?><div class="modal fade" id="modal-cliente-status" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/cliente-status.php"><div class="modal-header"><h2 class="modal-title fs-5" id="client-status-title">Alterar status</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="id" id="status-client-id"><input type="hidden" name="status" id="status-client-value"><p id="client-status-message" class="mb-0"></p></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Confirmar</button></div></form></div></div><?php endif; ?>
 
+<?php if ($canDelete): ?><div class="modal fade" id="modal-cliente-delete" tabindex="-1" aria-labelledby="client-delete-title" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/cliente-excluir.php"><div class="modal-header"><h2 class="modal-title fs-5" id="client-delete-title">Excluir cliente</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="id" id="delete-client-id"><p>Deseja excluir <strong id="delete-client-name"></strong>?</p><div class="alert alert-warning mb-0">O cadastro sairá das telas, mas o histórico será preservado. Orçamentos ou OS em andamento impedem a exclusão.</div></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit"><i class="bi bi-trash3"></i> Excluir cliente</button></div></form></div></div><?php endif; ?>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     'use strict';
@@ -265,6 +270,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const recoveryModal = <?= json_encode($recovery['modal'] ?? null, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
     const canEdit = <?= $canEdit ? 'true' : 'false' ?>;
     const canStatus = <?= $canStatus ? 'true' : 'false' ?>;
+    const canDelete = <?= $canDelete ? 'true' : 'false' ?>;
     const canViewBudget = <?= $canViewBudget ? 'true' : 'false' ?>;
     const openImportUpload = <?= $canImport && (string) ($_GET['modal'] ?? '') === 'import' ? 'true' : 'false' ?>;
     const openImportPreview = <?= $importPreview !== null && (string) ($_GET['modal'] ?? '') === 'import-preview' ? 'true' : 'false' ?>;
@@ -288,7 +294,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function prepareClientActions(client) {
         text('client-actions-subtitle', client.code + ' · ' + client.person_type_label); text('client-actions-name', client.name); text('client-actions-status', client.status_label);
         const statusBadge = document.getElementById('client-actions-status'); if (statusBadge) statusBadge.className = 'badge-soft badge-' + (client.status === 'ativo' ? 'green' : 'gray');
-        ['view', 'edit'].forEach(function (action) { const actionButton = document.getElementById('client-actions-' + action); if (actionButton) actionButton.dataset.clientId = client.id; });
+        ['view', 'edit', 'delete'].forEach(function (action) { const actionButton = document.getElementById('client-actions-' + action); if (actionButton) { actionButton.dataset.clientId = client.id; actionButton.dataset.clientName = client.name; } });
         const statusButton = document.getElementById('client-actions-status-button'); if (statusButton) { const activate = client.status !== 'ativo'; statusButton.dataset.clientId = client.id; statusButton.dataset.clientName = client.name; statusButton.dataset.clientStatus = activate ? 'ativo' : 'inativo'; statusButton.classList.toggle('text-danger', !activate); text('client-actions-status-label', activate ? 'Ativar cliente' : 'Desativar cliente'); const icon = document.getElementById('client-actions-status-icon'); if (icon) icon.className = 'bi ' + (activate ? 'bi-person-check' : 'bi-person-dash'); }
     }
     function prepareClientView(client) {
@@ -299,8 +305,9 @@ document.addEventListener('DOMContentLoaded', function () {
         ['id','code','person-type','name','document','phone','whatsapp','email','address','number','complement','district','city','state','zip-code','notes','status'].forEach(function (field) { const key = field.replaceAll('-', '_'); val('edit-client-' + field, client[key]); }); text('edit-client-subtitle', client.code); document.querySelectorAll('#modal-cliente-edit .js-client-person-type').forEach(updateDocumentLabel);
     }
     function prepareClientStatus(button) { const activate = button.dataset.clientStatus === 'ativo'; val('status-client-id', button.dataset.clientId); val('status-client-value', button.dataset.clientStatus); text('client-status-title', activate ? 'Ativar cliente' : 'Desativar cliente'); text('client-status-message', (activate ? 'Deseja ativar ' : 'Deseja desativar ') + (button.dataset.clientName || 'este cliente') + '?'); }
+    function prepareClientDelete(button) { val('delete-client-id', button.dataset.clientId); text('delete-client-name', button.dataset.clientName || 'este cliente'); }
     document.addEventListener('click', function (event) {
-        const button = event.target.closest('.js-client-status-filter, .js-client-actions, .js-client-view, .js-client-edit, .js-client-status');
+        const button = event.target.closest('.js-client-status-filter, .js-client-actions, .js-client-view, .js-client-edit, .js-client-status, .js-client-delete');
         if (!button) return;
         if (button.classList.contains('js-client-status-filter')) {
             event.preventDefault();
@@ -318,6 +325,7 @@ document.addEventListener('DOMContentLoaded', function () {
         else if (button.classList.contains('js-client-view') && client) prepareClientView(client);
         else if (button.classList.contains('js-client-edit') && client) prepareClientEdit(client);
         else if (button.classList.contains('js-client-status')) prepareClientStatus(button);
+        else if (button.classList.contains('js-client-delete')) prepareClientDelete(button);
     });
     function actionItem(label, iconClass, className, target, client) {
         const item = element('li'); const button = element('button', 'dropdown-item ' + className);
@@ -340,7 +348,7 @@ document.addEventListener('DOMContentLoaded', function () {
             row.appendChild(element('td', '', client.full_address || 'Endereço não informado'));
             const statusCell = element('td'); statusCell.appendChild(element('span', 'badge-soft badge-' + (client.status === 'ativo' ? 'green' : 'gray'), client.status_label)); row.appendChild(statusCell);
             const actionsCell = element('td', 'table-actions-cell'); const dropdown = element('div', 'dropdown table-action-dropdown'); const toggle = element('button', 'btn-action'); toggle.type = 'button'; toggle.dataset.bsToggle = 'dropdown'; toggle.setAttribute('aria-expanded', 'false'); toggle.setAttribute('aria-label', 'Ações do cliente ' + client.name); toggle.appendChild(element('i', 'bi bi-three-dots-vertical')); dropdown.appendChild(toggle);
-            const menu = element('ul', 'dropdown-menu dropdown-menu-end'); menu.appendChild(actionItem('Visualizar', 'bi-eye', 'js-client-view', '#modal-cliente-view', client)); if (canEdit) menu.appendChild(actionItem('Editar', 'bi-pencil', 'js-client-edit', '#modal-cliente-edit', client)); if (canStatus) { const dividerItem = element('li'); dividerItem.appendChild(element('hr', 'dropdown-divider')); menu.appendChild(dividerItem); const statusItem = actionItem(client.status === 'ativo' ? 'Desativar' : 'Ativar', client.status === 'ativo' ? 'bi-person-dash' : 'bi-person-check', 'js-client-status' + (client.status === 'ativo' ? ' text-danger' : ''), '#modal-cliente-status', client); const statusButton = statusItem.querySelector('button'); statusButton.dataset.clientName = client.name; statusButton.dataset.clientStatus = client.status === 'ativo' ? 'inativo' : 'ativo'; menu.appendChild(statusItem); }
+            const menu = element('ul', 'dropdown-menu dropdown-menu-end'); menu.appendChild(actionItem('Visualizar', 'bi-eye', 'js-client-view', '#modal-cliente-view', client)); if (canEdit) menu.appendChild(actionItem('Editar', 'bi-pencil', 'js-client-edit', '#modal-cliente-edit', client)); if (canStatus || canDelete) { const dividerItem = element('li'); dividerItem.appendChild(element('hr', 'dropdown-divider')); menu.appendChild(dividerItem); } if (canStatus) { const statusItem = actionItem(client.status === 'ativo' ? 'Desativar' : 'Ativar', client.status === 'ativo' ? 'bi-person-dash' : 'bi-person-check', 'js-client-status' + (client.status === 'ativo' ? ' text-danger' : ''), '#modal-cliente-status', client); const statusButton = statusItem.querySelector('button'); statusButton.dataset.clientName = client.name; statusButton.dataset.clientStatus = client.status === 'ativo' ? 'inativo' : 'ativo'; menu.appendChild(statusItem); } if (canDelete) { const deleteItem = actionItem('Excluir cliente', 'bi-trash3', 'js-client-delete text-danger', '#modal-cliente-delete', client); deleteItem.querySelector('button').dataset.clientName = client.name; menu.appendChild(deleteItem); }
             dropdown.appendChild(menu); actionsCell.appendChild(dropdown); row.appendChild(actionsCell); fragment.appendChild(row);
         });
         clientsBody.replaceChildren(fragment);

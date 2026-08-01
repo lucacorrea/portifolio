@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+$vendorAutoload = dirname(__DIR__) . '/vendor/autoload.php';
+if (is_file($vendorAutoload)) require $vendorAutoload;
 require dirname(__DIR__) . '/src/Fiscal/Security/FiscalSecretVault.php';
 require dirname(__DIR__) . '/src/Fiscal/Storage/FiscalCertificateStorage.php';
 
@@ -89,6 +91,16 @@ fiscalSecurityThrows(
 fiscalSecurityThrows(
     fn() => $storage->inspectPkcs12(str_repeat('x', 2_097_153), 'senha', '11.222.333/0001-81'),
     'Conteúdo acima de 2 MB deve ser rejeitado antes do parser.'
+);
+
+$certificateCnpj = (new ReflectionClass(FiscalCertificateStorage::class))->getMethod('certificateCnpj');
+fiscalSecurityAssert(
+    $certificateCnpj->invoke(
+        $storage,
+        'certificado-sem-oid',
+        ['CN' => 'EMPRESA TESTE:11222333000181']
+    ) === '11222333000181',
+    'A leitura do CNPJ deve manter compatibilidade com o texto do titular.'
 );
 
 echo "Fiscal security component tests passed.\n";

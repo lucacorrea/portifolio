@@ -1,0 +1,1 @@
+<?php declare(strict_types=1); require __DIR__.'/includes/admin-guard.php'; $pageTitle='Aprovadas por mim';$pageSubtitle='Empresas aprovadas pelo usuário autenticado';$activePage='mine';require __DIR__.'/pages/minhas-aprovacoes.php';require __DIR__.'/includes/shell.php';

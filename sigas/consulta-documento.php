@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Config\ModuleRegistry;
 use App\Core\Csrf;
 use App\Core\Database;
 use App\Repositories\AccessLevelRepository;
@@ -59,6 +60,7 @@ if (!$authorization->can($user, 'comida_mesa.consultar_cpf')) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
+    <link href="assets/css/module-navigation.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/module-navigation.css') ?>" rel="stylesheet">
     <link href="assets/css/consulta-documento-ocr.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/consulta-documento-ocr.css')) ?>" rel="stylesheet">
     <link href="assets/css/consulta-result-modal.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/consulta-result-modal.css')) ?>" rel="stylesheet">
 </head>
@@ -98,6 +100,7 @@ $frontendContext = [
         'registrarEntrega' => Csrf::token('comida_mesa_registrar_entrega'),
         'cancelarEntrega' => Csrf::token('comida_mesa_cancelar_entrega'),
     ],
+    'navigation' => ModuleRegistry::all(),
     'consultaDocumento' => [
         'permissions' => [
             'create' => $authorization->can($user, 'comida_mesa.cadastrar'),
@@ -110,6 +113,7 @@ $frontendContext = [
         ],
     ],
 ];
+$pageKey = ($_GET['acao'] ?? '') === 'entrega' ? 'registrar-entrega' : 'consulta-cpf';
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -124,14 +128,15 @@ $frontendContext = [
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
+    <link href="assets/css/module-navigation.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/module-navigation.css') ?>" rel="stylesheet">
     <link href="assets/css/consulta-documento-ocr.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/consulta-documento-ocr.css')) ?>" rel="stylesheet">
     <link href="assets/css/consulta-result-modal.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/consulta-result-modal.css')) ?>" rel="stylesheet">
 </head>
-<body data-page="consulta">
-    <div class="app-shell">
-        <aside class="app-sidebar" id="appSidebar" aria-label="Menu principal"></aside>
-        <div class="app-main">
-            <header class="app-topbar" id="appTopbar"></header>
+<body data-page="consulta" data-module="comida-mesa" data-module-page="<?= e($pageKey) ?>">
+    <div class="app-shell module-shell module-shell--food" data-module-shell data-menu-environment="comida-mesa">
+        <?php $menuSurface = 'sidebar'; $menuPageKey = $pageKey; require __DIR__ . '/frontend/modules/comida-mesa/menu.php'; ?>
+        <div class="app-main module-main">
+            <?php require __DIR__ . '/frontend/layouts/module-topbar.php'; ?>
             <main class="app-content document-scan-page" data-consulta-documento>
                 <header class="page-header scan-page-header">
                     <div>
@@ -218,7 +223,7 @@ $frontendContext = [
             </main>
             <footer class="app-footer"><span>Consulta real no banco do SIGAS.</span><span>SIGAS Coari - SEMAS Coari/AM</span></footer>
         </div>
-        <div id="bottomNavigation"></div>
+        <?php $menuSurface = 'mobile'; require __DIR__ . '/frontend/modules/comida-mesa/menu.php'; ?>
     </div>
 
     <div class="modal fade consulta-result-modal" id="consultaResultModal" tabindex="-1" aria-labelledby="consultaResultModalTitle" aria-hidden="true">
@@ -267,6 +272,7 @@ $frontendContext = [
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>window.SIGAS_CONTEXT = <?= json_encode($frontendContext, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
     <script src="assets/js/app.js"></script>
+    <script src="assets/js/module-navigation.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/module-navigation.js') ?>"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js"></script>
     <script src="assets/js/cpf-ocr.js?v=<?= e((string) filemtime(__DIR__ . '/assets/js/cpf-ocr.js')) ?>"></script>
     <script src="assets/js/consulta-documento.js?v=<?= e((string) filemtime(__DIR__ . '/assets/js/consulta-documento.js')) ?>"></script>

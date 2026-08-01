@@ -342,7 +342,7 @@ final class AccountsReceivableManagementService
             'INSERT INTO ordem_servico_pagamentos
                 (ordem_servico_id, valor, forma_pagamento, quantidade_parcelas, recebido_em, observacao, status,
                  registrado_por, caixa_movimentacao_id, payment_token)
-             VALUES (:order_id, :value, :form, :installment_count, NOW(), :notes, "ativo", :user_id, :cash_id, :payment_token)'
+             VALUES (:order_id, :value, :form, :installment_count, NOW(), :notes, :status, :user_id, :cash_id, :payment_token)'
         );
         $statement->execute([
             'order_id' => $account['ordem_servico_id'],
@@ -350,6 +350,7 @@ final class AccountsReceivableManagementService
             'form' => $form,
             'installment_count' => $installmentCount,
             'notes' => $notes,
+            'status' => 'ativo',
             'user_id' => $userId,
             'cash_id' => $cashId,
             'payment_token' => $paymentToken,

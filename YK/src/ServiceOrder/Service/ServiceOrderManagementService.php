@@ -458,10 +458,10 @@ final class ServiceOrderManagementService
 
     private function validateReferences(ServiceOrderFormData $data): void
     {
-        $client = $this->clients->findById($data->clientId());
+        $client = $this->clients->findByIdForUpdate($data->clientId());
         if ($client === null) throw new InvalidArgumentException('Cliente não encontrado.');
         foreach ($data->items() as $item) {
-            if ($item->type() === 'servico' && ($item->referenceId() === null || $this->services->findById($item->referenceId()) === null)) {
+            if ($item->type() === 'servico' && ($item->referenceId() === null || $this->services->findByIdForUpdate($item->referenceId()) === null)) {
                 throw new InvalidArgumentException('Serviço da OS não encontrado.');
             }
             if ($item->type() === 'produto' && ($item->referenceId() === null || $this->products->findByIdForUpdate($item->referenceId()) === null)) {

@@ -903,13 +903,262 @@ try {
       color: #6c757d;
     }
 
-    /* ===== Paginação (sem "Mostrando X–Y de Z") ===== */
+    /* ===== Tabela clean padrão ANEXO ===== */
+    .people-table-card {
+      background: #fff;
+      border: 0;
+      border-radius: 14px;
+      box-shadow: none;
+      overflow: hidden;
+    }
+
+    .people-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      padding: 1.15rem 1.25rem .75rem;
+      background: #fff;
+      border-bottom: 0;
+    }
+
+    .people-card-title {
+      margin: 0;
+      color: #1f3563;
+      font-size: 1.05rem;
+      font-weight: 800;
+    }
+
+    .people-table-count {
+      margin-top: .3rem;
+      color: #7a86b6;
+      font-size: .95rem;
+      font-weight: 500;
+    }
+
+    .people-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: .55rem;
+      flex-wrap: wrap;
+      margin-left: auto;
+    }
+
+    .people-bairro-select {
+      width: 210px;
+      min-height: 38px;
+      border: 1px solid #d0d7de;
+      border-radius: 4px;
+      color: #52677a;
+      font-size: 14px;
+      box-shadow: none;
+    }
+
+    .people-bairro-select:focus {
+      border-color: #9ab0f5;
+      box-shadow: 0 0 0 0.12rem rgba(67, 94, 190, .12);
+    }
+
+    .dt-search-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .dt-search-input {
+      width: min(420px, 52vw);
+      height: 38px;
+      padding: .55rem .9rem;
+      border: 1px solid #b8c7f7;
+      border-radius: 4px;
+      background: #fff;
+      color: #495057;
+      font-size: 14px;
+      box-shadow: none;
+      outline: none;
+      transition: border-color .2s ease, box-shadow .2s ease;
+    }
+
+    .dt-search-input::placeholder {
+      color: #7f8a99;
+      opacity: 1;
+    }
+
+    .dt-search-input:focus {
+      border-color: #9ab0f5;
+      box-shadow: 0 0 0 0.12rem rgba(67, 94, 190, .12);
+    }
+
+    .dt-search-clear {
+      width: 38px;
+      height: 38px;
+      min-width: 38px;
+      border: 1px solid #cfd6df;
+      border-radius: 4px;
+      background: #fff;
+      color: #52677a;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: border-color .2s ease, color .2s ease, background .2s ease;
+      padding: 0;
+    }
+
+    .dt-search-clear:hover {
+      border-color: #435ebe;
+      color: #435ebe;
+      background: #f8f9ff;
+    }
+
+    .clean-table {
+      margin-bottom: 0;
+      border-collapse: separate;
+      border-spacing: 0;
+      color: #506478;
+      font-size: 15px;
+    }
+
+    .clean-table thead th {
+      background: #fff !important;
+      color: #2f3f4f;
+      border-top: 0;
+      border-bottom: 1px solid #d7dde5;
+      padding: .9rem .75rem;
+      font-weight: 800;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    .clean-table tbody td {
+      border-top: 0;
+      border-bottom: 1px solid #e1e6ec;
+      padding: .82rem .75rem;
+      vertical-align: middle;
+      color: #506478;
+      background: #fff;
+    }
+
+    .clean-table tbody tr:nth-child(even) td {
+      background: #f7f8fa;
+    }
+
+    .clean-table tbody tr:hover td {
+      background: #f3f6fb;
+    }
+
+    .clean-table .td-nome {
+      max-width: 280px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 700;
+      color: #445a70;
+    }
+
+    .clean-table .td-bairro,
+    .clean-table .td-responsavel,
+    .clean-table .td-profissao {
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .clean-table th.sortable {
+      position: relative;
+      cursor: pointer;
+      user-select: none;
+      padding-right: 1.65rem !important;
+    }
+
+    .clean-table th.sortable .sort-prisma {
+      position: absolute;
+      right: .55rem;
+      top: 50%;
+      width: 10px;
+      height: 18px;
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+
+    .clean-table th.sortable .sort-prisma::before,
+    .clean-table th.sortable .sort-prisma::after {
+      position: absolute;
+      left: 0;
+      font-size: 10px;
+      line-height: 1;
+      color: #e1e5ea;
+    }
+
+    .clean-table th.sortable .sort-prisma::before {
+      content: "▲";
+      top: 0;
+    }
+
+    .clean-table th.sortable .sort-prisma::after {
+      content: "▼";
+      bottom: 0;
+    }
+
+    .clean-table th.sortable.sort-asc .sort-prisma::before,
+    .clean-table th.sortable.sort-desc .sort-prisma::after {
+      color: #8d97a3;
+    }
+
+    .clean-table th.sortable:hover .sort-prisma::before,
+    .clean-table th.sortable:hover .sort-prisma::after {
+      color: #b5bcc5;
+    }
+
+    .table-actions {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .35rem;
+      white-space: nowrap;
+    }
+
+    .table-actions .btn {
+      margin: 0;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
     .tfoot-pager {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      gap: .75rem 1rem;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid #e9ecef;
       flex-wrap: wrap;
+    }
+
+    .tfoot-pager .btn {
+      min-width: 88px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    #lblPagina {
+      font-size: 1.02rem;
+      color: #435ebe;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    #selPerPage {
+      min-width: 72px;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      color: #495057;
+      font-weight: 600;
+      box-shadow: none;
     }
 
     /* ===== Histórico de Solicitações ===== */
@@ -1122,29 +1371,28 @@ try {
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-header">
-            <div class="row filters-row g-2 justify-content-md-end">
-              <div class="col-12 col-md-6 col-lg-5">
-                <label class="form-label">Pesquisar (Nome, CPF ou Responsável)</label>
-                <input type="text" id="inpSearch" class="form-control" placeholder="Digite para filtrar…"
-                  value="<?= h($q) ?>">
-              </div>
-              <div class="col-12 col-md-3 col-lg-2">
-                <label class="form-label">Bairro</label>
-                <select id="selBairro" class="form-select">
-                  <option value="">Todos</option>
-                  <?php foreach ($bairros as $b): ?>
-                    <option value="<?= (int)$b['id'] ?>" <?= ($bairro_id && $bairro_id == (int)$b['id']) ? 'selected' : '' ?>>
-                      <?= h((string)$b['nome']) ?>
-                    </option>
-                  <?php endforeach; ?>
-                </select>
-              </div>
-              <div class="col-12 col-md-auto">
-                <label class="form-label d-none d-md-block">&nbsp;</label>
-                <button class="btn btn-outline-secondary w-100" id="btnLimpar">
-                  <i class="bi bi-eraser me-1"></i> Limpar
+        <div class="card people-table-card">
+          <div class="card-header people-card-header">
+            <div>
+              <h5 class="people-card-title">Lista de Pessoas Cadastradas</h5>
+              <div class="people-table-count"><?= count($rows) ?> registros encontrados</div>
+            </div>
+
+            <div class="people-toolbar">
+              <select id="selBairro" class="form-select people-bairro-select" aria-label="Filtrar por bairro">
+                <option value="">Todos os bairros</option>
+                <?php foreach ($bairros as $b): ?>
+                  <option value="<?= (int)$b['id'] ?>" <?= ($bairro_id && $bairro_id == (int)$b['id']) ? 'selected' : '' ?>>
+                    <?= h((string)$b['nome']) ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+
+              <div class="dt-search-wrap">
+                <input type="text" id="inpSearch" class="dt-search-input" placeholder="Buscar por nome/CPF/responsável..."
+                  value="<?= h($q) ?>" autocomplete="off">
+                <button class="dt-search-clear" id="btnLimpar" type="button" title="Limpar filtros" aria-label="Limpar filtros">
+                  <i class="bi bi-x-lg"></i>
                 </button>
               </div>
             </div>
@@ -1152,18 +1400,18 @@ try {
 
           <div class="card-body">
             <div class="table-responsive">
-              <table class="table table-striped align-middle text-nowrap" id="tbl">
-                <thead class="table-light">
+              <table class="table clean-table align-middle text-nowrap w-100" id="tbl">
+                <thead>
                   <tr>
-                    <th>Nome</th>
-                    <th>Bairro</th>
-                    <th>CPF</th>
-                    <th>Telefone</th>
-                    <th>Responsável (Servidor)</th>
-                    <th class="text-center">PBF</th>
-                    <th class="text-center">BPC</th>
-                    <th class="text-end">Renda Fam.</th>
-                    <th>S. Profissional</th>
+                    <th class="sortable text-start" data-sort="nome">Nome <span class="sort-prisma"></span></th>
+                    <th class="sortable text-center" data-sort="bairro">Bairro <span class="sort-prisma"></span></th>
+                    <th class="sortable text-center" data-sort="cpf">CPF <span class="sort-prisma"></span></th>
+                    <th class="sortable text-center" data-sort="telefone">Telefone <span class="sort-prisma"></span></th>
+                    <th class="sortable text-center" data-sort="responsavel">Responsável (Servidor) <span class="sort-prisma"></span></th>
+                    <th class="sortable text-center" data-sort="pbf">PBF <span class="sort-prisma"></span></th>
+                    <th class="sortable text-center" data-sort="bpc">BPC <span class="sort-prisma"></span></th>
+                    <th class="sortable text-center" data-sort="renda" data-type="number">Renda Fam. <span class="sort-prisma"></span></th>
+                    <th class="sortable text-start" data-sort="trabalho">S. Profissional <span class="sort-prisma"></span></th>
                     <th class="text-center">Detalhes</th>
                   </tr>
                 </thead>
@@ -1182,25 +1430,32 @@ try {
                         data-id="<?= (int)$r['id'] ?>"
                         data-nome="<?= h(mb_lower((string)($r['nome'] ?? ''))) ?>"
                         data-cpf="<?= h(only_digits($r['cpf'])) ?>"
-                        data-bairro="<?= h((string)$r['bairro_nome']) ?>"
-                        data-responsavel="<?= h($respLower) ?>">
+                        data-bairro="<?= h(mb_lower((string)$r['bairro_nome'])) ?>"
+                        data-telefone="<?= h(only_digits($r['telefone'])) ?>"
+                        data-responsavel="<?= h($respLower) ?>"
+                        data-pbf="<?= h(mb_lower((string)($r['pbf'] ?? 'Não'))) ?>"
+                        data-bpc="<?= h(mb_lower((string)($r['bpc'] ?? 'Não'))) ?>"
+                        data-renda="<?= h((string)((float)($r['renda_familiar'] ?? 0))) ?>"
+                        data-trabalho="<?= h(mb_lower((string)($r['trabalho'] ?? ''))) ?>">
 
-                        <td><?= h((string)$r['nome']) ?></td>
-                        <td><?= h((string)$r['bairro_nome']) ?></td>
-                        <td class="nowrap"><?= h(fmt_cpf($r['cpf'])) ?></td>
-                        <td class="nowrap"><?= h(fmt_phone($r['telefone'])) ?></td>
-                        <td><?= h($resp !== '' ? $resp : '—') ?></td>
+                        <td class="td-nome" title="<?= h((string)$r['nome']) ?>"><?= h((string)$r['nome']) ?></td>
+                        <td class="td-bairro text-center" title="<?= h((string)$r['bairro_nome']) ?>"><?= h((string)$r['bairro_nome']) ?></td>
+                        <td class="nowrap text-center"><?= h(fmt_cpf($r['cpf'])) ?></td>
+                        <td class="nowrap text-center"><?= h(fmt_phone($r['telefone'])) ?></td>
+                        <td class="td-responsavel text-center" title="<?= h($resp !== '' ? $resp : '—') ?>"><?= h($resp !== '' ? $resp : '—') ?></td>
 
                         <td class="text-center"><?= h($r['pbf'] ?? 'Não') ?></td>
                         <td class="text-center"><?= h($r['bpc'] ?? 'Não') ?></td>
 
-                        <td class="text-end"><?= h(fmt_money($r['renda_familiar'])) ?></td>
-                        <td><?= h($r['trabalho'] ?? '—') ?></td>
+                        <td class="text-center"><?= h(fmt_money($r['renda_familiar'])) ?></td>
+                        <td class="td-profissao" title="<?= h($r['trabalho'] ?? '—') ?>"><?= h($r['trabalho'] ?? '—') ?></td>
 
                         <td class="text-center">
-                          <button class="btn btn-sm btn-secondary btnDetalhes" title="Ver detalhes">Ver</button>
-                          <a href="editarSolicitante.php?id=<?= (int)$r['id'] ?>&cpf=<?= h(only_digits($r['cpf'])) ?>"
-                            class="btn btn-sm btn-primary" title="Editar">Editar</a>
+                          <div class="table-actions">
+                            <button class="btn btn-sm btn-outline-secondary btnDetalhes" title="Ver detalhes">Ver</button>
+                            <a href="editarSolicitante.php?id=<?= (int)$r['id'] ?>&cpf=<?= h(only_digits($r['cpf'])) ?>"
+                              class="btn btn-sm btn-outline-primary" title="Editar">Editar</a>
+                          </div>
                         </td>
                       </tr>
                   <?php endforeach;
@@ -1914,18 +2169,71 @@ try {
         window.location.search = params.toString();
       });
 
-      // ====== Paginação client-side ======
+      // ====== Paginação + busca + ordenação client-side ======
       const tbody = document.getElementById('tbody');
-      const allRows = Array.from(tbody?.querySelectorAll('tr') || []);
+      const allRows = Array.from(tbody?.querySelectorAll('tr[data-id]') || []);
+      let emptyRow = tbody?.querySelector('tr:not([data-id])') || null;
+      if (!emptyRow && tbody) {
+        emptyRow = document.createElement('tr');
+        emptyRow.innerHTML = '<td colspan="10" class="text-center text-muted py-4">Nenhum registro encontrado.</td>';
+        emptyRow.style.display = 'none';
+        tbody.appendChild(emptyRow);
+      }
       const selPerPage = document.getElementById('selPerPage');
       const btnPrev = document.getElementById('btnPrev');
       const btnNext = document.getElementById('btnNext');
       const lblPagina = document.getElementById('lblPagina');
+      const sortableHeaders = Array.from(document.querySelectorAll('#tbl thead th.sortable'));
 
       selPerPage.value = '10';
       let page = 1;
       let perPage = parseInt(selPerPage.value, 10);
       let filtered = allRows.slice();
+      let sortState = { key: '', direction: 'asc', type: 'string' };
+
+      function normalizeSortValue(value) {
+        return String(value || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .trim();
+      }
+
+      function rowValue(row, key, type) {
+        if (type === 'number') {
+          const numberValue = Number(String(row.dataset[key] || '0').replace(',', '.'));
+          return Number.isFinite(numberValue) ? numberValue : 0;
+        }
+
+        return normalizeSortValue(row.dataset[key] || '');
+      }
+
+      function updateSortIndicators() {
+        sortableHeaders.forEach((th) => {
+          const active = th.dataset.sort === sortState.key;
+          th.classList.toggle('sort-asc', active && sortState.direction === 'asc');
+          th.classList.toggle('sort-desc', active && sortState.direction === 'desc');
+          th.setAttribute('aria-sort', !active ? 'none' : (sortState.direction === 'asc' ? 'ascending' : 'descending'));
+        });
+      }
+
+      function applySort(rows) {
+        if (!sortState.key) return rows.slice();
+
+        return rows.slice().sort((a, b) => {
+          const aValue = rowValue(a, sortState.key, sortState.type);
+          const bValue = rowValue(b, sortState.key, sortState.type);
+          let result = 0;
+
+          if (sortState.type === 'number') {
+            result = aValue - bValue;
+          } else {
+            result = String(aValue).localeCompare(String(bValue), 'pt-BR', { sensitivity: 'base', numeric: true });
+          }
+
+          return sortState.direction === 'asc' ? result : -result;
+        });
+      }
 
       function paginateAndShow() {
         const total = filtered.length;
@@ -1936,12 +2244,63 @@ try {
         const end = start + perPage;
 
         allRows.forEach(r => (r.style.display = 'none'));
+        if (emptyRow) emptyRow.style.display = total === 0 ? '' : 'none';
         filtered.slice(start, end).forEach(r => (r.style.display = ''));
 
         if (lblPagina) lblPagina.textContent = `Página ${page} de ${pages}`;
         if (btnPrev) btnPrev.disabled = page <= 1;
         if (btnNext) btnNext.disabled = page >= pages;
       }
+
+      function filterAndRender() {
+        const qRaw = (inpSearch.value || '').trim();
+        const q = normalizeSortValue(qRaw);
+        const qDigits = qRaw.replace(/\D+/g, '');
+
+        filtered = allRows.filter(r => {
+          const nome = normalizeSortValue(r.dataset.nome || '');
+          const cpf = (r.dataset.cpf || '');
+          const resp = normalizeSortValue(r.dataset.responsavel || '');
+
+          if (!q) return true;
+
+          return (
+            nome.includes(q) ||
+            resp.includes(q) ||
+            (qDigits && cpf.startsWith(qDigits))
+          );
+        });
+
+        filtered = applySort(filtered);
+        page = 1;
+        paginateAndShow();
+        updateSortIndicators();
+      }
+
+      sortableHeaders.forEach((th) => {
+        th.setAttribute('role', 'button');
+        th.setAttribute('tabindex', '0');
+        th.addEventListener('click', () => {
+          const key = th.dataset.sort || '';
+          const type = th.dataset.type || 'string';
+          if (!key) return;
+
+          if (sortState.key === key) {
+            sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortState = { key, direction: 'asc', type };
+          }
+
+          filterAndRender();
+        });
+
+        th.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            th.click();
+          }
+        });
+      });
 
       selPerPage?.addEventListener('change', () => {
         perPage = parseInt(selPerPage.value, 10) || 10;
@@ -1960,29 +2319,6 @@ try {
         page++;
         paginateAndShow();
       });
-
-      // ====== Busca instantânea ======
-      function filterAndRender() {
-        const q = (inpSearch.value || '').trim().toLowerCase();
-        const qDigits = q.replace(/\D+/g, '');
-
-        filtered = allRows.filter(r => {
-          const nome = (r.dataset.nome || '');
-          const cpf = (r.dataset.cpf || '');
-          const resp = (r.dataset.responsavel || '');
-
-          if (!q) return true;
-
-          return (
-            nome.includes(q) ||
-            resp.includes(q) ||
-            (qDigits && cpf.startsWith(qDigits))
-          );
-        });
-
-        page = 1;
-        paginateAndShow();
-      }
 
       inpSearch?.addEventListener('input', filterAndRender);
       filterAndRender();

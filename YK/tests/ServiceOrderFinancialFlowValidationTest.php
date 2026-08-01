@@ -105,6 +105,9 @@ $orderRepositorySource = file_get_contents(dirname(__DIR__) . '/src/ServiceOrder
 $orderManagementSource = file_get_contents(dirname(__DIR__) . '/src/ServiceOrder/Service/ServiceOrderManagementService.php');
 $paymentPageSource = file_get_contents(dirname(__DIR__) . '/pages/ordens-servico.php');
 $paymentScriptSource = file_get_contents(dirname(__DIR__) . '/assets/js/ordens-servico-pagamento.js');
+$receiptPrintSource = file_get_contents(dirname(__DIR__) . '/recibo-imprimir.php');
+$receivablePageSource = file_get_contents(dirname(__DIR__) . '/pages/contas-receber.php');
+$receivableScriptSource = file_get_contents(dirname(__DIR__) . '/assets/js/contas-receber.js');
 financialFlowAssert(is_string($finalizationAction), 'Action de finalização deve ser legível.');
 financialFlowAssert(!str_contains((string) $finalizationAction, "requirePermission('os.finalizar_com_pagamento')"), 'Finalização não pode exigir permissão de pagamento.');
 financialFlowAssert(str_contains((string) $finalizationAction, 'os_store_post_completion_payment_prompt'), 'Conclusão confirmada deve preparar a pergunta de pagamento posterior.');
@@ -119,12 +122,38 @@ financialFlowAssert(str_contains((string) $paymentPageSource, 'name="quantidade_
 financialFlowAssert(str_contains((string) $paymentPageSource, 'Boleto já compensado'), 'A interface não pode confundir boleto emitido com boleto pago.');
 financialFlowAssert(str_contains((string) $paymentPageSource, 'id="os-pay-leave-pending" type="button" data-bs-dismiss="modal">Não, deixar pendente'), 'Não pago deve fechar a modal sem POST financeiro.');
 financialFlowAssert(str_contains((string) $paymentPageSource, 'aria-labelledby="os-pay-title"'), 'A modal de pagamento deve possuir nome acessível.');
+financialFlowAssert(str_contains((string) $paymentPageSource, '$isOrderPaid'), 'A opção de recibo na OS deve depender da quitação do serviço.');
+financialFlowAssert(str_contains((string) $paymentPageSource, 'if ($isOrderPaid)'), 'Pagamento parcial não deve exibir a opção final de recibo na lista de OS.');
+financialFlowAssert(str_contains((string) $paymentPageSource, 'Recibo: <?= h(os_payment_label($payment)) ?>'), 'OS paga deve mostrar a opção Recibo identificando o pagamento.');
 financialFlowAssert(str_contains((string) $paymentScriptSource, "method.value === 'boleto' || method.value === 'cartao_credito'"), 'Parcelas devem aparecer somente para boleto e cartão de crédito.');
 financialFlowAssert(str_contains((string) $paymentScriptSource, 'clearModalQuery();'), 'Recuperação do pagamento deve ser consumida sem reabrir uma modal vazia no refresh.');
+financialFlowAssert(is_string($receiptPrintSource), 'Página de impressão de recibo deve ser legível.');
+financialFlowAssert(str_contains((string) $receiptPrintSource, "!in_array(\$format, ['termica', 'a4'], true)"), 'Formato do recibo deve usar allowlist estrita no servidor.');
+financialFlowAssert(str_contains((string) $receiptPrintSource, '$hasInitialPrintGrant && $format !== null'), 'Escolha do formato não pode consumir o grant da primeira impressão.');
+financialFlowAssert(str_contains((string) $receiptPrintSource, 'Cache-Control: private, no-store'), 'Recibo com dados pessoais não deve ser armazenado em cache compartilhado.');
+financialFlowAssert(str_contains((string) $receiptPrintSource, '@page { size: 80mm auto;'), 'Recibo térmico deve possuir largura real de 80 mm.');
+financialFlowAssert(str_contains((string) $receiptPrintSource, '@page { size: A4 portrait;'), 'Recibo para impressora comum deve usar A4 retrato.');
+financialFlowAssert(str_contains((string) $receiptPrintSource, '.format-a4 .receipt { width: 210mm; min-height: 148.5mm;'), 'Recibo A4 deve ocupar meia folha, como a impressão da OS.');
+financialFlowAssert(!str_contains((string) $receiptPrintSource, 'min-height: 257mm'), 'Recibo A4 não pode voltar a ocupar a folha inteira.');
+financialFlowAssert(str_contains((string) $receiptPrintSource, 'Térmica 80 mm'), 'Seletor deve explicar a impressão térmica.');
+financialFlowAssert(str_contains((string) $receiptPrintSource, 'A4 — impressora comum'), 'Seletor deve explicar a impressão em impressora comum.');
+financialFlowAssert(str_contains((string) $receiptPrintSource, 'DOCUMENTO NÃO FISCAL'), 'Ambos os formatos devem identificar claramente que o recibo não é fiscal.');
+financialFlowAssert(str_contains((string) $receiptPrintSource, 'window.setTimeout(function () { window.print(); }'), 'Impressão deve abrir somente depois da escolha do formato.');
+financialFlowAssert(is_string($receivablePageSource) && is_string($receivableScriptSource), 'Fluxo visual de Contas a Receber deve ser leg?vel.');
+financialFlowAssert(str_contains((string) $receivablePageSource, 'listActivePaymentsForOrders'), 'Contas a Receber deve carregar recibos dos pagamentos da OS.');
+financialFlowAssert(str_contains((string) $receivablePageSource, "account['status'] === 'paga'"), 'A op??o de recibo deve aparecer somente na conta paga.');
+financialFlowAssert(str_contains((string) $receivablePageSource, 'id="modal-cr-receipt"'), 'Contas a Receber deve permitir gerar recibo ausente.');
+financialFlowAssert(str_contains((string) $receivablePageSource, 'Recibo: <?= h(cr_payment_label($payment)) ?>'), 'Conta paga deve mostrar Recibo no menu de a??es.');
+financialFlowAssert(str_contains((string) $receivableScriptSource, "closest?.('.js-cr-receipt')"), 'Modal de recibo deve receber o pagamento selecionado.');
 financialFlowAssert(str_contains((string) $standaloneReceiptAction, "os_action_context('recibo.emitir')"), 'Recibo avulso deve exigir autorização própria.');
 financialFlowAssert(str_contains((string) $lifecycleSource, 'total_origem'), 'Estorno deve restaurar o total anterior da OS quando houver snapshot.');
 financialFlowAssert(str_contains((string) $lifecycleSource, 'reversePaymentsAndCash'), 'Estorno deve preservar a compensação financeira e de Caixa.');
+financialFlowAssert(str_contains((string) $receiptSource, 'INFORMATION_SCHEMA.COLUMNS'), 'Listagens devem normalizar parcelas legadas sem executar DDL na requisição.');
+financialFlowAssert(!str_contains((string) $receiptSource, "columnExists('recibos', \$column)"), 'Emissão não pode omitir silenciosamente snapshots ausentes no schema.');
+financialFlowAssert(str_contains((string) $receiptSource, 'insertReceipt(['), 'Emissões vinculada e avulsa devem usar o mesmo INSERT compatível.');
+financialFlowAssert(!str_contains((string) $receiptSource, '"emitido"'), 'Status do recibo não pode depender de aspas incompatíveis com ANSI_QUOTES.');
 financialFlowAssert(!str_contains((string) $receiptSource, 'LIKE :search OR'), 'Busca de recibos não pode reutilizar placeholders com prepared statements nativos.');
+financialFlowAssert(!str_contains((string) $accountsSource, '"ativo"'), 'Pagamento que gera recibo não pode depender de aspas incompatíveis com ANSI_QUOTES.');
 financialFlowAssert(!str_contains((string) $accountsSource, 'LIKE :search OR'), 'Busca de contas a receber não pode reutilizar placeholders com prepared statements nativos.');
 financialFlowAssert(
     str_contains((string) $orderRepositorySource, '$this->bindForm($statement, $data, $totals, false);'),

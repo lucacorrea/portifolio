@@ -1,0 +1,148 @@
+<?php
+declare(strict_types=1);
+
+use App\Access\Exception\AuthenticationException;
+use App\Access\Exception\AuthorizationException;
+use App\Core\Application;
+
+$app = require dirname(__DIR__) . '/bootstrap.php';
+/** @var Application $application */
+$application = $app['application'];
+$session = $application->session();
+$session->start();
+$csrf = $application->csrf();
+$documentBaseHref = ($documentBaseHref ?? '') === '../' ? '../' : '';
+
+try {
+  $authorization = $application->authorization();
+  $currentUser = $authorization->requireLogin();
+} catch (AuthenticationException $exception) {
+  $session->flash('warning', 'Sua sessão expirou. Entre novamente.');
+  $currentPage = basename(parse_url($_SERVER['REQUEST_URI'] ?? 'dashboard.php', PHP_URL_PATH) ?: 'dashboard.php');
+  header('Location: ' . $application->redirect()->loginUrl() . '?next=' . rawurlencode($application->redirect()->sanitize($currentPage)), true, 303);
+  exit;
+} catch (Throwable $exception) {
+  $session->flash('danger', 'Não foi possível manter o acesso ao sistema. Entre em contato com o administrador.');
+  header('Location: ' . $application->redirect()->loginUrl(), true, 303);
+  exit;
+}
+
+try {
+  $companyScope = $application->operationalCompanyContext()->resolve($currentUser);
+  $operationalCompany = $companyScope;
+  $requireScopedPermission = static function (string $permission) use ($companyScope): void {
+    if (!$companyScope->allows($permission)) {
+      throw new AuthorizationException('Acesso negado.');
+    }
+  };
+
+  if (isset($requiredPermission) && is_string($requiredPermission) && $requiredPermission !== '') {
+    $requireScopedPermission($requiredPermission);
+  } elseif (isset($requiredAllPermissions) && is_array($requiredAllPermissions) && $requiredAllPermissions !== []) {
+    foreach ($requiredAllPermissions as $permission) {
+      $requireScopedPermission((string) $permission);
+    }
+  } elseif (isset($requiredAnyPermission) && is_array($requiredAnyPermission) && $requiredAnyPermission !== []) {
+    $allowed = false;
+    foreach ($requiredAnyPermission as $permission) {
+      if ($companyScope->allows((string) $permission)) {
+        $allowed = true;
+        break;
+      }
+    }
+    if (!$allowed) {
+      throw new AuthorizationException('Acesso negado.');
+    }
+  } else {
+    error_log('Internal page without required permission declaration: ' . ($_SERVER['SCRIPT_NAME'] ?? 'unknown'));
+    throw new AuthorizationException('Acesso negado.');
+  }
+} catch (AuthorizationException $exception) {
+  $session->flash('warning', $exception->getMessage());
+  header('Location: ' . $application->redirect()->applicationUrl('acesso-negado.php'), true, 303);
+  exit;
+} catch (Throwable $exception) {
+  error_log('Operational company context failed: ' . get_class($exception));
+  $session->flash('danger', 'Não foi possível validar a empresa ativa. Tente novamente.');
+  header('Location: ' . $application->redirect()->applicationUrl('acesso-negado.php'), true, 303);
+  exit;
+}
+
+if (($platformAdminOnly ?? false) === true && !$currentUser->isPlatformAdministrator()) {
+  header('Location: ' . $application->redirect()->applicationUrl('acesso-negado.php'), true, 303);
+  exit;
+}
+
+if (strcasecmp((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''), 'XMLHttpRequest') === 0) {
+  header('Content-Type: text/html; charset=utf-8');
+  header('Cache-Control: no-store, no-cache, must-revalidate');
+  header('X-Content-Type-Options: nosniff');
+  header('Vary: X-Requested-With');
+  require $pageContent;
+  exit;
+}
+?>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <?php if ($documentBaseHref !== ''): ?><base href="<?= htmlspecialchars($documentBaseHref, ENT_QUOTES, 'UTF-8') ?>"><?php endif; ?>
+  <title>Flux Empresas — <?= htmlspecialchars($pageTitle ?? 'Sistema', ENT_QUOTES, 'UTF-8') ?></title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/dashboard.css?v=<?= (int) filemtime(dirname(__DIR__) . '/assets/css/dashboard.css') ?>">
+</head>
+<body>
+  <div class="os-wrapper">
+    <?php require __DIR__ . '/menu.php'; ?>
+
+    <main class="os-main">
+      <?php require __DIR__ . '/topbar.php'; ?>
+      <?php $flashMessages = $session->consumeFlashMessages(); ?>
+      <?php if ($flashMessages !== []): ?>
+        <div class="flash-stack" role="status" aria-live="polite">
+          <?php foreach ($flashMessages as $message): ?>
+            <?php $type = in_array(($message['type'] ?? ''), ['success', 'info', 'warning', 'danger'], true) ? $message['type'] : 'info'; ?>
+            <div class="alert alert-<?= htmlspecialchars((string) $type, ENT_QUOTES, 'UTF-8') ?> mb-2">
+              <?= htmlspecialchars((string) ($message['message'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+      <?php require $pageContent; ?>
+    </main>
+  </div>
+
+  <p class="visually-hidden" id="row-actions-table-instructions">
+    Para abrir as ações de um registro, clique ou toque na linha, ou pressione Enter ou Espaço.
+  </p>
+  <dialog class="row-actions-dialog" id="row-actions-dialog" aria-labelledby="row-actions-dialog-title" aria-describedby="row-actions-dialog-description">
+    <div class="row-actions-dialog-content">
+      <div class="row-actions-dialog-header">
+        <div>
+          <span class="row-actions-dialog-eyebrow">Ações do registro</span>
+          <h2 id="row-actions-dialog-title">Escolha uma ação</h2>
+        </div>
+        <button class="row-actions-dialog-close" type="button" data-row-actions-close aria-label="Fechar ações">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+      </div>
+      <p class="row-actions-dialog-description" id="row-actions-dialog-description">Selecione o que deseja fazer com este registro.</p>
+      <div class="row-actions-menu-host" data-row-actions-menu-host></div>
+    </div>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/js/fluxempresa-app.js?v=<?= (int) filemtime(dirname(__DIR__) . '/assets/js/fluxempresa-app.js') ?>"></script>
+  <script src="assets/js/live-filters.js?v=<?= (int) filemtime(dirname(__DIR__) . '/assets/js/live-filters.js') ?>"></script>
+  <?php foreach (($pageScripts ?? []) as $script): ?>
+  <?php $scriptPath = dirname(__DIR__) . '/' . ltrim((string) $script, '/'); ?>
+  <script src="<?= htmlspecialchars((string) $script, ENT_QUOTES, 'UTF-8') ?>?v=<?= is_file($scriptPath) ? (int) filemtime($scriptPath) : 1 ?>"></script>
+  <?php endforeach; ?>
+</body>
+</html>

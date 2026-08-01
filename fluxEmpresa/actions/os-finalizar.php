@@ -1,0 +1,36 @@
+<?php
+
+declare(strict_types=1);
+
+require __DIR__ . '/os-action-common.php';
+
+os_require_post_request();
+[$application, $session] = os_action_context('os.finalizar');
+
+try {
+    $user = $application->authorization()->requireLogin();
+    $result = $application->serviceOrderFinalization()->finalize(
+        os_posted_positive_int('id'),
+        $_POST,
+        $user->id()
+    );
+    if ($application->authorization()->can('contas_receber.registrar_pagamento')
+        && $application->authorization()->can('recibo.emitir')) {
+        os_store_post_completion_payment_prompt(
+            $result['order_id'],
+            $result['order_number'],
+            $result['balance']
+        );
+    }
+    $session->flash('success', 'OS finalizada e direcionada para Contas a Receber.');
+    os_redirect_back($application, 'ordens-servico.php', ['modal' => null]);
+} catch (InvalidArgumentException $exception) {
+    os_store_form_recovery('finalize', $_POST, $exception->getMessage());
+    $session->flash('danger', $exception->getMessage());
+    os_redirect_back($application, 'ordens-servico.php', ['modal' => 'finalize']);
+} catch (Throwable $exception) {
+    error_log('OS finalization failed: ' . $exception->getMessage());
+    $session->flash('danger', 'Não foi possível finalizar a OS.');
+}
+
+os_redirect_back($application);

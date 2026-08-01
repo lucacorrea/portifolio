@@ -103,6 +103,7 @@ const SIGAS = {
         </nav>`;
     },
     hydrateShell() {
+        if (this.qs('[data-module-shell]')) return;
         const sidebar = this.qs('#appSidebar');
         const topbar = this.qs('#appTopbar');
         const bottom = this.qs('#bottomNavigation');
@@ -145,6 +146,7 @@ const SIGAS = {
         });
     },
     initSidebar() {
+        if (this.qs('[data-module-shell]')) return;
         const shell = this.qs('.app-shell');
         if (!shell) return;
         const toggle = () => {
@@ -907,4 +909,6 @@ const SIGAS = {
 };
 
 window.SIGAS = SIGAS;
-document.addEventListener('DOMContentLoaded', () => SIGAS.init());
+document.addEventListener('DOMContentLoaded', () => {
+    SIGAS.init();
+});

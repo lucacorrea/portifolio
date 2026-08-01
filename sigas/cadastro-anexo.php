@@ -7,6 +7,7 @@ use App\Core\PageContext;
 require_once __DIR__ . '/bootstrap.php';
 
 $frontendContext = PageContext::requireAuthenticatedFrontendContext();
+$pageKey = 'pessoas-prontuarios';
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -21,12 +22,13 @@ $frontendContext = PageContext::requireAuthenticatedFrontendContext();
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
+    <link href="assets/css/module-navigation.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/module-navigation.css') ?>" rel="stylesheet">
 </head>
-<body data-page="cadastro-anexo">
-    <div class="app-shell">
-        <aside class="app-sidebar" id="appSidebar" aria-label="Menu principal"></aside>
-        <div class="app-main">
-            <header class="app-topbar" id="appTopbar"></header>
+<body data-page="cadastro-anexo" data-module="protecao-social-basica">
+    <div class="app-shell module-shell module-shell--basic" data-module-shell data-menu-environment="protecao-social-basica">
+        <?php $menuSurface = 'sidebar'; $menuPageKey = $pageKey; require __DIR__ . '/frontend/modules/protecao-social-basica/menu.php'; ?>
+        <div class="app-main module-main">
+            <?php require __DIR__ . '/frontend/layouts/module-topbar.php'; ?>
 
             <main class="app-content form-page" data-anexo-form>
                 <nav class="page-breadcrumb" aria-label="Navegação estrutural">
@@ -314,7 +316,7 @@ $frontendContext = PageContext::requireAuthenticatedFrontendContext();
 
             <footer class="app-footer"><span>Dados demonstrativos utilizados apenas para prototipação.</span><span>SIGAS Coari — SEMAS Coari/AM</span></footer>
         </div>
-        <div id="bottomNavigation"></div>
+        <?php $menuSurface = 'mobile'; require __DIR__ . '/frontend/modules/protecao-social-basica/menu.php'; ?>
     </div>
 
     <div class="modal fade" id="anexoSuccessModal" tabindex="-1" aria-labelledby="anexoSuccessTitle" aria-hidden="true">
@@ -326,6 +328,7 @@ $frontendContext = PageContext::requireAuthenticatedFrontendContext();
     <script src="assets/js/integration-demo.js"></script>
     <?= PageContext::script($frontendContext) ?>
     <script src="assets/js/app.js"></script>
+    <script src="assets/js/module-navigation.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/module-navigation.js') ?>"></script>
     <script src="assets/js/cadastro-anexo.js"></script>
 </body>
 </html>

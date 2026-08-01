@@ -15,6 +15,9 @@ final class ReceiptService
         'transferencia', 'cheque', 'outro',
     ];
 
+    /** @var array<string,array<string,bool>> */
+    private array $columnSupport = [];
+
     public function __construct(private readonly PDO $connection)
     {
     }
@@ -61,41 +64,26 @@ final class ReceiptService
                 $orderNumber
             );
 
-            $statement = $this->connection->prepare(
-                'INSERT INTO recibos
-                    (numero, cliente_id, ordem_servico_id, pagamento_id, cliente_nome, cliente_documento,
-                     os_numero, pagamento_recebido_em, empresa_nome, empresa_documento, empresa_telefone,
-                     empresa_endereco, empresa_logo, descricao, valor, forma_pagamento, quantidade_parcelas,
-                     status, emitido_por)
-                 VALUES
-                    (NULL, :client_id, :order_id, :payment_id, :client_name, :client_document,
-                     :order_number, :received_at, :company_name, :company_document, :company_phone,
-                     :company_address, :company_logo, :description, :value, :payment_form, :installment_count,
-                     "emitido", :user_id)'
-            );
-            $statement->execute([
-                'client_id' => $payment['cliente_id'],
-                'order_id' => $payment['ordem_servico_id'],
-                'payment_id' => $paymentId,
-                'client_name' => $payment['cliente_nome'],
-                'client_document' => $payment['cliente_documento'],
-                'order_number' => $orderNumber,
-                'received_at' => $payment['recebido_em'],
-                'company_name' => $company['name'],
-                'company_document' => $company['document'],
-                'company_phone' => $company['phone'],
-                'company_address' => $company['address'],
-                'company_logo' => $company['logo'],
-                'description' => $description,
-                'value' => $payment['valor'],
-                'payment_form' => $payment['forma_pagamento'],
-                'installment_count' => $payment['quantidade_parcelas'],
-                'user_id' => $userId,
+            $receiptId = $this->insertReceipt([
+                'cliente_id' => $payment['cliente_id'],
+                'ordem_servico_id' => $payment['ordem_servico_id'],
+                'pagamento_id' => $paymentId,
+                'cliente_nome' => $payment['cliente_nome'],
+                'cliente_documento' => $payment['cliente_documento'],
+                'os_numero' => $orderNumber,
+                'pagamento_recebido_em' => $payment['recebido_em'],
+                'empresa_nome' => $company['name'],
+                'empresa_documento' => $company['document'],
+                'empresa_telefone' => $company['phone'],
+                'empresa_endereco' => $company['address'],
+                'empresa_logo' => $company['logo'],
+                'descricao' => $description,
+                'valor' => $payment['valor'],
+                'forma_pagamento' => $payment['forma_pagamento'],
+                'quantidade_parcelas' => $payment['quantidade_parcelas'],
+                'status' => 'emitido',
+                'emitido_por' => $userId,
             ]);
-            $receiptId = (int) $this->connection->lastInsertId();
-            $number = sprintf('REC-%06d', $receiptId);
-            $this->connection->prepare('UPDATE recibos SET numero = :number WHERE id = :id')
-                ->execute(['id' => $receiptId, 'number' => $number]);
 
             if ($ownsTransaction) {
                 $this->connection->commit();
@@ -134,34 +122,26 @@ final class ReceiptService
             }
 
             $company = $this->companySnapshot();
-            $statement = $this->connection->prepare(
-                'INSERT INTO recibos
-                    (numero, cliente_id, ordem_servico_id, pagamento_id, cliente_nome, cliente_documento,
-                     os_numero, pagamento_recebido_em, empresa_nome, empresa_documento, empresa_telefone,
-                     empresa_endereco, empresa_logo, descricao, valor, forma_pagamento, quantidade_parcelas,
-                     status, emitido_por)
-                 VALUES
-                    (NULL, :client_id, NULL, NULL, :client_name, :client_document,
-                     NULL, CURRENT_TIMESTAMP, :company_name, :company_document, :company_phone,
-                     :company_address, :company_logo, :description, :value, :payment_form, 1, "emitido", :user_id)'
-            );
-            $statement->execute([
-                'client_id' => $clientId,
-                'client_name' => $clientName,
-                'client_document' => $clientDocument,
-                'company_name' => $company['name'],
-                'company_document' => $company['document'],
-                'company_phone' => $company['phone'],
-                'company_address' => $company['address'],
-                'company_logo' => $company['logo'],
-                'description' => $description,
-                'value' => $value,
-                'payment_form' => $paymentForm,
-                'user_id' => $userId,
+            $receiptId = $this->insertReceipt([
+                'cliente_id' => $clientId,
+                'ordem_servico_id' => null,
+                'pagamento_id' => null,
+                'cliente_nome' => $clientName,
+                'cliente_documento' => $clientDocument,
+                'os_numero' => null,
+                'pagamento_recebido_em' => null,
+                'empresa_nome' => $company['name'],
+                'empresa_documento' => $company['document'],
+                'empresa_telefone' => $company['phone'],
+                'empresa_endereco' => $company['address'],
+                'empresa_logo' => $company['logo'],
+                'descricao' => $description,
+                'valor' => $value,
+                'forma_pagamento' => $paymentForm,
+                'quantidade_parcelas' => 1,
+                'status' => 'emitido',
+                'emitido_por' => $userId,
             ]);
-            $receiptId = (int) $this->connection->lastInsertId();
-            $this->connection->prepare('UPDATE recibos SET numero = :number WHERE id = :id')
-                ->execute(['id' => $receiptId, 'number' => sprintf('REC-%06d', $receiptId)]);
             if ($ownsTransaction) $this->connection->commit();
             return ['id' => $receiptId, 'created' => true];
         } catch (Throwable $exception) {
@@ -203,9 +183,12 @@ final class ReceiptService
         if ($type === 'os') $where[] = 'receipt.ordem_servico_id IS NOT NULL';
         if ($type === 'avulso') $where[] = 'receipt.ordem_servico_id IS NULL';
 
+        $installmentSelect = $this->columnExists('recibos', 'quantidade_parcelas')
+            ? 'receipt.quantidade_parcelas'
+            : '1 AS quantidade_parcelas';
         $sql = 'SELECT receipt.id, receipt.numero, receipt.cliente_id, receipt.cliente_nome,
                        receipt.descricao, receipt.valor, receipt.forma_pagamento,
-                       receipt.quantidade_parcelas, receipt.status,
+                       ' . $installmentSelect . ', receipt.status,
                        receipt.emitido_em, receipt.ordem_servico_id, receipt.os_numero,
                        receipt.pagamento_id
                   FROM recibos receipt';
@@ -235,6 +218,28 @@ final class ReceiptService
         if ($receipt === false) {
             throw new InvalidArgumentException('Recibo não encontrado.');
         }
+        $receipt['servicos'] = [];
+        $receipt['pecas'] = [];
+        $orderId = (int) ($receipt['ordem_servico_id'] ?? 0);
+        if ($orderId > 0) {
+            $services = $this->connection->prepare(
+                "SELECT descricao, unidade, quantidade
+                   FROM ordem_servico_itens
+                  WHERE ordem_servico_id = :order_id AND tipo = 'servico'
+                  ORDER BY ordem, id"
+            );
+            $services->execute(['order_id' => $orderId]);
+            $receipt['servicos'] = $services->fetchAll();
+
+            $parts = $this->connection->prepare(
+                "SELECT descricao, unidade, quantidade
+                   FROM ordem_servico_itens
+                  WHERE ordem_servico_id = :order_id AND tipo = 'produto'
+                  ORDER BY ordem, id"
+            );
+            $parts->execute(['order_id' => $orderId]);
+            $receipt['pecas'] = $parts->fetchAll();
+        }
         return $receipt;
     }
 
@@ -244,8 +249,9 @@ final class ReceiptService
         if ($orderId <= 0) {
             return [];
         }
+        $installmentSelect = $this->paymentInstallmentSelect();
         $statement = $this->connection->prepare(
-            "SELECT payment.id, payment.valor, payment.forma_pagamento, payment.quantidade_parcelas,
+            "SELECT payment.id, payment.valor, payment.forma_pagamento, $installmentSelect,
                     payment.recebido_em,
                     receipt.id AS recibo_id, receipt.numero AS recibo_numero, receipt.status AS recibo_status
                FROM ordem_servico_pagamentos payment
@@ -276,9 +282,10 @@ final class ReceiptService
             $params[$key] = $id;
         }
 
+        $installmentSelect = $this->paymentInstallmentSelect();
         $statement = $this->connection->prepare(
             "SELECT payment.id, payment.ordem_servico_id, payment.valor, payment.forma_pagamento,
-                    payment.quantidade_parcelas, payment.recebido_em,
+                    $installmentSelect, payment.recebido_em,
                     receipt.id AS recibo_id, receipt.numero AS recibo_numero,
                     receipt.status AS recibo_status
                FROM ordem_servico_pagamentos payment
@@ -299,9 +306,10 @@ final class ReceiptService
     /** @return array<string,mixed> */
     private function lockPayment(int $paymentId): array
     {
+        $installmentSelect = $this->paymentInstallmentSelect();
         $statement = $this->connection->prepare(
             'SELECT payment.id, payment.ordem_servico_id, payment.valor, payment.forma_pagamento,
-                    payment.quantidade_parcelas, payment.recebido_em, payment.status,
+                    ' . $installmentSelect . ', payment.recebido_em, payment.status,
                     service_order.numero AS os_numero,
                     service_order.status AS os_status, service_order.excluida_em,
                     client.id AS cliente_id, client.nome AS cliente_nome,
@@ -343,6 +351,55 @@ final class ReceiptService
             throw new InvalidArgumentException('Cliente cadastrado não encontrado.');
         }
         return $client;
+    }
+
+    /** @param array<string,mixed> $data */
+    private function insertReceipt(array $data): int
+    {
+        $receivedAt = ':pagamento_recebido_em';
+        if ($data['pagamento_recebido_em'] === null) {
+            $receivedAt = 'CURRENT_TIMESTAMP';
+            unset($data['pagamento_recebido_em']);
+        }
+        $statement = $this->connection->prepare(
+            'INSERT INTO recibos
+                (cliente_id, ordem_servico_id, pagamento_id, cliente_nome, cliente_documento,
+                 os_numero, pagamento_recebido_em, empresa_nome, empresa_documento, empresa_telefone,
+                 empresa_endereco, empresa_logo, descricao, valor, forma_pagamento, quantidade_parcelas,
+                 status, emitido_por)
+             VALUES
+                (:cliente_id, :ordem_servico_id, :pagamento_id, :cliente_nome, :cliente_documento,
+                 :os_numero, ' . $receivedAt . ', :empresa_nome, :empresa_documento, :empresa_telefone,
+                 :empresa_endereco, :empresa_logo, :descricao, :valor, :forma_pagamento, :quantidade_parcelas,
+                 :status, :emitido_por)'
+        );
+        $statement->execute($data);
+        $receiptId = (int) $this->connection->lastInsertId();
+        $this->connection->prepare('UPDATE recibos SET numero = :number WHERE id = :id')
+            ->execute(['id' => $receiptId, 'number' => sprintf('REC-%06d', $receiptId)]);
+        return $receiptId;
+    }
+
+    private function paymentInstallmentSelect(): string
+    {
+        return $this->columnExists('ordem_servico_pagamentos', 'quantidade_parcelas')
+            ? 'payment.quantidade_parcelas'
+            : '1 AS quantidade_parcelas';
+    }
+
+    private function columnExists(string $table, string $column): bool
+    {
+        if (!in_array($table, ['recibos', 'ordem_servico_pagamentos'], true)) return false;
+        if (!array_key_exists($table, $this->columnSupport)) {
+            $statement = $this->connection->prepare(
+                'SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+                  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table_name'
+            );
+            $statement->execute(['table_name' => $table]);
+            $columns = $statement->fetchAll(PDO::FETCH_COLUMN);
+            $this->columnSupport[$table] = array_fill_keys(array_map('strval', $columns), true);
+        }
+        return isset($this->columnSupport[$table][$column]);
     }
 
     private function optionalPositiveInt(mixed $value): ?int

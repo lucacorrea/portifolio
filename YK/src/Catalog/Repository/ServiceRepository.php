@@ -19,7 +19,7 @@ final class ServiceRepository
     /** @return ServiceDefinition[] */
     public function findAll(array $filters = []): array
     {
-        $where = [];
+        $where = ['excluido_em IS NULL'];
         $params = [];
         $search = trim((string) ($filters['search'] ?? ''));
 
@@ -68,11 +68,27 @@ final class ServiceRepository
                     duracao_minutos, valor, descricao, status, criado_em, atualizado_em
                FROM servicos
               WHERE id = :id
+                AND excluido_em IS NULL
               LIMIT 1'
         );
         $statement->execute(['id' => $id]);
         $row = $statement->fetch();
 
+        return $row === false ? null : ServiceDefinition::fromArray($row);
+    }
+
+    public function findByIdForUpdate(int $id): ?ServiceDefinition
+    {
+        $this->assertPositiveId($id);
+        $statement = $this->connection->prepare(
+            'SELECT id, codigo, nome, categoria, equipamentos_compativeis,
+                    duracao_minutos, valor, descricao, status, criado_em, atualizado_em
+               FROM servicos
+              WHERE id = :id AND excluido_em IS NULL
+              LIMIT 1 FOR UPDATE'
+        );
+        $statement->execute(['id' => $id]);
+        $row = $statement->fetch();
         return $row === false ? null : ServiceDefinition::fromArray($row);
     }
 
@@ -83,7 +99,8 @@ final class ServiceRepository
             "SELECT COUNT(*) AS total,
                     SUM(CASE WHEN status = 'ativo' THEN 1 ELSE 0 END) AS active,
                     SUM(CASE WHEN status = 'inativo' THEN 1 ELSE 0 END) AS inactive
-               FROM servicos"
+               FROM servicos
+              WHERE excluido_em IS NULL"
         );
         $row = $statement->fetch() ?: [];
 
@@ -146,11 +163,27 @@ final class ServiceRepository
                     valor = :value,
                     descricao = :description,
                     status = :status
-              WHERE id = :id'
+              WHERE id = :id
+                AND excluido_em IS NULL'
         );
         $statement->bindValue('id', $id);
         $this->bindForm($statement, $data);
         $statement->execute();
+    }
+
+    public function softDelete(int $id, int $userId): void
+    {
+        $this->assertPositiveId($id);
+        $this->assertPositiveId($userId);
+        $statement = $this->connection->prepare(
+            "UPDATE servicos
+                SET status = 'inativo', excluido_em = CURRENT_TIMESTAMP, excluido_por = :user_id
+              WHERE id = :id AND excluido_em IS NULL"
+        );
+        $statement->execute(['id' => $id, 'user_id' => $userId]);
+        if ($statement->rowCount() !== 1) {
+            throw new InvalidArgumentException('Serviço não encontrado.');
+        }
     }
 
     private function bindForm(\PDOStatement $statement, ServiceFormData $data): void

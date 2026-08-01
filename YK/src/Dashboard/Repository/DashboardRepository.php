@@ -29,7 +29,8 @@ final class DashboardRepository
 
         $waitingBudgets = $this->connection->query(
             "SELECT COUNT(*) FROM orcamentos
-              WHERE status IN ('enviado','aguardando_aprovacao')"
+              WHERE status IN ('enviado','aguardando_aprovacao')
+                AND excluido_em IS NULL"
         )->fetchColumn();
         $lowStock = $this->connection->query(
             "SELECT COUNT(*) FROM produtos

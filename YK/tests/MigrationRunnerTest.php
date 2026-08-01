@@ -29,7 +29,7 @@ migrationAssertSame(true, str_contains($sampleStatements[0], "valor;interno"), '
 
 $migrationPaths = glob(dirname(__DIR__) . '/database/migrations/*.sql') ?: [];
 sort($migrationPaths, SORT_NATURAL | SORT_FLAG_CASE);
-migrationAssertSame(21, count($migrationPaths), 'A sequência atual deve conter 21 migrations.');
+migrationAssertSame(27, count($migrationPaths), 'A sequência atual deve conter 27 migrations.');
 
 $expectedVersion = 1;
 foreach ($migrationPaths as $path) {
@@ -120,4 +120,32 @@ migrationAssertSame(true, str_contains((string) $serviceOrderInstallmentsMigrati
 migrationAssertSame(true, str_contains((string) $serviceOrderInstallmentsMigration, "'boleto'"), 'Pagamento de OS deve reconhecer boleto compensado.');
 migrationAssertSame(true, str_contains((string) $serviceOrderInstallmentsMigration, 'ALTER TABLE recibos'), 'Recibo deve manter snapshot da quantidade de parcelas.');
 
+$masterDataDeletionMigration = file_get_contents(dirname(__DIR__) . '/database/migrations/022_master_data_soft_deletion.sql');
+migrationAssertSame(true, is_string($masterDataDeletionMigration), 'A migration de exclusão lógica dos cadastros deve ser legível.');
+foreach (['clientes', 'orcamentos', 'servicos'] as $table) {
+    migrationAssertSame(true, str_contains((string) $masterDataDeletionMigration, 'ALTER TABLE ' . $table), 'A migration deve preparar exclusão lógica em ' . $table . '.');
+}
+foreach (['cliente.excluir', 'orcamento.excluir', 'servico.excluir'] as $permission) {
+    migrationAssertSame(true, str_contains((string) $masterDataDeletionMigration, $permission), 'A migration deve reparar a permissão ' . $permission . '.');
+}
+
+$receiptPermissionMigration = file_get_contents(dirname(__DIR__) . '/database/migrations/023_repair_receipt_permissions.sql');
+migrationAssertSame(true, is_string($receiptPermissionMigration), 'A migration de reparo das permissões de recibo deve ser legível.');
+foreach (['recibo.visualizar', 'recibo.emitir', 'recibo.reimprimir', 'recibo.cancelar'] as $permission) {
+    migrationAssertSame(true, str_contains((string) $receiptPermissionMigration, $permission), 'A migration deve reparar a permissão ' . $permission . '.');
+}
+
+$receiptRepairMigration = file_get_contents(dirname(__DIR__) . '/database/migrations/026_repair_receipt_schema.sql');
+$migrationRunnerSource = file_get_contents(dirname(__DIR__) . '/src/Core/MigrationRunner.php');
+migrationAssertSame(true, is_string($receiptRepairMigration), 'A migration de reparo do schema de recibos deve ser legível.');
+migrationAssertSame(true, str_contains((string) $receiptRepairMigration, 'MODIFY COLUMN quantidade_parcelas SMALLINT UNSIGNED NOT NULL DEFAULT 1'), 'A migration deve normalizar tipo, nulabilidade e default das parcelas.');
+foreach (['empresa_documento', 'empresa_telefone', 'empresa_endereco', 'quantidade_parcelas'] as $column) {
+    migrationAssertSame(true, str_contains((string) $receiptRepairMigration, $column), 'A migration deve reparar a coluna de recibo ' . $column . '.');
+    migrationAssertSame(true, str_contains((string) $migrationRunnerSource, "'" . $column . "'"), 'A pós-condição deve verificar a coluna de recibo ' . $column . '.');
+}
+$fiscalAuthorizationMigration = file_get_contents(dirname(__DIR__) . '/database/migrations/027_fiscal_authorization_hardening.sql');
+migrationAssertSame(true, is_string($fiscalAuthorizationMigration), 'A migration de autorização fiscal deve ser legível.');
+foreach (['uq_documento_fiscal_origem_normal', 'uq_documento_fiscal_chave', 'reconsulta_apos'] as $requirement) {
+    migrationAssertSame(true, str_contains((string) $fiscalAuthorizationMigration, $requirement), 'A migration fiscal deve conter ' . $requirement . '.');
+}
 echo "MigrationRunnerTest: OK\n";

@@ -1,0 +1,1 @@
+<?php declare(strict_types=1); require __DIR__.'/includes/admin-guard.php'; $pageTitle='Empresas do SO';$pageSubtitle='Fornecedores disponíveis para cadastro no Flux Empresas';$activePage='so';require __DIR__.'/pages/empresas-so.php';require __DIR__.'/includes/shell.php';

@@ -5,7 +5,8 @@
     "license": "proprietary",
     "require": {
         "smalot/pdfparser": "^2.12",
-        "nfephp-org/sped-nfe": "^5.2"
+        "nfephp-org/sped-nfe": "^5.2",
+        "nfephp-org/sped-da": "^1.1"
     },
     "scripts": {
         "migrate": "@php scripts/migrate.php",
@@ -14,6 +15,7 @@
             "@php tests/AgendaReminderStatusTest.php",
             "@php tests/WeeklyPanelUiTest.php",
             "@php tests/ProductDeletionTest.php",
+            "@php tests/MasterDataDeletionTest.php",
             "@php tests/ClientPdfImportTest.php",
             "@php tests/EmployeeFormDataTest.php",
             "@php tests/CompanyBrandingTest.php",
@@ -26,6 +28,8 @@
             "@php tests/FiscalConfigurationValidationTest.php",
             "@php tests/FiscalRuntimeReadinessTest.php",
             "@php tests/FiscalUiSecurityTest.php",
+            "@php tests/FiscalDocumentLifecycleTest.php",
+            "@php tests/FiscalDocumentXmlBuilderTest.php",
             "@php tests/MigrationRunnerTest.php",
             "@php tests/WebMigrationCoordinatorTest.php"
         ]

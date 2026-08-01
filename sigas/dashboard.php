@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Config\ModuleRegistry;
 use App\Core\Csrf;
 use App\Core\Database;
 use App\Integrations\Anexo\AnexoIntegrationService;
@@ -63,6 +64,7 @@ $frontendContext = [
     'csrf' => [
         'logout' => Csrf::token('logout'),
     ],
+    'navigation' => ModuleRegistry::all(),
 ];
 ?>
 <!doctype html>
@@ -79,7 +81,7 @@ $frontendContext = [
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
 </head>
-<body data-page="dashboard">
+<body data-page="assistencia-painel" data-module="assistencia-social">
     <div class="app-shell">
         <aside class="app-sidebar" id="appSidebar" aria-label="Menu principal"></aside>
         <div class="app-main">

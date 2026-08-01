@@ -75,13 +75,25 @@ $canReverse = $authorization->can('os.estornar');
 $canDelete = $authorization->can('os.excluir');
 $canIssueReceipt = $authorization->can('recibo.emitir');
 $canReprintReceipt = $authorization->can('recibo.reimprimir');
+$canViewFiscal = $authorization->can('nota_fiscal.visualizar');
+$canIssueFiscal = $authorization->can('nota_fiscal.emitir');
+$fiscalDocumentsByOrder = [];
+if ($canViewFiscal || $canIssueFiscal) {
+    try {
+        $fiscalDocumentsByOrder = $application->fiscalDocuments()->listByOrderIds(
+            array_map(static fn($order): int => $order->id(), $orders)
+        );
+    } catch (Throwable $exception) {
+        error_log('Service order fiscal summary unavailable [' . get_class($exception) . '].');
+    }
+}
 $paymentsByOrder = ($canIssueReceipt || $canReprintReceipt)
     ? $application->receiptService()->listActivePaymentsForOrders(array_map(
         static fn(ServiceOrder $order): int => $order->id(),
         $orders
     ))
     : [];
-$receivableBalances = $canPayOrder
+$receivableBalances = ($canPayOrder || $canIssueReceipt || $canReprintReceipt)
     ? $application->accountsReceivableManagement()->balancesForOrders(array_map(
         static fn(ServiceOrder $order): int => $order->id(),
         $orders
@@ -278,7 +290,7 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                 <thead><tr><th>OS</th><th>Cliente</th><th>Contato</th><th>Local</th><th>Funcionarios</th><th>Data do servico</th><?php if ($canViewValues): ?><th>Valor total</th><?php endif; ?><th>Status</th><th>Acoes</th></tr></thead>
                 <tbody>
                 <?php foreach ($orders as $order): ?>
-                    <?php $team = $teamsByOrder[$order->id()] ?? []; $contactPhone = os_contact_phone($order); $whatsappUrl = os_whatsapp_url($order); $orderPayments = $paymentsByOrder[$order->id()] ?? []; $receivable = $receivableBalances[$order->id()] ?? null; ?>
+                    <?php $team = $teamsByOrder[$order->id()] ?? []; $contactPhone = os_contact_phone($order); $whatsappUrl = os_whatsapp_url($order); $orderPayments = $paymentsByOrder[$order->id()] ?? []; $receivable = $receivableBalances[$order->id()] ?? null; $isOrderPaid = is_array($receivable) && (string) ($receivable['status'] ?? '') === 'paga'; $orderFiscalDocuments = $fiscalDocumentsByOrder[$order->id()] ?? []; $orderFiscalModels = array_map(static fn(array $document): string => (string) $document['modelo'], $orderFiscalDocuments); ?>
                     <tr>
                         <td>
                             <strong><?= h($order->displayNumber()) ?></strong>
@@ -312,14 +324,29 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                                     <?php if ($canCancel && !in_array($order->status(), ['finalizada','cancelada'], true)): ?><li><button class="dropdown-item text-danger js-os-cancel" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-bs-toggle="modal" data-bs-target="#modal-os-cancel"><i class="bi bi-x-circle"></i> Cancelar servico</button></li><?php endif; ?>
                                     <?php if ($canReopen && $order->status() === 'cancelada'): ?><li><button class="dropdown-item js-os-status" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-operation="reopen" data-label="Reabrir" data-bs-toggle="modal" data-bs-target="#modal-os-status"><i class="bi bi-arrow-counterclockwise"></i> Reabrir</button></li><?php endif; ?>
                                     <?php if ($canPrint): ?><li><a class="dropdown-item" href="ordem-servico-imprimir.php?id=<?= h((string) $order->id()) ?>&valores=<?= $canViewValues ? '1' : '0' ?>" target="_blank" rel="noopener"><i class="bi bi-printer"></i> Imprimir / reimprimir OS</a></li><?php endif; ?>
-                                    <?php if ($canProof && $order->status() === 'finalizada'): ?><li><a class="dropdown-item" href="ordem-servico-comprovante.php?id=<?= h((string) $order->id()) ?>&valores=0" target="_blank" rel="noopener"><i class="bi bi-file-earmark-text"></i> Comprovante de servico</a></li><?php endif; ?>
-                                    <?php foreach ($orderPayments as $payment): ?>
-                                        <?php if (!empty($payment['recibo_id']) && $payment['recibo_status'] === 'emitido' && $canReprintReceipt): ?>
-                                            <li><a class="dropdown-item" href="recibo-imprimir.php?id=<?= h((string) $payment['recibo_id']) ?>" target="_blank" rel="noopener"><i class="bi bi-receipt-cutoff"></i> Reimprimir recibo: <?= h(os_payment_label($payment)) ?></a></li>
-                                        <?php elseif (empty($payment['recibo_id']) && $canIssueReceipt): ?>
-                                            <li><button class="dropdown-item js-os-receipt" type="button" data-payment-id="<?= h((string) $payment['id']) ?>" data-order-number="<?= h($order->displayNumber()) ?>" data-payment-label="<?= h(os_payment_label($payment)) ?>" data-bs-toggle="modal" data-bs-target="#modal-os-receipt"><i class="bi bi-receipt-cutoff"></i> Gerar recibo: <?= h(os_payment_label($payment)) ?></button></li>
+                                    <?php if ($canProof && $order->status() === 'finalizada'): ?><li><a class="dropdown-item" href="ordem-servico-comprovante.php?id=<?= h((string) $order->id()) ?>&valores=0" target="_blank" rel="noopener"><i class="bi bi-file-earmark-text"></i> Comprovante não fiscal sem valores</a></li><?php endif; ?>
+                                    <?php if ($canProof && $canViewValues && $order->status() === 'finalizada'): ?><li><a class="dropdown-item" href="ordem-servico-comprovante.php?id=<?= h((string) $order->id()) ?>&valores=1" target="_blank" rel="noopener"><i class="bi bi-currency-dollar"></i> Comprovante não fiscal com valores</a></li><?php endif; ?>
+                                    <?php foreach ($orderFiscalDocuments as $fiscalDocument): ?>
+                                        <?php if (($fiscalDocument['processamento_status'] ?? '') === 'autorizado' && $canViewFiscal): ?>
+                                            <li><a class="dropdown-item" href="nota-fiscal-imprimir.php?id=<?= h((string) $fiscalDocument['id']) ?>" target="_blank" rel="noopener"><i class="bi bi-printer"></i> Imprimir <?= ($fiscalDocument['modelo'] ?? '') === '55' ? 'DANFE' : 'DANFCE' ?> autorizada</a></li>
+                                        <?php else: ?>
+                                            <li><span class="dropdown-item-text text-muted"><i class="bi bi-file-earmark-lock"></i> Modelo <?= h((string) ($fiscalDocument['modelo'] ?? '')) ?>: <?= h((string) ($fiscalDocument['processamento_status'] ?? 'rascunho')) ?></span></li>
                                         <?php endif; ?>
                                     <?php endforeach; ?>
+                                    <?php if ($canIssueFiscal && $order->status() === 'finalizada'): ?>
+                                        <?php foreach (['55' => 'NF-e de peças', '65' => 'NFC-e de peças'] as $fiscalModel => $fiscalLabel): ?>
+                                            <?php if ($orderFiscalDocuments === []): ?><li><form method="post" action="actions/nota-fiscal-preparar.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="ordem_servico_id" value="<?= h((string) $order->id()) ?>"><input type="hidden" name="modelo" value="<?= h($fiscalModel) ?>"><input type="hidden" name="ambiente" value="homologacao"><input type="hidden" name="idempotency_key" value="<?= h(bin2hex(random_bytes(32))) ?>"><button class="dropdown-item" type="submit"><i class="bi bi-file-earmark-check"></i> Emitir <?= h($fiscalLabel) ?> em homologação</button></form></li><?php endif; ?>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                    <?php if ($isOrderPaid): ?>
+                                        <?php foreach ($orderPayments as $payment): ?>
+                                            <?php if (!empty($payment['recibo_id']) && $payment['recibo_status'] === 'emitido' && $canReprintReceipt): ?>
+                                                <li><a class="dropdown-item" href="recibo-imprimir.php?id=<?= h((string) $payment['recibo_id']) ?>" target="_blank" rel="noopener"><i class="bi bi-receipt-cutoff"></i> Recibo: <?= h(os_payment_label($payment)) ?></a></li>
+                                            <?php elseif (empty($payment['recibo_id']) && $canIssueReceipt): ?>
+                                                <li><button class="dropdown-item js-os-receipt" type="button" data-payment-id="<?= h((string) $payment['id']) ?>" data-order-number="<?= h($order->displayNumber()) ?>" data-payment-label="<?= h(os_payment_label($payment)) ?>" data-bs-toggle="modal" data-bs-target="#modal-os-receipt"><i class="bi bi-receipt-cutoff"></i> Gerar recibo: <?= h(os_payment_label($payment)) ?></button></li>
+                                            <?php endif; ?>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
                                     <?php if ($canReverse && $order->status() === 'finalizada'): ?><li><hr class="dropdown-divider"></li><li><button class="dropdown-item text-danger js-os-reverse" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-order-number="<?= h($order->displayNumber()) ?>" data-bs-toggle="modal" data-bs-target="#modal-os-reverse"><i class="bi bi-arrow-counterclockwise"></i> Estornar OS</button></li><?php endif; ?>
                                     <?php if ($canDelete && $order->status() !== 'finalizada'): ?><li><button class="dropdown-item text-danger js-os-delete" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-order-number="<?= h($order->displayNumber()) ?>" data-bs-toggle="modal" data-bs-target="#modal-os-delete"><i class="bi bi-trash3"></i> Excluir OS</button></li><?php endif; ?>
                                 </ul>
@@ -362,9 +389,9 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
 
 <?php if ($canReverse): ?><div class="modal fade" id="modal-os-reverse" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/os-estornar.php"><div class="modal-header"><h2 class="modal-title fs-5">Estornar OS</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="id" id="os-reverse-id"><p>O estorno da <strong id="os-reverse-number"></strong> desfará a finalização e criará lançamentos compensatórios de estoque e caixa, preservando o histórico.</p><div class="form-group"><label class="form-label" for="os-reverse-reason">Motivo do estorno</label><textarea class="form-control-os" id="os-reverse-reason" name="motivo" maxlength="255" required></textarea></div></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Confirmar estorno</button></div></form></div></div><?php endif; ?>
 
-<?php if ($canDelete): ?><div class="modal fade" id="modal-os-delete" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/os-excluir.php"><div class="modal-header"><h2 class="modal-title fs-5">Excluir OS</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="id" id="os-delete-id"><p>A <strong id="os-delete-number"></strong> será removida das telas por exclusão lógica. OS finalizada precisa ser estornada antes.</p><div class="form-group"><label class="form-label" for="os-delete-reason">Motivo da exclusão</label><textarea class="form-control-os" id="os-delete-reason" name="motivo" maxlength="255" required></textarea></div></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Excluir OS</button></div></form></div></div><?php endif; ?>
+<?php if ($canDelete): ?><div class="modal fade" id="modal-os-delete" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/os-excluir.php"><div class="modal-header"><h2 class="modal-title fs-5">Excluir OS</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="id" id="os-delete-id"><p class="mb-0">A <strong id="os-delete-number"></strong> será removida das telas por exclusão lógica. OS finalizada precisa ser estornada antes.</p></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Excluir OS</button></div></form></div></div><?php endif; ?>
 
-<?php if ($canIssueReceipt): ?><div class="modal fade" id="modal-os-receipt" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/recibo-emitir.php" target="_blank"><div class="modal-header"><h2 class="modal-title fs-5">Gerar recibo de pagamento</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><input type="hidden" name="pagamento_id" id="os-receipt-payment-id"><p>Gerar recibo da <strong id="os-receipt-order-number"></strong> referente a <strong id="os-receipt-payment-label"></strong>?</p><p class="text-muted small mb-0">O documento registra uma fotografia dos dados da empresa, do cliente e do pagamento.</p></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Gerar recibo</button></div></form></div></div><?php endif; ?>
+<?php if ($canIssueReceipt): ?><div class="modal fade" id="modal-os-receipt" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/recibo-emitir.php" target="_blank"><div class="modal-header"><h2 class="modal-title fs-5">Gerar recibo de pagamento</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><input type="hidden" name="pagamento_id" id="os-receipt-payment-id"><p>Gerar recibo da <strong id="os-receipt-order-number"></strong> referente a <strong id="os-receipt-payment-label"></strong>?</p><p class="text-muted small mb-0">Depois de gerar, escolha entre impressão térmica de 80 mm ou A4 em impressora comum.</p></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Gerar e escolher impressão</button></div></form></div></div><?php endif; ?>
 
 <script type="application/json" id="os-page-data"><?= json_encode(['services' => $serviceOptions, 'products' => $productOptions, 'employees' => $employeeOptions, 'recoveryModal' => $recovery['modal'] ?? ($_GET['modal'] ?? null), 'recoveryData' => $recovery['data'] ?? [], 'recoveryError' => $recovery['error'] ?? null, 'postCompletionPaymentPrompt' => $canPayOrder ? $postCompletionPaymentPrompt : null], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?></script>
 <script>

@@ -18,7 +18,7 @@ function fiscalRuntimeAssert(bool $condition, string $message): void
 $required = [
     'openssl' => true, 'curl' => true, 'dom' => true,
     'simplexml' => true, 'soap' => true, 'mbstring' => true,
-    'zlib' => true, 'nfephp' => true,
+    'zlib' => true, 'gd' => true, 'nfephp' => true, 'sped_da' => true,
 ];
 $ready = (new FiscalRuntimeReadiness($required, true, false, true))->inspect();
 fiscalRuntimeAssert($ready['homologation_ready'], 'Todos os requisitos devem liberar a homologação.');

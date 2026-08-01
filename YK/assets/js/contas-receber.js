@@ -5,6 +5,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const element = document.getElementById(id);
     if (element) element.value = value || '';
   }
+  function setText(id, value) {
+    const element = document.getElementById(id);
+    if (element) element.textContent = value || '';
+  }
+
 
   function selectedAccounts() {
     return Array.from(document.querySelectorAll('.js-cr-batch-account:checked'));
@@ -70,6 +75,14 @@ document.addEventListener('DOMContentLoaded', function () {
       setValue('cr-payment-value', paymentButton.dataset.balance);
       return;
     }
+    const receiptButton = event.target.closest?.('.js-cr-receipt');
+    if (receiptButton) {
+      setValue('cr-receipt-payment-id', receiptButton.dataset.paymentId);
+      setText('cr-receipt-order-number', receiptButton.dataset.orderNumber);
+      setText('cr-receipt-payment-label', receiptButton.dataset.paymentLabel);
+      return;
+    }
+
     if (event.target.closest?.('#cr-batch-open')) prepareBatchModal(event);
   });
 

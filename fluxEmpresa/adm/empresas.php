@@ -1,0 +1,9 @@
+<?php
+
+declare(strict_types=1);
+require __DIR__ . '/includes/admin-guard.php';
+$pageTitle = 'Todas as empresas';
+$pageSubtitle = 'Cadastros disponíveis na plataforma';
+$activePage = 'companies';
+require __DIR__ . '/pages/empresas.php';
+require __DIR__ . '/includes/shell.php';

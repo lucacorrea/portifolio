@@ -5,6 +5,8 @@ declare(strict_types=1);
 require_once __DIR__ . '/../includes/ui.php';
 
 $canViewFiscal = $authorization->can('nota_fiscal.visualizar');
+$canIssueFiscal = $authorization->can('nota_fiscal.emitir');
+$canCancelFiscal = $authorization->can('nota_fiscal.cancelar');
 $canViewReceipts = $authorization->can('recibo.visualizar');
 $canIssueReceipt = $authorization->can('recibo.emitir');
 $canReprintReceipt = $authorization->can('recibo.reimprimir');
@@ -19,6 +21,20 @@ if ($canViewFiscal) {
 }
 $readiness = is_array($fiscalOverview['readiness'] ?? null) ? $fiscalOverview['readiness'] : null;
 $configuration = is_array($fiscalOverview['configuration'] ?? null) ? $fiscalOverview['configuration'] : null;
+$fiscalFilters = [
+  'search' => trim((string) ($_GET['fiscal_search'] ?? '')),
+  'status' => trim((string) ($_GET['fiscal_status'] ?? '')),
+  'modelo' => trim((string) ($_GET['fiscal_model'] ?? '')),
+  'ambiente' => trim((string) ($_GET['fiscal_environment'] ?? '')),
+];
+$fiscalDocuments = [];
+if ($canViewFiscal) {
+  try {
+    $fiscalDocuments = $application->fiscalDocuments()->listDocuments($fiscalFilters);
+  } catch (Throwable $exception) {
+    error_log('Fiscal document listing unavailable [' . get_class($exception) . '].');
+  }
+}
 $receiptFilters = [
   'search' => trim((string) ($_GET['search'] ?? '')),
   'status' => trim((string) ($_GET['receipt_status'] ?? '')),
@@ -66,9 +82,43 @@ function billing_receipt_type(array $receipt): string
       </div>
     </section>
 
-    <section class="panel mb-4">
-      <div class="panel-header"><div class="panel-title"><i class="bi bi-file-earmark-code"></i>Documentos NF-e / NFC-e</div></div>
-      <div class="empty-state py-5"><i class="bi bi-shield-exclamation"></i><h3>Emissão ainda não liberada</h3><p>A tela não simula notas fiscais. Os documentos aparecerão aqui somente após o adaptador oficial, o teste em homologação e a autorização real da SEFAZ.</p></div>
+    <section class="panel mb-4" id="documentos-fiscais">
+      <div class="panel-header"><div><div class="panel-title"><i class="bi bi-file-earmark-code"></i>Documentos NF-e / NFC-e</div><p class="text-muted small mb-0 mt-1">A tela não simula notas fiscais. DANFE e DANFCE só são liberados a partir do XML autorizado pela SEFAZ. Serviços permanecem separados e exigem NFS-e.</p></div></div>
+      <form class="filter-bar" method="get" action="faturamento.php" data-live-filter="fiscal-documents" data-live-regions="fiscal-results">
+        <div class="search-wrap"><i class="bi bi-search"></i><input class="search-input" name="fiscal_search" value="<?= h($fiscalFilters['search']) ?>" placeholder="Chave, cliente ou OS"></div>
+        <select class="filter-select" name="fiscal_model" aria-label="Modelo fiscal"><option value="">NF-e e NFC-e</option><option value="55" <?= $fiscalFilters['modelo'] === '55' ? 'selected' : '' ?>>NF-e (55)</option><option value="65" <?= $fiscalFilters['modelo'] === '65' ? 'selected' : '' ?>>NFC-e (65)</option></select>
+        <select class="filter-select" name="fiscal_status" aria-label="Status fiscal"><option value="">Todos os status</option><?php foreach (['preparado','processando','pendente_reconsulta','autorizado','rejeitado','denegado','cancelado','erro_tecnico'] as $status): ?><option value="<?= h($status) ?>" <?= $fiscalFilters['status'] === $status ? 'selected' : '' ?>><?= h(ucfirst(str_replace('_', ' ', $status))) ?></option><?php endforeach; ?></select>
+        <button class="btn-filter btn-filter-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
+        <a class="btn-filter btn-filter-ghost" href="faturamento.php#documentos-fiscais" data-live-filter-clear><i class="bi bi-x-lg"></i> Limpar</a>
+      </form>
+      <div data-live-region="fiscal-results">
+        <?php if ($fiscalDocuments === []): ?>
+          <div class="empty-state py-5"><i class="bi bi-shield-exclamation"></i><h3>Nenhum documento fiscal</h3><p>Use uma OS finalizada ou uma conta paga para emitir NF-e/NFC-e das peças. Serviços ficam vinculados à mesma OS para a NFS-e separada.</p></div>
+        <?php else: ?>
+          <div class="table-panel-wrap"><table class="os-table"><thead><tr><th>Documento</th><th>Origem</th><th>Cliente</th><th>Valor</th><th>Status</th><th>Chave / motivo</th><th>Ações</th></tr></thead><tbody>
+          <?php foreach ($fiscalDocuments as $document): ?>
+            <tr>
+              <td><strong><?= ($document['modelo'] ?? '') === '55' ? 'NF-e' : 'NFC-e' ?> <?= h((string) ($document['serie'] ?? '')) ?>/<?= h((string) ($document['numero'] ?? '')) ?></strong><br><small class="text-muted"><?= h((string) ($document['ambiente'] ?? '')) ?></small></td>
+              <td><?= h((string) ($document['os_numero'] ?? '-')) ?></td>
+              <td><?= h((string) ($document['cliente_nome'] ?? '-')) ?></td>
+              <td><strong><?= h(billing_receipt_money($document['valor_nota'] ?? '0')) ?></strong></td>
+              <td><span class="badge-soft badge-<?= ($document['processamento_status'] ?? '') === 'autorizado' ? 'green' : (($document['processamento_status'] ?? '') === 'rejeitado' ? 'red' : 'amber') ?>"><?= h(ucfirst(str_replace('_', ' ', (string) ($document['processamento_status'] ?? 'rascunho')))) ?></span></td>
+              <td><?php if (!empty($document['chave'])): ?><small><?= h((string) $document['chave']) ?></small><?php else: ?><?= h((string) ($document['xmotivo'] ?? 'Aguardando transmissão/autorização')) ?><?php endif; ?></td>
+              <td class="table-actions-cell">
+                <?php $documentStatus = (string) ($document['processamento_status'] ?? ''); ?>
+                <?php if ($documentStatus === 'autorizado' || ($canIssueFiscal && in_array($documentStatus, ['preparado', 'processando', 'pendente_reconsulta'], true))): ?>
+                  <div class="dropdown table-action-dropdown"><button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações do documento fiscal"><i class="bi bi-three-dots-vertical"></i></button><ul class="dropdown-menu dropdown-menu-end">
+                    <?php if ($documentStatus === 'autorizado'): ?><li><a class="dropdown-item" href="nota-fiscal-imprimir.php?id=<?= h((string) $document['id']) ?>" target="_blank" rel="noopener"><i class="bi bi-printer"></i> Imprimir <?= ($document['modelo'] ?? '') === '55' ? 'DANFE' : 'DANFCE' ?></a></li><?php if ($authorization->can('nota_fiscal.baixar_xml')): ?><li><a class="dropdown-item" href="nota-fiscal-xml.php?id=<?= h((string) $document['id']) ?>"><i class="bi bi-filetype-xml"></i> Baixar XML autorizado</a></li><?php endif; ?><?php if ($canCancelFiscal): ?><li><hr class="dropdown-divider"></li><li><button class="dropdown-item text-danger js-fiscal-cancel" type="button" data-document-id="<?= h((string) $document['id']) ?>" data-bs-toggle="modal" data-bs-target="#modal-fiscal-cancel"><i class="bi bi-x-octagon"></i> Cancelar na SEFAZ</button></li><?php endif; ?>
+                    <?php elseif ($documentStatus === 'preparado'): ?><li><form method="post" action="actions/nota-fiscal-transmitir.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="documento_fiscal_id" value="<?= h((string) $document['id']) ?>"><button class="dropdown-item" type="submit"><i class="bi bi-cloud-arrow-up"></i> Transmitir à SEFAZ</button></form></li>
+                    <?php else: ?><li><form method="post" action="actions/nota-fiscal-reconsultar.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="documento_fiscal_id" value="<?= h((string) $document['id']) ?>"><button class="dropdown-item" type="submit"><i class="bi bi-arrow-repeat"></i> Reconsultar na SEFAZ</button></form></li><?php endif; ?>
+                  </ul></div>
+                <?php else: ?>—<?php endif; ?>
+              </td>
+            </tr>
+          <?php endforeach; ?>
+          </tbody></table></div>
+        <?php endif; ?>
+      </div>
     </section>
   <?php endif; ?>
 
@@ -112,4 +162,9 @@ function billing_receipt_type(array $receipt): string
 
 <?php if ($canIssueReceipt): ?>
 <div class="modal fade" id="modal-standalone-receipt" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-scrollable"><form class="modal-content visual-modal" method="post" action="actions/recibo-avulso-emitir.php" target="_blank" autocomplete="off"><div class="modal-header"><div><h2 class="modal-title fs-5">Novo recibo</h2><p class="text-muted small mb-0">Use um cliente cadastrado ou informe os dados de um recebimento avulso.</p></div><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><div class="alert alert-info"><i class="bi bi-image"></i> A logo e os dados atuais da empresa serão incluídos automaticamente no recibo.</div><fieldset class="form-section"><legend class="form-section-title">Cliente</legend><div class="form-row"><div class="form-group"><label class="form-label" for="standalone-receipt-mode">Origem do cliente</label><select class="form-control-os" id="standalone-receipt-mode"><option value="registered" <?= $receiptClients !== [] ? 'selected' : '' ?>>Cliente cadastrado</option><option value="standalone" <?= $receiptClients === [] ? 'selected' : '' ?>>Cliente avulso</option></select></div><div class="form-group" data-receipt-registered-client><label class="form-label" for="standalone-receipt-client">Cliente cadastrado</label><select class="form-control-os" id="standalone-receipt-client" name="cliente_id"><option value="">Selecione</option><?php foreach ($receiptClients as $client): ?><option value="<?= h((string) $client->id()) ?>"><?= h($client->name()) ?></option><?php endforeach; ?></select></div></div><div class="form-row" data-receipt-standalone-client><div class="form-group"><label class="form-label" for="standalone-receipt-name">Nome do cliente</label><input class="form-control-os" id="standalone-receipt-name" name="cliente_nome" maxlength="150"></div><div class="form-group"><label class="form-label" for="standalone-receipt-document">CPF/CNPJ <span class="text-muted">(opcional)</span></label><input class="form-control-os" id="standalone-receipt-document" name="cliente_documento" maxlength="20"></div></div></fieldset><fieldset class="form-section"><legend class="form-section-title">Recebimento</legend><div class="form-group"><label class="form-label" for="standalone-receipt-description">Referente a</label><textarea class="form-control-os" id="standalone-receipt-description" name="descricao" maxlength="1000" rows="4" required></textarea></div><div class="form-row"><div class="form-group"><label class="form-label" for="standalone-receipt-value">Valor</label><input class="form-control-os" id="standalone-receipt-value" name="valor" inputmode="decimal" required></div><div class="form-group"><label class="form-label" for="standalone-receipt-payment">Forma de pagamento</label><select class="form-control-os" id="standalone-receipt-payment" name="forma_pagamento" required><option value="dinheiro">Dinheiro</option><option value="pix">Pix</option><option value="cartao_debito">Cartão de débito</option><option value="cartao_credito">Cartão de crédito</option><option value="transferencia">Transferência</option><option value="outro">Outro</option></select></div></div></fieldset></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit"><i class="bi bi-receipt-cutoff"></i> Emitir e abrir recibo</button></div></form></div></div></div>
+<?php endif; ?>
+
+<?php if ($canCancelFiscal): ?>
+<div class="modal fade" id="modal-fiscal-cancel" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/nota-fiscal-cancelar.php"><div class="modal-header"><div><h2 class="modal-title fs-5">Cancelar documento fiscal</h2><p class="text-muted small mb-0">A solicitação será enviada à SEFAZ e ficará auditada.</p></div><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="documento_fiscal_id" id="fiscal-cancel-document-id"><div class="alert alert-warning">Depois da autorização do cancelamento, a OS poderá ser estornada. Pagamentos e estoque continuam sendo corrigidos por lançamentos de estorno.</div><div class="form-group"><label class="form-label" for="fiscal-cancel-reason">Justificativa</label><textarea class="form-control-os" id="fiscal-cancel-reason" name="justificativa" minlength="15" maxlength="255" rows="4" required></textarea></div></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Voltar</button><button class="btn-modal-save" type="submit"><i class="bi bi-x-octagon"></i> Solicitar cancelamento</button></div></form></div></div>
+<script>document.addEventListener('click',function(event){const button=event.target.closest('.js-fiscal-cancel');if(!button)return;const input=document.getElementById('fiscal-cancel-document-id');if(input)input.value=button.dataset.documentId||'';});</script>
 <?php endif; ?>

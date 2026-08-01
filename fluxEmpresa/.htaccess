@@ -1,24 +1,46 @@
 Options -Indexes
-RewriteEngine On
 
-# Bloqueia acesso direto a arquivos sensíveis
-<FilesMatch "^(\.env|\.env\..*|composer\.(json|lock)|README\.md|IMPLEMENTACAO\.md)$">
-    Require all denied
-</FilesMatch>
+<IfModule mod_rewrite.c>
+    RewriteEngine On
 
-# Bloqueia acesso direto a pastas internas
-RewriteRule ^(app|database|storage)(/.*)?$ - [F,L]
+    # Credenciais, certificado A1 e dados fiscais nunca podem trafegar em HTTP.
+    RewriteCond %{HTTPS} !=on
+    RewriteRule ^ https://lucascorrea.pro%{REQUEST_URI} [R=301,L,NE]
 
-# Se o arquivo ou pasta não existir na raiz, roteia para public
-RewriteCond %{REQUEST_URI} !/fluxEmpresa/public/
-RewriteCond %{DOCUMENT_ROOT}/fluxEmpresa/public/$1 -f [OR]
-RewriteCond %{DOCUMENT_ROOT}/fluxEmpresa/public/$1 -d
-RewriteRule ^(.+)$ public/$1 [L]
+    RewriteRule ^(config|src|database|scripts|storage|backups|tests|vendor)(/|$) - [F,L]
+</IfModule>
 
-# Entrada principal
-RewriteRule ^$ public/index.php [L]
+<IfModule mod_headers.c>
+    Header always set Strict-Transport-Security "max-age=31536000"
+    Header always set Content-Security-Policy "frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    Header always set X-Frame-Options "DENY"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
 
-# Rotas PHP simples: /login.php -> /public/login.php
-RewriteCond %{REQUEST_URI} !/fluxEmpresa/public/
-RewriteCond %{DOCUMENT_ROOT}/fluxEmpresa/public/$1 -f
-RewriteRule ^(.+\.php)$ public/$1 [L]
+<IfModule mod_authz_core.c>
+    <FilesMatch "^\.env">
+        Require all denied
+    </FilesMatch>
+    <FilesMatch "(\.(ini|log|sql|bak|backup|old|dist)|database\.local\.php)$">
+        Require all denied
+    </FilesMatch>
+    <FilesMatch "^composer\.(json|lock)$">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+
+<IfModule !mod_authz_core.c>
+    <FilesMatch "^\.env">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+    <FilesMatch "(\.(ini|log|sql|bak|backup|old|dist)|database\.local\.php)$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+    <FilesMatch "^composer\.(json|lock)$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+</IfModule>

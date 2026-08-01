@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Config\ModuleRegistry;
 use App\Core\Csrf;
 use App\Core\Database;
 use App\Core\Logger;
@@ -46,6 +47,7 @@ try {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="assets/css/style.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/style.css')) ?>" rel="stylesheet">
+    <link href="assets/css/module-navigation.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/module-navigation.css')) ?>" rel="stylesheet">
     <link href="assets/css/anexo-detail-modal.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/anexo-detail-modal.css')) ?>" rel="stylesheet">
 </head>
 <body data-page="modulo">
@@ -227,6 +229,7 @@ $frontendContext = [
         'cancelarEntrega' => Csrf::token('comida_mesa_cancelar_entrega'),
         'enviarDocumento' => Csrf::token('comida_mesa_enviar_documento'),
     ],
+    'navigation' => ModuleRegistry::all(),
     'comidaMesa' => [
         'competenciaId' => $currentCompetenceId,
         'competenceLabel' => $competenceLabel,
@@ -252,6 +255,7 @@ $frontendContext = [
         ],
     ],
 ];
+$pageKey = $action === 'new' ? 'nova-inscricao' : 'beneficiarios';
 $stats = [
     ['Famílias cadastradas', $statistics['familias_cadastradas']],
     ['Beneficiárias ativas', $statistics['beneficiarias_ativas']],
@@ -361,13 +365,14 @@ function render_registration_form_fields(array $poles, array $programStatuses, s
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="assets/css/style.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/style.css')) ?>" rel="stylesheet">
+    <link href="assets/css/module-navigation.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/module-navigation.css')) ?>" rel="stylesheet">
     <link href="assets/css/anexo-detail-modal.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/anexo-detail-modal.css')) ?>" rel="stylesheet">
 </head>
-<body data-page="modulo">
-    <div class="app-shell">
-        <aside class="app-sidebar" id="appSidebar" aria-label="Menu principal"></aside>
-        <div class="app-main">
-            <header class="app-topbar" id="appTopbar"></header>
+<body data-page="modulo" data-module="comida-mesa" data-module-page="<?= e($pageKey) ?>">
+    <div class="app-shell module-shell module-shell--food" data-module-shell data-menu-environment="comida-mesa">
+        <?php $menuSurface = 'sidebar'; $menuPageKey = $pageKey; require __DIR__ . '/frontend/modules/comida-mesa/menu.php'; ?>
+        <div class="app-main module-main">
+            <?php require __DIR__ . '/frontend/layouts/module-topbar.php'; ?>
             <main class="app-content">
                 <section class="module-hero" aria-labelledby="moduleTitle">
                     <div class="module-hero-content">
@@ -556,7 +561,7 @@ function render_registration_form_fields(array $poles, array $programStatuses, s
             </main>
             <footer class="app-footer"><span>Dados carregados do banco do SIGAS.</span><span>SIGAS Coari - SEMAS Coari/AM</span></footer>
         </div>
-        <div id="bottomNavigation"></div>
+        <?php $menuSurface = 'mobile'; require __DIR__ . '/frontend/modules/comida-mesa/menu.php'; ?>
     </div>
 
     <?php if (!$isNewRegistrationPage): ?>
@@ -719,6 +724,7 @@ function render_registration_form_fields(array $poles, array $programStatuses, s
 window.SIGAS_CONTEXT = <?= json_encode($frontendContext, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     </script>
     <script src="assets/js/app.js?v=<?= e((string) filemtime(__DIR__ . '/assets/js/app.js')) ?>"></script>
+    <script src="assets/js/module-navigation.js?v=<?= e((string) filemtime(__DIR__ . '/assets/js/module-navigation.js')) ?>"></script>
     <script src="assets/js/comida-mesa.js?v=<?= e((string) filemtime(__DIR__ . '/assets/js/comida-mesa.js')) ?>"></script>
 </body>
 </html>

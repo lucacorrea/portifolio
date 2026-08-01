@@ -22,7 +22,7 @@ $frontendContext = PageContext::requireAuthenticatedFrontendContext();
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
 </head>
-<body data-page="manual">
+<body data-page="admin-manual" data-module="administracao">
     <div class="app-shell">
         <aside class="app-sidebar" id="appSidebar" aria-label="Menu principal"></aside>
         <div class="app-main">

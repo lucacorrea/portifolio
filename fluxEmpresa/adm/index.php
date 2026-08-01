@@ -1,0 +1,1 @@
+<?php declare(strict_types=1); require __DIR__.'/includes/admin-guard.php'; $pageTitle='Dashboard';$pageSubtitle='Indicadores da administração da plataforma';$activePage='dashboard';require __DIR__.'/pages/dashboard.php';require __DIR__.'/includes/shell.php';
