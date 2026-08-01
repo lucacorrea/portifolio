@@ -139,7 +139,7 @@
                                 <th class="text-center">Qtd</th>
                                 <th class="text-end">V. Unit</th>
                                 <th class="text-end">Subtotal</th>
-                                <th class="text-end">Troca</th>
+                                <th class="text-end">Devolucao / Troca</th>
                             </tr>
                         </thead>
                         <tbody id="det-items"></tbody>
@@ -164,6 +164,9 @@
             </div>
             <div class="modal-footer border-0 p-3">
                 <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-outline-danger px-4 rounded-pill d-none" id="det-return-selected-btn" onclick="returnSelectedItemsFromDetail()">
+                    <i class="fas fa-undo me-2"></i>Devolver Marcados
+                </button>
                 <div id="det-print-btn"></div>
             </div>
         </div>
@@ -304,6 +307,7 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         let currentPage = 1;
+        let currentDetailSale = null;
         const salesList = document.getElementById('salesList');
         const paginationArea = document.getElementById('paginationArea');
         const filterForm = document.getElementById('filterForm');
@@ -510,6 +514,7 @@
             const data = await res.json();
             if (data.success) {
                 const s = data.sale;
+                currentDetailSale = s;
                 document.getElementById('det-id').textContent = s.id;
                 document.getElementById('det-cliente').textContent = s.cliente_nome || 'Consumidor Avulso';
                 document.getElementById('det-data').textContent = s.data_formatada;
@@ -535,14 +540,89 @@
                         <td class="text-end">R$ ${it.preco_formatado}</td>
                         <td class="text-end fw-bold">R$ ${it.subtotal_formatado}</td>
                         <td class="text-end">
-                            ${s.status === 'concluido' ? `<button class="btn btn-outline-primary btn-sm rounded-pill px-3" onclick="openExchange(${s.id}, ${it.id}, '${it.produto_nome.replace("'", "\\'")}', ${it.quantidade}, ${it.preco_unitario})">Trocar</button>` : '—'}
+                            ${s.status === 'concluido' ? `
+                                <div class="d-flex justify-content-end align-items-center gap-2 flex-wrap">
+                                    <input type="checkbox" class="form-check-input detail-return-check" data-item-id="${it.id}" data-max="${it.quantidade}" data-name="${it.produto_nome.replace(/"/g, '&quot;')}">
+                                    <input type="number" class="form-control form-control-sm text-center detail-return-qty" style="width: 82px;" min="0.001" max="${it.quantidade}" step="0.001" value="${it.quantidade}">
+                                    <button class="btn btn-outline-primary btn-sm rounded-pill px-3" onclick="openExchange(${s.id}, ${it.id}, '${it.produto_nome.replace("'", "\\'")}', ${it.quantidade}, ${it.preco_unitario})">Trocar</button>
+                                </div>
+                            ` : '—'}
                         </td>
                     </tr>
                 `).join('');
 
+                document.getElementById('det-return-selected-btn').classList.toggle('d-none', s.status !== 'concluido');
+
                 document.getElementById('det-print-btn').innerHTML = `<button class="btn btn-primary px-4 rounded-pill" onclick="printSale(${s.id}, '${s.tipo_nota}', '${s.chave_acesso || ''}')"><i class="fas fa-print me-2"></i>Imprimir ${s.tipo_nota === 'fiscal' ? 'NFC-e' : 'Recibo'}</button>`;
                 
                 new bootstrap.Modal('#modalDetail').show();
+            }
+        };
+
+        window.returnSelectedItemsFromDetail = async function() {
+            if (!currentDetailSale || currentDetailSale.status !== 'concluido') {
+                return alert('Venda nao disponivel para devolucao.');
+            }
+
+            const returnItems = [];
+            let hasInvalid = false;
+            document.querySelectorAll('#det-items .detail-return-check:checked').forEach(check => {
+                const wrap = check.closest('div');
+                const qtyInput = wrap.querySelector('.detail-return-qty');
+                const maxQty = parseFloat(check.dataset.max) || 0;
+                const returnQty = parseFloat(qtyInput.value) || 0;
+                if (returnQty <= 0 || returnQty > maxQty) {
+                    hasInvalid = true;
+                    alert(`Informe uma quantidade devolvida entre 0,001 e ${maxQty}.`);
+                    qtyInput.focus();
+                    return;
+                }
+                returnItems.push({
+                    item_id: parseInt(check.dataset.itemId, 10),
+                    return_qty: returnQty,
+                    name: check.dataset.name || ''
+                });
+            });
+
+            if (hasInvalid) return;
+
+            if (returnItems.length === 0) {
+                return alert('Marque ao menos um item para devolver.');
+            }
+
+            const names = returnItems.map(i => `- ${i.name} (${i.return_qty})`).join('\n');
+            if (!confirm(`Confirmar devolucao dos itens abaixo?\n\n${names}\n\nO estoque sera devolvido e o caixa sera ajustado.`)) {
+                return;
+            }
+
+            const btn = document.getElementById('det-return-selected-btn');
+            btn.disabled = true;
+            try {
+                const res = await fetch('vendidos.php?action=exchange_item', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        venda_id: currentDetailSale.id,
+                        return_items: returnItems.map(i => ({
+                            item_id: i.item_id,
+                            return_qty: i.return_qty
+                        }))
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('modalDetail'))?.hide();
+                    loadSales(currentPage);
+                    if (confirm('Devolucao registrada com sucesso.\n\nDeseja imprimir o comprovante?')) {
+                        imprimirTroca(data.exchange_id);
+                    }
+                } else {
+                    alert('Erro: ' + data.error);
+                }
+            } catch (err) {
+                alert('Erro ao processar devolucao.');
+            } finally {
+                btn.disabled = false;
             }
         };
 

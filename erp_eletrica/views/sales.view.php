@@ -677,13 +677,17 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
-                <h6 class="fw-bold mb-3">1. Selecione o item que será DEVOLVIDO à loja</h6>
+                <h6 class="fw-bold mb-3">1. Marque os itens que serao devolvidos a loja</h6>
                 <div class="list-group mb-4" id="exchangeItemsList">
                     <div class="text-center py-3 text-muted">Carregando itens...</div>
                 </div>
 
                 <div id="exchangeStep2" class="d-none">
-                    <h6 class="fw-bold mb-3">2. Selecione o NOVO item que o cliente vai levar</h6>
+                    <h6 class="fw-bold mb-2">2. Escolha o destino da operacao</h6>
+                    <button type="button" class="btn btn-outline-danger fw-bold w-100 mb-3 py-2" onclick="prepareReturnOnlyExchange()">
+                        <i class="fas fa-undo me-2"></i>APENAS DEVOLVER OS ITENS MARCADOS
+                    </button>
+                    <div class="text-center text-muted extra-small fw-bold text-uppercase mb-2">ou pesquisar produto para troca</div>
                     <div class="input-group input-group-lg shadow-sm border rounded mb-2">
                         <span class="input-group-text bg-white border-end-0 text-muted">
                             <i class="fas fa-search"></i>
@@ -694,21 +698,11 @@
                 </div>
                 
                 <div id="exchangeStep3" class="d-none mt-4 p-4 bg-light border rounded shadow-sm">
-                    <h6 class="fw-bold text-center text-primary mb-4 text-uppercase">Resumo da Troca</h6>
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <span class="text-danger fw-bold"><i class="fas fa-arrow-down me-2"></i>DEVOLVENDO:</span>
-                        <span class="fw-bold text-end" id="exchangeOldName"></span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-success fw-bold"><i class="fas fa-arrow-up me-2"></i>LEVANDO:</span>
-                        <span class="fw-bold text-end" id="exchangeNewName"></span>
-                    </div>
+                    <h6 class="fw-bold text-center text-primary mb-4 text-uppercase" id="exchangeSummaryTitle">Resumo da Devolucao</h6>
+                    <div id="exchangeReturnedSummary" class="mb-3"></div>
+                    <div id="exchangeNewSummary" class="mb-3 d-none"></div>
                     <div class="row g-3 mt-3">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold">Qtd. devolvida</label>
-                            <input type="number" id="exchangeReturnQty" class="form-control" step="0.001" min="0.001" value="1">
-                        </div>
-                        <div class="col-md-6">
+                        <div class="col-md-6 d-none" id="exchangeNewQtyWrap">
                             <label class="form-label small fw-bold">Qtd. do novo item</label>
                             <input type="number" id="exchangeNewQty" class="form-control" step="0.001" min="0.001" value="1">
                         </div>
@@ -720,8 +714,8 @@
                     </div>
                     
                     <div class="d-grid mt-4">
-                        <button class="btn btn-primary btn-lg fw-bold shadow-sm py-3" onclick="confirmExchange()">
-                            <i class="fas fa-check-circle me-2"></i>CONFIRMAR E PROCESSAR TROCA
+                        <button class="btn btn-primary btn-lg fw-bold shadow-sm py-3" id="confirmExchangeFlowBtn" onclick="confirmExchange()">
+                            <i class="fas fa-check-circle me-2"></i>CONFIRMAR DEVOLUCAO
                         </button>
                     </div>
                 </div>
@@ -3035,6 +3029,325 @@ async function confirmExchange() {
         }
     } else {
         alert("Vish! Erro ao tentar processar troca: " + result.error);
+    }
+}
+
+// Fluxo novo: permite devolver varios itens na mesma operacao e, opcionalmente, escolher um produto novo.
+exchangeState = {
+    vendaId: null,
+    returnItems: [],
+    newProductId: null,
+    newProductName: null,
+    newQty: 0,
+    newProductPrice: 0
+};
+
+function resetExchangeProductSearchListener() {
+    const oldInput = document.getElementById('exchangeProductSearch');
+    if (!oldInput) return null;
+    const newInput = oldInput.cloneNode(true);
+    oldInput.parentNode.replaceChild(newInput, oldInput);
+
+    newInput.addEventListener('input', async (e) => {
+        const term = e.target.value.trim();
+        const resultsDiv = document.getElementById('exchangeSearchResults');
+        if (term.length < 2) {
+            resultsDiv.innerHTML = '';
+            return;
+        }
+
+        const selected = getSelectedExchangeReturnItems();
+        if (selected.length === 0) {
+            resultsDiv.innerHTML = '<div class="list-group-item text-muted text-center">Marque os itens devolvidos primeiro.</div>';
+            return;
+        }
+
+        const res = await fetch(`vendas.php?action=search&term=${encodeURIComponent(term)}`);
+        const products = await res.json();
+        resultsDiv.innerHTML = '';
+        products.forEach(p => {
+            if (p.type === 'pre_sale') return;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3';
+            btn.innerHTML = `
+                <div>
+                    <div class="fw-bold text-primary">${p.nome}</div>
+                    <small class="text-muted">Valor Unitario: R$ ${parseFloat(p.preco_venda).toFixed(2).replace('.', ',')}</small>
+                </div>
+                <i class="fas fa-check text-success fa-lg opacity-50"></i>
+            `;
+            btn.onclick = () => {
+                exchangeState.returnItems = getSelectedExchangeReturnItems();
+                if (exchangeState.returnItems.length === 0) {
+                    alert('Marque ao menos um item para devolver antes de escolher o novo produto.');
+                    return;
+                }
+                exchangeState.newProductId = parseInt(p.id, 10);
+                exchangeState.newProductName = p.nome;
+                exchangeState.newProductPrice = parseFloat(p.preco_venda);
+                exchangeState.newQty = 1;
+                document.getElementById('exchangeNewQty').value = 1;
+                renderExchangeSummary();
+                calculateExchangeFlowDiff();
+                document.getElementById('exchangeStep3').classList.remove('d-none');
+                resultsDiv.innerHTML = '';
+                newInput.value = '';
+                setTimeout(() => document.getElementById('exchangeStep3').scrollIntoView({behavior: 'smooth'}), 150);
+            };
+            resultsDiv.appendChild(btn);
+        });
+    });
+
+    return newInput;
+}
+
+async function openExchangeFlow() {
+    exchangeState = {
+        vendaId: activeManageId,
+        returnItems: [],
+        newProductId: null,
+        newProductName: null,
+        newQty: 0,
+        newProductPrice: 0
+    };
+
+    document.getElementById('exchangeSaleId').innerText = activeManageId;
+    bootstrap.Modal.getOrCreateInstance('#modalSaleManager').hide();
+    bootstrap.Modal.getOrCreateInstance('#modalExchangeFlow').show();
+
+    document.getElementById('exchangeStep2').classList.add('d-none');
+    document.getElementById('exchangeStep3').classList.add('d-none');
+    document.getElementById('exchangeSearchResults').innerHTML = '';
+    document.getElementById('exchangeNewQtyWrap').classList.add('d-none');
+    const searchInput = resetExchangeProductSearchListener();
+    if (searchInput) searchInput.value = '';
+
+    const res = await fetch(`vendas.php?action=get_sale_detail&id=${activeManageId}`);
+    const data = await res.json();
+    const list = document.getElementById('exchangeItemsList');
+    list.innerHTML = '';
+
+    if (!data.success || !data.sale || !data.sale.itens || data.sale.itens.length === 0) {
+        list.innerHTML = '<div class="alert alert-warning text-center">Nenhum item encontrado nesta venda.</div>';
+        return;
+    }
+
+    if (data.sale.status === 'cancelado') {
+        list.innerHTML = '<div class="alert alert-danger text-center">Nao e possivel realizar devolucao em venda cancelada.</div>';
+        return;
+    }
+
+    data.sale.itens.forEach(item => {
+        const itemQty = parseFloat(item.quantidade);
+        const unitPrice = parseFloat(item.preco_unitario);
+        const row = document.createElement('div');
+        row.className = 'list-group-item py-3';
+        row.dataset.itemId = item.id;
+        row.dataset.itemName = item.produto_nome;
+        row.dataset.itemQty = String(itemQty);
+        row.dataset.itemPrice = String(unitPrice);
+        row.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+                <div class="form-check me-2">
+                    <input class="form-check-input exchange-return-check" type="checkbox" value="${item.id}">
+                </div>
+                <div class="flex-grow-1">
+                    <div class="fw-bold">${item.produto_nome}</div>
+                    <small class="opacity-75">${item.quantidade}x R$ ${item.preco_formatado}</small>
+                </div>
+                <div style="width: 140px;">
+                    <label class="form-label extra-small fw-bold text-muted mb-1">Qtd devolver</label>
+                    <input type="number" class="form-control form-control-sm exchange-item-return-qty" step="0.001" min="0.001" max="${itemQty}" value="${itemQty}" disabled>
+                </div>
+            </div>
+        `;
+
+        const checkInput = row.querySelector('.exchange-return-check');
+        const qtyInput = row.querySelector('.exchange-item-return-qty');
+
+        checkInput.addEventListener('change', () => {
+            qtyInput.disabled = !checkInput.checked;
+            row.classList.toggle('border-danger', checkInput.checked);
+            row.classList.toggle('bg-danger-subtle', checkInput.checked);
+            syncExchangeSelection();
+        });
+
+        row.addEventListener('click', (e) => {
+            if (e.target === qtyInput || e.target === checkInput) return;
+            checkInput.checked = !checkInput.checked;
+            checkInput.dispatchEvent(new Event('change'));
+        });
+
+        qtyInput.addEventListener('click', e => e.stopPropagation());
+        qtyInput.addEventListener('input', () => {
+            const value = parseFloat(qtyInput.value) || 0;
+            if (value > itemQty) qtyInput.value = itemQty;
+            syncExchangeSelection();
+        });
+
+        list.appendChild(row);
+    });
+}
+
+function getSelectedExchangeReturnItems(showAlert = false) {
+    const selected = [];
+    let hasInvalid = false;
+    document.querySelectorAll('#exchangeItemsList .exchange-return-check:checked').forEach(check => {
+        const row = check.closest('.list-group-item');
+        const qtyInput = row.querySelector('.exchange-item-return-qty');
+        const maxQty = parseFloat(row.dataset.itemQty) || 0;
+        const returnQty = parseFloat(qtyInput.value) || 0;
+        if (returnQty <= 0 || returnQty > maxQty) {
+            hasInvalid = true;
+            if (showAlert) {
+                alert(`Informe uma quantidade devolvida entre 0,001 e ${maxQty}.`);
+                qtyInput.focus();
+            }
+            return;
+        }
+        selected.push({
+            item_id: parseInt(row.dataset.itemId, 10),
+            return_qty: returnQty,
+            name: row.dataset.itemName,
+            price: parseFloat(row.dataset.itemPrice) || 0
+        });
+    });
+    if (hasInvalid && showAlert) return [];
+    return selected;
+}
+
+function syncExchangeSelection() {
+    exchangeState.returnItems = getSelectedExchangeReturnItems(false);
+    const hasItems = exchangeState.returnItems.length > 0;
+    document.getElementById('exchangeStep2').classList.toggle('d-none', !hasItems);
+    if (!hasItems) {
+        document.getElementById('exchangeStep3').classList.add('d-none');
+        exchangeState.newProductId = null;
+        exchangeState.newProductName = null;
+    } else if (!document.getElementById('exchangeStep3').classList.contains('d-none')) {
+        renderExchangeSummary();
+        calculateExchangeFlowDiff();
+    }
+}
+
+function exchangeReturnedTotal() {
+    return exchangeState.returnItems.reduce((sum, item) => sum + (item.return_qty * item.price), 0);
+}
+
+function renderExchangeSummary() {
+    const returnedSummary = document.getElementById('exchangeReturnedSummary');
+    const newSummary = document.getElementById('exchangeNewSummary');
+    const title = document.getElementById('exchangeSummaryTitle');
+    const newQtyWrap = document.getElementById('exchangeNewQtyWrap');
+    const confirmBtn = document.getElementById('confirmExchangeFlowBtn');
+
+    returnedSummary.innerHTML = `
+        <div class="fw-bold text-danger mb-2"><i class="fas fa-arrow-down me-2"></i>DEVOLVENDO</div>
+        <div class="list-group">
+            ${exchangeState.returnItems.map(item => `
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <span class="fw-bold">${item.name}</span>
+                    <span>${item.return_qty} x R$ ${item.price.toFixed(2).replace('.', ',')}</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+
+    if (exchangeState.newProductId) {
+        title.textContent = 'Resumo da Troca';
+        newSummary.classList.remove('d-none');
+        newQtyWrap.classList.remove('d-none');
+        confirmBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>CONFIRMAR TROCA';
+        newSummary.innerHTML = `
+            <div class="fw-bold text-success mb-2"><i class="fas fa-arrow-up me-2"></i>LEVANDO</div>
+            <div class="list-group-item d-flex justify-content-between align-items-center bg-white border rounded">
+                <span class="fw-bold">${exchangeState.newProductName}</span>
+                <span>R$ ${exchangeState.newProductPrice.toFixed(2).replace('.', ',')}</span>
+            </div>
+        `;
+    } else {
+        title.textContent = 'Resumo da Devolucao';
+        newSummary.classList.add('d-none');
+        newQtyWrap.classList.add('d-none');
+        confirmBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>CONFIRMAR DEVOLUCAO';
+    }
+}
+
+function prepareReturnOnlyExchange() {
+    exchangeState.returnItems = getSelectedExchangeReturnItems(true);
+    if (exchangeState.returnItems.length === 0) {
+        return alert('Marque ao menos um item para devolver.');
+    }
+    exchangeState.newProductId = null;
+    exchangeState.newProductName = null;
+    exchangeState.newProductPrice = 0;
+    exchangeState.newQty = 0;
+    renderExchangeSummary();
+    calculateExchangeFlowDiff();
+    document.getElementById('exchangeStep3').classList.remove('d-none');
+    setTimeout(() => document.getElementById('exchangeStep3').scrollIntoView({behavior: 'smooth'}), 150);
+}
+
+function calculateExchangeFlowDiff() {
+    const newQtyInput = document.getElementById('exchangeNewQty');
+    const newQty = exchangeState.newProductId ? (parseFloat(newQtyInput?.value) || 0) : 0;
+    exchangeState.newQty = newQty;
+    const diff = (exchangeState.newProductPrice * newQty) - exchangeReturnedTotal();
+    const diffEl = document.getElementById('exchangeDiff');
+
+    if (diff > 0) {
+        diffEl.innerHTML = `<span class="text-success"><i class="fas fa-plus me-1"></i>RECEBER R$ ${diff.toFixed(2).replace('.', ',')}</span>`;
+    } else if (diff < 0) {
+        diffEl.innerHTML = `<span class="text-danger"><i class="fas fa-minus me-1"></i>DEVOLVER R$ ${Math.abs(diff).toFixed(2).replace('.', ',')}</span>`;
+    } else {
+        diffEl.innerHTML = '<span class="text-secondary">R$ 0,00 (Tudo Certo)</span>';
+    }
+}
+
+async function confirmExchange() {
+    exchangeState.returnItems = getSelectedExchangeReturnItems(true);
+    if (exchangeState.returnItems.length === 0) {
+        return alert('Marque ao menos um item para devolver.');
+    }
+
+    calculateExchangeFlowDiff();
+    if (exchangeState.newProductId && (!exchangeState.newQty || exchangeState.newQty <= 0)) {
+        return alert('Informe uma quantidade valida para o novo item.');
+    }
+
+    const confirmText = exchangeState.newProductId
+        ? 'Deseja realmente confirmar esta troca?\n\nO sistema devolve os itens marcados ao estoque, baixa o novo produto e ajusta o caixa pela diferenca.'
+        : 'Deseja realmente confirmar esta devolucao?\n\nO sistema devolve os itens marcados ao estoque e gera a saida do caixa pelo valor devolvido.';
+    if (!confirm(confirmText)) return;
+
+    const res = await fetch('vendas.php?action=exchange_item', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            venda_id: exchangeState.vendaId,
+            return_items: exchangeState.returnItems.map(item => ({
+                item_id: item.item_id,
+                return_qty: item.return_qty
+            })),
+            new_product_id: exchangeState.newProductId,
+            new_qty: exchangeState.newQty,
+            new_price: exchangeState.newProductPrice
+        })
+    });
+
+    const result = await res.json();
+    if (result.success) {
+        bootstrap.Modal.getInstance(document.getElementById('modalExchangeFlow')).hide();
+        loadRecentSales();
+        const successMsg = result.tipo === 'devolucao'
+            ? 'Devolucao registrada com sucesso. Estoque e caixa foram ajustados.\n\nDeseja imprimir o comprovante para o cliente?'
+            : 'Troca registrada com sucesso. Estoque e caixa foram ajustados.\n\nDeseja imprimir o comprovante para o cliente?';
+        if (confirm(successMsg)) {
+            imprimirTroca(result.exchange_id);
+        }
+    } else {
+        alert('Erro ao processar: ' + result.error);
     }
 }
 
