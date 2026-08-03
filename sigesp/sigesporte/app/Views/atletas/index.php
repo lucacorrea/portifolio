@@ -1,40 +1,23 @@
 <?php
-use Sigesp\Core\{Auth, View};
+declare(strict_types=1);
+use Sigesp\Core\View;
 
 $title = 'Atletas';
 $pageId = 'atletas';
-$queryParams = array_filter([
-    'q' => $filters['q'],
-    'status' => $filters['status'],
-    'por_pagina' => $result['per_page'],
-]);
+$items = (array) ($result['items'] ?? $atletas ?? []);
+$total = (int) ($result['total'] ?? count($items));
+$tone = static function (string $value): string {
+    $value = mb_strtolower($value);
+    if (str_contains($value,'ativo') && !str_contains($value,'inativo') || str_contains($value,'regular')) return 'success';
+    if (str_contains($value,'pend') || str_contains($value,'incompleto')) return 'warning';
+    if (str_contains($value,'venc') || str_contains($value,'inativo')) return 'danger';
+    return 'neutral';
+};
 ?>
-<?php View::component('page-header', ['eyebrow' => 'Gestão de atletas', 'heading' => 'Atletas', 'description' => $result['total'] . ' registro(s) encontrado(s).', 'actionLabel' => Auth::can('atletas.criar') ? 'Novo atleta' : null, 'actionHref' => '/atletas/novo', 'secondaryLabel' => 'Exportar', 'secondaryMessage' => 'A exportação será liberada quando o relatório operacional estiver disponível.']); ?>
-<?php ob_start(); ?>
-<form method="get" action="<?= View::e(View::url('/atletas')) ?>" class="filter-form">
-    <label class="field">Buscar<input name="q" value="<?= View::e($filters['q']) ?>" placeholder="Nome, CPF ou código"></label>
-    <label class="field">Situação<select name="status"><option value="">Todas</option><?php foreach (['ativo'=>'Ativo','inativo'=>'Inativo','rascunho'=>'Rascunho'] as $value => $label): ?><option value="<?= $value ?>" <?= $filters['status'] === $value ? 'selected' : '' ?>><?= $label ?></option><?php endforeach; ?></select></label>
-    <label class="field">Por página<select name="por_pagina"><?php foreach ([15,30,50] as $number): ?><option value="<?= $number ?>" <?= $result['per_page'] === $number ? 'selected' : '' ?>><?= $number ?></option><?php endforeach; ?></select></label>
-    <label class="field">Modalidade<select disabled><option>Todos os registros</option></select></label>
-    <label class="field">Situação documental<select disabled><option>Integração em breve</option></select></label>
-    <div><button class="button" type="submit">Aplicar filtros</button><a class="button button--secondary" href="<?= View::e(View::url('/atletas')) ?>">Limpar</a></div>
-</form>
-<?php $filterContent = ob_get_clean(); View::component('filter-bar', ['filters' => $filterContent]); ?>
-<?php if (!$result['items']): ?>
-    <?php View::component('empty-state', ['heading' => 'Nenhum atleta encontrado', 'message' => $filters['q'] || $filters['status'] ? 'Ajuste ou limpe os filtros para tentar novamente.' : 'Comece cadastrando o primeiro atleta.', 'actionLabel' => Auth::can('atletas.criar') ? 'Cadastrar atleta' : null, 'actionHref' => '/atletas/novo']); ?>
-<?php else: ?>
-    <?php
-    $rows = [];
-    foreach ($result['items'] as $item) {
-        $age = (new DateTimeImmutable($item['nascimento']))->diff(new DateTimeImmutable('today'))->y;
-        ob_start();
-        View::component('badge', ['label' => $item['status'], 'tone' => $item['status']]);
-        $status = ob_get_clean();
-        $profileUrl = View::e(View::url('/atletas/' . (int) $item['id']));
-        $rows[] = ['<span class="avatar">'.View::e(mb_strtoupper(mb_substr($item['nome'], 0, 1))).'</span>', '<strong>'.View::e($item['codigo']).'</strong>', '<strong>'.View::e($item['nome']).'</strong><small>'.View::e($item['email'] ?? 'Sem e-mail').'</small>', View::e($item['cpf']), View::e((string) $age), View::e($item['modalidade'] ?? 'Não vinculada'), $status, '<a href="'.$profileUrl.'">Ver perfil</a>'];
-    }
-    View::component('data-table', ['columns' => ['', 'Código', 'Atleta', 'CPF', 'Idade', 'Modalidade', 'Situação', 'Ações'], 'rows' => $rows]);
-    ?>
-    <section class="record-cards" aria-label="Atletas em formato de cartões"><?php foreach ($result['items'] as $item): ?><article class="record-card"><div class="record-card__head"><?php View::component('avatar', ['name' => $item['nome']]); ?><div><strong><?= View::e($item['nome']) ?></strong><small><?= View::e($item['codigo']) ?> · <?= View::e($item['modalidade'] ?? 'Sem modalidade') ?></small></div><?php View::component('badge', ['label' => $item['status'], 'tone' => $item['status']]); ?></div><div class="record-card__meta"><span><?= View::e($item['cpf']) ?></span><a href="<?= View::e(View::url('/atletas/' . (int) $item['id'])) ?>">Ver perfil</a></div></article><?php endforeach; ?></section>
-    <?php View::component('pagination', ['page' => $result['page'], 'pages' => (int) ceil($result['total'] / $result['per_page']), 'path' => '/atletas', 'params' => $queryParams]); ?>
-<?php endif; ?>
+<?php View::component('page-header',['eyebrow'=>'Gestão de atletas · Demonstração','heading'=>'Atletas','description'=>number_format($total,0,',','.') . ' atletas na amostra demonstrativa.','actionLabel'=>'Novo atleta','actionHref'=>'/atletas/novo','secondaryLabel'=>'Exportar','secondaryMessage'=>'A exportação será habilitada na integração com o back-end.']); ?>
+<section class="stats-grid"><?php foreach ([['◉','Atletas cadastrados','1.248','Base municipal fictícia'],['✓','Atletas ativos','1.102','88,3% da base'],['+','Novos no mês','84','Crescimento de 7,2%'],['!','Cadastros incompletos','32','Precisam de revisão']] as [$icon,$label,$value,$detail]) View::component('stats-card',compact('icon','label','value','detail')); ?></section>
+<?php ob_start(); ?><form class="filter-form" data-demo-filter data-filter-target="#athletes-table"><label class="field">Buscar<input type="search" data-filter-search placeholder="Nome, CPF ou código"></label><label class="field">Modalidade<select data-filter-select><option value="">Todas</option><option>Voleibol</option><option>Futsal</option><option>Atletismo</option><option>Natação</option></select></label><label class="field">Categoria<select data-filter-select><option value="">Todas</option><option>Sub-17</option><option>Sub-20</option><option>Adulto</option></select></label><label class="field">Situação<select data-filter-select><option value="">Todas</option><option>Ativo</option><option>Inativo</option><option>Cadastro incompleto</option></select></label><label class="field">Documentação<select data-filter-select><option value="">Todas</option><option>Regular</option><option>Pendente</option><option>Vencida</option></select></label><div><button class="button" type="submit">Aplicar</button><button class="button button--secondary" type="reset">Limpar</button></div></form><?php $filterContent=ob_get_clean(); View::component('filter-bar',['filters'=>$filterContent]); ?>
+<section class="surface" id="athletes-table"><div class="demo-toolbar"><p class="demo-toolbar__summary"><strong data-record-count><?= count($items) ?></strong> atletas exibidos nesta página.</p><div class="demo-toolbar__actions"><button class="button button--secondary" type="button" data-demo-action="print">Imprimir</button><button class="button button--secondary" type="button" data-demo-action="export">Excel/PDF</button></div></div>
+<div class="data-table demo-table"><table><thead><tr><th scope="col">Atleta</th><th scope="col">Código / CPF</th><th scope="col">Idade</th><th scope="col">Modalidade</th><th scope="col">Equipe</th><th scope="col">Documentos</th><th scope="col">Frequência</th><th scope="col">Situação</th><th scope="col">Ações</th></tr></thead><tbody><?php foreach($items as $item): ?><?php $name=(string)($item['nome']??'Atleta demonstrativo'); $id=(int)($item['id']??1); ?><tr data-demo-record data-search-text="<?= View::e(mb_strtolower(implode(' ',array_map('strval',$item)))) ?>"><td><div class="demo-record-title"><?php View::component('avatar',['name'=>$name]); ?><div><strong><?= View::e($name) ?></strong><small><?= View::e((string)($item['email']??'atleta@demonstracao.local')) ?></small></div></div></td><td><strong><?= View::e((string)($item['codigo']??'ATL-2026-0001')) ?></strong><small><?= View::e((string)($item['cpf']??'***.***.***-00')) ?></small></td><td><?= View::e((string)($item['idade']??'18')) ?> anos</td><td><?= View::e((string)($item['modalidade']??'Voleibol')) ?><small><?= View::e((string)($item['categoria']??'Sub-20')) ?></small></td><td><?= View::e((string)($item['equipe']??'Equipe Municipal')) ?></td><td><?php $docs=(string)($item['documentos_status']??$item['documentos']??'Regular'); View::component('badge',['label'=>$docs,'tone'=>$tone($docs)]); ?></td><td><strong><?= View::e((string)($item['frequencia']??'90')) ?>%</strong><span class="progress"><i style="width:<?= max(0,min(100,(int)($item['frequencia']??90))) ?>%"></i></span></td><td><?php $status=(string)($item['status']??'Ativo'); View::component('badge',['label'=>$status,'tone'=>$tone($status)]); ?></td><td><div class="demo-actions"><a class="button button--secondary" href="<?= View::e(View::url('/atletas/'.$id)) ?>">Perfil</a><div class="dropdown" data-dropdown><button class="button button--secondary demo-actions__menu" type="button" data-dropdown-toggle aria-expanded="false" aria-label="Ações de <?= View::e($name) ?>">⋯</button><div class="dropdown__menu dropdown__menu--right" data-dropdown-menu hidden><a href="<?= View::e(View::url('/atletas/'.$id.'/editar')) ?>">Editar</a><a href="<?= View::e(View::url('/atletas/'.$id.'/documentos')) ?>">Documentos</a><a href="<?= View::e(View::url('/atletas/'.$id.'/carteira')) ?>">Carteira digital</a><button type="button" data-demo-delete data-record-name="<?= View::e($name) ?>">Inativar</button></div></div></div></td></tr><?php endforeach; ?></tbody></table></div>
+<section class="record-cards" aria-label="Atletas em cartões"><?php foreach($items as $item): ?><?php $id=(int)($item['id']??1); ?><article class="record-card" data-demo-record data-search-text="<?= View::e(mb_strtolower(implode(' ',array_map('strval',$item)))) ?>"><div class="record-card__head"><?php View::component('avatar',['name'=>(string)($item['nome']??'Atleta')]); ?><div><strong><?= View::e((string)($item['nome']??'Atleta')) ?></strong><small><?= View::e((string)($item['codigo']??'ATL-2026')) ?> · <?= View::e((string)($item['modalidade']??'Voleibol')) ?></small></div><?php View::component('badge',['label'=>(string)($item['status']??'Ativo'),'tone'=>$tone((string)($item['status']??'Ativo'))]); ?></div><div class="record-card__meta"><span><?= View::e((string)($item['documentos_status']??'Regular')) ?></span><span><?= View::e((string)($item['frequencia']??90)) ?>% frequência</span><a class="button button--secondary" href="<?= View::e(View::url('/atletas/'.$id)) ?>">Ver perfil</a></div></article><?php endforeach; ?></section>
+</section>

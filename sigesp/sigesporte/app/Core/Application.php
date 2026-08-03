@@ -17,13 +17,16 @@ final class Application
         ini_set('display_startup_errors', $config['debug'] ? '1' : '0');
         $app = new self($basePath, $config);
         date_default_timezone_set($config['timezone']);
-        Session::start($config['session_lifetime']);
+        if (!$config['demo_mode']) {
+            Session::start($config['session_lifetime']);
+        }
         $app->router = new Router();
         require $basePath . '/routes/web.php';
         return $app;
     }
 
     public function router(): Router { return $this->router; }
+    public function isDemoMode(): bool { return (bool) $this->config['demo_mode']; }
     public function run(): never
     {
         try {
@@ -34,7 +37,9 @@ final class Application
             }
 
             $this->logException($exception);
-            $layout = Auth::check() ? 'layouts/app' : 'layouts/auth';
+            $layout = $this->config['demo_mode']
+                ? 'layouts/auth'
+                : (Auth::check() ? 'layouts/app' : 'layouts/auth');
             (new Response(View::render('errors/500', ['title' => 'Erro interno'], $layout), 500))->send();
         }
     }

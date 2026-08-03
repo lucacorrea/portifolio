@@ -30,12 +30,18 @@ if (trim($configuredBasePath) === '') {
         : $scriptDirectory;
 }
 
+$demoModeValue = getenv('DEMO_MODE');
+$demoMode = $demoModeValue === false
+    ? true
+    : filter_var($demoModeValue, FILTER_VALIDATE_BOOL);
+
 return [
     'name' => getenv('APP_NAME') ?: 'SIGESP',
-    'environment' => getenv('APP_ENV') ?: 'production',
+    'environment' => getenv('APP_ENV') ?: ($demoMode ? 'demo' : 'production'),
     'debug' => filter_var(getenv('APP_DEBUG') ?: false, FILTER_VALIDATE_BOOL),
     'url' => rtrim((string) (getenv('APP_URL') ?: ''), '/'),
     'base_path' => $normalizeBasePath($configuredBasePath),
+    'demo_mode' => $demoMode,
     'timezone' => getenv('APP_TIMEZONE') ?: 'America/Manaus',
     'session_lifetime' => (int) (getenv('SESSION_LIFETIME') ?: 120),
     'upload_max_size' => (int) (getenv('UPLOAD_MAX_SIZE') ?: 10485760),

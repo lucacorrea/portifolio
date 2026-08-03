@@ -1,16 +1,16 @@
-# Publicação do SIGESP em `/sigesp`
+# Publicação da demonstração SIGESP em `/sigesp`
 
 ## Requisitos
 
-- PHP 8.2 ou superior.
-- Extensões `pdo_mysql`, `mbstring`, `fileinfo`, `openssl` e `json`.
-- Apache 2.4 com `mod_rewrite` e `AllowOverride` habilitado para a pasta pública.
-- Composer.
-- MySQL ou MariaDB.
+- PHP 8.2 ou superior com `mbstring`.
+- Apache 2.4 com `mod_rewrite` e `AllowOverride` habilitados.
+- Pastas com permissão `755` e arquivos com `644`.
+
+A demonstração não requer MySQL, PDO, migrations, seeders, Composer, Dompdf ou PhpSpreadsheet.
 
 ## Estrutura recomendada
 
-Mantenha o código privado fora de `public_html` e publique somente o conteúdo de `public/`:
+Mantenha o código PHP fora da área pública e publique somente o front controller e os assets:
 
 ```text
 /home/USUARIO/
@@ -19,12 +19,9 @@ Mantenha o código privado fora de `public_html` e publique somente o conteúdo 
 │       ├── app/
 │       ├── bootstrap/
 │       ├── config/
-│       ├── database/
 │       ├── routes/
-│       ├── storage/
-│       ├── vendor/
-│       ├── .env
-│       └── composer.json
+│       ├── public/
+│       └── .env
 └── public_html/
     └── sigesp/
         ├── index.php
@@ -32,108 +29,76 @@ Mantenha o código privado fora de `public_html` e publique somente o conteúdo 
         └── assets/
 ```
 
-Copie `public/index.php`, `public/.htaccess` e `public/assets/` para `public_html/sigesp/`. O `index.php` procura primeiro a estrutura do repositório, depois `/home/USUARIO/apps/sigesporte` e, como alternativa, `app-private` dentro da pasta pública.
+Copie `public/index.php`, `public/.htaccess` e `public/assets/` diretamente para `public_html/sigesp/`. Copie o restante da aplicação para `/home/USUARIO/apps/sigesporte/`. O front controller já procura essa pasta privada.
 
-Se a hospedagem obrigar a manter o projeto em `public_html/sigesp/app-private`, o `.htaccess` público já bloqueia todo acesso HTTP a essa pasta. Como defesa adicional, mantenha também `app-private/.htaccess` com `Require all denied`. Confirme por HTTP que `.env`, `app`, `bootstrap`, `config`, `database`, `routes`, `storage` e `vendor` retornam 403 ou 404. Os includes PHP internos continuam funcionando. Esta alternativa é inferior à estrutura privada acima.
+No layout atual do repositório também existe um front controller em `sigesp/index.php` e uma regra em `sigesp/.htaccess`; essa topologia funciona no monorepositório, mas a separação acima reduz a superfície pública na hospedagem.
 
-O 403 observado em `https://lucascorrea.pro/sigesp/`, combinado com 404 nas rotas e nos assets, indica que o front controller publicado não está sendo alcançado. O motivo exato — arquivo ausente, pasta aninhada, `DirectoryIndex`, permissões, proprietário ou `DocumentRoot` — deve ser confirmado no painel e no log do Apache. A implantação da estrutura acima elimina a divergência local conhecida.
+## Configuração
 
-## Configuração do `.env`
-
-Crie o `.env` somente na pasta privada, nunca em `public_html/sigesp`:
+Crie `.env` somente na pasta privada:
 
 ```env
 APP_NAME=SIGESP
-APP_ENV=production
+APP_ENV=demo
 APP_DEBUG=false
 APP_URL=https://lucascorrea.pro/sigesp
 APP_BASE_PATH=/sigesp
+DEMO_MODE=true
 APP_TIMEZONE=America/Manaus
 APP_TRUST_PROXY_HEADERS=false
-
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=sigesporte
-DB_USERNAME=USUARIO_DO_BANCO
-DB_PASSWORD=SENHA_FORTE_DO_BANCO
-
-SESSION_LIFETIME=120
-UPLOAD_MAX_SIZE=10485760
 ```
 
-Mantenha `APP_TRUST_PROXY_HEADERS=false`. Altere para `true` somente quando o tráfego chegar exclusivamente por um proxy reverso confiável que sobrescreva `X-Forwarded-Proto`; isso permite marcar o cookie de sessão como seguro atrás do proxy.
+Não publique `.env`, credenciais, dumps SQL, logs ou diretórios privados. A demonstração funciona mesmo sem `.env`, mas o arquivo deixa URL e subdiretório explícitos.
 
-No desenvolvimento local, use `APP_URL=http://localhost:8080`, `APP_BASE_PATH=` e execute:
+## `.htaccess` público
 
-```bash
-php -S localhost:8080 -t public
+O arquivo precisa manter listagem desabilitada, `DirectoryIndex index.php` e encaminhamento das rotas ao front controller:
+
+```apache
+Options -Indexes
+DirectoryIndex index.php
+RewriteEngine On
+RewriteBase /sigesp/
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [QSA,L]
 ```
 
-Não inicie o servidor embutido do PHP com o `DocumentRoot` na raiz do projeto: ele ignora arquivos `.htaccess` e exporia o código privado. O alvo deve ser sempre `public/`.
-
-## Composer
-
-Na pasta privada da aplicação, execute:
-
-```bash
-composer install --no-dev --optimize-autoloader
-```
-
-Se o servidor não tiver Composer, execute o comando localmente com PHP 8.2 compatível e envie a pasta `vendor/` gerada para a área privada.
-
-## Banco de dados
-
-Em uma instalação nova, faça backup e valide as variáveis do banco antes de executar:
-
-```bash
-php database/migrate.php
-ADMIN_INITIAL_PASSWORD='uma-senha-temporaria-forte' php database/seed.php
-```
-
-Não execute `migrate.php` sobre uma base existente sem revisar `database/schema.sql`: o script aplica o schema completo. O seed é apenas para a instalação inicial; troque imediatamente a senha temporária. Em PowerShell, defina `ADMIN_INITIAL_PASSWORD` no ambiente antes do segundo comando.
-
-## Permissões
-
-- Pastas: `755`.
-- Arquivos: `644`.
-- `storage/logs`, `storage/cache`, `storage/temp` e `storage/app/private`: `775` somente se o usuário/grupo do PHP precisar escrever.
-- Nunca use `777` e nunca habilite listagem de diretórios.
+Preserve também as regras de bloqueio de arquivos ocultos, `.env`, logs, SQL e eventuais pastas privadas que já existem no arquivo do projeto. Nunca use `chmod 777`.
 
 ## Verificação após publicar
 
-Confira no painel se `public_html/sigesp/index.php`, `.htaccess` e `assets/` estão diretamente na pasta `/sigesp`, e não em `/sigesp/public`. Teste:
+Confirme HTTP `200` e carregamento visual em:
 
 ```text
-/sigesp/
 /sigesp/login
 /sigesp/dashboard
 /sigesp/atletas
-/sigesp/atletas/
-/sigesp/atletas/10
-/sigesp/atletas?page=2
 /sigesp/atletas/novo
-/sigesp/modalidades
+/sigesp/atletas/1
+/sigesp/atletas/1/editar
+/sigesp/atletas/1/documentos
+/sigesp/atletas/1/carteira
+/sigesp/documentos
 /sigesp/equipes
+/sigesp/eventos
 /sigesp/relatorios
+/sigesp/configuracoes
 /sigesp/assets/css/app.css
 /sigesp/assets/js/app.js
 ```
 
-Valide login inválido, login válido, CSRF, navegação, logout e expiração da sessão. As rotas autenticadas devem levar o visitante sem sessão a `/sigesp/login`.
+`/sigesp/` pode responder `302` apenas para `/sigesp/dashboard`; nunca deve retornar `403`.
 
-Confirme também que os recursos abaixo retornam 403 ou 404 e nunca exibem conteúdo:
+Valide ainda:
 
-```text
-/sigesp/.env
-/sigesp/config/app.php
-/sigesp/database/schema.sql
-/sigesp/storage/logs/app.log
-/sigesp/vendor/
-/sigesp/diagnostico.php.example
-```
+- nenhum acesso interno redireciona para login;
+- qualquer conteúdo no login abre o dashboard;
+- o botão de demonstração funciona;
+- não existe cabeçalho `Set-Cookie` nas páginas demo;
+- formulários e uploads não fazem requisições de gravação;
+- `.env`, `config`, `app`, `routes`, logs e SQL retornam `403` ou `404`;
+- nenhum link perde `/sigesp` nem gera `/sigesp/sigesp`;
+- o console do navegador permanece sem erros.
 
-Se a raiz continuar em 403, consulte o log do Apache e confirme `DocumentRoot`, proprietário/permissões, `DirectoryIndex`, `mod_rewrite` e se `AllowOverride` permite o `.htaccess`. Diretivas incompatíveis no `.htaccess` costumam produzir 500, que também deve ser investigado no log do servidor.
-
-## Diagnóstico temporário
-
-`public/diagnostico.php.example` é bloqueado pelo `.htaccess`. Para diagnóstico controlado, copie-o temporariamente como `diagnostico.php`, habilite a variável de ambiente do servidor `SIGESP_DIAGNOSTICS=true`, acesse o arquivo, remova-o imediatamente e desabilite a variável. O arquivo não mostra credenciais nem o conteúdo do `.env`.
+Se a raiz retornar `403`, confira se `index.php`, `.htaccess` e `assets/` estão diretamente em `public_html/sigesp`, além de `DirectoryIndex`, proprietário, permissões, `mod_rewrite`, `AllowOverride` e o log do Apache.

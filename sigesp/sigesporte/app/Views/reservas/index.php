@@ -1,1 +1,1 @@
-<?php use Sigesp\Core\{View}; use Sigesp\Shared\Presentation\DemoData; $page=DemoData::module('reservas'); $title=$page['title']; View::component('module-screen',['page'=>$page]);
+<?php use Sigesp\Core\View; $title=(string)$page['title']; $pageId='reservas'; View::component('demo-list-page',['page'=>$page]);

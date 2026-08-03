@@ -4,21 +4,14 @@ import './modal.js';
 import './tabs.js';
 import './filters.js';
 import './form-stepper.js';
-import './upload.js';
+import './upload-preview.js';
 import './masks.js';
 import './toast.js';
-import './charts.js';
+import './demo-actions.js';
+import './pages/dashboard.js';
+import './pages/atletas.js';
+import './pages/documentos.js';
+import './pages/relatorios.js';
 
-export function appUrl(path = '') {
-    const basePath = String(window.SIGESP_CONFIG?.basePath ?? '').replace(/\/+$/, '');
-    const normalizedPath = `/${String(path).replace(/^\/+/, '')}`;
-
-    if (normalizedPath === '/') {
-        return basePath ? `${basePath}/` : '/';
-    }
-    if (basePath && (normalizedPath === basePath || normalizedPath.startsWith(`${basePath}/`))) {
-        return normalizedPath;
-    }
-
-    return `${basePath}${normalizedPath}`;
-}
+export { appUrl } from './url.js';
+export { showToast } from './toast.js';

@@ -1,1 +1,2 @@
-document.querySelectorAll('[data-upload-input]').forEach(input=>input.addEventListener('change',()=>{const label=input.closest('.upload-area');const file=input.files?.[0];if(file)label.querySelector('small').textContent=file.name}));
+// Compatibilidade para páginas antigas que importavam este módulo diretamente.
+import './upload-preview.js';
