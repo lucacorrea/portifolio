@@ -21,12 +21,21 @@ $normalizeBasePath = static function (string $value): string {
     return $value;
 };
 
+$configuredBasePath = (string) (getenv('APP_BASE_PATH') ?: '');
+if (trim($configuredBasePath) === '') {
+    $scriptName = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+    $scriptDirectory = str_replace('\\', '/', dirname($scriptName));
+    $configuredBasePath = in_array($scriptDirectory, ['', '.', '/'], true)
+        ? ''
+        : $scriptDirectory;
+}
+
 return [
     'name' => getenv('APP_NAME') ?: 'SIGESP',
     'environment' => getenv('APP_ENV') ?: 'production',
     'debug' => filter_var(getenv('APP_DEBUG') ?: false, FILTER_VALIDATE_BOOL),
     'url' => rtrim((string) (getenv('APP_URL') ?: ''), '/'),
-    'base_path' => $normalizeBasePath((string) (getenv('APP_BASE_PATH') ?: '')),
+    'base_path' => $normalizeBasePath($configuredBasePath),
     'timezone' => getenv('APP_TIMEZONE') ?: 'America/Manaus',
     'session_lifetime' => (int) (getenv('SESSION_LIFETIME') ?: 120),
     'upload_max_size' => (int) (getenv('UPLOAD_MAX_SIZE') ?: 10485760),
