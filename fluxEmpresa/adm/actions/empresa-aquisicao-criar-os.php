@@ -35,8 +35,10 @@ try {
     $acquisition = $detail['acquisition']; $items = [];
     foreach ($detail['items'] as $item) $items[] = ['type' => 'outro', 'origin' => 'manual', 'description' => (string) $item['produto'], 'unit' => 'un', 'quantity' => (string) $item['quantidade'], 'unit_price' => (string) $item['valor_unitario'], 'discount' => '0'];
     if ($items === []) throw new InvalidArgumentException('A aquisição não possui itens para criar uma OS.');
-    $context = sprintf('Importada do SO. Aquisição: %s. Ofício: %s. Secretaria: %s. Entrega: %s.', $acquisition['numero_aq'] ?: '—', $acquisition['oficio_numero'] ?: '—', $acquisition['secretaria_nome'] ?: '—', $acquisition['codigo_entrega'] ?: '—');
-    $form = ServiceOrderFormData::fromArray(['client_id' => $clientId, 'status' => 'aguardando_agendamento', 'priority' => (string) ($_POST['prioridade'] ?? 'media'), 'reported_problem' => $context, 'internal_notes' => trim((string) ($_POST['observacao'] ?? '')), 'items' => $items]);
+    $secretaria = trim((string) ($_POST['secretaria'] ?? $acquisition['secretaria_nome'] ?? ''));
+    $local = trim((string) ($_POST['local'] ?? $acquisition['oficio_local'] ?? ''));
+    $context = sprintf('Importada do SO. Aquisição: %s. Ofício: %s. Secretaria: %s. Local: %s. Entrega: %s.', $acquisition['numero_aq'] ?: '—', $acquisition['oficio_numero'] ?: '—', $secretaria ?: '—', $local ?: '—', $acquisition['codigo_entrega'] ?: '—');
+    $form = ServiceOrderFormData::fromArray(['client_id' => $clientId, 'status' => 'aguardando_agendamento', 'priority' => (string) ($_POST['prioridade'] ?? 'media'), 'equipment_environment' => $secretaria, 'equipment_location' => $local, 'reported_problem' => $context, 'internal_notes' => trim((string) ($_POST['observacao'] ?? '')), 'items' => $items]);
     $connection = $application->database()->connection(); $connection->beginTransaction();
     try {
         $order = $application->serviceOrderManagement()->createOrder($form, null, null);
