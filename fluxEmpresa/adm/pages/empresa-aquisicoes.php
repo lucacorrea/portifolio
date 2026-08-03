@@ -27,6 +27,9 @@ try {
 catch (Throwable $exception) { error_log('SO acquisition browser failed: ' . $exception::class); $loadError = 'Não foi possível carregar as aquisições agora.'; }
 $statement = $application->database()->connection()->prepare('SELECT id, nome, codigo FROM clientes WHERE empresa_id = :empresa_id AND excluido_em IS NULL ORDER BY nome LIMIT 200');
 $statement->execute(['empresa_id' => $companyId]); $clients = $statement->fetchAll();
+if ($clients === []) {
+    $clients[] = ['id' => 0, 'codigo' => '', 'nome' => 'Prefeitura (será cadastrada automaticamente)'];
+}
 
 $adminContent = static function () use ($data, $detail, $loadError, $filters, $companyId, $page, $clients, $csrf): void {
     if ($loadError !== null) { admin_empty('Consulta indisponível', $loadError); return; }

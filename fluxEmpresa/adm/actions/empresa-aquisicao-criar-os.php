@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\CRM\DTO\ClientFormData;
 use App\ServiceOrder\DTO\ServiceOrderFormData;
 
 require __DIR__ . '/action-common.php';
@@ -14,7 +15,7 @@ $target = 'adm/empresa-aquisicoes.php?empresa_id=' . $companyId;
 try {
     $acquisitionId = filter_var($_POST['aquisicao_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
     $clientId = filter_var($_POST['cliente_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-    if ($companyId <= 0 || !is_int($acquisitionId) || !is_int($clientId)) throw new InvalidArgumentException('Revise os dados da conversão.');
+    if ($companyId <= 0 || !is_int($acquisitionId)) throw new InvalidArgumentException('Revise os dados da conversão.');
     $detail = $application->soAcquisitionBrowser()->details($companyId, $acquisitionId);
     if ($detail === null) throw new InvalidArgumentException('Aquisição não encontrada para o fornecedor vinculado.');
     $activeCompany = $application->activeCompanyContext()->current();
@@ -31,6 +32,18 @@ try {
         );
     }
     if ($application->companyScope()->id() !== $companyId) throw new InvalidArgumentException('Não foi possível ativar o contexto da empresa.');
+    if (!is_int($clientId)) {
+        $prefeitura = null;
+        foreach ($application->clientManagement()->listClients(['status' => 'ativo', 'limit' => 200]) as $client) {
+            if (mb_strtolower(trim($client->name())) === 'prefeitura') { $prefeitura = $client; break; }
+        }
+        $clientId = $prefeitura?->id() ?? $application->clientManagement()->createClient(ClientFormData::fromArray([
+            'person_type' => 'juridica',
+            'name' => 'Prefeitura',
+            'notes' => 'Cliente base criado automaticamente na importação de aquisição do SO.',
+            'status' => 'ativo',
+        ]))->id();
+    }
     if ($application->soAcquisitionIntegrations()->findByExternalAcquisition($acquisitionId) !== null) throw new InvalidArgumentException('Esta aquisição já possui uma OS vinculada.');
     $acquisition = $detail['acquisition']; $items = [];
     foreach ($detail['items'] as $item) $items[] = ['type' => 'outro', 'origin' => 'manual', 'description' => (string) $item['produto'], 'unit' => 'un', 'quantity' => (string) $item['quantidade'], 'unit_price' => (string) $item['valor_unitario'], 'discount' => '0'];
