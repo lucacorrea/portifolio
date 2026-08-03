@@ -37,10 +37,16 @@ try {
     $orderService = $application->serviceOrderManagement();
     $order = $orderService->getOrder($id);
     $items = $orderService->getOrderItems($id);
-    $team = $orderService->getOrderTeamMembers($id);
 } catch (Throwable) {
     http_response_code(404);
     exit('Ordem de serviço não encontrada.');
+}
+
+try {
+    $acquisitionIntegration = $application->soAcquisitionIntegrations()->findByServiceOrder($id);
+    $acquisitionNumber = trim((string) ($acquisitionIntegration['numero_aquisicao_so'] ?? ''));
+} catch (Throwable) {
+    $acquisitionNumber = '';
 }
 
 try {
@@ -194,17 +200,8 @@ $clientLocation = trim(implode(', ', array_filter([
 ], static fn(?string $value): bool => $value !== null && trim($value) !== '')));
 $clientLocation = $clientLocation !== '' ? $clientLocation : '-';
 
-$equipmentDetails = trim(implode(' · ', array_filter([
-    $order->equipmentType(),
-    $order->equipmentBrand(),
-    $order->equipmentModel(),
-    $order->equipmentCapacity(),
-    $order->equipmentSerialNumber() !== null && trim($order->equipmentSerialNumber()) !== '' ? 'Série ' . $order->equipmentSerialNumber() : null,
-], static fn(?string $value): bool => $value !== null && trim($value) !== '')));
-$equipmentDetails = $equipmentDetails !== '' ? $equipmentDetails : '-';
-
 $operationalNotes = array_values(array_filter([
-    ['label' => 'Problema relatado', 'value' => $order->reportedProblem()],
+    ['label' => 'Resumo técnico', 'value' => $order->reportedProblem()],
     ['label' => 'Problema identificado', 'value' => $order->identifiedProblem()],
     ['label' => 'Diagnóstico', 'value' => $order->diagnosis()],
     ['label' => 'Solução', 'value' => $order->solution()],
@@ -242,8 +239,6 @@ $operationalNotes = array_values(array_filter([
         .field-wide { grid-column: span 2; }
         .field > span, .note-card > span { display: block; margin-bottom: 1px; color: #64748b; font-size: 8px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
         .field strong { display: block; font-size: 9.5px; overflow-wrap: anywhere; }
-        .team-member { display: block; }
-        .team-member + .team-member { margin-top: 1px; }
         .item-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 8.5px; }
         .item-table thead { display: table-header-group; }
         .item-table tr { break-inside: avoid; page-break-inside: avoid; }
@@ -313,17 +308,11 @@ $operationalNotes = array_values(array_filter([
             <h2>Atendimento</h2>
             <div class="info-grid">
                 <div class="field"><span>Cliente</span><strong><?= h($order->clientName()) ?></strong></div>
-                <div class="field"><span>Prioridade</span><strong><?= h($order->displayPriority()) ?></strong></div>
+                <div class="field"><span>Número da aquisição</span><strong><?= h($acquisitionNumber !== '' ? $acquisitionNumber : '-') ?></strong></div>
                 <div class="field field-wide"><span>Agendamento</span><strong><?= h($order->displaySchedule()) ?></strong></div>
                 <div class="field field-wide"><span>Endereço do cliente</span><strong><?= h($clientLocation) ?></strong></div>
                 <div class="field"><span>Local do equipamento</span><strong><?= h($order->equipmentLocation() ?: '-') ?></strong></div>
                 <div class="field"><span>Ambiente</span><strong><?= h($order->equipmentEnvironment() ?: '-') ?></strong></div>
-                <div class="field field-wide"><span>Equipamento</span><strong><?= h($equipmentDetails) ?></strong></div>
-                <div class="field field-wide"><span>Equipe</span><strong>
-                    <?php if ($team === []): ?>Sem equipe definida<?php else: ?>
-                        <?php foreach ($team as $member): ?><span class="team-member"><?= h($member->displayLine()) ?></span><?php endforeach; ?>
-                    <?php endif; ?>
-                </strong></div>
             </div>
         </section>
 
