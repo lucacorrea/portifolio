@@ -96,6 +96,7 @@ financialFlowAssertThrows(
 );
 
 $finalizationAction = file_get_contents(dirname(__DIR__) . '/actions/os-finalizar.php');
+$importedFinalizationAction = file_get_contents(dirname(__DIR__) . '/actions/os-finalizar-importacao-so.php');
 $paymentAction = file_get_contents(dirname(__DIR__) . '/actions/os-pagar.php');
 $standaloneReceiptAction = file_get_contents(dirname(__DIR__) . '/actions/recibo-avulso-emitir.php');
 $lifecycleSource = file_get_contents(dirname(__DIR__) . '/src/ServiceOrder/Service/ServiceOrderLifecycleService.php');
@@ -105,6 +106,7 @@ $orderRepositorySource = file_get_contents(dirname(__DIR__) . '/src/ServiceOrder
 $orderManagementSource = file_get_contents(dirname(__DIR__) . '/src/ServiceOrder/Service/ServiceOrderManagementService.php');
 $paymentPageSource = file_get_contents(dirname(__DIR__) . '/pages/ordens-servico.php');
 $paymentScriptSource = file_get_contents(dirname(__DIR__) . '/assets/js/ordens-servico-pagamento.js');
+$orderScriptSource = file_get_contents(dirname(__DIR__) . '/assets/js/ordens-servico.js');
 $receiptPrintSource = file_get_contents(dirname(__DIR__) . '/recibo-imprimir.php');
 $receivablePageSource = file_get_contents(dirname(__DIR__) . '/pages/contas-receber.php');
 $receivableScriptSource = file_get_contents(dirname(__DIR__) . '/assets/js/contas-receber.js');
@@ -112,6 +114,12 @@ financialFlowAssert(is_string($finalizationAction), 'Action de finalização dev
 financialFlowAssert(!str_contains((string) $finalizationAction, "requirePermission('os.finalizar_com_pagamento')"), 'Finalização não pode exigir permissão de pagamento.');
 financialFlowAssert(str_contains((string) $finalizationAction, 'os_store_post_completion_payment_prompt'), 'Conclusão confirmada deve preparar a pergunta de pagamento posterior.');
 financialFlowAssert(str_contains((string) $finalizationAction, "['modal' => null]"), 'Sucesso na conclusão deve remover recovery antigo antes de abrir o pagamento.');
+financialFlowAssert(is_string($importedFinalizationAction), 'Action de finalização importada deve ser legível.');
+financialFlowAssert(str_contains((string) $importedFinalizationAction, "['servico', 'outro']"), 'Importação deve aceitar somente serviço ou peça/insumo externo na revisão.');
+financialFlowAssert(str_contains((string) $importedFinalizationAction, "'Classifique todos os itens"), 'Importação deve exigir classificação de cada item antes da finalização.');
+financialFlowAssert(str_contains((string) $paymentPageSource, 'modal-os-finalize-import'), 'OS importada deve abrir a revisão antes da finalização.');
+financialFlowAssert(is_string($orderScriptSource) && str_contains($orderScriptSource, 'Peça ou insumo externo'), 'A revisão deve explicar que peça externa não é produto de estoque.');
+financialFlowAssert(is_string($orderScriptSource) && str_contains($orderScriptSource, 'importedItemType'), 'A tela deve sugerir a classificação dos itens importados.');
 financialFlowAssert(str_contains((string) $paymentAction, "os_action_context('contas_receber.registrar_pagamento')"), 'Pagamento de OS deve exigir permissão financeira.');
 financialFlowAssert(str_contains((string) $paymentAction, "can('recibo.emitir')"), 'Pagamento com recibo deve exigir permissão de emissão.');
 financialFlowAssert(str_contains((string) $paymentAction, "'payment_token'"), 'Action de pagamento deve receber token idempotente.');

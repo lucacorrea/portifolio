@@ -32,16 +32,29 @@ try {
         throw new InvalidArgumentException('A OS importada não possui itens para finalizar.');
     }
 
-    $executionItems = array_map(static fn($item): array => [
-        'type' => $item->type(),
-        'ordem_servico_item_id' => $item->id(),
-        'referencia_id' => $item->referenceId(),
-        'description' => $item->description(),
-        'unit' => $item->unit(),
-        'quantity' => $item->quantity(),
-        'unit_price' => $item->unitPrice(),
-        'discount' => $item->discount(),
-    ], $items);
+    $submittedTypes = $_POST['item_types'] ?? [];
+    if (!is_array($submittedTypes)) {
+        throw new InvalidArgumentException('Revise a classificação dos itens importados.');
+    }
+
+    $executionItems = [];
+    foreach ($items as $item) {
+        $type = $submittedTypes[(string) $item->id()] ?? null;
+        if (!in_array($type, ['servico', 'outro'], true)) {
+            throw new InvalidArgumentException('Classifique todos os itens como serviço ou peça/insumo.');
+        }
+
+        $executionItems[] = [
+            'type' => $type,
+            'ordem_servico_item_id' => $item->id(),
+            'reference_id' => $item->referenceId(),
+            'description' => $item->description(),
+            'unit' => $item->unit(),
+            'quantity' => $item->quantity(),
+            'unit_price' => $item->unitPrice(),
+            'discount' => $item->discount(),
+        ];
+    }
     $user = $application->authorization()->requireLogin();
     $application->serviceOrderFinalization()->finalizeImportedAcquisition(
         $orderId,

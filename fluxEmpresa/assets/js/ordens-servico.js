@@ -10,6 +10,57 @@ document.addEventListener('DOMContentLoaded', function () {
   const recoveryData = pageData.recoveryData || {};
   const recoveryError = pageData.recoveryError || '';
 
+  function importedItemType(description) {
+    const normalized = String(description || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+    return /\b(INSTALACAO|DESINSTALACAO|MANUTENCAO|CARGA DE GAS)\b/.test(normalized)
+      ? 'servico'
+      : 'outro';
+  }
+
+  async function prepareImportedFinalization(button) {
+    const modal = document.getElementById('modal-os-finalize-import');
+    const body = document.getElementById('os-finalize-import-items');
+    const error = document.getElementById('os-finalize-import-error');
+    const submit = document.getElementById('os-finalize-import-submit');
+    if (!modal || !body || !error || !submit) return;
+
+    setValue('os-finalize-import-id', button.dataset.orderId);
+    setText('os-finalize-import-subtitle', 'OS ' + (button.dataset.orderNumber || ''));
+    error.hidden = true;
+    submit.disabled = true;
+    body.replaceChildren();
+
+    try {
+      const response = await fetch('actions/os-detalhes.php?id=' + encodeURIComponent(button.dataset.orderId), { headers: { Accept: 'application/json' } });
+      const data = await response.json();
+      if (!response.ok || !Array.isArray(data.items) || data.items.length === 0) throw new Error('items');
+
+      data.items.forEach(function (item) {
+        const row = document.createElement('tr');
+        const description = document.createElement('td');
+        description.textContent = item.description || '';
+        const quantity = document.createElement('td');
+        quantity.textContent = item.quantity || '';
+        const value = document.createElement('td');
+        value.textContent = money(parseNumber(item.unit_price));
+        const classification = document.createElement('td');
+        const select = document.createElement('select');
+        select.className = 'form-select form-control-os';
+        select.name = 'item_types[' + item.id + ']';
+        select.appendChild(new Option('Serviço executado', 'servico'));
+        select.appendChild(new Option('Peça ou insumo externo', 'outro'));
+        select.value = importedItemType(item.description);
+        classification.appendChild(select);
+        row.append(description, quantity, value, classification);
+        body.appendChild(row);
+      });
+      submit.disabled = false;
+    } catch (fetchError) {
+      error.textContent = 'Não foi possível carregar os itens da OS para revisão.';
+      error.hidden = false;
+    }
+  }
+
   function parseNumber(value) {
     value = String(value || '0').replace(/\s/g, '');
     if (value.includes(',')) value = value.replace(/\./g, '').replace(',', '.');
@@ -492,7 +543,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   document.addEventListener('click', function (event) {
-    const button = event.target.closest?.('.js-os-view, .js-os-edit, .js-os-team, .js-os-status, .js-os-finalize, .js-os-cancel, .js-os-reverse, .js-os-delete, .js-os-receipt');
+    const button = event.target.closest?.('.js-os-view, .js-os-edit, .js-os-team, .js-os-status, .js-os-finalize, .js-os-finalize-import, .js-os-cancel, .js-os-reverse, .js-os-delete, .js-os-receipt');
     if (!button) return;
 
     if (button.classList.contains('js-os-view')) {
@@ -513,6 +564,8 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('os-status-message').textContent = 'Confirmar operação "' + (button.dataset.label || 'alterar status') + '"?';
     } else if (button.classList.contains('js-os-finalize')) {
       setValue('os-finalize-id', button.dataset.orderId);
+    } else if (button.classList.contains('js-os-finalize-import')) {
+      void prepareImportedFinalization(button);
     } else if (button.classList.contains('js-os-cancel')) {
       setValue('os-cancel-id', button.dataset.orderId);
     } else if (button.classList.contains('js-os-reverse')) {
