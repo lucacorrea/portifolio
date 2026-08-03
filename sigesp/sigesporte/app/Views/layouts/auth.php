@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#071426">
     <title><?= View::e($title ?? 'SIGESP') ?></title>
     <link rel="icon" href="<?= View::e(View::asset('images/favicon.svg')) ?>" type="image/svg+xml">
-    <link rel="stylesheet" href="<?= View::e(View::asset('css/app.css')) ?>">
+    <link rel="stylesheet" href="<?= View::e(View::asset('css/app.css') . '?v=20260803-2') ?>">
 </head>
 <body class="auth-page">
 <main class="auth-shell">
@@ -28,6 +28,6 @@
     </section>
 </main>
 <script>window.SIGESP_CONFIG = <?= json_encode(['basePath' => Url::basePath(), 'baseUrl' => Url::to('/')], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;</script>
-<script src="<?= View::e(View::asset('js/app.js')) ?>" type="module"></script>
+<script src="<?= View::e(View::asset('js/app.js') . '?v=20260803-2') ?>" type="module"></script>
 </body>
 </html>
