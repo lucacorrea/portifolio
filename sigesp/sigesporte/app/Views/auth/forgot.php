@@ -1,0 +1,1 @@
+<div class="auth-title"><h2>Recuperar acesso</h2><p>Por segurança, a recuperação deve ser habilitada com o serviço de e-mail configurado.</p></div><a class="primary link-button" href="/login">Voltar para entrar</a>

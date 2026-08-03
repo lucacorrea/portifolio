@@ -1,0 +1,13 @@
+{
+  "name": "prefeitura/sigesp",
+  "description": "Sistema Integrado de Gestão Esportiva Municipal",
+  "type": "project",
+  "require": {
+    "php": "^8.2",
+    "dompdf/dompdf": "^3.1",
+    "phpoffice/phpspreadsheet": "^2.2"
+  },
+  "autoload": {"psr-4": {"Sigesp\\\\": "app/"}},
+  "scripts": {"serve": "php -S localhost:8080 -t public", "migrate": "php database/migrate.php", "seed": "php database/seed.php"},
+  "config": {"sort-packages": true, "optimize-autoloader": true}
+}
