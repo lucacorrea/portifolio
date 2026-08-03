@@ -597,8 +597,8 @@ final class ServiceOrderRepository
              LEFT JOIN (
                     SELECT ordem_servico_id,
                            COUNT(*) AS itens_total,
-                           MIN(CASE WHEN tipo = "servico" THEN descricao ELSE NULL END) AS servico_principal,
-                           GROUP_CONCAT(CASE WHEN tipo = "servico" THEN descricao ELSE NULL END SEPARATOR ", ") AS servicos
+                           MIN(CASE WHEN tipo = \'servico\' THEN descricao ELSE NULL END) AS servico_principal,
+                           GROUP_CONCAT(CASE WHEN tipo = \'servico\' THEN descricao ELSE NULL END SEPARATOR \', \') AS servicos
                       FROM ordem_servico_itens
                       WHERE empresa_id = :company_item_summary
                      GROUP BY ordem_servico_id
