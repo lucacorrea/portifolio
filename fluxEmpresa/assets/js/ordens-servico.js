@@ -401,6 +401,7 @@ document.addEventListener('DOMContentLoaded', function () {
     summary.replaceChildren();
     [
       ['Número', order.number], ['Cliente', order.client_name], ['Equipamento', [order.equipment_type, order.equipment_brand, order.equipment_model].filter(Boolean).join(' ') || '-'],
+      ['Secretaria solicitante', order.equipment_environment || '-'], ['Local de execução ou entrega', order.equipment_location || '-'],
       ['Status', order.status], ['Prioridade', order.priority], ['Agendamento', ((order.scheduled_start || '-') + ' até ' + (order.scheduled_end || '-'))],
       ['Problema', order.reported_problem || '-'], ['Diagnóstico', order.diagnosis || '-'], ['Observações', order.notes || '-']
     ].forEach(function (pair) {
