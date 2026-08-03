@@ -10,7 +10,7 @@ require __DIR__ . '/action-common.php';
 admin_post();
 $authorization->requirePermission('so_aquisicao.importar');
 $companyId = max(0, (int) ($_POST['empresa_id'] ?? 0));
-$target = 'adm/empresa-aquisicoes.php?empresa_id=' . $companyId;
+$target = acquisition_return_target($companyId);
 
 try {
     $acquisitionId = filter_var($_POST['aquisicao_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
@@ -64,3 +64,21 @@ try {
     $session->flash('success', 'Ordem de serviço criada e vinculada à aquisição.');
     admin_action_redirect($target);
 } catch (Throwable $exception) { admin_action_error($exception, $target); }
+
+function acquisition_return_target(int $companyId): string
+{
+    global $application;
+
+    $fallback = 'adm/empresa-aquisicoes.php?empresa_id=' . $companyId;
+    $referer = parse_url((string) ($_SERVER['HTTP_REFERER'] ?? ''));
+    if (!is_array($referer)) return $fallback;
+    $path = ltrim((string) ($referer['path'] ?? ''), '/');
+    $path = preg_replace('#^fluxEmpresa/#', '', $path) ?? '';
+    if ($path !== 'adm/empresa-aquisicoes.php') return $fallback;
+
+    parse_str((string) ($referer['query'] ?? ''), $query);
+    if ((int) ($query['empresa_id'] ?? 0) !== $companyId) return $fallback;
+
+    $target = $path . '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+    return $application->redirect()->sanitize($target) === $target ? $target : $fallback;
+}
