@@ -34,7 +34,8 @@ final class Application
             }
 
             $this->logException($exception);
-            (new Response(View::render('errors/500', ['title' => 'Erro interno']), 500))->send();
+            $layout = Auth::check() ? 'layouts/app' : 'layouts/auth';
+            (new Response(View::render('errors/500', ['title' => 'Erro interno'], $layout), 500))->send();
         }
     }
 
