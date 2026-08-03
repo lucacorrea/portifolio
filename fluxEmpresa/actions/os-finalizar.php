@@ -9,9 +9,31 @@ os_require_post_request();
 
 try {
     $user = $application->authorization()->requireLogin();
+    $orderId = os_posted_positive_int('id');
+    $order = $application->serviceOrderManagement()->getOrder($orderId);
+    $items = $application->serviceOrderManagement()->getOrderItems($orderId);
+    if ($items === []) {
+        throw new InvalidArgumentException('A OS precisa ter ao menos um item para ser finalizada.');
+    }
+
+    $executionItems = array_map(static fn($item): array => [
+        'type' => $item->type(),
+        'ordem_servico_item_id' => $item->id(),
+        'reference_id' => $item->referenceId(),
+        'description' => $item->description(),
+        'unit' => $item->unit(),
+        'quantity' => $item->quantity(),
+        'unit_price' => $item->unitPrice(),
+        'discount' => $item->discount(),
+    ], $items);
+
     $result = $application->serviceOrderFinalization()->finalize(
-        os_posted_positive_int('id'),
-        $_POST,
+        $orderId,
+        [
+            'execution_items' => $executionItems,
+            'desconto' => $order->discount(),
+            'acrescimo' => $order->increase(),
+        ],
         $user->id()
     );
     if ($application->authorization()->can('contas_receber.registrar_pagamento')
@@ -22,7 +44,7 @@ try {
             $result['balance']
         );
     }
-    $session->flash('success', 'OS finalizada e direcionada para Contas a Receber.');
+    $session->flash('success', 'OS finalizada. Confirme agora a situação do pagamento.');
     os_redirect_back($application, 'ordens-servico.php', ['modal' => null]);
 } catch (InvalidArgumentException $exception) {
     os_store_form_recovery('finalize', $_POST, $exception->getMessage());

@@ -17,5 +17,7 @@ final class View
         extract($data, EXTR_SKIP);
         require $base . $component . '.php';
     }
+    public static function url(string $path = ''): string { return Url::to($path); }
+    public static function asset(string $path): string { return Url::asset($path); }
     public static function e(string|int|float|null $value): string { return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 }

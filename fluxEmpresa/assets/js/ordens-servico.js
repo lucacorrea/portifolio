@@ -61,6 +61,36 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  async function prepareStandardFinalization(orderId, orderNumber) {
+    const submit = document.getElementById('os-finalize-submit');
+    setValue('os-finalize-id', orderId);
+    setText('os-finalize-number', orderNumber || 'Carregando...');
+    setText('os-finalize-total', 'Carregando...');
+    setText('os-finalize-items', 'Carregando...');
+    if (submit) submit.disabled = true;
+
+    try {
+      const data = await loadOrder(orderId);
+      const items = Array.isArray(data.items) ? data.items : [];
+      if (items.length === 0) throw new Error('items');
+      const order = data.order || {};
+      const calculatedTotal = items.reduce(function (total, item) {
+        return total + parseNumber(item.subtotal);
+      }, 0) - parseNumber(order.discount) + parseNumber(order.increase);
+      const total = Object.prototype.hasOwnProperty.call(order, 'total')
+        ? parseNumber(order.total)
+        : calculatedTotal;
+      setText('os-finalize-number', order.number || orderNumber || 'OS');
+      setText('os-finalize-total', money(total));
+      setText('os-finalize-items', items.length + (items.length === 1 ? ' item do orçamento/OS' : ' itens do orçamento/OS'));
+      if (submit) submit.disabled = false;
+    } catch (error) {
+      setText('os-finalize-number', orderNumber || 'OS');
+      setText('os-finalize-total', 'Não foi possível carregar');
+      setText('os-finalize-items', '-');
+    }
+  }
+
   function parseNumber(value) {
     value = String(value || '0').replace(/\s/g, '');
     if (value.includes(',')) value = value.replace(/\./g, '').replace(',', '.');
@@ -308,26 +338,9 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function restoreFinalizeForm(data) {
-    setValue('os-finalize-id', data.id);
+    void prepareStandardFinalization(data.id, '');
     const modal = document.getElementById('modal-os-finalize');
     if (!modal) return;
-    const fields = {
-      vencimento_em: data.vencimento_em,
-      proximo_lembrete_em: data.proximo_lembrete_em,
-      observacao: data.observacao,
-      saldo_observacao: data.saldo_observacao,
-    };
-    Object.entries(fields).forEach(function ([name, value]) {
-      const input = modal.querySelector('[name="' + name + '"]');
-      if (input) input.value = value || '';
-    });
-    const recoveredItem = Array.isArray(data.execution_items) ? data.execution_items[0] : null;
-    if (recoveredItem) {
-      ['type', 'description', 'quantity', 'unit_price', 'discount'].forEach(function (field) {
-        const input = modal.querySelector('[name="execution_items[0][' + field + ']"]');
-        if (input && recoveredItem[field] !== undefined) input.value = recoveredItem[field];
-      });
-    }
     if (recoveryError) {
       const body = modal.querySelector('.modal-body');
       const alert = document.createElement('div');
@@ -563,7 +576,7 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('os-status-title').textContent = button.dataset.label || 'Alterar status';
       document.getElementById('os-status-message').textContent = 'Confirmar operação "' + (button.dataset.label || 'alterar status') + '"?';
     } else if (button.classList.contains('js-os-finalize')) {
-      setValue('os-finalize-id', button.dataset.orderId);
+      void prepareStandardFinalization(button.dataset.orderId, button.dataset.orderNumber);
     } else if (button.classList.contains('js-os-finalize-import')) {
       void prepareImportedFinalization(button);
     } else if (button.classList.contains('js-os-cancel')) {

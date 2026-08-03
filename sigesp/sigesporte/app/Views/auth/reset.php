@@ -1,1 +1,1 @@
-<?php $title='Redefinir senha'; ?><div class="auth-title"><h1>Redefinir senha</h1><p>Use o link seguro enviado ao seu e-mail institucional para continuar.</p></div><a class="button" style="margin-top:27px" href="/login">Voltar para entrar</a>
+<?php use Sigesp\Core\View; $title='Redefinir senha'; ?><div class="auth-title"><h1>Redefinir senha</h1><p>Use o link seguro enviado ao seu e-mail institucional para continuar.</p></div><a class="button" style="margin-top:27px" href="<?= View::e(View::url('/login')) ?>">Voltar para entrar</a>

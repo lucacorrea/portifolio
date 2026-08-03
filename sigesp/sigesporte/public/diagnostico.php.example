@@ -1,0 +1,68 @@
+<?php
+declare(strict_types=1);
+
+$remoteAddress = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+$isLocal = in_array($remoteAddress, ['127.0.0.1', '::1'], true);
+$isExplicitlyEnabled = filter_var(getenv('SIGESP_DIAGNOSTICS') ?: false, FILTER_VALIDATE_BOOL);
+if (!$isLocal && !$isExplicitlyEnabled) {
+    http_response_code(404);
+    exit('Não encontrado.');
+}
+
+$projectRoots = [dirname(__DIR__), dirname(__DIR__, 2) . '/apps/sigesporte', __DIR__ . '/app-private'];
+$projectRoot = null;
+foreach ($projectRoots as $candidate) {
+    if (is_file($candidate . '/bootstrap/app.php')) {
+        $projectRoot = $candidate;
+        break;
+    }
+}
+
+$environment = [];
+if ($projectRoot !== null && is_file($projectRoot . '/.env')) {
+    foreach (file($projectRoot . '/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#') || !str_contains($line, '=')) {
+            continue;
+        }
+        [$key, $value] = explode('=', $line, 2);
+        $environment[trim($key)] = trim($value, " \t\n\r\0\x0B\"'");
+    }
+}
+
+$checks = [
+    'PHP 8.2 ou superior' => version_compare(PHP_VERSION, '8.2.0', '>='),
+    'vendor/autoload.php' => $projectRoot !== null && is_file($projectRoot . '/vendor/autoload.php'),
+    '.env privado' => $projectRoot !== null && is_file($projectRoot . '/.env'),
+    'Extensão PDO' => extension_loaded('pdo'),
+    'Driver pdo_mysql' => extension_loaded('pdo_mysql'),
+    'Extensão mbstring' => extension_loaded('mbstring'),
+    'storage gravável' => $projectRoot !== null && is_dir($projectRoot . '/storage') && is_writable($projectRoot . '/storage'),
+];
+
+$databaseStatus = 'não testado';
+if ($checks['Driver pdo_mysql'] && isset($environment['DB_HOST'], $environment['DB_DATABASE'], $environment['DB_USERNAME'])) {
+    try {
+        $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4', $environment['DB_HOST'], $environment['DB_PORT'] ?? '3306', $environment['DB_DATABASE']);
+        new PDO($dsn, $environment['DB_USERNAME'], $environment['DB_PASSWORD'] ?? '', [PDO::ATTR_TIMEOUT => 3, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $databaseStatus = 'OK';
+    } catch (Throwable) {
+        $databaseStatus = 'falhou; confira extensão, rede e credenciais no servidor';
+    }
+}
+
+$rewriteStatus = 'não verificável neste ambiente';
+if (function_exists('apache_get_modules')) {
+    $rewriteStatus = in_array('mod_rewrite', apache_get_modules(), true) ? 'OK' : 'não carregado';
+}
+
+header('Content-Type: text/plain; charset=UTF-8');
+echo "Diagnóstico SIGESP\n";
+echo 'PHP: ' . PHP_VERSION . "\n";
+foreach ($checks as $label => $passed) {
+    echo $label . ': ' . ($passed ? 'OK' : 'FALHOU') . "\n";
+}
+echo 'APP_BASE_PATH: ' . ($environment['APP_BASE_PATH'] ?? '(não configurado)') . "\n";
+echo 'APP_URL: ' . ($environment['APP_URL'] ?? '(não configurada)') . "\n";
+echo 'mod_rewrite: ' . $rewriteStatus . "\n";
+echo 'Conexão com banco: ' . $databaseStatus . "\n";

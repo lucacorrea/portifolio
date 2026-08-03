@@ -1,1 +1,1 @@
-<?php $title='Sessão expirada'; ?><div class="auth-title"><h1>Sessão expirada</h1><p>Por segurança, seu acesso foi encerrado. Entre novamente para continuar.</p></div><a class="button" style="margin-top:27px" href="/login">Entrar novamente</a>
+<?php use Sigesp\Core\View; $title='Sessão expirada'; ?><div class="auth-title"><h1>Sessão expirada</h1><p>Por segurança, seu acesso foi encerrado. Entre novamente para continuar.</p></div><a class="button" style="margin-top:27px" href="<?= View::e(View::url('/login')) ?>">Entrar novamente</a>

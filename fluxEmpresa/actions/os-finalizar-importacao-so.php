@@ -56,7 +56,7 @@ try {
         ];
     }
     $user = $application->authorization()->requireLogin();
-    $application->serviceOrderFinalization()->finalizeImportedAcquisition(
+    $result = $application->serviceOrderFinalization()->finalizeImportedAcquisition(
         $orderId,
         [
             'execution_items' => $executionItems,
@@ -64,7 +64,15 @@ try {
         ],
         $user->id()
     );
-    $session->flash('success', 'OS importada do SO finalizada e encaminhada para cobrança pendente da Prefeitura.');
+    if ($application->authorization()->can('contas_receber.registrar_pagamento')
+        && $application->authorization()->can('recibo.emitir')) {
+        os_store_post_completion_payment_prompt(
+            $result['order_id'],
+            $result['order_number'],
+            $result['balance']
+        );
+    }
+    $session->flash('success', 'OS importada do SO finalizada. Confirme agora a situação do pagamento.');
 } catch (InvalidArgumentException $exception) {
     $session->flash('danger', $exception->getMessage());
 } catch (Throwable $exception) {
