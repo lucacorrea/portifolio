@@ -4,12 +4,11 @@ DirectoryIndex index.php
 RewriteEngine On
 RewriteBase /sigesp/
 
-# Impede acesso HTTP direto ao código privado dentro de sigesporte.
-RewriteCond %{THE_REQUEST} "\s/+sigesp/sigesporte(?:[/?\s])" [NC]
-RewriteRule ^sigesporte(?:/|$) - [F,L]
-
 # Expõe somente os assets públicos no endereço limpo /sigesp/assets/.
 RewriteRule ^assets(?:/(.*))?$ sigesporte/public/assets/$1 [END]
+
+# Impede acesso HTTP direto ao código privado dentro de sigesporte.
+RewriteRule ^sigesporte(?:/|$) - [F,L,NC]
 
 # Envia as rotas limpas ao front controller, preservando a URL original.
 RewriteCond %{REQUEST_FILENAME} !-f
