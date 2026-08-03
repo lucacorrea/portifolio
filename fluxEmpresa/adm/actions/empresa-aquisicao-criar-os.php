@@ -7,6 +7,7 @@ use App\ServiceOrder\DTO\ServiceOrderFormData;
 require __DIR__ . '/action-common.php';
 
 admin_post();
+$authorization->requirePermission('so_aquisicao.importar');
 $companyId = max(0, (int) ($_POST['empresa_id'] ?? 0));
 $target = 'adm/empresa-aquisicoes.php?empresa_id=' . $companyId;
 

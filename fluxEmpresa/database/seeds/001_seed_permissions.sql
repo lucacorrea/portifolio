@@ -164,7 +164,8 @@ VALUES
     ('Administração', 'configuracao', 'configuracao.visualizar', 'Visualizar configurações', 'Permite acessar configurações do sistema.', 2110),
     ('Administração', 'configuracao', 'configuracao.editar', 'Editar configurações', 'Permite alterar configurações do sistema.', 2120),
     ('Administração', 'auditoria', 'auditoria.visualizar', 'Visualizar auditoria', 'Permite acessar registros de auditoria.', 2210),
-    ('Administração', 'auditoria', 'auditoria.exportar', 'Exportar auditoria', 'Permite exportar registros de auditoria.', 2220)
+    ('Administração', 'auditoria', 'auditoria.exportar', 'Exportar auditoria', 'Permite exportar registros de auditoria.', 2220),
+    ('Integrações', 'so_aquisicao', 'so_aquisicao.importar', 'Importar aquisição do SO', 'Permite converter uma aquisição do SO em ordem de serviço da empresa atendida.', 2310)
 ON DUPLICATE KEY UPDATE
     grupo = VALUES(grupo),
     modulo = VALUES(modulo),
