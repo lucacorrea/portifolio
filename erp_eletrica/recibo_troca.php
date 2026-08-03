@@ -39,7 +39,7 @@ $stmt = $db->prepare("
     LEFT JOIN usuarios u ON t.usuario_id = u.id
     LEFT JOIN filiais  f ON v.filial_id = f.id
     JOIN produtos po ON t.produto_original_id = po.id
-    JOIN produtos pn ON t.produto_novo_id = pn.id
+    LEFT JOIN produtos pn ON t.produto_novo_id = pn.id
     WHERE t.id = ?
 ");
 $stmt->execute([$exchangeId]);
@@ -47,12 +47,44 @@ $troca = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$troca) { exit('Registro de troca não encontrado.'); }
 
+$trocaCols = array_column($db->query("DESCRIBE trocas")->fetchAll(PDO::FETCH_ASSOC), 'Field');
+$hasGrupoTroca = in_array('grupo_troca', $trocaCols, true);
+$grupoTroca = $hasGrupoTroca ? ($troca['grupo_troca'] ?? null) : null;
+$whereItens = ($hasGrupoTroca && !empty($grupoTroca)) ? "t.grupo_troca = ?" : "t.id = ?";
+$paramItens = ($hasGrupoTroca && !empty($grupoTroca)) ? $grupoTroca : $exchangeId;
+
+$stmtItens = $db->prepare("
+    SELECT t.*,
+           po.nome as produto_original_nome,
+           po.codigo as produto_original_codigo,
+           po.unidade as produto_original_unidade,
+           pn.nome as produto_novo_nome,
+           pn.codigo as produto_novo_codigo,
+           pn.unidade as produto_novo_unidade
+    FROM trocas t
+    JOIN produtos po ON t.produto_original_id = po.id
+    LEFT JOIN produtos pn ON t.produto_novo_id = pn.id
+    WHERE $whereItens
+    ORDER BY t.id ASC
+");
+$stmtItens->execute([$paramItens]);
+$trocaItens = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
+if (!$trocaItens) {
+    $trocaItens = [$troca];
+}
+
 $dataTroca = date('d/m/Y H:i', strtotime($troca['created_at']));
 $dataVendaOriginal = date('d/m/Y H:i', strtotime($troca['venda_data']));
 
-$totalDevolvido = $troca['quantidade_original'] * $troca['preco_original'];
-$totalNovo = $troca['quantidade_nova'] * $troca['preco_novo'];
-$diferenca = (float)$troca['diferenca_valor'];
+$totalDevolvido = 0;
+$totalNovo = 0;
+$diferenca = 0;
+foreach ($trocaItens as $itemTroca) {
+    $totalDevolvido += (float)$itemTroca['quantidade_original'] * (float)$itemTroca['preco_original'];
+    $totalNovo += (float)$itemTroca['quantidade_nova'] * (float)$itemTroca['preco_novo'];
+    $diferenca += (float)$itemTroca['diferenca_valor'];
+}
+$tipoComprovante = ($totalNovo <= 0.0001 || (($troca['tipo'] ?? '') === 'devolucao')) ? 'DEVOLUCAO' : 'TROCA';
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -275,11 +307,11 @@ $diferenca = (float)$troca['diferenca_valor'];
                 <?php if (!empty($troca['filial_telefone'])): ?>Tel: <?= htmlspecialchars($troca['filial_telefone']) ?><?php endif; ?>
             </div>
             <div class="hr"></div>
-            <div class="center"><span class="badge-nf">COMPROVANTE DE TROCA</span></div>
+            <div class="center"><span class="badge-nf">COMPROVANTE DE <?= $tipoComprovante ?></span></div>
             <div class="hr"></div>
         </header>
 
-        <div class="small"><b>Troca Nº:</b> <?= $exchangeId ?> &nbsp;&nbsp; <b>Data:</b> <?= $dataTroca ?></div>
+        <div class="small"><b><?= $tipoComprovante ?> Nº:</b> <?= $exchangeId ?> &nbsp;&nbsp; <b>Data:</b> <?= $dataTroca ?></div>
         <div class="small"><b>Venda Ref:</b> #<?= $troca['venda_id'] ?> (<?= $dataVendaOriginal ?>)</div>
         <div class="small"><b>Operador:</b> <?= htmlspecialchars($troca['vendedor_nome'] ?? '—') ?></div>
 
@@ -304,19 +336,22 @@ $diferenca = (float)$troca['diferenca_valor'];
                 </tr>
             </thead>
             <tbody>
+                <?php foreach ($trocaItens as $itemTroca): ?>
                 <tr>
-                    <td class="left small"><?= htmlspecialchars($troca['produto_original_codigo']) ?></td>
-                    <td class="left"><?= htmlspecialchars(mb_strimwidth($troca['produto_original_nome'], 0, 20, '..')) ?></td>
-                    <td class="right"><?= formatarQuantidade($troca['quantidade_original']) ?></td>
-                    <td class="right"><?= number_format($troca['preco_original'],2,',','.') ?></td>
-                    <td class="right"><?= number_format($totalDevolvido,2,',','.') ?></td>
+                    <td class="left small"><?= htmlspecialchars($itemTroca['produto_original_codigo']) ?></td>
+                    <td class="left"><?= htmlspecialchars(mb_strimwidth($itemTroca['produto_original_nome'], 0, 20, '..')) ?></td>
+                    <td class="right"><?= formatarQuantidade($itemTroca['quantidade_original']) ?></td>
+                    <td class="right"><?= number_format($itemTroca['preco_original'],2,',','.') ?></td>
+                    <td class="right"><?= number_format(((float)$itemTroca['quantidade_original'] * (float)$itemTroca['preco_original']),2,',','.') ?></td>
                 </tr>
+                <?php endforeach; ?>
             </tbody>
         </table>
 
         <div class="hr" style="border-top-style: dotted;"></div>
 
         <div class="small" style="font-weight: bold; text-transform: uppercase; color: #166534; margin-bottom: 5px;">▲ Item Novo (Saída)</div>
+        <?php if ($totalNovo > 0.0001): ?>
         <table class="tbl small" aria-label="Item Novo">
             <colgroup>
                 <col style="width:20%">
@@ -335,15 +370,21 @@ $diferenca = (float)$troca['diferenca_valor'];
                 </tr>
             </thead>
             <tbody>
+                <?php foreach ($trocaItens as $itemTroca): ?>
+                <?php if ((float)$itemTroca['quantidade_nova'] <= 0) continue; ?>
                 <tr>
-                    <td class="left small"><?= htmlspecialchars($troca['produto_novo_codigo']) ?></td>
-                    <td class="left"><?= htmlspecialchars(mb_strimwidth($troca['produto_novo_nome'], 0, 20, '..')) ?></td>
-                    <td class="right"><?= formatarQuantidade($troca['quantidade_nova']) ?></td>
-                    <td class="right"><?= number_format($troca['preco_novo'],2,',','.') ?></td>
-                    <td class="right"><?= number_format($totalNovo,2,',','.') ?></td>
+                    <td class="left small"><?= htmlspecialchars($itemTroca['produto_novo_codigo'] ?? '') ?></td>
+                    <td class="left"><?= htmlspecialchars(mb_strimwidth($itemTroca['produto_novo_nome'] ?? '', 0, 20, '..')) ?></td>
+                    <td class="right"><?= formatarQuantidade($itemTroca['quantidade_nova']) ?></td>
+                    <td class="right"><?= number_format($itemTroca['preco_novo'],2,',','.') ?></td>
+                    <td class="right"><?= number_format(((float)$itemTroca['quantidade_nova'] * (float)$itemTroca['preco_novo']),2,',','.') ?></td>
                 </tr>
+                <?php endforeach; ?>
             </tbody>
         </table>
+        <?php else: ?>
+            <div class="small center" style="padding: 6px 0;">Nenhum produto novo. Operacao registrada como devolucao.</div>
+        <?php endif; ?>
 
         <div class="hr"></div>
 
@@ -360,7 +401,7 @@ $diferenca = (float)$troca['diferenca_valor'];
                 <tr style="border-top:1px dashed #000">
                     <td class="left" style="font-size:14px;padding-top:4px"><b>DIFERENÇA</b></td>
                     <td class="right" style="font-size:14px;padding-top:4px">
-                        <b>R$ <?= number_format(abs($diferenca),2,',','.') ?></b>
+                        <b><?= $diferenca < 0 ? 'DEVOLVER ' : ($diferenca > 0 ? 'RECEBER ' : '') ?>R$ <?= number_format(abs($diferenca),2,',','.') ?></b>
                     </td>
                 </tr>
             </tbody>

@@ -947,9 +947,15 @@ class SalesController extends BaseController {
     }
 
     public function exchange_item() {
+        header('Content-Type: application/json; charset=utf-8');
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') exit;
 
         $data = json_decode(file_get_contents('php://input'), true);
+        if (!empty($data['return_items']) || empty($data['new_product_id'])) {
+            $this->exchange_items_bulk($data ?: []);
+            return;
+        }
+
         $vendaId = $data['venda_id'] ?? null;
         $itemId = $data['item_id'] ?? null; // ID da linha em vendas_itens
         $newProdId = $data['new_product_id'] ?? null;
@@ -1121,6 +1127,271 @@ class SalesController extends BaseController {
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
         exit;
+    }
+
+    private function exchange_items_bulk(array $data) {
+        $vendaId = $data['venda_id'] ?? null;
+        $rawItems = $data['return_items'] ?? [];
+        $newProdId = !empty($data['new_product_id']) ? (int)$data['new_product_id'] : null;
+        $newQty = $newProdId ? (float)($data['new_qty'] ?? 1) : 0.0;
+        $newPrice = $newProdId ? (float)($data['new_price'] ?? 0) : 0.0;
+
+        if (!$vendaId) {
+            echo json_encode(['success' => false, 'error' => 'ID da venda nao fornecido.']);
+            exit;
+        }
+
+        if (!is_array($rawItems) || count($rawItems) === 0) {
+            if (!empty($data['item_id'])) {
+                $rawItems = [[
+                    'item_id' => $data['item_id'],
+                    'return_qty' => $data['return_qty'] ?? null,
+                ]];
+            }
+        }
+
+        $returnItems = [];
+        foreach ($rawItems as $rawItem) {
+            if (!is_array($rawItem)) continue;
+            $itemId = (int)($rawItem['item_id'] ?? 0);
+            $returnQty = isset($rawItem['return_qty']) ? (float)$rawItem['return_qty'] : 0;
+            if ($itemId <= 0 || $returnQty <= 0) continue;
+            if (!isset($returnItems[$itemId])) {
+                $returnItems[$itemId] = 0.0;
+            }
+            $returnItems[$itemId] += $returnQty;
+        }
+
+        if (count($returnItems) === 0) {
+            echo json_encode(['success' => false, 'error' => 'Selecione ao menos um item para devolver.']);
+            exit;
+        }
+
+        if ($newProdId && ($newQty <= 0 || $newPrice < 0)) {
+            echo json_encode(['success' => false, 'error' => 'Quantidade ou preco do novo produto invalido.']);
+            exit;
+        }
+
+        $db = \App\Config\Database::getInstance()->getConnection();
+        $productModel = new Product();
+        $saleModel = new Sale();
+
+        try {
+            $db->beginTransaction();
+
+            $sale = $saleModel->findById($vendaId);
+            if (!$sale) throw new \Exception('Venda nao encontrada.');
+            if (($sale['status'] ?? '') === 'cancelado') {
+                throw new \Exception('Nao e possivel devolver itens de venda cancelada.');
+            }
+
+            $returnedRows = [];
+            $totalReturned = 0.0;
+
+            foreach ($returnItems as $itemId => $returnQty) {
+                $stmtItem = $db->prepare("SELECT * FROM vendas_itens WHERE id = ? AND venda_id = ? FOR UPDATE");
+                $stmtItem->execute([$itemId, $vendaId]);
+                $oldItem = $stmtItem->fetch(\PDO::FETCH_ASSOC);
+                if (!$oldItem) {
+                    throw new \Exception("Item #{$itemId} nao encontrado nesta venda.");
+                }
+
+                $oldQty = (float)$oldItem['quantidade'];
+                if ($returnQty > $oldQty + 0.0001) {
+                    throw new \Exception("Quantidade devolvida do item #{$itemId} nao pode passar da vendida.");
+                }
+
+                $oldPrice = (float)$oldItem['preco_unitario'];
+                $lineReturnedTotal = round($returnQty * $oldPrice, 2);
+                $totalReturned += $lineReturnedTotal;
+
+                $productModel->updateStock($oldItem['produto_id'], $returnQty, 'entrada', $sale['filial_id']);
+
+                if (abs($returnQty - $oldQty) <= 0.0001) {
+                    $db->prepare("DELETE FROM vendas_itens WHERE id = ? AND venda_id = ?")->execute([$itemId, $vendaId]);
+                } else {
+                    $remainingQty = round($oldQty - $returnQty, 3);
+                    $db->prepare("UPDATE vendas_itens SET quantidade = ? WHERE id = ? AND venda_id = ?")->execute([$remainingQty, $itemId, $vendaId]);
+                }
+
+                $returnedRows[] = [
+                    'item_id' => $itemId,
+                    'produto_id' => (int)$oldItem['produto_id'],
+                    'return_qty' => $returnQty,
+                    'old_price' => $oldPrice,
+                ];
+            }
+
+            $stmtCols = $db->query("DESCRIBE vendas_itens");
+            $existingCols = array_column($stmtCols->fetchAll(\PDO::FETCH_ASSOC), 'Field');
+
+            $newProd = null;
+            if ($newProdId) {
+                if (!$productModel->hasEnoughStock($newProdId, $newQty, $sale['filial_id'])) {
+                    throw new \Exception('Estoque insuficiente para o novo produto.');
+                }
+
+                $stmtProd = $db->prepare("SELECT * FROM produtos WHERE id = ? LIMIT 1");
+                $stmtProd->execute([$newProdId]);
+                $newProd = $stmtProd->fetch(\PDO::FETCH_ASSOC);
+                if (!$newProd) throw new \Exception('Novo produto nao encontrado.');
+
+                $productModel->updateStock($newProdId, $newQty, 'saida', $sale['filial_id']);
+
+                $newItemData = [
+                    'venda_id' => $vendaId,
+                    'produto_id' => $newProdId,
+                    'quantidade' => $newQty,
+                    'preco_unitario' => $newPrice,
+                ];
+
+                foreach (['preco_tier', 'valor_comissao', 'comissao_percentual_aplicado'] as $col) {
+                    if (in_array($col, $existingCols, true)) {
+                        $newItemData[$col] = $col === 'preco_tier' ? 1 : 0;
+                    }
+                }
+
+                foreach (['ncm', 'cean', 'cest', 'cfop', 'origem', 'csosn', 'unidade'] as $col) {
+                    if (in_array($col, $existingCols, true)) {
+                        $newItemData[$col] = $newProd[$col] ?? null;
+                    }
+                }
+
+                $cols = array_keys($newItemData);
+                $placeholders = implode(', ', array_fill(0, count($cols), '?'));
+                $db->prepare("INSERT INTO vendas_itens (" . implode(', ', $cols) . ") VALUES ($placeholders)")
+                   ->execute(array_values($newItemData));
+            }
+
+            $stmtTotal = $db->prepare("SELECT COALESCE(SUM(quantidade * preco_unitario), 0) FROM vendas_itens WHERE venda_id = ?");
+            $stmtTotal->execute([$vendaId]);
+            $newTotalItems = round((float)$stmtTotal->fetchColumn(), 2);
+            $currentDiscount = (float)($sale['desconto_total'] ?? 0);
+            $newDiscount = $newTotalItems <= 0.0001 ? 0.0 : min($currentDiscount, $newTotalItems);
+            $newTotalVenda = max(0, round($newTotalItems - $newDiscount, 2));
+            $newStatus = $newTotalItems <= 0.0001 ? 'cancelado' : 'concluido';
+
+            $db->prepare("UPDATE vendas SET valor_total = ?, desconto_total = ?, status = ? WHERE id = ?")
+               ->execute([$newTotalVenda, $newDiscount, $newStatus, $vendaId]);
+
+            $diff = round($newTotalVenda - (float)$sale['valor_total'], 2);
+            $stmtCr = $db->prepare("SELECT * FROM contas_receber WHERE venda_id = ? LIMIT 1 FOR UPDATE");
+            $stmtCr->execute([$vendaId]);
+            $receivable = $stmtCr->fetch(\PDO::FETCH_ASSOC);
+
+            if ($receivable) {
+                $novoValor = max(0, round((float)$receivable['valor'] + $diff, 2));
+                $valorPago = (float)($receivable['valor_pago'] ?? 0);
+                $novoSaldo = max(0, round($novoValor - $valorPago, 2));
+                $novoStatus = $novoSaldo <= 0.009 ? 'pago' : 'pendente';
+                $db->prepare("UPDATE contas_receber SET valor = ?, saldo = ?, status = ? WHERE id = ?")
+                   ->execute([$novoValor, $novoSaldo, $novoStatus, $receivable['id']]);
+            } elseif (abs($diff) > 0.009 && $sale['forma_pagamento'] !== 'fiado') {
+                $cashierModel = new \App\Models\Cashier();
+                $caixaAberto = $cashierModel->getOpenForFilial($sale['filial_id']);
+                if ($caixaAberto) {
+                    $movementModel = new \App\Models\CashierMovement();
+                    $movementModel->create([
+                        'caixa_id' => $caixaAberto['id'],
+                        'tipo' => $diff > 0 ? 'entrada' : 'saida',
+                        'valor' => abs($diff),
+                        'motivo' => ($newProdId ? "Ajuste Troca Venda #{$vendaId}" : "Devolucao Parcial Venda #{$vendaId}"),
+                        'operador_id' => $_SESSION['usuario_id']
+                    ]);
+                }
+            }
+
+            $trocaCols = $this->ensureExchangeTrackingColumns($db);
+            $grupoTroca = date('YmdHis') . '-' . (int)$vendaId . '-' . bin2hex(random_bytes(3));
+            $exchangeId = null;
+
+            foreach ($returnedRows as $idx => $row) {
+                $recordNewProdId = $newProdId ?: $row['produto_id'];
+                $recordNewQty = ($idx === 0 && $newProdId) ? $newQty : 0;
+                $recordNewPrice = ($idx === 0 && $newProdId) ? $newPrice : 0;
+                $recordDiff = $idx === 0 ? $diff : 0;
+
+                $cols = [
+                    'venda_id' => $vendaId,
+                    'item_original_id' => $row['item_id'],
+                    'produto_original_id' => $row['produto_id'],
+                    'quantidade_original' => $row['return_qty'],
+                    'preco_original' => $row['old_price'],
+                    'produto_novo_id' => $recordNewProdId,
+                    'quantidade_nova' => $recordNewQty,
+                    'preco_novo' => $recordNewPrice,
+                    'diferenca_valor' => $recordDiff,
+                    'usuario_id' => (int)($_SESSION['usuario_id'] ?? 0),
+                ];
+
+                if (in_array('grupo_troca', $trocaCols, true)) {
+                    $cols = ['grupo_troca' => $grupoTroca] + $cols;
+                }
+                if (in_array('tipo', $trocaCols, true)) {
+                    $before = array_slice($cols, 0, in_array('grupo_troca', array_keys($cols), true) ? 1 : 0, true);
+                    $after = array_slice($cols, count($before), null, true);
+                    $cols = $before + ['tipo' => $newProdId ? 'troca' : 'devolucao'] + $after;
+                }
+
+                $placeholders = implode(', ', array_fill(0, count($cols), '?'));
+                $db->prepare("INSERT INTO trocas (" . implode(', ', array_keys($cols)) . ") VALUES ($placeholders)")
+                   ->execute(array_values($cols));
+
+                if ($exchangeId === null) {
+                    $exchangeId = $db->lastInsertId();
+                }
+            }
+
+            $audit = new \App\Services\AuditLogService();
+            $audit->record(
+                $newProdId ? 'Troca de itens em venda' : 'Devolucao de itens em venda',
+                'vendas',
+                $vendaId,
+                null,
+                json_encode([
+                    'itens_devolvidos' => count($returnedRows),
+                    'total_devolvido' => round($totalReturned, 2),
+                    'novo_produto_id' => $newProdId,
+                    'diferenca' => $diff,
+                ])
+            );
+
+            $db->commit();
+            echo json_encode([
+                'success' => true,
+                'exchange_id' => $exchangeId,
+                'diferenca_valor' => $diff,
+                'novo_total_venda' => $newTotalVenda,
+                'tipo' => $newProdId ? 'troca' : 'devolucao',
+            ]);
+        } catch (\Throwable $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    private function ensureExchangeTrackingColumns(\PDO $db): array {
+        $cols = array_column($db->query("DESCRIBE trocas")->fetchAll(\PDO::FETCH_ASSOC), 'Field');
+
+        if (!in_array('grupo_troca', $cols, true)) {
+            try {
+                $db->exec("ALTER TABLE trocas ADD COLUMN grupo_troca VARCHAR(40) NULL AFTER id");
+                $cols[] = 'grupo_troca';
+            } catch (\Throwable $e) {}
+        }
+
+        if (!in_array('tipo', $cols, true)) {
+            try {
+                $after = in_array('grupo_troca', $cols, true) ? 'grupo_troca' : 'id';
+                $db->exec("ALTER TABLE trocas ADD COLUMN tipo VARCHAR(20) DEFAULT 'troca' AFTER {$after}");
+                $cols[] = 'tipo';
+            } catch (\Throwable $e) {}
+        }
+
+        return $cols;
     }
 
     public function issue_nfce() {
