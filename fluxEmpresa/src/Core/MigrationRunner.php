@@ -164,7 +164,7 @@ final class MigrationRunner
 
     public static function supportsVersion(int $version): bool
     {
-        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25], true);
+        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30], true);
     }
 
     private function acquireLock(string $name, int $waitSeconds): bool
@@ -410,6 +410,32 @@ final class MigrationRunner
                     ['empresa_integracoes', 'uk_empresa_integracao_externa'],
                 ]),
             25 => $this->migrationTwentyFiveSatisfied(),
+            26 => $this->columnTypeContains(
+                'ordem_servico_finalizacoes',
+                'status_origem',
+                "'aguardando_agendamento'"
+            ),
+            27 => $this->allTables([
+                'integracao_so_aquisicoes',
+                'integracao_outbox',
+            ]),
+            28 => $this->allColumns('ordens_servico', [
+                'aprovacao_status',
+                'aprovada_em',
+                'aprovada_por',
+                'rejeitada_em',
+                'rejeitada_por',
+                'motivo_rejeicao',
+            ]),
+            29 => $this->allIndexes([
+                ['ordens_servico', 'idx_os_empresa_aprovacao'],
+                ['ordens_servico', 'idx_os_aprovada_por'],
+                ['ordens_servico', 'idx_os_rejeitada_por'],
+            ]) && $this->allForeignKeys([
+                'fk_os_aprovada_por',
+                'fk_os_rejeitada_por',
+            ]),
+            30 => $this->permissionSatisfied('so_aquisicao.importar'),
             default => null,
         };
     }

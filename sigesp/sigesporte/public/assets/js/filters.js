@@ -1,0 +1,1 @@
+document.querySelectorAll('[data-filter-toggle]').forEach(button=>button.addEventListener('click',()=>{const content=button.closest('[data-filter-bar]').querySelector('[data-filter-content]');const open=content.classList.toggle('is-open');button.setAttribute('aria-expanded',String(open))}));

@@ -1,0 +1,2 @@
+<?php use Sigesp\Core\View; ?>
+<div class="modal" id="<?= View::e($id ?? 'modal') ?>" role="dialog" aria-modal="true" aria-labelledby="<?= View::e(($id ?? 'modal') . '-title') ?>" hidden><div class="modal__backdrop" data-modal-close></div><section class="modal__panel"><header><h2 id="<?= View::e(($id ?? 'modal') . '-title') ?>"><?= View::e($title ?? 'Detalhes') ?></h2><button type="button" class="icon-button" data-modal-close aria-label="Fechar modal">×</button></header><div><?= $content ?? '' ?></div></section></div>

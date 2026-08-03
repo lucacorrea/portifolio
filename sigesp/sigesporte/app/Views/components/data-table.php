@@ -1,0 +1,2 @@
+<?php use Sigesp\Core\View; $columns = $columns ?? []; $rows = $rows ?? []; ?>
+<div class="data-table"><table><thead><tr><?php foreach ($columns as $column): ?><th scope="col"><?= View::e($column) ?></th><?php endforeach; ?></tr></thead><tbody><?php foreach ($rows as $row): ?><tr><?php foreach ($row as $cell): ?><td><?= $cell ?></td><?php endforeach; ?></tr><?php endforeach; ?></tbody></table></div>

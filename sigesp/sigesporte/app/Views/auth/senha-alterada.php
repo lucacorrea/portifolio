@@ -1,0 +1,1 @@
+<?php $title='Senha alterada'; ?><div class="auth-title"><h1>Senha alterada</h1><p>Sua senha foi atualizada. Agora você já pode acessar o SIGESP.</p></div><a class="button" style="margin-top:27px" href="/login">Entrar</a>

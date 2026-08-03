@@ -11,5 +11,11 @@ final class View
         if ($layout === '') return $content;
         ob_start(); require $base . $layout . '.php'; return (string) ob_get_clean();
     }
+    public static function component(string $component, array $data = []): void
+    {
+        $base = dirname(__DIR__, 2) . '/app/Views/components/';
+        extract($data, EXTR_SKIP);
+        require $base . $component . '.php';
+    }
     public static function e(string|int|float|null $value): string { return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 }

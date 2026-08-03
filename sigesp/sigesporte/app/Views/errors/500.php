@@ -1,0 +1,1 @@
+<?php use Sigesp\Core\View; $title = $title ?? 'Erro interno'; ?><section class="empty-state"><span class="empty-state__icon">!</span><h1>Não foi possível concluir esta solicitação</h1><p>Ocorreu um erro inesperado. Tente novamente em alguns instantes ou retorne ao painel.</p><a class="button" href="/dashboard">Voltar ao painel</a></section>

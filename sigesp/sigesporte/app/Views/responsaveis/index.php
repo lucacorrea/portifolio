@@ -1,0 +1,1 @@
+<?php use Sigesp\Core\{View}; use Sigesp\Shared\Presentation\DemoData; $page=DemoData::module('responsaveis'); $title=$page['title']; $pageId='responsaveis'; View::component('module-screen',['page'=>$page]);

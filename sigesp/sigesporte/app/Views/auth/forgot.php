@@ -1,1 +1,1 @@
-<div class="auth-title"><h2>Recuperar acesso</h2><p>Por segurança, a recuperação deve ser habilitada com o serviço de e-mail configurado.</p></div><a class="primary link-button" href="/login">Voltar para entrar</a>
+<?php $title = 'Recuperar acesso'; ?><div class="auth-title"><h1>Recuperar acesso</h1><p>Para proteger sua conta, a recuperação será disponibilizada quando o serviço institucional de e-mail estiver configurado.</p></div><div class="form" style="margin-top:27px"><a class="button" href="/login">Voltar para entrar</a></div>

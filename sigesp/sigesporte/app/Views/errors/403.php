@@ -1,1 +1,1 @@
-<?php $title=$title??'Acesso negado'; ?><section class="empty"><h1>Acesso negado</h1><p>Você não possui permissão para acessar este recurso.</p></section>
+<?php $title=$title??'Acesso negado'; ?><section class="empty-state"><span class="empty-state__icon" aria-hidden="true">!</span><h1>Acesso negado</h1><p>Você não possui permissão para acessar este recurso. Se precisar, solicite o acesso ao administrador do sistema.</p><a class="button" href="/dashboard">Voltar ao painel</a></section>

@@ -1,0 +1,2 @@
+<?php use Sigesp\Core\View; ?>
+<section class="empty-state"><span class="empty-state__icon" aria-hidden="true">⌁</span><h2><?= View::e($heading ?? 'Nenhum registro encontrado') ?></h2><p><?= View::e($message ?? 'Não há dados para exibir neste momento.') ?></p><?php if (!empty($actionLabel)): ?><a class="button" href="<?= View::e($actionHref ?? '#') ?>"><?= View::e($actionLabel) ?></a><?php endif; ?></section>
