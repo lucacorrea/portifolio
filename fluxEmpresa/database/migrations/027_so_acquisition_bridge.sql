@@ -1,32 +1,29 @@
--- =====================================================================
--- MIGRATION 027 — PONTE ENTRE FLUX EMPRESAS E AQUISIÇÕES DO SO
--- =====================================================================
--- Compatibilidade: MariaDB 10.4+
---
--- OBJETIVOS
---   1. Vincular orçamento, ordem de serviço e aquisição do SO.
---   2. Impedir duplicidade de aquisição e de ordem de serviço.
---   3. Identificar a direção e a origem de cada integração.
---   4. Criar uma outbox para comunicação segura com a API do SO.
---   5. Permitir reenvio em caso de indisponibilidade ou timeout.
---
--- ESTA MIGRATION NÃO:
---   - altera o banco do SO;
---   - cria aquisição no SO;
---   - executa chamada HTTP;
---   - altera orçamento ou ordem de serviço;
---   - envia dados automaticamente;
---   - apaga registros existentes.
--- =====================================================================
+/* =====================================================================
+ * MIGRATION 027 — PONTE FLUX EMPRESAS ↔ AQUISIÇÕES DO SO
+ * =====================================================================
+ *
+ * Compatibilidade:
+ *   MariaDB 10.4+
+ *
+ * Objetivos:
+ *   1. Vincular orçamento, ordem de serviço e aquisição do SO.
+ *   2. Impedir duplicidade de integrações e aquisições.
+ *   3. Registrar direção, origem, status, tentativas e erros.
+ *   4. Criar uma outbox para comunicação assíncrona e segura.
+ *   5. Corrigir instalações que receberam uma versão anterior.
+ *
+ * Observações:
+ *   - Não consulta information_schema.
+ *   - Não utiliza CHECK, evitando incompatibilidade no phpMyAdmin.
+ *   - Não apaga registros de integração já existentes.
+ * ===================================================================== */
 
 SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-SET FOREIGN_KEY_CHECKS = 1;
 
-
--- =====================================================================
--- 1. VÍNCULO CENTRAL ENTRE FLUX EMPRESAS E SO
--- =====================================================================
+/* =====================================================================
+ * 1. VÍNCULO CENTRAL ENTRE FLUX EMPRESAS E SO
+ * ===================================================================== */
 
 CREATE TABLE IF NOT EXISTS integracao_so_aquisicoes (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -34,36 +31,26 @@ CREATE TABLE IF NOT EXISTS integracao_so_aquisicoes (
     empresa_id INT UNSIGNED NOT NULL,
 
     /*
-     * Quando a aquisição nasceu da aprovação de um orçamento,
-     * orcamento_id será preenchido.
+     * Preenchido quando a aquisição nasceu da aprovação
+     * de um orçamento no Flux Empresas.
      */
     orcamento_id INT UNSIGNED NULL,
 
     /*
-     * Quando a aquisição nasceu de uma OS direta ou quando uma
-     * aquisição do SO foi convertida em OS, este campo será preenchido.
-     *
-     * Ao converter um orçamento em OS, a mesma integração deverá
-     * receber o ID da OS, sem criar outro registro.
+     * Preenchido quando:
+     * - a aquisição nasceu de uma OS direta;
+     * - uma OS foi criada a partir de orçamento;
+     * - uma aquisição existente no SO foi convertida em OS.
      */
     ordem_servico_id INT UNSIGNED NULL,
 
     /*
      * ID do fornecedor correspondente no banco do SO.
-     *
-     * Ele será obtido por meio de:
-     *
-     * empresa_integracoes
-     * sistema = SO
-     * entidade = fornecedor
      */
     fornecedor_so_id INT UNSIGNED NOT NULL,
 
     /*
-     * Dados retornados pelo SO.
-     *
-     * Permanecem NULL enquanto a aquisição ainda não foi criada
-     * ou enquanto a resposta da API não foi confirmada.
+     * Dados oficiais retornados pelo SO.
      */
     aquisicao_so_id INT UNSIGNED NULL,
     numero_aquisicao_so VARCHAR(50) NULL,
@@ -71,10 +58,10 @@ CREATE TABLE IF NOT EXISTS integracao_so_aquisicoes (
 
     /*
      * flux_para_so:
-     *   Orçamento ou OS criada no Flux gera aquisição no SO.
+     *   orçamento ou OS do Flux gera aquisição no SO.
      *
      * so_para_flux:
-     *   Aquisição existente no SO gera uma OS no Flux.
+     *   aquisição existente no SO gera OS no Flux.
      */
     direcao ENUM(
         'flux_para_so',
@@ -83,13 +70,13 @@ CREATE TABLE IF NOT EXISTS integracao_so_aquisicoes (
 
     /*
      * orcamento_flux:
-     *   A aquisição nasceu da aprovação de um orçamento.
+     *   integração originada de orçamento.
      *
      * os_flux:
-     *   A aquisição nasceu da aprovação de uma OS direta.
+     *   integração originada de OS direta.
      *
      * aquisicao_so:
-     *   A OS foi criada a partir de uma aquisição já existente no SO.
+     *   OS criada a partir de aquisição existente no SO.
      */
     origem ENUM(
         'orcamento_flux',
@@ -97,9 +84,6 @@ CREATE TABLE IF NOT EXISTS integracao_so_aquisicoes (
         'aquisicao_so'
     ) NOT NULL,
 
-    /*
-     * Situação da comunicação entre os sistemas.
-     */
     status_integracao ENUM(
         'pendente',
         'processando',
@@ -109,23 +93,20 @@ CREATE TABLE IF NOT EXISTS integracao_so_aquisicoes (
     ) NOT NULL DEFAULT 'pendente',
 
     /*
-     * Status original recebido do SO.
+     * Status recebido do SO.
      *
-     * Usamos VARCHAR porque os estados externos podem evoluir sem
-     * exigir alteração imediata no ENUM do banco do Flux.
+     * VARCHAR permite que os estados externos evoluam sem exigir
+     * alteração imediata do banco do Flux Empresas.
      */
     status_so VARCHAR(80) NULL,
 
     /*
-     * Hash SHA-256 exclusivo.
+     * SHA-256 da origem lógica.
      *
-     * Exemplos de origem antes do hash:
-     *
+     * Exemplos antes do hash:
      * fluxempresa:empresa:2:orcamento:45
      * fluxempresa:empresa:2:os:158
      * so:aquisicao:981
-     *
-     * O banco armazena somente o hash final com 64 caracteres.
      */
     chave_idempotencia CHAR(64)
         CHARACTER SET ascii
@@ -133,10 +114,7 @@ CREATE TABLE IF NOT EXISTS integracao_so_aquisicoes (
         NOT NULL,
 
     /*
-     * Hash SHA-256 do payload enviado ou recebido.
-     *
-     * Ajuda a detectar mudanças na aquisição externa sem depender
-     * apenas das datas.
+     * SHA-256 do payload normalizado.
      */
     payload_hash CHAR(64)
         CHARACTER SET ascii
@@ -144,15 +122,14 @@ CREATE TABLE IF NOT EXISTS integracao_so_aquisicoes (
         NULL,
 
     /*
-     * Snapshot do dado que originou a integração.
+     * JSON da operação que originou a integração.
      *
-     * Deve conter JSON válido criado com json_encode().
-     * Não armazenar senha, token, cookie ou segredo da API.
+     * Nunca armazenar senha, token, cookie ou segredo da API.
      */
     payload_snapshot LONGTEXT NULL,
 
     /*
-     * Última resposta sanitizada recebida da API do SO.
+     * Última resposta sanitizada recebida do SO.
      */
     resposta_snapshot LONGTEXT NULL,
 
@@ -164,7 +141,8 @@ CREATE TABLE IF NOT EXISTS integracao_so_aquisicoes (
 
     criado_por INT UNSIGNED NOT NULL,
 
-    criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    criado_em DATETIME NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
 
     atualizado_em DATETIME NOT NULL
         DEFAULT CURRENT_TIMESTAMP
@@ -176,7 +154,7 @@ CREATE TABLE IF NOT EXISTS integracao_so_aquisicoes (
     PRIMARY KEY (id),
 
     /*
-     * Uma mesma chave técnica nunca poderá criar duas integrações.
+     * A mesma operação lógica não pode ser registrada duas vezes.
      */
     UNIQUE KEY uk_integracao_so_idempotencia (
         chave_idempotencia
@@ -184,9 +162,6 @@ CREATE TABLE IF NOT EXISTS integracao_so_aquisicoes (
 
     /*
      * Um orçamento pode possuir somente uma aquisição do SO.
-     *
-     * Como orcamento_id aceita NULL, outras origens continuam
-     * permitidas normalmente.
      */
     UNIQUE KEY uk_integracao_so_orcamento (
         empresa_id,
@@ -194,7 +169,7 @@ CREATE TABLE IF NOT EXISTS integracao_so_aquisicoes (
     ),
 
     /*
-     * Uma OS pode possuir somente uma aquisição do SO.
+     * Uma OS pode possuir somente uma aquisição vinculada.
      */
     UNIQUE KEY uk_integracao_so_ordem_servico (
         empresa_id,
@@ -202,14 +177,14 @@ CREATE TABLE IF NOT EXISTS integracao_so_aquisicoes (
     ),
 
     /*
-     * Uma aquisição do SO pode gerar somente uma integração no Flux.
+     * Uma aquisição externa não pode gerar duas integrações.
      */
     UNIQUE KEY uk_integracao_so_aquisicao_externa (
         aquisicao_so_id
     ),
 
     /*
-     * O número também é único no SO, quando já estiver disponível.
+     * O número oficial retornado pelo SO não pode se repetir.
      */
     UNIQUE KEY uk_integracao_so_numero_externo (
         numero_aquisicao_so
@@ -259,104 +234,42 @@ CREATE TABLE IF NOT EXISTS integracao_so_aquisicoes (
         FOREIGN KEY (criado_por)
         REFERENCES usuarios(id)
         ON UPDATE CASCADE
-        ON DELETE RESTRICT,
-
-    /*
-     * Deve existir pelo menos uma referência de origem.
-     */
-    CONSTRAINT ck_integracao_so_referencia
-        CHECK (
-            orcamento_id IS NOT NULL
-            OR ordem_servico_id IS NOT NULL
-            OR aquisicao_so_id IS NOT NULL
-        ),
-
-    /*
-     * Orçamento do Flux exige orçamento vinculado.
-     */
-    CONSTRAINT ck_integracao_so_origem_orcamento
-        CHECK (
-            origem <> 'orcamento_flux'
-            OR orcamento_id IS NOT NULL
-        ),
-
-    /*
-     * OS direta exige ordem de serviço vinculada.
-     */
-    CONSTRAINT ck_integracao_so_origem_os
-        CHECK (
-            origem <> 'os_flux'
-            OR ordem_servico_id IS NOT NULL
-        ),
-
-    /*
-     * Importação do SO exige aquisição externa.
-     */
-    CONSTRAINT ck_integracao_so_origem_aquisicao
-        CHECK (
-            origem <> 'aquisicao_so'
-            OR aquisicao_so_id IS NOT NULL
-        ),
-
-    /*
-     * Flux → SO precisa partir de orçamento ou OS.
-     */
-    CONSTRAINT ck_integracao_so_direcao_saida
-        CHECK (
-            direcao <> 'flux_para_so'
-            OR (
-                orcamento_id IS NOT NULL
-                OR ordem_servico_id IS NOT NULL
-            )
-        ),
-
-    /*
-     * SO → Flux precisa possuir aquisição externa.
-     */
-    CONSTRAINT ck_integracao_so_direcao_entrada
-        CHECK (
-            direcao <> 'so_para_flux'
-            OR aquisicao_so_id IS NOT NULL
-        )
+        ON DELETE RESTRICT
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci;
 
 
--- =====================================================================
--- 2. OUTBOX — FILA SEGURA DE COMUNICAÇÃO COM O SO
--- =====================================================================
--- A outbox impede que a aprovação de um orçamento ou OS dependa da
--- disponibilidade imediata da API.
---
--- A transação local fará:
---
---   1. aprovar orçamento ou OS;
---   2. criar integracao_so_aquisicoes;
---   3. criar integracao_outbox;
---   4. COMMIT.
---
--- Depois do COMMIT, outro processo envia o evento ao SO.
--- =====================================================================
+/* =====================================================================
+ * 2. OUTBOX — FILA SEGURA DE COMUNICAÇÃO COM O SO
+ * =====================================================================
+ *
+ * Na mesma transação local:
+ *
+ *   1. aprova orçamento ou OS;
+ *   2. cria integracao_so_aquisicoes;
+ *   3. cria integracao_outbox;
+ *   4. executa COMMIT.
+ *
+ * Depois do COMMIT, um worker envia o evento ao SO.
+ * ===================================================================== */
 
 CREATE TABLE IF NOT EXISTS integracao_outbox (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 
     empresa_id INT UNSIGNED NOT NULL,
+
     integracao_id BIGINT UNSIGNED NOT NULL,
 
     /*
-     * Exemplos:
-     *
+     * Eventos iniciais:
      * so.aquisicao.criar
      * so.aquisicao.consultar
-     * so.aquisicao.atualizar_status
      */
     evento VARCHAR(100) NOT NULL,
 
     /*
-     * Deve ser a mesma chave lógica enviada no cabeçalho ou payload
-     * da API do SO.
+     * Mesma chave lógica utilizada na integração e no SO.
      */
     chave_idempotencia CHAR(64)
         CHARACTER SET ascii
@@ -364,9 +277,7 @@ CREATE TABLE IF NOT EXISTS integracao_outbox (
         NOT NULL,
 
     /*
-     * Payload JSON completo que será enviado.
-     *
-     * Não guardar segredo, senha, token ou credencial.
+     * JSON completo que será enviado ao SO.
      */
     payload LONGTEXT NOT NULL,
 
@@ -378,22 +289,30 @@ CREATE TABLE IF NOT EXISTS integracao_outbox (
         'cancelado'
     ) NOT NULL DEFAULT 'pendente',
 
+    /*
+     * Menor valor representa maior prioridade.
+     * A aplicação utiliza valores entre 1 e 10.
+     */
+    prioridade TINYINT UNSIGNED NOT NULL DEFAULT 5,
+
     tentativas SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+
     max_tentativas SMALLINT UNSIGNED NOT NULL DEFAULT 10,
 
     /*
-     * Permite agendar tentativa futura com backoff.
+     * Data a partir da qual o evento poderá ser processado.
      */
-    disponivel_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    disponivel_em DATETIME NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
 
     /*
-     * Controle de concorrência do worker.
-     *
-     * Enquanto bloqueado_ate ainda estiver no futuro, outro worker
-     * não deve processar este evento.
+     * Lease temporário do worker.
      */
     bloqueado_ate DATETIME NULL,
 
+    /*
+     * SHA-256 aleatório que identifica o worker atual.
+     */
     worker_token CHAR(64)
         CHARACTER SET ascii
         COLLATE ascii_bin
@@ -403,7 +322,8 @@ CREATE TABLE IF NOT EXISTS integracao_outbox (
     ultimo_erro_mensagem VARCHAR(1000) NULL,
     ultimo_erro_em DATETIME NULL,
 
-    criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    criado_em DATETIME NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
 
     atualizado_em DATETIME NOT NULL
         DEFAULT CURRENT_TIMESTAMP
@@ -415,16 +335,34 @@ CREATE TABLE IF NOT EXISTS integracao_outbox (
     PRIMARY KEY (id),
 
     /*
-     * A mesma operação não pode entrar duas vezes na fila.
+     * A mesma chave pode participar de eventos diferentes,
+     * mas o mesmo evento não pode ser duplicado.
      */
-    UNIQUE KEY uk_integracao_outbox_idempotencia (
+    UNIQUE KEY uk_integracao_outbox_evento_chave (
+        evento,
         chave_idempotencia
     ),
 
+    /*
+     * Índice principal do worker.
+     */
     KEY idx_integracao_outbox_processamento (
         status,
         disponivel_em,
-        bloqueado_ate
+        bloqueado_ate,
+        prioridade
+    ),
+
+    /*
+     * Índice adicional otimizado para processamento por empresa.
+     */
+    KEY idx_integracao_outbox_empresa_fila (
+        empresa_id,
+        evento,
+        status,
+        disponivel_em,
+        prioridade,
+        id
     ),
 
     KEY idx_integracao_outbox_integracao (
@@ -453,76 +391,84 @@ CREATE TABLE IF NOT EXISTS integracao_outbox (
         FOREIGN KEY (integracao_id)
         REFERENCES integracao_so_aquisicoes(id)
         ON UPDATE CASCADE
-        ON DELETE RESTRICT,
-
-    CONSTRAINT ck_integracao_outbox_tentativas
-        CHECK (
-            tentativas <= max_tentativas
-        ),
-
-    CONSTRAINT ck_integracao_outbox_processado
-        CHECK (
-            status <> 'processado'
-            OR processado_em IS NOT NULL
-        )
+        ON DELETE RESTRICT
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci;
 
 
--- =====================================================================
--- 3. VERIFICAÇÃO DA ESTRUTURA
--- =====================================================================
+/* =====================================================================
+ * 3. REPARO DE INSTALAÇÕES QUE RECEBERAM VERSÃO ANTERIOR
+ * =====================================================================
+ *
+ * CREATE TABLE IF NOT EXISTS não altera tabelas já existentes.
+ * Os comandos seguintes alinham instalações antigas sem apagar dados.
+ * ===================================================================== */
 
-SELECT
-    TABLE_NAME,
-    ENGINE,
-    TABLE_COLLATION
-FROM information_schema.TABLES
-WHERE TABLE_SCHEMA = DATABASE()
-  AND TABLE_NAME IN (
-      'integracao_so_aquisicoes',
-      'integracao_outbox'
-  )
-ORDER BY TABLE_NAME;
-
-
-SELECT
-    TABLE_NAME,
-    COLUMN_NAME,
-    COLUMN_TYPE,
-    IS_NULLABLE,
-    COLUMN_KEY
-FROM information_schema.COLUMNS
-WHERE TABLE_SCHEMA = DATABASE()
-  AND TABLE_NAME IN (
-      'integracao_so_aquisicoes',
-      'integracao_outbox'
-  )
-ORDER BY
-    TABLE_NAME,
-    ORDINAL_POSITION;
+/*
+ * Adiciona prioridade caso ainda não exista.
+ */
+ALTER TABLE integracao_outbox
+    ADD COLUMN IF NOT EXISTS prioridade
+        TINYINT UNSIGNED NOT NULL DEFAULT 5
+        AFTER status;
 
 
-SELECT
-    TABLE_NAME,
-    INDEX_NAME,
-    NON_UNIQUE,
-    GROUP_CONCAT(
-        COLUMN_NAME
-        ORDER BY SEQ_IN_INDEX
-        SEPARATOR ', '
-    ) AS colunas
-FROM information_schema.STATISTICS
-WHERE TABLE_SCHEMA = DATABASE()
-  AND TABLE_NAME IN (
-      'integracao_so_aquisicoes',
-      'integracao_outbox'
-  )
-GROUP BY
-    TABLE_NAME,
-    INDEX_NAME,
-    NON_UNIQUE
-ORDER BY
-    TABLE_NAME,
-    INDEX_NAME;
+/*
+ * Remove o índice único antigo, que não considerava o evento.
+ */
+DROP INDEX IF EXISTS
+    uk_integracao_outbox_idempotencia
+ON integracao_outbox;
+
+
+/*
+ * Garante o índice único correto.
+ */
+CREATE UNIQUE INDEX IF NOT EXISTS
+    uk_integracao_outbox_evento_chave
+ON integracao_outbox (
+    evento,
+    chave_idempotencia
+);
+
+
+/*
+ * Recria o índice principal de processamento incluindo prioridade.
+ */
+DROP INDEX IF EXISTS
+    idx_integracao_outbox_processamento
+ON integracao_outbox;
+
+CREATE INDEX IF NOT EXISTS
+    idx_integracao_outbox_processamento
+ON integracao_outbox (
+    status,
+    disponivel_em,
+    bloqueado_ate,
+    prioridade
+);
+
+
+/*
+ * Índice otimizado para o worker filtrar por empresa e evento.
+ */
+CREATE INDEX IF NOT EXISTS
+    idx_integracao_outbox_empresa_fila
+ON integracao_outbox (
+    empresa_id,
+    evento,
+    status,
+    disponivel_em,
+    prioridade,
+    id
+);
+
+
+/*
+ * Normaliza prioridades antigas ou inválidas.
+ */
+UPDATE integracao_outbox
+SET prioridade = 5
+WHERE prioridade < 1
+   OR prioridade > 10;
