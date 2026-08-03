@@ -14,9 +14,22 @@ try {
     $acquisitionId = filter_var($_POST['aquisicao_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
     $clientId = filter_var($_POST['cliente_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
     if ($companyId <= 0 || !is_int($acquisitionId) || !is_int($clientId)) throw new InvalidArgumentException('Revise os dados da conversão.');
-    if ($application->companyScope()->id() !== $companyId) throw new InvalidArgumentException('Entre no painel da empresa antes de criar a OS.');
     $detail = $application->soAcquisitionBrowser()->details($companyId, $acquisitionId);
     if ($detail === null) throw new InvalidArgumentException('Aquisição não encontrada para o fornecedor vinculado.');
+    $activeCompany = $application->activeCompanyContext()->current();
+    if ($activeCompany === null || $activeCompany->id !== $companyId) {
+        $session->regenerateId();
+        $application->adminAccesses()->enter(
+            $detail['company'],
+            $currentUser->id(),
+            (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
+            (string) ($_SERVER['HTTP_USER_AGENT'] ?? ''),
+            'Importação administrativa de aquisição do SO',
+            $currentUser->sessionBindingHash(),
+            $application->activeCompanyContext()
+        );
+    }
+    if ($application->companyScope()->id() !== $companyId) throw new InvalidArgumentException('Não foi possível ativar o contexto da empresa.');
     if ($application->soAcquisitionIntegrations()->findByExternalAcquisition($acquisitionId) !== null) throw new InvalidArgumentException('Esta aquisição já possui uma OS vinculada.');
     $acquisition = $detail['acquisition']; $items = [];
     foreach ($detail['items'] as $item) $items[] = ['type' => 'outro', 'origin' => 'manual', 'description' => (string) $item['produto'], 'unit' => 'un', 'quantity' => (string) $item['quantidade'], 'unit_price' => (string) $item['valor_unitario'], 'discount' => '0'];
