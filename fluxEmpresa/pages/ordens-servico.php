@@ -50,6 +50,14 @@ $filters = [
 
 $orders = $orderService->listOrders($filters);
 $teamsByOrder = $orderService->teamMembersForOrders($orders);
+$listedOrderIds = array_values(array_unique(array_map(
+    static fn(ServiceOrder $order): int => $order->id(),
+    $orders
+)));
+$soImportedOrderIds = array_fill_keys(
+    $application->soAcquisitionIntegrations()->findImportedServiceOrderIds($listedOrderIds),
+    true
+);
 $summary = $orderService->orderSummary();
 $clients = $clientService->listClients();
 $employees = $employeeService->listEmployees();
@@ -160,11 +168,6 @@ function os_location(ServiceOrder $order): string
     ], static fn(?string $value): bool => $value !== null && $value !== '')));
 
     return $order->equipmentLocation() ?: ($address !== '' ? $address : 'Nao informado');
-}
-
-function os_is_so_imported(ServiceOrder $order): bool
-{
-    return str_starts_with(trim((string) $order->reportedProblem()), 'Importada do SO.');
 }
 
 function os_schedule_cell(ServiceOrder $order): string
@@ -281,7 +284,7 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                 <thead><tr><th>OS</th><th>Cliente</th><th>Contato</th><th>Local</th><th>Funcionarios</th><th>Data do servico</th><?php if ($canViewValues): ?><th>Valor total</th><?php endif; ?><th>Status</th><th>Acoes</th></tr></thead>
                 <tbody>
                 <?php foreach ($orders as $order): ?>
-                    <?php $team = $teamsByOrder[$order->id()] ?? []; $contactPhone = os_contact_phone($order); $whatsappUrl = os_whatsapp_url($order); $orderPayments = $paymentsByOrder[$order->id()] ?? []; $receivable = $receivableBalances[$order->id()] ?? null; $isOrderPaid = is_array($receivable) && (string) ($receivable['status'] ?? '') === 'paga'; $isSoImported = os_is_so_imported($order); ?>
+                    <?php $team = $teamsByOrder[$order->id()] ?? []; $contactPhone = os_contact_phone($order); $whatsappUrl = os_whatsapp_url($order); $orderPayments = $paymentsByOrder[$order->id()] ?? []; $receivable = $receivableBalances[$order->id()] ?? null; $isOrderPaid = is_array($receivable) && (string) ($receivable['status'] ?? '') === 'paga'; $isSoImported = isset($soImportedOrderIds[$order->id()]); ?>
                     <tr>
                         <td>
                             <strong><?= h($order->displayNumber()) ?></strong>

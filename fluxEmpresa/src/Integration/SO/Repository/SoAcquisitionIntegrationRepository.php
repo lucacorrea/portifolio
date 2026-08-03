@@ -909,6 +909,53 @@ final class SoAcquisitionIntegrationRepository
     }
 
     /**
+     * @param int[] $serviceOrderIds
+     *
+     * @return int[]
+     */
+    public function findImportedServiceOrderIds(
+        array $serviceOrderIds
+    ): array {
+        $serviceOrderIds = array_values(array_unique(array_map(
+            static fn(mixed $serviceOrderId): int => (int) $serviceOrderId,
+            $serviceOrderIds
+        )));
+        $serviceOrderIds = array_values(array_filter(
+            $serviceOrderIds,
+            static fn(int $serviceOrderId): bool => $serviceOrderId > 0
+        ));
+
+        if ($serviceOrderIds === []) {
+            return [];
+        }
+
+        $placeholders = [];
+        $parameters = [
+            'empresa_id' => $this->companyScope->id(),
+        ];
+        foreach ($serviceOrderIds as $index => $serviceOrderId) {
+            $parameter = 'ordem_servico_id_' . $index;
+            $placeholders[] = ':' . $parameter;
+            $parameters[$parameter] = $serviceOrderId;
+        }
+
+        $statement = $this->connection->prepare(
+            "SELECT ordem_servico_id
+               FROM integracao_so_aquisicoes
+              WHERE empresa_id = :empresa_id
+                AND ordem_servico_id IN (" . implode(', ', $placeholders) . ")
+                AND direcao = 'so_para_flux'
+                AND origem = 'aquisicao_so'"
+        );
+        $statement->execute($parameters);
+
+        return array_map(
+            static fn(mixed $serviceOrderId): int => (int) $serviceOrderId,
+            $statement->fetchAll(PDO::FETCH_COLUMN)
+        );
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     public function findByExternalAcquisition(

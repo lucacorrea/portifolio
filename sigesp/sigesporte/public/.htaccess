@@ -5,6 +5,9 @@ DirectoryIndex index.php
 RewriteEngine On
 RewriteBase /sigesp/
 
+# Defesa obrigatória para a topologia alternativa dentro da pasta pública.
+RewriteRule ^app-private(?:/|$) - [F,L,NC]
+
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^ index.php [QSA,L]

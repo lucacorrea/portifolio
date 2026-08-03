@@ -104,6 +104,8 @@ $receiptSource = file_get_contents(dirname(__DIR__) . '/src/Finance/Service/Rece
 $accountsSource = file_get_contents(dirname(__DIR__) . '/src/Finance/Service/AccountsReceivableManagementService.php');
 $orderRepositorySource = file_get_contents(dirname(__DIR__) . '/src/ServiceOrder/Repository/ServiceOrderRepository.php');
 $orderManagementSource = file_get_contents(dirname(__DIR__) . '/src/ServiceOrder/Service/ServiceOrderManagementService.php');
+$finalizationServiceSource = file_get_contents(dirname(__DIR__) . '/src/ServiceOrder/Service/ServiceOrderFinalizationService.php');
+$soIntegrationRepositorySource = file_get_contents(dirname(__DIR__) . '/src/Integration/SO/Repository/SoAcquisitionIntegrationRepository.php');
 $paymentPageSource = file_get_contents(dirname(__DIR__) . '/pages/ordens-servico.php');
 $paymentScriptSource = file_get_contents(dirname(__DIR__) . '/assets/js/ordens-servico-pagamento.js');
 $orderScriptSource = file_get_contents(dirname(__DIR__) . '/assets/js/ordens-servico.js');
@@ -121,6 +123,17 @@ financialFlowAssert(is_string($importedFinalizationAction), 'Action de finaliza�
 financialFlowAssert(str_contains((string) $importedFinalizationAction, "['servico', 'outro']"), 'Importação deve aceitar somente serviço ou peça/insumo externo na revisão.');
 financialFlowAssert(str_contains((string) $importedFinalizationAction, "'Classifique todos os itens"), 'Importação deve exigir classificação de cada item antes da finalização.');
 financialFlowAssert(str_contains((string) $importedFinalizationAction, 'os_store_post_completion_payment_prompt'), 'Importação finalizada também deve perguntar sobre o pagamento.');
+financialFlowAssert(str_contains((string) $importedFinalizationAction, "empresa_id = :company_id"), 'Finalização importada deve validar o vínculo na empresa atual.');
+financialFlowAssert(str_contains((string) $importedFinalizationAction, "direcao = 'so_para_flux'"), 'Finalização importada deve exigir direção oficial do SO para o Flux.');
+financialFlowAssert(str_contains((string) $importedFinalizationAction, "origem = 'aquisicao_so'"), 'Finalização importada deve exigir origem oficial de aquisição do SO.');
+financialFlowAssert(str_contains((string) $importedFinalizationAction, 'finalizeImportedAcquisition'), 'Action importada deve usar exclusivamente a finalização especial.');
+financialFlowAssert(is_string($soIntegrationRepositorySource) && str_contains($soIntegrationRepositorySource, 'findImportedServiceOrderIds'), 'Lista de OS deve identificar importações pelo repositório oficial.');
+financialFlowAssert(str_contains((string) $soIntegrationRepositorySource, "empresa_id = :empresa_id"), 'Consulta em lote das importações deve preservar o tenant.');
+financialFlowAssert(str_contains((string) $paymentPageSource, 'findImportedServiceOrderIds($listedOrderIds)'), 'Página deve consultar em lote os vínculos oficiais das OS listadas.');
+financialFlowAssert(!str_contains((string) $paymentPageSource, "'Importada do SO.'"), 'Origem SO não pode ser inferida pelo texto livre do problema relatado.');
+financialFlowAssert(str_contains((string) $paymentPageSource, "\$canFinalize && \$isSoImported && \$order->status() === 'aguardando_agendamento'"), 'Somente OS oficialmente importada e aguardando agendamento deve receber a ação especial.');
+financialFlowAssert(str_contains((string) $paymentPageSource, "in_array(\$order->status(), ['agendada','em_execucao','aguardando_peca'], true)"), 'Finalização comum deve continuar sem bypass para aguardando agendamento.');
+financialFlowAssert(is_string($finalizationServiceSource) && str_contains($finalizationServiceSource, "finalizeOrder(\$orderId, \$data, \$userId, ['aguardando_agendamento'])"), 'Serviço deve permitir aguardando agendamento apenas na finalização importada.');
 financialFlowAssert(str_contains((string) $paymentPageSource, 'modal-os-finalize-import'), 'OS importada deve abrir a revisão antes da finalização.');
 financialFlowAssert(!str_contains((string) $paymentPageSource, 'name="execution_items[0][description]"'), 'Modal rápida não deve pedir o serviço executado novamente.');
 financialFlowAssert(str_contains((string) $paymentPageSource, 'id="os-finalize-total"'), 'Modal rápida deve exibir o valor aprovado da OS.');

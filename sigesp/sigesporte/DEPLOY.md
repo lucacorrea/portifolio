@@ -34,7 +34,7 @@ Mantenha o código privado fora de `public_html` e publique somente o conteúdo 
 
 Copie `public/index.php`, `public/.htaccess` e `public/assets/` para `public_html/sigesp/`. O `index.php` procura primeiro a estrutura do repositório, depois `/home/USUARIO/apps/sigesporte` e, como alternativa, `app-private` dentro da pasta pública.
 
-Se a hospedagem obrigar a manter o projeto em `public_html/sigesp/app-private`, adicione `app-private/.htaccess` com `Require all denied` e confirme por HTTP que `.env`, `app`, `bootstrap`, `config`, `database`, `routes`, `storage` e `vendor` retornam 403 ou 404. O include PHP interno continua funcionando. Esta alternativa é inferior à estrutura privada acima.
+Se a hospedagem obrigar a manter o projeto em `public_html/sigesp/app-private`, o `.htaccess` público já bloqueia todo acesso HTTP a essa pasta. Como defesa adicional, mantenha também `app-private/.htaccess` com `Require all denied`. Confirme por HTTP que `.env`, `app`, `bootstrap`, `config`, `database`, `routes`, `storage` e `vendor` retornam 403 ou 404. Os includes PHP internos continuam funcionando. Esta alternativa é inferior à estrutura privada acima.
 
 O 403 observado em `https://lucascorrea.pro/sigesp/`, combinado com 404 nas rotas e nos assets, indica que o front controller publicado não está sendo alcançado. O motivo exato — arquivo ausente, pasta aninhada, `DirectoryIndex`, permissões, proprietário ou `DocumentRoot` — deve ser confirmado no painel e no log do Apache. A implantação da estrutura acima elimina a divergência local conhecida.
 
