@@ -2,8 +2,20 @@ Options -Indexes
 DirectoryIndex index.php
 
 RewriteEngine On
-RewriteRule ^$ public/login [R=302,L]
 
-<FilesMatch "^(\.env|composer\.(json|lock)|README\.md)$">
+# Bloqueia acesso HTTP direto ao código e aos dados privados.
+RewriteRule ^(?:app|bootstrap|config|database|routes|storage|vendor)(?:/|$) - [F,L,NC]
+
+# A pasta public só pode ser alcançada pelos rewrites internos abaixo.
+RewriteCond %{THE_REQUEST} "\s/+(.*/)?public(?:[/?\s])" [NC]
+RewriteRule ^public(?:/|$) - [F,L]
+
+# Compatibilidade segura quando o DocumentRoot aponta, inevitavelmente, para o projeto.
+RewriteRule ^assets(?:/(.*))?$ public/assets/$1 [END]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ public/index.php [QSA,END]
+
+<FilesMatch "(^\.|^(composer(-setup\.php|\.(json|lock))|README\.md|DEPLOY\.md)$|\.(env|ini|log|sql|bak|dist|example)$)">
     Require all denied
 </FilesMatch>

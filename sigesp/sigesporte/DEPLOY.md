@@ -69,6 +69,8 @@ No desenvolvimento local, use `APP_URL=http://localhost:8080`, `APP_BASE_PATH=` 
 php -S localhost:8080 -t public
 ```
 
+Não inicie o servidor embutido do PHP com o `DocumentRoot` na raiz do projeto: ele ignora arquivos `.htaccess` e exporia o código privado. O alvo deve ser sempre `public/`.
+
 ## Composer
 
 Na pasta privada da aplicação, execute:

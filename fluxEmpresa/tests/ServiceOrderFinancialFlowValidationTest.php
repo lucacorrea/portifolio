@@ -129,6 +129,8 @@ financialFlowAssert(is_string($orderScriptSource) && str_contains($orderScriptSo
 financialFlowAssert(is_string($orderScriptSource) && str_contains($orderScriptSource, 'importedItemType'), 'A tela deve sugerir a classificação dos itens importados.');
 financialFlowAssert(is_string($orderScriptSource) && str_contains($orderScriptSource, 'prepareStandardFinalization'), 'Modal rápida deve carregar o resumo da OS antes de confirmar.');
 financialFlowAssert(is_string($orderScriptSource) && str_contains($orderScriptSource, 'Confirmar valor de'), 'Usuário deve confirmar explicitamente o valor antes de finalizar.');
+financialFlowAssert(is_string($orderScriptSource) && str_contains($orderScriptSource, "show.bs.modal"), 'A abertura da modal deve preencher o identificador da OS independentemente do clique.');
+financialFlowAssert(is_string($orderScriptSource) && str_contains($orderScriptSource, 'O identificador da OS não foi carregado.'), 'Envio sem identificador deve ser bloqueado antes do POST.');
 financialFlowAssert(str_contains((string) $paymentAction, "os_action_context('contas_receber.registrar_pagamento')"), 'Pagamento de OS deve exigir permissão financeira.');
 financialFlowAssert(str_contains((string) $paymentAction, "can('recibo.emitir')"), 'Pagamento com recibo deve exigir permissão de emissão.');
 financialFlowAssert(str_contains((string) $paymentAction, "'payment_token'"), 'Action de pagamento deve receber token idempotente.');

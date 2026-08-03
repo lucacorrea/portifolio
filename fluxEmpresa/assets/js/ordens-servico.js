@@ -540,6 +540,28 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  const finalizeModal = document.getElementById('modal-os-finalize');
+  if (finalizeModal) {
+    finalizeModal.addEventListener('show.bs.modal', function (event) {
+      const button = event.relatedTarget?.closest?.('.js-os-finalize');
+      if (button) prepareStandardFinalization(button);
+    });
+  }
+
+  const finalizeForm = document.querySelector('#modal-os-finalize form');
+  if (finalizeForm) {
+    finalizeForm.addEventListener('submit', function (event) {
+      const orderId = document.getElementById('os-finalize-id')?.value || '';
+      if (orderId) return;
+      event.preventDefault();
+      const submit = document.getElementById('os-finalize-submit');
+      if (submit) submit.disabled = true;
+      setText('os-finalize-number', 'Selecione novamente a OS');
+      setText('os-finalize-total', 'Operação interrompida');
+      setText('os-finalize-items', 'O identificador da OS não foi carregado.');
+    });
+  }
+
   document.addEventListener('click', function (event) {
     const button = event.target.closest?.('.js-os-view, .js-os-edit, .js-os-team, .js-os-status, .js-os-finalize, .js-os-finalize-import, .js-os-cancel, .js-os-reverse, .js-os-delete, .js-os-receipt');
     if (!button) return;
