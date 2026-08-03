@@ -55,13 +55,34 @@ try {
     $connection = $application->database()->connection(); $connection->beginTransaction();
     try {
         $order = $application->serviceOrderManagement()->createOrder($form, null, null);
+        $executionItems = [];
+        foreach ($application->serviceOrderManagement()->getOrderItems($order->id()) as $orderItem) {
+            $executionItems[] = [
+                'type' => $orderItem->type(),
+                'ordem_servico_item_id' => $orderItem->id(),
+                'referencia_id' => $orderItem->referenceId(),
+                'description' => $orderItem->description(),
+                'unit' => $orderItem->unit(),
+                'quantity' => $orderItem->quantity(),
+                'unit_price' => $orderItem->unitPrice(),
+                'discount' => $orderItem->discount(),
+            ];
+        }
+        $application->serviceOrderFinalization()->finalizeImportedAcquisition(
+            $order->id(),
+            [
+                'execution_items' => $executionItems,
+                'saldo_observacao' => 'Cobrança pendente da Prefeitura referente à aquisição ' . ($acquisition['numero_aq'] ?: 'importada do SO') . '.',
+            ],
+            $currentUser->id()
+        );
         $snapshot = json_encode(['acquisition' => $acquisition, 'items' => $detail['items']], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
         $application->soAcquisitionIntegrations()->registerImportedAcquisition($order->id(), (int) $detail['supplier']['id'], $acquisitionId, (string) $acquisition['numero_aq'], $acquisition['codigo_entrega'] ?: null, (string) $acquisition['status'], $currentUser->id(), hash('sha256', 'so:aquisicao:' . $acquisitionId), hash('sha256', $snapshot), $snapshot);
         $audit = $connection->prepare("INSERT INTO empresa_auditoria_operacional (empresa_id, usuario_id, acesso_administrativo_id, acao, entidade_tipo, entidade_id, sessao_chave, ip, detalhes, criado_em) VALUES (:empresa, :usuario, :acesso, 'so_aquisicao_convertida_em_os', 'aquisicao_so', :entidade, :sessao, :ip, :detalhes, CURRENT_TIMESTAMP)");
         $audit->execute(['empresa' => $companyId, 'usuario' => $currentUser->id(), 'acesso' => $application->companyScope()->supportAccessId(), 'entidade' => $acquisitionId, 'sessao' => $currentUser->sessionBindingHash(), 'ip' => (string) ($_SERVER['REMOTE_ADDR'] ?? ''), 'detalhes' => json_encode(['ordem_servico_id' => $order->id(), 'aquisicao_so_id' => $acquisitionId], JSON_THROW_ON_ERROR)]);
         $connection->commit();
     } catch (Throwable $exception) { if ($connection->inTransaction()) $connection->rollBack(); throw $exception; }
-    $session->flash('success', 'Ordem de serviço criada e vinculada à aquisição.');
+    $session->flash('success', 'OS finalizada, vinculada à aquisição e enviada para cobrança pendente da Prefeitura.');
     admin_action_redirect($target);
 } catch (Throwable $exception) { admin_action_error($exception, $target); }
 

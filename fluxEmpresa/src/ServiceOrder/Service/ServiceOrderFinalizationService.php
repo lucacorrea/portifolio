@@ -26,11 +26,29 @@ final class ServiceOrderFinalizationService
     /** @return array{order_id:int,order_number:string,balance:string} */
     public function finalize(int $orderId, array $data, int $userId): array
     {
-        $this->connection->beginTransaction();
+        return $this->finalizeOrder(
+            $orderId,
+            $data,
+            $userId,
+            ['em_execucao', 'aguardando_peca', 'agendada']
+        );
+    }
+
+    /** @return array{order_id:int,order_number:string,balance:string} */
+    public function finalizeImportedAcquisition(int $orderId, array $data, int $userId): array
+    {
+        return $this->finalizeOrder($orderId, $data, $userId, ['aguardando_agendamento']);
+    }
+
+    /** @param string[] $allowedStatuses @return array{order_id:int,order_number:string,balance:string} */
+    private function finalizeOrder(int $orderId, array $data, int $userId, array $allowedStatuses): array
+    {
+        $ownsTransaction = !$this->connection->inTransaction();
+        if ($ownsTransaction) $this->connection->beginTransaction();
         try {
             $order = $this->orders->lockById($orderId);
             if ($order === null) throw new InvalidArgumentException('OS não encontrada.');
-            if (!in_array($order->status(), ['em_execucao', 'aguardando_peca', 'agendada'], true)) {
+            if (!in_array($order->status(), $allowedStatuses, true)) {
                 throw new InvalidArgumentException('Status da OS não permite finalização.');
             }
             if ($this->hasActiveFinalization($orderId)) {
@@ -155,14 +173,14 @@ final class ServiceOrderFinalizationService
             );
 
             $this->orders->updateStatus($orderId, 'finalizada');
-            $this->connection->commit();
+            if ($ownsTransaction) $this->connection->commit();
             return [
                 'order_id' => $orderId,
                 'order_number' => $order->displayNumber(),
                 'balance' => number_format($total, 2, '.', ''),
             ];
         } catch (Throwable $exception) {
-            if ($this->connection->inTransaction()) $this->connection->rollBack();
+            if ($ownsTransaction && $this->connection->inTransaction()) $this->connection->rollBack();
             throw $exception;
         }
     }
