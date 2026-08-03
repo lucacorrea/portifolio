@@ -75,17 +75,15 @@ $canReverse = $authorization->can('os.estornar');
 $canDelete = $authorization->can('os.excluir');
 $canIssueReceipt = $authorization->can('recibo.emitir');
 $canReprintReceipt = $authorization->can('recibo.reimprimir');
-$paymentsByOrder = ($canIssueReceipt || $canReprintReceipt)
-    ? $application->receiptService()->listActivePaymentsForOrders(array_map(
-        static fn(ServiceOrder $order): int => $order->id(),
-        $orders
-    ))
+$finalizedOrderIds = array_map(
+    static fn(ServiceOrder $order): int => $order->id(),
+    array_filter($orders, static fn(ServiceOrder $order): bool => $order->status() === 'finalizada')
+);
+$paymentsByOrder = ($canIssueReceipt || $canReprintReceipt) && $finalizedOrderIds !== []
+    ? $application->receiptService()->listActivePaymentsForOrders($finalizedOrderIds)
     : [];
-$receivableBalances = ($canPayOrder || $canIssueReceipt || $canReprintReceipt)
-    ? $application->accountsReceivableManagement()->balancesForOrders(array_map(
-        static fn(ServiceOrder $order): int => $order->id(),
-        $orders
-    ))
+$receivableBalances = ($canPayOrder || $canIssueReceipt || $canReprintReceipt) && $finalizedOrderIds !== []
+    ? $application->accountsReceivableManagement()->balancesForOrders($finalizedOrderIds)
     : [];
 
 function os_label_status(string $status): string
