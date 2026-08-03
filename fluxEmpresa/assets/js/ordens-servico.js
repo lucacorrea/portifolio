@@ -400,7 +400,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const summary = document.getElementById('os-view-summary');
     summary.replaceChildren();
     [
-      ['Número', order.number], ['Cliente', order.client_name], ['Equipamento', [order.equipment_type, order.equipment_brand, order.equipment_model].filter(Boolean).join(' ') || '-'],
+      ['Número', order.number], ['Cliente', order.client_name], ['Origem', String(order.reported_problem || '').startsWith('Importada do SO.') ? 'Importada do SO' : 'Cadastro interno'], ['Equipamento', [order.equipment_type, order.equipment_brand, order.equipment_model].filter(Boolean).join(' ') || '-'],
       ['Secretaria solicitante', order.equipment_environment || '-'], ['Local de execução ou entrega', order.equipment_location || '-'],
       ['Status', order.status], ['Prioridade', order.priority], ['Agendamento', ((order.scheduled_start || '-') + ' até ' + (order.scheduled_end || '-'))],
       ['Problema', order.reported_problem || '-'], ['Diagnóstico', order.diagnosis || '-'], ['Observações', order.notes || '-']

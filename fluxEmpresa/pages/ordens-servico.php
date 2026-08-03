@@ -162,6 +162,11 @@ function os_location(ServiceOrder $order): string
     return $order->equipmentLocation() ?: ($address !== '' ? $address : 'Nao informado');
 }
 
+function os_is_so_imported(ServiceOrder $order): bool
+{
+    return str_starts_with(trim((string) $order->reportedProblem()), 'Importada do SO.');
+}
+
 function os_schedule_cell(ServiceOrder $order): string
 {
     if ($order->scheduledStart() === null || $order->scheduledEnd() === null) {
@@ -276,10 +281,11 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                 <thead><tr><th>OS</th><th>Cliente</th><th>Contato</th><th>Local</th><th>Funcionarios</th><th>Data do servico</th><?php if ($canViewValues): ?><th>Valor total</th><?php endif; ?><th>Status</th><th>Acoes</th></tr></thead>
                 <tbody>
                 <?php foreach ($orders as $order): ?>
-                    <?php $team = $teamsByOrder[$order->id()] ?? []; $contactPhone = os_contact_phone($order); $whatsappUrl = os_whatsapp_url($order); $orderPayments = $paymentsByOrder[$order->id()] ?? []; $receivable = $receivableBalances[$order->id()] ?? null; $isOrderPaid = is_array($receivable) && (string) ($receivable['status'] ?? '') === 'paga'; ?>
+                    <?php $team = $teamsByOrder[$order->id()] ?? []; $contactPhone = os_contact_phone($order); $whatsappUrl = os_whatsapp_url($order); $orderPayments = $paymentsByOrder[$order->id()] ?? []; $receivable = $receivableBalances[$order->id()] ?? null; $isOrderPaid = is_array($receivable) && (string) ($receivable['status'] ?? '') === 'paga'; $isSoImported = os_is_so_imported($order); ?>
                     <tr>
                         <td>
                             <strong><?= h($order->displayNumber()) ?></strong>
+                            <?php if ($isSoImported): ?><br><small class="badge-soft badge-blue">Importada do SO</small><?php endif; ?>
                         </td>
                         <td>
                             <?= h($order->clientName()) ?>
@@ -299,6 +305,7 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                                 <button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Acoes da OS <?= h($order->displayNumber()) ?>"><i class="bi bi-three-dots-vertical"></i></button>
                                 <ul class="dropdown-menu dropdown-menu-end">
                                     <li><button class="dropdown-item js-os-view" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-bs-toggle="modal" data-bs-target="#modal-os-view"><i class="bi bi-eye"></i> Visualizar</button></li>
+                                    <?php if ($canFinalize && $isSoImported && $order->status() === 'aguardando_agendamento'): ?><li><form method="post" action="actions/os-finalizar-importacao-so.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="id" value="<?= h((string) $order->id()) ?>"><button class="dropdown-item" type="submit"><i class="bi bi-check2-circle"></i> Finalizar importação do SO</button></form></li><?php endif; ?>
                                     <?php if ($whatsappUrl !== null): ?><li><a class="dropdown-item" href="<?= h($whatsappUrl) ?>" target="_blank" rel="noopener"><i class="bi bi-whatsapp" aria-hidden="true"></i> Chamar no WhatsApp</a></li><?php endif; ?>
                                     <?php if ($canEdit && !in_array($order->status(), ['finalizada','cancelada'], true)): ?><li><button class="dropdown-item js-os-edit" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-bs-toggle="modal" data-bs-target="#modal-os"><i class="bi bi-pencil"></i> Editar</button></li><?php endif; ?>
                                     <?php if (($canTeam || $canSchedule) && !in_array($order->status(), ['finalizada','cancelada'], true)): ?><li><button class="dropdown-item js-os-team" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-team='<?= h(json_encode(array_map(static fn($member): array => ['employee_id' => $member->employeeId(), 'role' => $member->role(), 'primary' => $member->primary()], $team), JSON_UNESCAPED_UNICODE)) ?>' data-start="<?= h($order->scheduledStart() ?? '') ?>" data-end="<?= h($order->scheduledEnd() ?? '') ?>" data-bs-toggle="modal" data-bs-target="#modal-os-team"><i class="bi bi-people"></i> Definir equipe</button></li><?php endif; ?>
