@@ -124,9 +124,11 @@ financialFlowAssert(str_contains((string) $importedFinalizationAction, 'os_store
 financialFlowAssert(str_contains((string) $paymentPageSource, 'modal-os-finalize-import'), 'OS importada deve abrir a revisão antes da finalização.');
 financialFlowAssert(!str_contains((string) $paymentPageSource, 'name="execution_items[0][description]"'), 'Modal rápida não deve pedir o serviço executado novamente.');
 financialFlowAssert(str_contains((string) $paymentPageSource, 'id="os-finalize-total"'), 'Modal rápida deve exibir o valor aprovado da OS.');
+financialFlowAssert(str_contains((string) $paymentPageSource, 'data-order-total='), 'Botão de finalização deve fornecer o valor já carregado na lista.');
 financialFlowAssert(is_string($orderScriptSource) && str_contains($orderScriptSource, 'Peça ou insumo externo'), 'A revisão deve explicar que peça externa não é produto de estoque.');
 financialFlowAssert(is_string($orderScriptSource) && str_contains($orderScriptSource, 'importedItemType'), 'A tela deve sugerir a classificação dos itens importados.');
 financialFlowAssert(is_string($orderScriptSource) && str_contains($orderScriptSource, 'prepareStandardFinalization'), 'Modal rápida deve carregar o resumo da OS antes de confirmar.');
+financialFlowAssert(is_string($orderScriptSource) && str_contains($orderScriptSource, 'Confirmar valor de'), 'Usuário deve confirmar explicitamente o valor antes de finalizar.');
 financialFlowAssert(str_contains((string) $paymentAction, "os_action_context('contas_receber.registrar_pagamento')"), 'Pagamento de OS deve exigir permissão financeira.');
 financialFlowAssert(str_contains((string) $paymentAction, "can('recibo.emitir')"), 'Pagamento com recibo deve exigir permissão de emissão.');
 financialFlowAssert(str_contains((string) $paymentAction, "'payment_token'"), 'Action de pagamento deve receber token idempotente.');

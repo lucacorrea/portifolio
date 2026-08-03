@@ -61,33 +61,17 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  async function prepareStandardFinalization(orderId, orderNumber) {
+  function prepareStandardFinalization(button) {
     const submit = document.getElementById('os-finalize-submit');
-    setValue('os-finalize-id', orderId);
-    setText('os-finalize-number', orderNumber || 'Carregando...');
-    setText('os-finalize-total', 'Carregando...');
-    setText('os-finalize-items', 'Carregando...');
-    if (submit) submit.disabled = true;
-
-    try {
-      const data = await loadOrder(orderId);
-      const items = Array.isArray(data.items) ? data.items : [];
-      if (items.length === 0) throw new Error('items');
-      const order = data.order || {};
-      const calculatedTotal = items.reduce(function (total, item) {
-        return total + parseNumber(item.subtotal);
-      }, 0) - parseNumber(order.discount) + parseNumber(order.increase);
-      const total = Object.prototype.hasOwnProperty.call(order, 'total')
-        ? parseNumber(order.total)
-        : calculatedTotal;
-      setText('os-finalize-number', order.number || orderNumber || 'OS');
-      setText('os-finalize-total', money(total));
-      setText('os-finalize-items', items.length + (items.length === 1 ? ' item do orçamento/OS' : ' itens do orçamento/OS'));
-      if (submit) submit.disabled = false;
-    } catch (error) {
-      setText('os-finalize-number', orderNumber || 'OS');
-      setText('os-finalize-total', 'Não foi possível carregar');
-      setText('os-finalize-items', '-');
+    const total = parseNumber(button.dataset.orderTotal);
+    const itemCount = Math.max(0, Number.parseInt(button.dataset.orderItems || '0', 10) || 0);
+    setValue('os-finalize-id', button.dataset.orderId);
+    setText('os-finalize-number', button.dataset.orderNumber || 'OS');
+    setText('os-finalize-total', money(total));
+    setText('os-finalize-items', itemCount + (itemCount === 1 ? ' item do orçamento/OS' : ' itens do orçamento/OS'));
+    if (submit) {
+      submit.disabled = itemCount === 0 || total <= 0;
+      submit.innerHTML = '<i class="bi bi-check2-circle"></i> Confirmar valor de ' + money(total);
     }
   }
 
@@ -338,7 +322,8 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function restoreFinalizeForm(data) {
-    void prepareStandardFinalization(data.id, '');
+    const button = document.querySelector('.js-os-finalize[data-order-id="' + String(data.id || '') + '"]');
+    if (button) prepareStandardFinalization(button);
     const modal = document.getElementById('modal-os-finalize');
     if (!modal) return;
     if (recoveryError) {
@@ -576,7 +561,7 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('os-status-title').textContent = button.dataset.label || 'Alterar status';
       document.getElementById('os-status-message').textContent = 'Confirmar operação "' + (button.dataset.label || 'alterar status') + '"?';
     } else if (button.classList.contains('js-os-finalize')) {
-      void prepareStandardFinalization(button.dataset.orderId, button.dataset.orderNumber);
+      prepareStandardFinalization(button);
     } else if (button.classList.contains('js-os-finalize-import')) {
       void prepareImportedFinalization(button);
     } else if (button.classList.contains('js-os-cancel')) {

@@ -6,9 +6,12 @@ $projectRoots = [
     dirname(__DIR__, 2) . '/apps/sigesporte',
     __DIR__ . '/app-private',
 ];
+$isProjectRoot = static fn (string $path): bool => is_file($path . '/bootstrap/app.php')
+    && is_file($path . '/app/Core/Application.php')
+    && is_file($path . '/routes/web.php');
 
 foreach ($projectRoots as $projectRoot) {
-    if (is_file($projectRoot . '/bootstrap/app.php')) {
+    if ($isProjectRoot($projectRoot)) {
         require $projectRoot . '/bootstrap/app.php';
     }
 }

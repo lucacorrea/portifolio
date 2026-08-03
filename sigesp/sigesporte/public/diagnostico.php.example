@@ -12,7 +12,7 @@ if (!$isLocal && !$isExplicitlyEnabled) {
 $projectRoots = [dirname(__DIR__), dirname(__DIR__, 2) . '/apps/sigesporte', __DIR__ . '/app-private'];
 $projectRoot = null;
 foreach ($projectRoots as $candidate) {
-    if (is_file($candidate . '/bootstrap/app.php')) {
+    if (is_file($candidate . '/bootstrap/app.php') && is_file($candidate . '/app/Core/Application.php') && is_file($candidate . '/routes/web.php')) {
         $projectRoot = $candidate;
         break;
     }
