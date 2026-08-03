@@ -27,7 +27,11 @@ final class AdminCompanyRepository
         if (($filters['status'] ?? '') !== '' && $status) { $where[]="$status = :status"; $params['status']=$filters['status']; }
         if ($ownerId !== null && $creator) { $where[]="$creator = :owner"; $params['owner']=$ownerId; }
         $condition=$where === [] ? '' : ' WHERE '.implode(' AND ',$where); $count=$this->connection->prepare('SELECT COUNT(*) FROM empresas'.$condition); $count->execute($params);
-        $sql='SELECT '.implode(', ', $fields).' FROM empresas'.$condition.' ORDER BY id DESC LIMIT :limit OFFSET :offset'; $s=$this->connection->prepare($sql); foreach($params as $k=>$v)$s->bindValue(':'.$k,$v); $s->bindValue(':limit',$perPage,PDO::PARAM_INT);$s->bindValue(':offset',max(0,($page-1)*$perPage),PDO::PARAM_INT);$s->execute(); return ['items'=>$s->fetchAll(),'total'=>(int)$count->fetchColumn()];
+        $supplierFlag = $this->has('empresa_integracoes', 'empresa_id')
+            && $this->has('empresa_integracoes', 'identificador_externo')
+            ? "EXISTS (SELECT 1 FROM empresa_integracoes ei WHERE ei.empresa_id = empresas.id AND ei.sistema = 'SO' AND ei.entidade = 'fornecedor' AND ei.identificador_externo REGEXP '^[1-9][0-9]*$') AS tem_fornecedor_so"
+            : '0 AS tem_fornecedor_so';
+        $sql='SELECT '.implode(', ', $fields).', '.$supplierFlag.' FROM empresas'.$condition.' ORDER BY id DESC LIMIT :limit OFFSET :offset'; $s=$this->connection->prepare($sql); foreach($params as $k=>$v)$s->bindValue(':'.$k,$v); $s->bindValue(':limit',$perPage,PDO::PARAM_INT);$s->bindValue(':offset',max(0,($page-1)*$perPage),PDO::PARAM_INT);$s->execute(); return ['items'=>$s->fetchAll(),'total'=>(int)$count->fetchColumn()];
     }
     public function find(int $id): ?array { if (!$this->has('empresas','id')) return null; $s=$this->connection->prepare('SELECT '.implode(', ',$this->selectFields()).' FROM empresas WHERE id=:id');$s->execute(['id'=>$id]);$row=$s->fetch();return is_array($row)?$row:null; }
     public function findByDocument(string $document): ?array { $column=$this->column('empresas',['documento','cnpj','cpf']); if(!$column)return null;$s=$this->connection->prepare("SELECT ".implode(', ',$this->selectFields())." FROM empresas WHERE $column=:documento LIMIT 1");$s->execute(['documento'=>$document]);$row=$s->fetch();return is_array($row)?$row:null; }

@@ -249,6 +249,15 @@ $adminContent = static function () use (
                                             </a>
                                         </li>
 
+                                        <?php if ($canOpenOperationalPanel && !empty($company['tem_fornecedor_so'])): ?>
+                                            <li>
+                                                <a class="dropdown-item" href="<?= admin_url('empresa-aquisicoes.php?empresa_id=' . $companyId) ?>">
+                                                    <i class="bi bi-cart-check"></i>
+                                                    Ver aquisições do SO
+                                                </a>
+                                            </li>
+                                        <?php endif; ?>
+
                                         <li>
                                             <hr
                                                 class="dropdown-divider"

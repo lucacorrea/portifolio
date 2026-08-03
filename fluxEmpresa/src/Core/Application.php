@@ -40,7 +40,9 @@ use App\Finance\Service\CashManagementService;
 use App\Finance\Service\PaymentManagementService;
 use App\Finance\Service\ReceiptService;
 use App\Integration\SO\Repository\SoAcquisitionIntegrationRepository;
+use App\Integration\SO\Repository\SoAcquisitionReadRepository;
 use App\Integration\SO\Service\SoAcquisitionQueueService;
+use App\Integration\SO\Service\SoAcquisitionBrowserService;
 use App\Integration\SO\Service\SoSupplierService;
 use App\Integration\SO\SoApiClient;
 use App\Integration\SO\SoDatabase;
@@ -137,6 +139,8 @@ final class Application
     private ?SoAcquisitionIntegrationRepository $soAcquisitionIntegrationRepository = null;
 
     private ?SoAcquisitionQueueService $soAcquisitionQueueService = null;
+    private ?SoAcquisitionBrowserService $soAcquisitionBrowserService = null;
+    private ?SoDatabase $soDatabase = null;
 
     private ?ActiveCompanyContext $activeCompanyContext = null;
 
@@ -703,12 +707,7 @@ final class Application
     {
         if ($this->soSupplierService === null) {
             $this->soSupplierService = new SoSupplierService(
-                new SoDatabase(
-                    (string) (
-                        $this->settings['project_root']
-                        ?? ''
-                    )
-                )
+                $this->soDatabase()
             );
         }
 
@@ -809,6 +808,22 @@ final class Application
         }
 
         return $this->soAcquisitionQueueService;
+    }
+
+    public function soAcquisitionBrowser(): SoAcquisitionBrowserService
+    {
+        if ($this->soAcquisitionBrowserService === null) {
+            $this->soAcquisitionBrowserService = new SoAcquisitionBrowserService(
+                $this->database->connection(),
+                new SoAcquisitionReadRepository($this->soDatabase()->connection())
+            );
+        }
+        return $this->soAcquisitionBrowserService;
+    }
+
+    private function soDatabase(): SoDatabase
+    {
+        return $this->soDatabase ??= new SoDatabase((string) ($this->settings['project_root'] ?? ''));
     }
 
     public function activeCompanyContext(): ActiveCompanyContext

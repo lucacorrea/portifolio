@@ -662,13 +662,14 @@ final class ServiceOrderManagementService
     /** @template T @param callable():T $callback @return T */
     private function transactional(callable $callback): mixed
     {
-        $this->connection->beginTransaction();
+        $ownsTransaction = !$this->connection->inTransaction();
+        if ($ownsTransaction) $this->connection->beginTransaction();
         try {
             $result = $callback();
-            $this->connection->commit();
+            if ($ownsTransaction) $this->connection->commit();
             return $result;
         } catch (Throwable $exception) {
-            if ($this->connection->inTransaction()) $this->connection->rollBack();
+            if ($ownsTransaction && $this->connection->inTransaction()) $this->connection->rollBack();
             throw $exception;
         }
     }
