@@ -164,7 +164,7 @@ final class MigrationRunner
 
     public static function supportsVersion(int $version): bool
     {
-        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30], true);
+        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31], true);
     }
 
     private function acquireLock(string $name, int $waitSeconds): bool
@@ -436,6 +436,24 @@ final class MigrationRunner
                 'fk_os_rejeitada_por',
             ]),
             30 => $this->permissionSatisfied('so_aquisicao.importar'),
+            31 => $this->allColumns('configuracoes_empresa', [
+                'empresa_id',
+                'inscricao_estadual',
+                'inscricao_municipal',
+                'email',
+                'crt',
+                'cnae_principal',
+                'endereco_logradouro',
+                'endereco_numero',
+                'endereco_complemento',
+                'endereco_bairro',
+                'endereco_cidade',
+                'endereco_uf',
+                'endereco_cep',
+                'codigo_municipio_ibge',
+            ]) && $this->allIndexes([
+                ['configuracoes_empresa', 'uq_configuracoes_empresa_empresa'],
+            ]),
             default => null,
         };
     }
