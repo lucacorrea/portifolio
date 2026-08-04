@@ -33,268 +33,119 @@ $canConfigureGoal = $companyScope->allows(
     'relatorio.meta_comissao.configurar'
 );
 
-$hasAnyVisibleReport = $canViewCompanyReport
-    || $canViewClientReport
-    || $canViewServiceReport
-    || $canViewTeamReport;
+$availableSections = [];
+
+if ($canViewCompanyReport) {
+    $availableSections[] = 'empresa';
+}
+
+if ($canViewClientReport) {
+    $availableSections[] = 'clientes';
+}
+
+if ($canViewServiceReport) {
+    $availableSections[] = 'servicos';
+}
+
+if ($canViewTeamReport) {
+    $availableSections[] = 'equipe';
+}
 
 /*
  * =========================================================
- * FORMATADORES LOCAIS
- * =========================================================
- *
- * Não utilizam float para valores financeiros.
- */
-$reportDecimal = static function (
-    mixed $value,
-    int $scale = 2
-): string {
-    $normalized = trim((string) $value);
-
-    if (
-        $normalized === ''
-        || preg_match('/^-?\d+(?:\.\d+)?$/', $normalized) !== 1
-    ) {
-        $normalized = '0';
-    }
-
-    $negative = str_starts_with($normalized, '-');
-    $unsigned = ltrim($normalized, '-');
-
-    [$integer, $fraction] = array_pad(
-        explode('.', $unsigned, 2),
-        2,
-        ''
-    );
-
-    $integer = ltrim($integer, '0');
-    $integer = $integer === '' ? '0' : $integer;
-
-    $fraction = substr(
-        str_pad($fraction, $scale, '0'),
-        0,
-        $scale
-    );
-
-    return ($negative ? '-' : '')
-        . number_format((int) $integer, 0, ',', '.')
-        . ($scale > 0 ? ',' . $fraction : '');
-};
-
-$reportMoney = static fn(mixed $value): string =>
-    'R$ ' . $reportDecimal($value, 2);
-
-$reportPercent = static fn(mixed $value): string =>
-    $reportDecimal($value, 2) . '%';
-
-$reportDate = static function (mixed $value): string {
-    $text = trim((string) $value);
-    $timestamp = $text === '' ? false : strtotime($text);
-
-    return $timestamp === false
-        ? '—'
-        : date('d/m/Y', $timestamp);
-};
-
-$decimalToCents = static function (mixed $value): int {
-    $normalized = trim((string) $value);
-
-    if (preg_match('/^(\d+)(?:\.(\d+))?$/', $normalized, $matches) !== 1) {
-        return 0;
-    }
-
-    $integer = ltrim($matches[1], '0');
-    $integer = $integer === '' ? '0' : $integer;
-
-    $fraction = substr(
-        str_pad((string) ($matches[2] ?? ''), 2, '0'),
-        0,
-        2
-    );
-
-    if (strlen($integer) > 15) {
-        return PHP_INT_MAX;
-    }
-
-    $whole = (int) $integer;
-
-    if ($whole > intdiv(PHP_INT_MAX - 99, 100)) {
-        return PHP_INT_MAX;
-    }
-
-    return ($whole * 100) + (int) $fraction;
-};
-
-$comparisonHtml = static function (
-    mixed $comparison
-) use (
-    $reportPercent
-): string {
-    if (!is_array($comparison)) {
-        return '<span class="report-comparison is-neutral">Sem comparação</span>';
-    }
-
-    $direction = (string) ($comparison['direction'] ?? 'stable');
-    $comparable = (bool) ($comparison['comparable'] ?? false);
-    $percentage = $comparison['percentage'] ?? null;
-
-    if (!$comparable) {
-        return '<span class="report-comparison is-neutral">'
-            . '<i class="bi bi-dash-circle" aria-hidden="true"></i>'
-            . ' Sem base anterior</span>';
-    }
-
-    if ($direction === 'up') {
-        return '<span class="report-comparison is-positive">'
-            . '<i class="bi bi-arrow-up-right" aria-hidden="true"></i> '
-            . h($reportPercent($percentage))
-            . ' vs. anterior</span>';
-    }
-
-    if ($direction === 'down') {
-        return '<span class="report-comparison is-negative">'
-            . '<i class="bi bi-arrow-down-right" aria-hidden="true"></i> '
-            . h($reportPercent($percentage))
-            . ' vs. anterior</span>';
-    }
-
-    return '<span class="report-comparison is-neutral">'
-        . '<i class="bi bi-dash" aria-hidden="true"></i> '
-        . h($reportPercent($percentage))
-        . ' vs. anterior</span>';
-};
-
-$metricCard = static function (
-    string $label,
-    string $value,
-    string $icon,
-    string $note = '',
-    string $comparison = ''
-): string {
-    $html = '<article class="report-metric-card">'
-        . '<div class="report-metric-head">'
-        . '<span class="report-metric-label">' . h($label) . '</span>'
-        . '<span class="report-metric-icon"><i class="bi '
-        . h($icon)
-        . '" aria-hidden="true"></i></span>'
-        . '</div>'
-        . '<strong class="report-metric-value">' . h($value) . '</strong>';
-
-    if ($comparison !== '') {
-        $html .= $comparison;
-    }
-
-    if ($note !== '') {
-        $html .= '<small class="report-metric-note">' . h($note) . '</small>';
-    }
-
-    return $html . '</article>';
-};
-
-/*
- * =========================================================
- * PERÍODO E VISÃO GERAL
+ * PERÍODO GLOBAL
  * =========================================================
  */
 $periodError = null;
-$loadError = null;
-$period = [];
-$companyReport = null;
 
 try {
-    $period = $application->reports()->resolvePeriod($_GET);
+    $period = $application
+        ->reports()
+        ->resolvePeriod($_GET);
 } catch (InvalidArgumentException $exception) {
     $periodError = $exception->getMessage();
 
-    $period = $application->reports()->resolvePeriod([
-        'modo' => 'mes',
-        'competencia' => date('Y-m'),
-    ]);
+    $period = $application
+        ->reports()
+        ->resolvePeriod([
+            'modo' => 'mes',
+            'competencia' => date('Y-m'),
+        ]);
 }
 
-if ($canViewCompanyReport) {
-    try {
-        $companyReport = $application->reports()->companyReport(
-            is_array($period['query'] ?? null)
-                ? $period['query']
-                : [],
-            $canViewFinancial
-        );
-    } catch (Throwable $exception) {
-        error_log(
-            json_encode(
-                [
-                    'event' => 'report_company_load_failed',
-                    'company_id' => $companyScope->id(),
-                    'period_start' => $period['start'] ?? null,
-                    'period_end_exclusive' => $period['end_exclusive'] ?? null,
-                    'exception_class' => get_class($exception),
-                    'exception_code' => (string) $exception->getCode(),
-                ],
-                JSON_UNESCAPED_UNICODE
-                | JSON_UNESCAPED_SLASHES
-                | JSON_INVALID_UTF8_SUBSTITUTE
-            ) ?: 'report_company_load_failed'
-        );
+$periodMode = (string) (
+    $period['mode']
+    ?? 'month'
+);
 
-        $loadError = 'Não foi possível carregar a visão geral do relatório.';
-    }
-}
-
-$summary = is_array($companyReport['summary'] ?? null)
-    ? $companyReport['summary']
-    : [];
-
-$comparison = is_array($companyReport['comparison'] ?? null)
-    ? $companyReport['comparison']
-    : [];
-
-$dailyEvolution = is_array($companyReport['daily_evolution'] ?? null)
-    ? $companyReport['daily_evolution']
-    : [];
-
-$rankings = is_array($companyReport['rankings'] ?? null)
-    ? $companyReport['rankings']
-    : [];
-
-$periodMode = (string) ($period['mode'] ?? 'month');
 $periodCompetence = (string) (
     $period['competence']
     ?? date('Y-m')
 );
+
 $periodStart = (string) (
     $period['display_start']
     ?? date('Y-m-01')
 );
+
 $periodEnd = (string) (
     $period['display_end']
     ?? date('Y-m-t')
 );
+
 $periodLabel = (string) (
     $period['label']
     ?? 'Período selecionado'
 );
-$previousPeriodLabel = (string) (
-    $period['previous_label']
-    ?? 'período anterior'
-);
 
 /*
- * Largura máxima dos indicadores diários sem uso de float.
+ * =========================================================
+ * RELATÓRIO ATIVO
+ * =========================================================
  */
-$maxDailyValue = 0;
+$requestedSection = strtolower(
+    trim((string) ($_GET['secao'] ?? ''))
+);
 
-foreach ($dailyEvolution as $day) {
-    if (!is_array($day)) {
-        continue;
-    }
+$activeSection = in_array(
+    $requestedSection,
+    $availableSections,
+    true
+)
+    ? $requestedSection
+    : ($availableSections[0] ?? '');
 
-    $value = $canViewFinancial
-        ? $decimalToCents($day['company_total'] ?? '0')
-        : (int) ($day['orders'] ?? 0);
+$sectionDefinitions = [
+    'empresa' => [
+        'title' => 'Visão geral da empresa',
+        'description' => 'Indicadores consolidados, evolução e rankings.',
+        'icon' => 'bi-building',
+    ],
 
-    $maxDailyValue = max($maxDailyValue, $value);
-}
+    'clientes' => [
+        'title' => 'Relatório por cliente',
+        'description' => 'Produção, faturamento e histórico de OS por cliente.',
+        'icon' => 'bi-people',
+    ],
+
+    'servicos' => [
+        'title' => 'Relatório por serviço',
+        'description' => 'Serviços executados, quantidade e faturamento.',
+        'icon' => 'bi-tools',
+    ],
+
+    'equipe' => [
+        'title' => 'Equipe, metas e comissão',
+        'description' => 'Produção individual, metas e prêmio estimado.',
+        'icon' => 'bi-person-workspace',
+    ],
+];
+
+$activeDefinition = $sectionDefinitions[$activeSection] ?? [
+    'title' => 'Relatórios',
+    'description' => 'Selecione um relatório disponível.',
+    'icon' => 'bi-bar-chart',
+];
 
 $goalCompetence = $periodMode === 'month'
     ? $periodCompetence
@@ -303,30 +154,35 @@ $goalCompetence = $periodMode === 'month'
 
 <style>
 .reports-page {
-    --report-border: #e5e7eb;
+    --report-border: #e2e8f0;
     --report-muted: #64748b;
-    --report-surface: #ffffff;
     --report-soft: #f8fafc;
     --report-primary: #2563eb;
+    --report-primary-soft: #eff6ff;
+    --report-text: #0f172a;
 }
 
 .report-filter-panel,
-.report-overview-panel,
-.report-accordion-item {
+.report-selector-card,
+.report-workspace {
     border: 1px solid var(--report-border);
+    background: #ffffff;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.045);
+}
+
+.report-filter-panel,
+.report-workspace {
     border-radius: 16px;
-    background: var(--report-surface);
-    box-shadow: 0 8px 24px rgba(15, 23, 42, .045);
 }
 
 .report-filter-panel {
     padding: 18px;
-    margin-bottom: 20px;
+    margin-bottom: 18px;
 }
 
 .report-filter-heading,
-.report-period-identification,
-.report-section-heading {
+.report-workspace-header,
+.report-period-summary {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -339,18 +195,19 @@ $goalCompetence = $periodMode === 'month'
 }
 
 .report-filter-heading h2,
-.report-section-heading h3 {
+.report-workspace-title h2 {
     margin: 0;
+    color: var(--report-text);
     font-size: 1rem;
     font-weight: 700;
-    color: #0f172a;
 }
 
 .report-filter-heading p,
-.report-period-identification p {
+.report-workspace-title p,
+.report-period-summary p {
     margin: 4px 0 0;
     color: var(--report-muted);
-    font-size: .875rem;
+    font-size: 0.84rem;
 }
 
 .report-mode-selector {
@@ -382,14 +239,14 @@ $goalCompetence = $periodMode === 'month'
     padding: 8px 13px;
     border-radius: 9px;
     color: #475569;
-    font-size: .875rem;
+    font-size: 0.875rem;
     font-weight: 600;
 }
 
 .report-mode-selector input:checked + span {
-    background: #fff;
+    background: #ffffff;
     color: var(--report-primary);
-    box-shadow: 0 2px 8px rgba(15, 23, 42, .08);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
 }
 
 .report-filter-fields {
@@ -405,23 +262,157 @@ $goalCompetence = $periodMode === 'month'
     margin: 0;
 }
 
-.report-filter-actions {
+.report-filter-actions,
+.report-workspace-actions {
     display: flex;
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
 }
 
-.report-period-identification {
-    padding: 14px 16px;
-    margin-bottom: 20px;
+.report-period-summary {
+    padding: 13px 15px;
+    margin-bottom: 18px;
     border: 1px solid #dbeafe;
-    border-radius: 14px;
-    background: #eff6ff;
+    border-radius: 13px;
+    background: var(--report-primary-soft);
 }
 
-.report-period-identification strong {
+.report-period-summary strong {
     color: #1d4ed8;
+}
+
+.report-selector {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.report-selector-card {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    min-width: 0;
+    padding: 16px;
+    border-radius: 14px;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        border-color 0.18s ease,
+        transform 0.18s ease,
+        box-shadow 0.18s ease;
+}
+
+.report-selector-card:hover,
+.report-selector-card:focus-visible {
+    border-color: #93c5fd;
+    transform: translateY(-1px);
+    outline: none;
+}
+
+.report-selector-card.is-active {
+    border-color: var(--report-primary);
+    background: var(--report-primary-soft);
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.12);
+}
+
+.report-selector-icon {
+    display: inline-grid;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    place-items: center;
+    border-radius: 12px;
+    background: #f1f5f9;
+    color: #334155;
+    font-size: 1.05rem;
+}
+
+.report-selector-card.is-active .report-selector-icon {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.report-selector-copy {
+    min-width: 0;
+}
+
+.report-selector-copy strong,
+.report-selector-copy small {
+    display: block;
+}
+
+.report-selector-copy strong {
+    color: var(--report-text);
+    font-size: 0.9rem;
+}
+
+.report-selector-copy small {
+    margin-top: 3px;
+    color: var(--report-muted);
+    font-size: 0.73rem;
+    line-height: 1.35;
+}
+
+.report-workspace {
+    overflow: hidden;
+}
+
+.report-workspace-header {
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--report-border);
+}
+
+.report-workspace-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.report-workspace-icon {
+    display: inline-grid;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    place-items: center;
+    border-radius: 11px;
+    background: #f1f5f9;
+    color: #334155;
+}
+
+.report-workspace-content {
+    min-height: 300px;
+    padding: 18px;
+}
+
+.report-section-state {
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+    padding: 48px 18px;
+    color: var(--report-muted);
+    text-align: center;
+}
+
+.report-section-state > i {
+    font-size: 1.55rem;
+}
+
+.report-section-state strong {
+    color: #334155;
+}
+
+.report-section-state p {
+    max-width: 520px;
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.report-loading-icon {
+    animation: report-spin 0.85s linear infinite;
 }
 
 .report-metric-grid {
@@ -435,7 +426,7 @@ $goalCompetence = $periodMode === 'month'
     padding: 17px;
     border: 1px solid var(--report-border);
     border-radius: 14px;
-    background: #fff;
+    background: #ffffff;
 }
 
 .report-metric-head {
@@ -447,7 +438,7 @@ $goalCompetence = $periodMode === 'month'
 
 .report-metric-label {
     color: var(--report-muted);
-    font-size: .82rem;
+    font-size: 0.82rem;
     font-weight: 600;
 }
 
@@ -464,7 +455,7 @@ $goalCompetence = $periodMode === 'month'
 .report-metric-value {
     display: block;
     margin-top: 12px;
-    color: #0f172a;
+    color: var(--report-text);
     font-size: clamp(1.25rem, 2vw, 1.75rem);
     line-height: 1.1;
     overflow-wrap: anywhere;
@@ -474,12 +465,7 @@ $goalCompetence = $periodMode === 'month'
 .report-comparison {
     display: block;
     margin-top: 7px;
-    font-size: .75rem;
-}
-
-.report-metric-note,
-.report-comparison.is-neutral {
-    color: var(--report-muted);
+    font-size: 0.75rem;
 }
 
 .report-comparison.is-positive {
@@ -490,24 +476,40 @@ $goalCompetence = $periodMode === 'month'
     color: #b91c1c;
 }
 
-.report-overview-panel {
-    overflow: hidden;
+.report-comparison.is-neutral,
+.report-metric-note {
+    color: var(--report-muted);
 }
 
-.report-section-heading {
-    padding: 16px 18px;
-    border-bottom: 1px solid var(--report-border);
+.report-dashboard-grid {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1.5fr)
+        minmax(290px, 0.8fr);
+    gap: 16px;
+    margin-top: 16px;
 }
 
-.report-section-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
+.report-subpanel {
+    min-width: 0;
+    padding: 16px;
+    border: 1px solid var(--report-border);
+    border-radius: 14px;
+    background: #ffffff;
 }
 
-.report-section-body {
-    padding: 18px;
+.report-subpanel h3,
+.report-subpanel h4 {
+    margin: 0 0 5px;
+    color: var(--report-text);
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.report-subpanel > p {
+    margin: 0 0 14px;
+    color: var(--report-muted);
+    font-size: 0.8rem;
 }
 
 .report-breakdown-grid {
@@ -523,45 +525,47 @@ $goalCompetence = $periodMode === 'month'
     background: var(--report-soft);
 }
 
-.report-breakdown-item span,
-.report-ranking-item span {
+.report-breakdown-item span {
     display: block;
     color: var(--report-muted);
-    font-size: .78rem;
+    font-size: 0.78rem;
 }
 
 .report-breakdown-item strong {
     display: block;
     margin-top: 5px;
-    color: #0f172a;
+    color: var(--report-text);
 }
 
-.report-dashboard-grid {
+.report-ranking-list {
     display: grid;
-    grid-template-columns: minmax(0, 1.5fr) minmax(300px, .8fr);
-    gap: 16px;
-    margin-top: 16px;
+    gap: 9px;
 }
 
-.report-subpanel {
+.report-ranking-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--report-soft);
+}
+
+.report-ranking-item span {
     min-width: 0;
-    padding: 16px;
-    border: 1px solid var(--report-border);
-    border-radius: 14px;
-    background: #fff;
 }
 
-.report-subpanel h4 {
-    margin: 0 0 4px;
-    color: #0f172a;
-    font-size: .95rem;
-    font-weight: 700;
+.report-ranking-item strong {
+    color: var(--report-text);
+    font-size: 0.82rem;
+    text-align: right;
 }
 
-.report-subpanel > p {
-    margin: 0 0 14px;
+.report-ranking-item small {
+    display: block;
     color: var(--report-muted);
-    font-size: .8rem;
+    font-size: 0.72rem;
 }
 
 .report-evolution-scroll {
@@ -604,139 +608,32 @@ $goalCompetence = $periodMode === 'month'
 .report-evolution-day strong {
     margin-top: 6px;
     color: #334155;
-    font-size: .68rem;
+    font-size: 0.68rem;
     white-space: nowrap;
 }
 
 .report-evolution-day small {
     color: var(--report-muted);
-    font-size: .65rem;
+    font-size: 0.65rem;
 }
 
-.report-ranking-list {
-    display: grid;
-    gap: 9px;
+.report-detail-modal .modal-dialog {
+    max-width: min(1180px, calc(100vw - 28px));
 }
 
-.report-ranking-item {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px;
-    align-items: center;
-    padding: 10px 0;
-    border-bottom: 1px solid #eef2f7;
-}
-
-.report-ranking-item:last-child {
-    border-bottom: 0;
-}
-
-.report-ranking-item strong {
-    display: block;
-    overflow: hidden;
-    color: #1e293b;
-    font-size: .85rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.report-ranking-value {
-    color: #0f172a;
-    font-size: .82rem;
-    font-weight: 700;
-    text-align: right;
-    white-space: nowrap;
-}
-
-.report-accordion {
-    display: grid;
-    gap: 12px;
-    margin-top: 20px;
-}
-
-.report-accordion-item {
-    overflow: hidden;
-}
-
-.report-accordion-button {
-    display: flex;
-    width: 100%;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 16px 18px;
-    border: 0;
-    background: #fff;
-    color: #0f172a;
-    text-align: left;
-}
-
-.report-accordion-button:hover,
-.report-accordion-button:focus-visible {
-    background: #f8fafc;
-}
-
-.report-accordion-button > span:first-child {
-    display: flex;
-    align-items: center;
-    gap: 11px;
-    min-width: 0;
-    font-weight: 700;
-}
-
-.report-accordion-button small {
-    display: block;
-    margin-top: 3px;
-    color: var(--report-muted);
-    font-weight: 400;
-}
-
-.report-accordion-chevron {
-    transition: transform .2s ease;
-}
-
-.report-accordion-button[aria-expanded="true"] .report-accordion-chevron {
-    transform: rotate(180deg);
-}
-
-.report-accordion-content {
-    padding: 0 18px 18px;
-    border-top: 1px solid var(--report-border);
-}
-
-.report-section-state {
-    display: grid;
-    place-items: center;
-    min-height: 180px;
-    padding: 28px;
-    text-align: center;
-}
-
-.report-section-state > i {
-    margin-bottom: 10px;
-    color: #64748b;
-    font-size: 1.6rem;
-}
-
-.report-section-state strong {
-    color: #0f172a;
-}
-
-.report-section-state p {
-    max-width: 520px;
-    margin: 6px 0 14px;
-    color: var(--report-muted);
-}
-
-.report-loading-icon {
-    animation: report-spin .8s linear infinite;
+.report-detail-modal .modal-body {
+    max-height: calc(100dvh - 180px);
+    overflow: auto;
 }
 
 @keyframes report-spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1100px) {
+    .report-selector,
     .report-metric-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -746,85 +643,78 @@ $goalCompetence = $periodMode === 'month'
     }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 850px) {
     .report-dashboard-grid {
         grid-template-columns: 1fr;
     }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 700px) {
     .report-filter-panel,
-    .report-section-body,
-    .report-accordion-content {
+    .report-workspace-content {
         padding: 14px;
+    }
+
+    .report-selector {
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        scroll-snap-type: x proximity;
+    }
+
+    .report-selector-card {
+        min-width: 250px;
+        scroll-snap-align: start;
+    }
+
+    .report-filter-fields,
+    .report-filter-actions,
+    .report-workspace-actions {
+        width: 100%;
+    }
+
+    .report-filter-actions .btn-filter,
+    .report-workspace-actions .btn-filter {
+        flex: 1 1 140px;
+        justify-content: center;
+    }
+
+    .report-workspace-header {
+        align-items: flex-start;
     }
 
     .report-metric-grid,
     .report-breakdown-grid {
         grid-template-columns: 1fr;
     }
-
-    .report-filter-fields,
-    .report-filter-actions {
-        align-items: stretch;
-    }
-
-    .report-filter-actions > * {
-        width: 100%;
-        justify-content: center;
-    }
-
-    .report-mode-selector {
-        width: 100%;
-    }
-
-    .report-mode-selector label {
-        flex: 1;
-    }
-
-    .report-mode-selector span {
-        justify-content: center;
-    }
 }
 
 @media print {
-    body * {
-        visibility: hidden !important;
-    }
-
-    [data-report-page],
-    [data-report-page] * {
-        visibility: visible !important;
-    }
-
-    [data-report-page] {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-    }
-
+    .os-sidebar,
+    .os-topbar,
+    .flash-stack,
     .report-filter-panel,
-    .report-section-actions,
-    .report-accordion-button,
+    .report-selector,
+    .report-workspace-actions,
     .modal,
-    button,
+    .btn,
     .btn-filter {
         display: none !important;
     }
 
-    .collapse {
-        display: block !important;
-    }
-
-    [data-report-page][data-printing-section] [data-report-print-target] {
-        display: none !important;
-    }
-
-    [data-report-page][data-printing-section="empresa"] [data-report-print-target="empresa"],
-    [data-report-page][data-printing-section="clientes"] [data-report-print-target="clientes"],
-    [data-report-page][data-printing-section="servicos"] [data-report-print-target="servicos"],
-    [data-report-page][data-printing-section="equipe"] [data-report-print-target="equipe"] {
-        display: block !important;
+    .os-wrapper,
+    .os-main,
+    .page-body,
+    .reports-page,
+    .report-workspace,
+    .report-workspace-content {
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+        box-shadow: none !important;
     }
 }
 </style>
@@ -833,37 +723,42 @@ $goalCompetence = $periodMode === 'month'
     class="page-body reports-page"
     data-report-page
     data-section-endpoint="actions/relatorio-secao-carregar.php"
+    data-initial-section="<?= h($activeSection) ?>"
 >
-    <section class="report-filter-panel" aria-labelledby="report-filter-title">
-        <form
-            id="report-filter-form"
-            method="get"
-            action="relatorios.php"
-            data-report-filter-form
-            autocomplete="off"
-        >
+    <section class="report-filter-panel">
         <div class="report-filter-heading">
             <div>
-                <h2 id="report-filter-title">
-                    <i class="bi bi-calendar3 me-1" aria-hidden="true"></i>
+                <h2>
+                    <i
+                        class="bi bi-calendar3 me-1"
+                        aria-hidden="true"
+                    ></i>
                     Período do relatório
                 </h2>
 
                 <p>
-                    Use um mês completo ou selecione um intervalo personalizado de até 366 dias.
+                    O período será aplicado ao relatório selecionado.
                 </p>
             </div>
 
-            <div class="report-mode-selector" role="radiogroup" aria-label="Modo do período">
+            <div
+                class="report-mode-selector"
+                aria-label="Modo do período"
+            >
                 <label>
                     <input
                         type="radio"
-                        name="modo"
+                        name="report_mode_visual"
                         value="mes"
                         <?= $periodMode === 'month' ? 'checked' : '' ?>
+                        data-report-mode-control
                     >
+
                     <span>
-                        <i class="bi bi-calendar-month"></i>
+                        <i
+                            class="bi bi-calendar-month"
+                            aria-hidden="true"
+                        ></i>
                         Mensal
                     </span>
                 </label>
@@ -871,627 +766,299 @@ $goalCompetence = $periodMode === 'month'
                 <label>
                     <input
                         type="radio"
-                        name="modo"
+                        name="report_mode_visual"
                         value="periodo"
                         <?= $periodMode === 'custom' ? 'checked' : '' ?>
+                        data-report-mode-control
                     >
+
                     <span>
-                        <i class="bi bi-calendar-range"></i>
+                        <i
+                            class="bi bi-calendar-range"
+                            aria-hidden="true"
+                        ></i>
                         Personalizado
                     </span>
                 </label>
             </div>
         </div>
 
-        <div class="report-filter-fields">
-            <div
-                class="form-group"
-                data-period-month-fields
-                <?= $periodMode !== 'month' ? 'hidden' : '' ?>
+        <form
+            method="get"
+            action="relatorios.php"
+            data-report-filter-form
+            autocomplete="off"
+        >
+            <input
+                type="hidden"
+                name="secao"
+                value="<?= h($activeSection) ?>"
+                data-report-section-field
             >
-                <label class="form-label" for="report-competence">
-                    Mês de referência
-                </label>
 
-                <input
-                    class="form-control-os"
-                    id="report-competence"
-                    type="month"
-                    name="competencia"
-                    min="2000-01"
-                    max="2100-12"
-                    value="<?= h($periodCompetence) ?>"
-                    <?= $periodMode !== 'month' ? 'disabled' : '' ?>
-                    required
-                >
-            </div>
-
-            <div
-                class="form-group"
-                data-period-custom-fields
-                <?= $periodMode === 'month' ? 'hidden' : '' ?>
+            <input
+                type="hidden"
+                name="modo"
+                value="<?= $periodMode === 'custom' ? 'periodo' : 'mes' ?>"
+                data-report-mode-field
             >
-                <label class="form-label" for="report-start-date">
-                    Data inicial
-                </label>
 
-                <input
-                    class="form-control-os"
-                    id="report-start-date"
-                    type="date"
-                    name="data_inicial"
-                    min="2000-01-01"
-                    max="2100-12-31"
-                    value="<?= h($periodStart) ?>"
-                    <?= $periodMode === 'month' ? 'disabled' : '' ?>
-                    required
+            <div class="report-filter-fields">
+                <div
+                    class="form-group"
+                    data-period-month-fields
+                    <?= $periodMode === 'custom' ? 'hidden' : '' ?>
                 >
-            </div>
-
-            <div
-                class="form-group"
-                data-period-custom-fields
-                <?= $periodMode === 'month' ? 'hidden' : '' ?>
-            >
-                <label class="form-label" for="report-end-date">
-                    Data final
-                </label>
-
-                <input
-                    class="form-control-os"
-                    id="report-end-date"
-                    type="date"
-                    name="data_final"
-                    min="2000-01-01"
-                    max="2100-12-31"
-                    value="<?= h($periodEnd) ?>"
-                    <?= $periodMode === 'month' ? 'disabled' : '' ?>
-                    required
-                >
-            </div>
-
-            <div class="report-filter-actions">
-                <button class="btn-filter btn-filter-primary" type="submit">
-                    <i class="bi bi-funnel"></i>
-                    Aplicar período
-                </button>
-
-                <a class="btn-filter btn-filter-ghost" href="relatorios.php">
-                    <i class="bi bi-arrow-counterclockwise"></i>
-                    Limpar
-                </a>
-
-                <?php if ($canConfigureGoal): ?>
-                    <button
-                        class="btn-filter btn-filter-ghost"
-                        type="button"
-                        data-bs-toggle="modal"
-                        data-bs-target="#modal-configurar-meta"
+                    <label
+                        class="form-label"
+                        for="report-competence"
                     >
-                        <i class="bi bi-bullseye"></i>
-                        Configurar meta
+                        Mês de referência
+                    </label>
+
+                    <input
+                        class="form-control-os"
+                        id="report-competence"
+                        type="month"
+                        name="competencia"
+                        value="<?= h($periodCompetence) ?>"
+                        <?= $periodMode === 'custom' ? 'disabled' : '' ?>
+                        required
+                    >
+                </div>
+
+                <div
+                    class="form-group"
+                    data-period-custom-fields
+                    <?= $periodMode === 'month' ? 'hidden' : '' ?>
+                >
+                    <label
+                        class="form-label"
+                        for="report-start-date"
+                    >
+                        Data inicial
+                    </label>
+
+                    <input
+                        class="form-control-os"
+                        id="report-start-date"
+                        type="date"
+                        name="data_inicial"
+                        value="<?= h($periodStart) ?>"
+                        <?= $periodMode === 'month' ? 'disabled' : '' ?>
+                        required
+                    >
+                </div>
+
+                <div
+                    class="form-group"
+                    data-period-custom-fields
+                    <?= $periodMode === 'month' ? 'hidden' : '' ?>
+                >
+                    <label
+                        class="form-label"
+                        for="report-end-date"
+                    >
+                        Data final
+                    </label>
+
+                    <input
+                        class="form-control-os"
+                        id="report-end-date"
+                        type="date"
+                        name="data_final"
+                        value="<?= h($periodEnd) ?>"
+                        <?= $periodMode === 'month' ? 'disabled' : '' ?>
+                        required
+                    >
+                </div>
+
+                <div class="report-filter-actions">
+                    <button
+                        class="btn-filter btn-filter-primary"
+                        type="submit"
+                    >
+                        <i
+                            class="bi bi-funnel"
+                            aria-hidden="true"
+                        ></i>
+                        Aplicar período
                     </button>
-                <?php endif; ?>
+
+                    <?php if ($canConfigureGoal): ?>
+                        <button
+                            class="btn-filter btn-filter-ghost"
+                            type="button"
+                            data-bs-toggle="modal"
+                            data-bs-target="#modal-configurar-meta"
+                        >
+                            <i
+                                class="bi bi-bullseye"
+                                aria-hidden="true"
+                            ></i>
+                            Configurar meta
+                        </button>
+                    <?php endif; ?>
+                </div>
             </div>
-        </div>
         </form>
     </section>
 
     <?php if ($periodError !== null): ?>
         <div class="alert alert-warning" role="alert">
-            <i class="bi bi-exclamation-triangle me-1"></i>
             <?= h($periodError) ?>
-            O mês atual foi carregado como alternativa segura.
+
+            Foi aplicado o mês atual como período seguro.
         </div>
     <?php endif; ?>
 
-    <div class="report-period-identification" role="status">
+    <div
+        class="report-period-summary"
+        role="status"
+        aria-live="polite"
+    >
         <div>
-            <strong><?= h($periodLabel) ?></strong>
-            <p>
-                De <?= h($reportDate($periodStart)) ?> até <?= h($reportDate($periodEnd)) ?>.
-                Comparação com <?= h($previousPeriodLabel) ?>.
-            </p>
+            <strong>Período aplicado:</strong>
+            <?= h($periodLabel) ?>
         </div>
 
-        <span class="badge-soft badge-blue">
-            <?= h((string) ($period['days'] ?? 0)) ?> dia(s)
-        </span>
+        <p class="mb-0">
+            Clique em um relatório para preencher o painel abaixo.
+        </p>
     </div>
 
-    <?php if (!$hasAnyVisibleReport): ?>
+    <?php if ($availableSections === []): ?>
         <?php
         empty_state(
             'Nenhum relatório disponível para este perfil',
-            'Solicite ao administrador uma permissão de relatório compatível.'
+            'Solicite uma permissão compatível com relatórios.'
         );
         ?>
-    <?php endif; ?>
+    <?php else: ?>
+        <nav
+            class="report-selector"
+            aria-label="Tipos de relatório"
+        >
+            <?php foreach ($availableSections as $sectionKey): ?>
+                <?php
+                $definition = $sectionDefinitions[$sectionKey];
+                ?>
 
-    <?php if ($canViewCompanyReport): ?>
-        <section class="report-overview-panel" aria-labelledby="company-report-title" data-report-print-target="empresa">
-            <div class="report-section-heading">
-                <div>
-                    <h3 id="company-report-title">
-                        <i class="bi bi-buildings me-1"></i>
-                        Visão geral da empresa
-                    </h3>
-                    <p class="section-note mb-0">
-                        Indicadores consolidados das OS finalizadas no período.
-                    </p>
+                <button
+                    class="report-selector-card<?= $sectionKey === $activeSection ? ' is-active' : '' ?>"
+                    type="button"
+                    data-report-select="<?= h($sectionKey) ?>"
+                    data-report-title="<?= h($definition['title']) ?>"
+                    data-report-description="<?= h($definition['description']) ?>"
+                    data-report-icon="<?= h($definition['icon']) ?>"
+                    aria-pressed="<?= $sectionKey === $activeSection ? 'true' : 'false' ?>"
+                >
+                    <span class="report-selector-icon">
+                        <i
+                            class="bi <?= h($definition['icon']) ?>"
+                            aria-hidden="true"
+                        ></i>
+                    </span>
+
+                    <span class="report-selector-copy">
+                        <strong>
+                            <?= h($definition['title']) ?>
+                        </strong>
+
+                        <small>
+                            <?= h($definition['description']) ?>
+                        </small>
+                    </span>
+                </button>
+            <?php endforeach; ?>
+        </nav>
+
+        <section class="report-workspace">
+            <header class="report-workspace-header">
+                <div class="report-workspace-title">
+                    <span class="report-workspace-icon">
+                        <i
+                            class="bi <?= h($activeDefinition['icon']) ?>"
+                            data-report-workspace-icon
+                            aria-hidden="true"
+                        ></i>
+                    </span>
+
+                    <div>
+                        <h2 data-report-workspace-title>
+                            <?= h($activeDefinition['title']) ?>
+                        </h2>
+
+                        <p data-report-workspace-description>
+                            <?= h($activeDefinition['description']) ?>
+                        </p>
+                    </div>
                 </div>
 
-                <div class="report-section-actions">
+                <div class="report-workspace-actions">
+                    <a
+                        class="btn-filter btn-filter-ghost"
+                        href="#"
+                        data-report-export-current
+                    >
+                        <i
+                            class="bi bi-file-earmark-spreadsheet"
+                            aria-hidden="true"
+                        ></i>
+                        Exportar CSV
+                    </a>
+
                     <button
                         class="btn-filter btn-filter-ghost"
                         type="button"
-                        data-report-print-section="empresa"
+                        data-report-print-current
                     >
-                        <i class="bi bi-printer"></i>
+                        <i
+                            class="bi bi-printer"
+                            aria-hidden="true"
+                        ></i>
                         Imprimir
                     </button>
                 </div>
-            </div>
+            </header>
 
-            <div class="report-section-body">
-                <?php if ($loadError !== null): ?>
-                    <div class="alert alert-danger mb-0" role="alert">
-                        <i class="bi bi-exclamation-circle me-1"></i>
-                        <?= h($loadError) ?>
-                    </div>
-                <?php elseif ($companyReport !== null): ?>
-                    <div class="report-metric-grid">
-                        <?= $metricCard(
-                            'OS finalizadas',
-                            (string) ($summary['orders'] ?? 0),
-                            'bi-check2-circle',
-                            $periodLabel,
-                            $comparisonHtml($comparison['orders'] ?? null)
-                        ) ?>
+            <div
+                class="report-workspace-content"
+                data-report-active-section
+                data-report-section
+                data-section="<?= h($activeSection) ?>"
+                data-report-section-content
+                aria-live="polite"
+            >
+                <div
+                    class="report-section-state"
+                    role="status"
+                >
+                    <i
+                        class="bi bi-arrow-repeat report-loading-icon"
+                        aria-hidden="true"
+                    ></i>
 
-                        <?= $metricCard(
-                            'Clientes atendidos',
-                            (string) ($summary['unique_clients'] ?? 0),
-                            'bi-people',
-                            'clientes únicos',
-                            $comparisonHtml($comparison['unique_clients'] ?? null)
-                        ) ?>
+                    <strong>Carregando relatório</strong>
 
-                        <?php if ($canViewFinancial): ?>
-                            <?= $metricCard(
-                                'Faturamento consolidado',
-                                $reportMoney($summary['company_total'] ?? '0'),
-                                'bi-cash-stack',
-                                'cada OS contabilizada uma vez',
-                                $comparisonHtml($comparison['company_total'] ?? null)
-                            ) ?>
-
-                            <?= $metricCard(
-                                'Ticket médio',
-                                $reportMoney($summary['average_ticket'] ?? '0'),
-                                'bi-receipt',
-                                'faturamento por OS'
-                            ) ?>
-
-                            <?= $metricCard(
-                                'Total recebido',
-                                $reportMoney($summary['received_total'] ?? '0'),
-                                'bi-wallet2',
-                                'estado atual das contas'
-                            ) ?>
-
-                            <?= $metricCard(
-                                'Saldo a receber',
-                                $reportMoney($summary['receivable_balance'] ?? '0'),
-                                'bi-hourglass-split',
-                                'sem contas canceladas'
-                            ) ?>
-
-                            <?= $metricCard(
-                                'Contas pendentes',
-                                (string) ($summary['pending_accounts'] ?? 0),
-                                'bi-clock-history',
-                                'pendentes, parciais ou vencidas'
-                            ) ?>
-
-                            <?= $metricCard(
-                                'Contas vencidas',
-                                (string) ($summary['overdue_accounts'] ?? 0),
-                                'bi-exclamation-triangle',
-                                'saldo maior que zero'
-                            ) ?>
-                        <?php endif; ?>
-                    </div>
-
-                    <?php if ($canViewFinancial): ?>
-                        <div class="report-breakdown-grid" aria-label="Composição financeira">
-                            <div class="report-breakdown-item">
-                                <span>Serviços</span>
-                                <strong><?= h($reportMoney($summary['service_total'] ?? '0')) ?></strong>
-                            </div>
-
-                            <div class="report-breakdown-item">
-                                <span>Produtos</span>
-                                <strong><?= h($reportMoney($summary['product_total'] ?? '0')) ?></strong>
-                            </div>
-
-                            <div class="report-breakdown-item">
-                                <span>Outros</span>
-                                <strong><?= h($reportMoney($summary['other_total'] ?? '0')) ?></strong>
-                            </div>
-
-                            <div class="report-breakdown-item">
-                                <span>Descontos</span>
-                                <strong><?= h($reportMoney($summary['discount_total'] ?? '0')) ?></strong>
-                            </div>
-
-                            <div class="report-breakdown-item">
-                                <span>Acréscimos</span>
-                                <strong><?= h($reportMoney($summary['addition_total'] ?? '0')) ?></strong>
-                            </div>
-                        </div>
-                    <?php endif; ?>
-
-                    <div class="report-dashboard-grid">
-                        <section class="report-subpanel" aria-labelledby="daily-evolution-title">
-                            <h4 id="daily-evolution-title">Evolução diária</h4>
-                            <p>
-                                <?= $canViewFinancial
-                                    ? 'Faturamento consolidado por data da finalização.'
-                                    : 'Quantidade de OS finalizadas por dia.' ?>
-                            </p>
-
-                            <?php if ($dailyEvolution === []): ?>
-                                <?php
-                                empty_state(
-                                    'Sem evolução no período',
-                                    'Nenhuma OS finalizada foi encontrada.'
-                                );
-                                ?>
-                            <?php else: ?>
-                                <div class="report-evolution-scroll">
-                                    <div class="report-evolution-chart">
-                                        <?php foreach ($dailyEvolution as $day): ?>
-                                            <?php
-                                            if (!is_array($day)) {
-                                                continue;
-                                            }
-
-                                            $dayValue = $canViewFinancial
-                                                ? $decimalToCents($day['company_total'] ?? '0')
-                                                : (int) ($day['orders'] ?? 0);
-
-                                            $height = $maxDailyValue > 0
-                                                ? max(
-                                                    3,
-                                                    min(
-                                                        100,
-                                                        intdiv(
-                                                            $dayValue * 100,
-                                                            $maxDailyValue
-                                                        )
-                                                    )
-                                                )
-                                                : 3;
-
-                                            $dayDisplayValue = $canViewFinancial
-                                                ? $reportMoney($day['company_total'] ?? '0')
-                                                : (string) ($day['orders'] ?? 0) . ' OS';
-                                            ?>
-
-                                            <div
-                                                class="report-evolution-day"
-                                                title="<?= h(
-                                                    (string) ($day['label'] ?? '')
-                                                    . ' — '
-                                                    . $dayDisplayValue
-                                                ) ?>"
-                                            >
-                                                <div class="report-evolution-bar-wrap">
-                                                    <span
-                                                        class="report-evolution-bar"
-                                                        style="height: <?= h((string) $height) ?>%"
-                                                        aria-hidden="true"
-                                                    ></span>
-                                                </div>
-
-                                                <strong><?= h((string) ($day['label'] ?? '')) ?></strong>
-                                                <small><?= h((string) ($day['orders'] ?? 0)) ?> OS</small>
-                                            </div>
-                                        <?php endforeach; ?>
-                                    </div>
-                                </div>
-                            <?php endif; ?>
-                        </section>
-
-                        <div class="d-grid gap-3">
-                            <?php if ($canViewFinancial): ?>
-                                <?php
-                                $clientRanking = is_array($rankings['clients_by_revenue'] ?? null)
-                                    ? $rankings['clients_by_revenue']
-                                    : [];
-                                ?>
-
-                                <section class="report-subpanel" aria-labelledby="client-ranking-title">
-                                    <h4 id="client-ranking-title">Clientes por faturamento</h4>
-                                    <p>Os 10 clientes com maior valor executado.</p>
-
-                                    <?php if ($clientRanking === []): ?>
-                                        <span class="section-note">Nenhum cliente no período.</span>
-                                    <?php else: ?>
-                                        <div class="report-ranking-list">
-                                            <?php foreach ($clientRanking as $index => $item): ?>
-                                                <?php $item = is_array($item) ? $item : []; ?>
-
-                                                <div class="report-ranking-item">
-                                                    <div>
-                                                        <strong>
-                                                            <?= h(
-                                                                ((int) $index + 1)
-                                                                . '. '
-                                                                . (string) ($item['name'] ?? 'Cliente')
-                                                            ) ?>
-                                                        </strong>
-                                                        <span>
-                                                            <?= h((string) ($item['orders'] ?? 0)) ?> OS
-                                                        </span>
-                                                    </div>
-
-                                                    <div class="report-ranking-value">
-                                                        <?= h($reportMoney($item['revenue_total'] ?? '0')) ?>
-                                                    </div>
-                                                </div>
-                                            <?php endforeach; ?>
-                                        </div>
-                                    <?php endif; ?>
-                                </section>
-                            <?php endif; ?>
-
-                            <?php
-                            $serviceQuantityRanking = is_array($rankings['services_by_quantity'] ?? null)
-                                ? $rankings['services_by_quantity']
-                                : [];
-                            ?>
-
-                            <section class="report-subpanel" aria-labelledby="service-ranking-title">
-                                <h4 id="service-ranking-title">Serviços mais executados</h4>
-                                <p>Ranking por quantidade registrada nas finalizações.</p>
-
-                                <?php if ($serviceQuantityRanking === []): ?>
-                                    <span class="section-note">Nenhum serviço no período.</span>
-                                <?php else: ?>
-                                    <div class="report-ranking-list">
-                                        <?php foreach ($serviceQuantityRanking as $index => $item): ?>
-                                            <?php $item = is_array($item) ? $item : []; ?>
-
-                                            <div class="report-ranking-item">
-                                                <div>
-                                                    <strong>
-                                                        <?= h(
-                                                            ((int) $index + 1)
-                                                            . '. '
-                                                            . (string) ($item['description'] ?? 'Serviço')
-                                                        ) ?>
-                                                    </strong>
-                                                    <span>
-                                                        <?= h((string) ($item['orders'] ?? 0)) ?> OS
-                                                    </span>
-                                                </div>
-
-                                                <div class="report-ranking-value">
-                                                    <?= h($reportDecimal($item['quantity_total'] ?? '0', 3)) ?>
-                                                </div>
-                                            </div>
-                                        <?php endforeach; ?>
-                                    </div>
-                                <?php endif; ?>
-                            </section>
-                        </div>
-                    </div>
-                <?php endif; ?>
+                    <p>
+                        Os dados do período selecionado estão sendo preparados.
+                    </p>
+                </div>
             </div>
         </section>
     <?php endif; ?>
-
-    <div class="report-accordion" id="report-sections-accordion">
-        <?php if ($canViewClientReport): ?>
-            <section class="report-accordion-item" data-report-print-target="clientes">
-                <h2 class="m-0" id="report-clients-heading">
-                    <button
-                        class="report-accordion-button collapsed"
-                        type="button"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#report-clients-collapse"
-                        aria-expanded="false"
-                        aria-controls="report-clients-collapse"
-                    >
-                        <span>
-                            <i class="bi bi-person-vcard" aria-hidden="true"></i>
-                            <span>
-                                Relatório por cliente
-                                <small>Faturamento, quantidade de OS, ticket e saldo por cliente.</small>
-                            </span>
-                        </span>
-
-                        <i class="bi bi-chevron-down report-accordion-chevron" aria-hidden="true"></i>
-                    </button>
-                </h2>
-
-                <div
-                    class="collapse"
-                    id="report-clients-collapse"
-                    aria-labelledby="report-clients-heading"
-                    data-report-section
-                    data-section="clientes"
-                >
-                    <div class="report-accordion-content">
-                        <div class="report-section-actions justify-content-end py-3">
-                            <a
-                                class="btn-filter btn-filter-ghost"
-                                href="actions/relatorio-exportar.php?secao=clientes"
-                                data-report-export-section
-                            >
-                                <i class="bi bi-file-earmark-spreadsheet"></i>
-                                Exportar
-                            </a>
-
-                            <button
-                                class="btn-filter btn-filter-ghost"
-                                type="button"
-                                data-report-print-section="clientes"
-                            >
-                                <i class="bi bi-printer"></i>
-                                Imprimir
-                            </button>
-                        </div>
-
-                        <div data-report-section-content>
-                            <div class="report-section-state">
-                                <i class="bi bi-hand-index" aria-hidden="true"></i>
-                                <strong>Abra esta seção para carregar os clientes</strong>
-                                <p>Os dados serão consultados somente quando necessários.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        <?php endif; ?>
-
-        <?php if ($canViewServiceReport): ?>
-            <section class="report-accordion-item" data-report-print-target="servicos">
-                <h2 class="m-0" id="report-services-heading">
-                    <button
-                        class="report-accordion-button collapsed"
-                        type="button"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#report-services-collapse"
-                        aria-expanded="false"
-                        aria-controls="report-services-collapse"
-                    >
-                        <span>
-                            <i class="bi bi-tools" aria-hidden="true"></i>
-                            <span>
-                                Relatório por serviço
-                                <small>Quantidade executada, OS, clientes e descrição histórica.</small>
-                            </span>
-                        </span>
-
-                        <i class="bi bi-chevron-down report-accordion-chevron" aria-hidden="true"></i>
-                    </button>
-                </h2>
-
-                <div
-                    class="collapse"
-                    id="report-services-collapse"
-                    aria-labelledby="report-services-heading"
-                    data-report-section
-                    data-section="servicos"
-                >
-                    <div class="report-accordion-content">
-                        <div class="report-section-actions justify-content-end py-3">
-                            <a
-                                class="btn-filter btn-filter-ghost"
-                                href="actions/relatorio-exportar.php?secao=servicos"
-                                data-report-export-section
-                            >
-                                <i class="bi bi-file-earmark-spreadsheet"></i>
-                                Exportar
-                            </a>
-
-                            <button
-                                class="btn-filter btn-filter-ghost"
-                                type="button"
-                                data-report-print-section="servicos"
-                            >
-                                <i class="bi bi-printer"></i>
-                                Imprimir
-                            </button>
-                        </div>
-
-                        <div data-report-section-content>
-                            <div class="report-section-state">
-                                <i class="bi bi-hand-index" aria-hidden="true"></i>
-                                <strong>Abra esta seção para carregar os serviços</strong>
-                                <p>Os dados serão consultados somente quando necessários.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        <?php endif; ?>
-
-        <?php if ($canViewTeamReport): ?>
-            <section class="report-accordion-item" data-report-print-target="equipe">
-                <h2 class="m-0" id="report-team-heading">
-                    <button
-                        class="report-accordion-button collapsed"
-                        type="button"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#report-team-collapse"
-                        aria-expanded="false"
-                        aria-controls="report-team-collapse"
-                    >
-                        <span>
-                            <i class="bi bi-people" aria-hidden="true"></i>
-                            <span>
-                                Equipe, metas e comissão
-                                <small>Produção individual, metas, progresso e prêmio estimado.</small>
-                            </span>
-                        </span>
-
-                        <i class="bi bi-chevron-down report-accordion-chevron" aria-hidden="true"></i>
-                    </button>
-                </h2>
-
-                <div
-                    class="collapse"
-                    id="report-team-collapse"
-                    aria-labelledby="report-team-heading"
-                    data-report-section
-                    data-section="equipe"
-                >
-                    <div class="report-accordion-content">
-                        <div class="report-section-actions justify-content-end py-3">
-                            <a
-                                class="btn-filter btn-filter-ghost"
-                                href="actions/relatorio-exportar.php?secao=equipe"
-                                data-report-export-section
-                            >
-                                <i class="bi bi-file-earmark-spreadsheet"></i>
-                                Exportar
-                            </a>
-
-                            <button
-                                class="btn-filter btn-filter-ghost"
-                                type="button"
-                                data-report-print-section="equipe"
-                            >
-                                <i class="bi bi-printer"></i>
-                                Imprimir
-                            </button>
-                        </div>
-
-                        <div data-report-section-content>
-                            <div class="report-section-state">
-                                <i class="bi bi-hand-index" aria-hidden="true"></i>
-                                <strong>Abra esta seção para carregar a equipe</strong>
-                                <p>A produção detalhada será consultada somente quando necessária.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        <?php endif; ?>
-    </div>
 </div>
 
 <div
-    class="modal fade"
+    class="modal fade report-detail-modal"
     id="report-detail-modal"
     tabindex="-1"
     aria-hidden="true"
 >
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div
+        class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"
+    >
         <div class="modal-content visual-modal">
             <div class="modal-header">
                 <div>
@@ -1499,11 +1066,11 @@ $goalCompetence = $periodMode === 'month'
                         class="modal-title fs-5"
                         data-report-detail-title
                     >
-                        Detalhamento do relatório
+                        Detalhamento
                     </h2>
 
                     <p class="text-muted small mb-0">
-                        Registros considerados no período selecionado.
+                        Registros vinculados ao período selecionado.
                     </p>
                 </div>
 
@@ -1515,22 +1082,22 @@ $goalCompetence = $periodMode === 'month'
                 ></button>
             </div>
 
-            <div class="modal-body" data-report-detail-body>
+            <div
+                class="modal-body"
+                data-report-detail-body
+            >
                 <div class="report-section-state">
-                    <i class="bi bi-list-check" aria-hidden="true"></i>
-                    <strong>Selecione um registro</strong>
-                    <p>O detalhamento será exibido aqui.</p>
-                </div>
-            </div>
+                    <i
+                        class="bi bi-list-check"
+                        aria-hidden="true"
+                    ></i>
 
-            <div class="modal-footer">
-                <button
-                    class="btn-modal-cancel"
-                    type="button"
-                    data-bs-dismiss="modal"
-                >
-                    Fechar
-                </button>
+                    <strong>Selecione um registro</strong>
+
+                    <p>
+                        O detalhamento será exibido aqui.
+                    </p>
+                </div>
             </div>
         </div>
     </div>
@@ -1557,7 +1124,7 @@ $goalCompetence = $periodMode === 'month'
                         </h2>
 
                         <p class="text-muted small mb-0">
-                            A configuração será aplicada aos funcionários no mês selecionado.
+                            A regra valerá para todos os funcionários no mês selecionado.
                         </p>
                     </div>
 
@@ -1574,13 +1141,16 @@ $goalCompetence = $periodMode === 'month'
                     <?php return_to_field(); ?>
 
                     <div class="alert alert-info" role="note">
-                        <i class="bi bi-info-circle me-1"></i>
-                        Ao atingir a meta, o percentual é aplicado sobre todo o valor creditado ao funcionário, e não apenas sobre o excedente.
+                        Ao atingir a meta, o percentual será aplicado
+                        sobre todo o valor creditado ao funcionário.
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label class="form-label" for="goal-competence">
+                            <label
+                                class="form-label"
+                                for="goal-competence"
+                            >
                                 Mês de referência
                             </label>
 
@@ -1589,15 +1159,16 @@ $goalCompetence = $periodMode === 'month'
                                 id="goal-competence"
                                 type="month"
                                 name="competencia"
-                                min="2000-01"
-                                max="2100-12"
                                 value="<?= h($goalCompetence) ?>"
                                 required
                             >
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label" for="goal-amount">
+                            <label
+                                class="form-label"
+                                for="goal-amount"
+                            >
                                 Valor da meta
                             </label>
 
@@ -1613,7 +1184,10 @@ $goalCompetence = $periodMode === 'month'
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label" for="goal-percentage">
+                            <label
+                                class="form-label"
+                                for="goal-percentage"
+                            >
                                 Percentual do prêmio
                             </label>
 
@@ -1628,7 +1202,9 @@ $goalCompetence = $periodMode === 'month'
                                     required
                                 >
 
-                                <span class="input-group-text">%</span>
+                                <span class="input-group-text">
+                                    %
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -1643,8 +1219,14 @@ $goalCompetence = $periodMode === 'month'
                         Cancelar
                     </button>
 
-                    <button class="btn-modal-save" type="submit">
-                        <i class="bi bi-check-lg"></i>
+                    <button
+                        class="btn-modal-save"
+                        type="submit"
+                    >
+                        <i
+                            class="bi bi-check-lg"
+                            aria-hidden="true"
+                        ></i>
                         Salvar meta
                     </button>
                 </div>
