@@ -32,7 +32,6 @@ $app = require dirname(__DIR__) . '/bootstrap.php';
 
 /** @var Application $application */
 $application = $app['application'];
-
 $session = $application->session();
 $session->start();
 
@@ -53,7 +52,7 @@ try {
 
     /*
      * A empresa nunca é recebida pela URL.
-     * O contexto é resolvido exclusivamente pelo backend.
+     * O escopo é resolvido exclusivamente no backend.
      */
     $companyScope = $application->companyScope();
     $companyId = $companyScope->id();
@@ -62,6 +61,7 @@ try {
         !in_array(
             $section,
             [
+                'empresa',
                 'clientes',
                 'servicos',
                 'equipe',
@@ -90,7 +90,14 @@ try {
     }
 
     if (
-        $section === 'equipe'
+        in_array(
+            $section,
+            [
+                'empresa',
+                'equipe',
+            ],
+            true
+        )
         && $action !== 'lista'
     ) {
         throw new InvalidArgumentException(
@@ -101,8 +108,8 @@ try {
     $service = $application->reports();
 
     /*
-     * Validação antecipada para registrar somente o período
-     * seguro e normalizado em caso de erro técnico.
+     * Valida e normaliza o período antes de executar
+     * as consultas específicas do relatório.
      */
     $periodForLog = $service->resolvePeriod($_GET);
 
@@ -126,10 +133,34 @@ try {
 
     /*
      * =====================================================
+     * VISÃO GERAL DA EMPRESA
+     * =====================================================
+     */
+    if ($section === 'empresa') {
+        report_action_require_any_permission(
+            $companyScope,
+            [
+                'relatorio.operacional',
+                'relatorio.produtividade',
+                'relatorio.financeiro',
+            ]
+        );
+
+        $reportData = $service->companyReport(
+            $_GET,
+            $canViewFinancial
+        );
+
+        $partial = dirname(__DIR__)
+            . '/pages/relatorios/empresa.php';
+    }
+
+    /*
+     * =====================================================
      * RELATÓRIO POR CLIENTE
      * =====================================================
      */
-    if ($section === 'clientes') {
+    elseif ($section === 'clientes') {
         report_action_require_any_permission(
             $companyScope,
             [
@@ -191,16 +222,10 @@ try {
 
     /*
      * =====================================================
-     * EQUIPE, META E COMISSÃO
+     * EQUIPE, METAS E COMISSÃO
      * =====================================================
      */
     else {
-        /*
-         * A permissão de comissão foi mantida aqui para
-         * preservar o comportamento do relatório existente,
-         * no qual quem visualiza comissão também acessa
-         * a apuração dos funcionários.
-         */
         report_action_require_any_permission(
             $companyScope,
             [
@@ -225,13 +250,12 @@ try {
         );
     }
 
-    require_once dirname(__DIR__) . '/includes/ui.php';
+    require_once dirname(__DIR__)
+        . '/includes/ui.php';
 
     /*
-     * Gera uma URL interna segura para abrir a OS.
-     *
-     * A URL não é recebida pelo navegador. Somente o número
-     * da OS retornado pelo repository é utilizado na busca.
+     * A URL da OS é sempre construída pelo backend.
+     * O navegador não envia uma URL arbitrária.
      */
     $reportOrderUrl = static function (
         array $row
@@ -244,7 +268,10 @@ try {
         }
 
         $orderNumber = trim(
-            (string) ($row['order_number'] ?? '')
+            (string) (
+                $row['order_number']
+                ?? ''
+            )
         );
 
         if ($orderNumber === '') {
@@ -264,13 +291,16 @@ try {
         [
             'application' => $application,
             'companyScope' => $companyScope,
+
             'reportData' => $reportData,
             'reportSection' => $section,
             'reportView' => $reportView,
+
             'reportCanViewFinancial' => $canViewFinancial,
             'reportCanViewCommission' => $canViewCommission,
             'reportCanConfigureGoal' => $canConfigureGoal,
             'reportCanOpenOrders' => $canOpenOrders,
+
             'reportOrderUrl' => $reportOrderUrl,
         ]
     );
@@ -282,8 +312,12 @@ try {
             'section' => $section,
             'action' => $action,
             'html' => $html,
-            'period' => $reportData['period'] ?? null,
-            'pagination' => $reportData['pagination'] ?? null,
+
+            'period' => $reportData['period']
+                ?? null,
+
+            'pagination' => $reportData['pagination']
+                ?? null,
         ]
     );
 } catch (AuthenticationException $exception) {
@@ -303,10 +337,6 @@ try {
         ]
     );
 } catch (InvalidArgumentException $exception) {
-    /*
-     * As mensagens do service são controladas e não contêm
-     * SQL ou informações internas do banco.
-     */
     report_action_json_response(
         422,
         [
@@ -352,14 +382,7 @@ function report_action_json_response(
     if (!is_string($json)) {
         http_response_code(500);
 
-        echo json_encode(
-            [
-                'success' => false,
-                'message' => 'Não foi possível concluir a resposta.',
-            ],
-            JSON_UNESCAPED_UNICODE
-        );
-
+        echo '{"success":false,"message":"Não foi possível concluir a resposta."}';
         exit;
     }
 
@@ -436,9 +459,8 @@ function report_action_render_partial(
  * - SQL;
  * - stack trace;
  * - cookies;
- * - sessão;
  * - token CSRF;
- * - payload completo;
+ * - conteúdo integral da requisição;
  * - documentos;
  * - telefones;
  * - dados pessoais de clientes.
@@ -460,10 +482,13 @@ function report_action_log_failure(
     $entry = [
         'timestamp' => date('c'),
         'event' => 'report_section_load_failed',
+
         'section' => $section !== ''
             ? $section
             : 'unknown',
+
         'company_id' => $companyId,
+
         'period' => [
             'start' => isset($period['start'])
                 ? (string) $period['start']
@@ -475,9 +500,11 @@ function report_action_log_failure(
                 ? (string) $period['end_exclusive']
                 : null,
         ],
+
         'exception_class' => get_class(
             $exception
         ),
+
         'exception_code' => (string) $exception
             ->getCode(),
     ];
@@ -506,21 +533,19 @@ function report_action_log_failure(
         );
     }
 
-    $written = false;
-
-    if (is_dir($logDirectory)) {
-        $written = @file_put_contents(
+    if (
+        !is_dir($logDirectory)
+        || @file_put_contents(
             $logFile,
             $encoded . PHP_EOL,
             FILE_APPEND | LOCK_EX
-        ) !== false;
-    }
-
-    if (!$written) {
-        /*
-         * Fallback seguro caso a hospedagem não permita
-         * escrever no diretório storage/logs.
-         */
-        error_log($encoded);
+        ) === false
+    ) {
+        error_log(
+            'Report section load failed: '
+            . get_class($exception)
+            . ' code='
+            . (string) $exception->getCode()
+        );
     }
 }
