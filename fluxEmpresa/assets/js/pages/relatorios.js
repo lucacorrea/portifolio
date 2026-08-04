@@ -3,11 +3,6 @@
 
     const root = document.querySelector('[data-report-page]');
 
-    /*
-     * A página atual ainda não possui a estrutura nova.
-     * Até atualizarmos pages/relatorios.php, o script encerra
-     * sem alterar o funcionamento existente.
-     */
     if (!(root instanceof HTMLElement)) {
         return;
     }
@@ -15,39 +10,22 @@
     const endpoint = root.dataset.sectionEndpoint
         || 'actions/relatorio-secao-carregar.php';
 
-    const filterForm = root.querySelector(
-        '[data-report-filter-form]'
-    );
+    const filterForm = root.querySelector('[data-report-filter-form]');
+    const detailModalElement = document.getElementById('report-detail-modal');
+    const detailModalBody = detailModalElement?.querySelector('[data-report-detail-body]');
+    const detailModalTitle = detailModalElement?.querySelector('[data-report-detail-title]');
 
-    /*
-     * Cache de conteúdos já carregados.
-     *
-     * A chave considera:
-     * - seção;
-     * - período;
-     * - página;
-     * - busca;
-     * - ordenação;
-     * - direção;
-     * - detalhamento.
-     */
     const cache = new Map();
-
-    /*
-     * Evita duas requisições simultâneas exatamente iguais.
-     */
     const pendingRequests = new Map();
+
+    let detailState = null;
+    let printedCollapse = null;
 
     const jsonHeaders = {
         Accept: 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
     };
 
-    /**
-     * Obtém os valores válidos do filtro global.
-     *
-     * @returns {URLSearchParams}
-     */
     function periodParams() {
         const params = new URLSearchParams();
 
@@ -55,9 +33,9 @@
             return params;
         }
 
-        const formData = new FormData(filterForm);
+        const data = new FormData(filterForm);
 
-        for (const [key, value] of formData.entries()) {
+        for (const [key, value] of data.entries()) {
             if (typeof value !== 'string') {
                 continue;
             }
@@ -72,38 +50,17 @@
         return params;
     }
 
-    /**
-     * Monta os parâmetros da seção sem confiar em URLs prontas.
-     *
-     * @param {string} section
-     * @param {Record<string, unknown>} overrides
-     * @returns {URLSearchParams}
-     */
-    function normalizedParams(section, overrides = {}) {
-        const params = periodParams();
-
-        params.set('secao', section);
-
-        for (const [key, value] of Object.entries(overrides)) {
-            if (
-                value === null
-                || value === undefined
-                || value === ''
-            ) {
-                params.delete(key);
-                continue;
-            }
-
-            params.set(key, String(value));
-        }
-
-        /*
-         * Ordena os parâmetros para gerar uma chave de cache estável.
-         */
+    function orderedParams(params) {
         const ordered = new URLSearchParams();
 
         [...params.entries()]
-            .sort(([left], [right]) => left.localeCompare(right))
+            .sort(([leftKey, leftValue], [rightKey, rightValue]) => {
+                const keyComparison = leftKey.localeCompare(rightKey);
+
+                return keyComparison !== 0
+                    ? keyComparison
+                    : leftValue.localeCompare(rightValue);
+            })
             .forEach(([key, value]) => {
                 ordered.append(key, value);
             });
@@ -111,115 +68,96 @@
         return ordered;
     }
 
-    /**
-     * @param {string} section
-     * @param {URLSearchParams} params
-     * @returns {string}
-     */
-    function cacheKey(section, params) {
-        return `${section}?${params.toString()}`;
+    function normalizedParams(section, overrides = {}) {
+        const params = periodParams();
+
+        params.set('secao', section);
+
+        for (const [key, value] of Object.entries(overrides)) {
+            if (value === null || value === undefined || value === '') {
+                params.delete(key);
+                continue;
+            }
+
+            params.set(key, String(value));
+        }
+
+        return orderedParams(params);
     }
 
-    /**
-     * @param {HTMLElement} sectionElement
-     * @returns {HTMLElement|null}
-     */
+    function requestUrl(params) {
+        const url = new URL(endpoint, document.baseURI);
+
+        url.search = params.toString();
+
+        return url.toString();
+    }
+
+    function cacheKey(namespace, params) {
+        return `${namespace}?${orderedParams(params).toString()}`;
+    }
+
     function sectionHost(sectionElement) {
-        const host = sectionElement.querySelector(
-            '[data-report-section-content]'
-        );
+        const host = sectionElement.querySelector('[data-report-section-content]');
 
         return host instanceof HTMLElement ? host : null;
     }
 
-    /**
-     * Cria estados visuais sem inserir mensagem externa como HTML.
-     *
-     * @param {string} icon
-     * @param {string} title
-     * @param {string} message
-     * @param {string} retrySection
-     * @returns {HTMLElement}
-     */
-    function createState(
-        icon,
-        title,
-        message,
-        retrySection = ''
-    ) {
-        const wrapper = document.createElement('div');
-
-        wrapper.className = 'report-section-state';
-        wrapper.setAttribute(
-            'role',
-            retrySection === '' ? 'status' : 'alert'
+    function sectionElementByName(section) {
+        const element = root.querySelector(
+            `[data-report-section][data-section="${CSS.escape(section)}"]`
         );
 
-        const iconElement = document.createElement('i');
+        return element instanceof HTMLElement ? element : null;
+    }
 
+    function createState(icon, title, message, retrySection = '') {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'report-section-state';
+        wrapper.setAttribute('role', retrySection === '' ? 'status' : 'alert');
+
+        const iconElement = document.createElement('i');
         iconElement.className = `bi ${icon}`;
         iconElement.setAttribute('aria-hidden', 'true');
 
         const strong = document.createElement('strong');
-
         strong.textContent = title;
 
         const paragraph = document.createElement('p');
-
         paragraph.textContent = message;
 
-        wrapper.append(
-            iconElement,
-            strong,
-            paragraph
-        );
+        wrapper.append(iconElement, strong, paragraph);
 
         if (retrySection !== '') {
             const button = document.createElement('button');
-
             button.type = 'button';
             button.className = 'btn-filter btn-filter-ghost';
             button.dataset.reportRetry = retrySection;
-
-            button.innerHTML = [
-                '<i class="bi bi-arrow-clockwise"',
-                ' aria-hidden="true"></i>',
-                ' Tentar novamente',
-            ].join('');
-
+            button.innerHTML = '<i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Tentar novamente';
             wrapper.append(button);
         }
 
         return wrapper;
     }
 
-    /**
-     * @param {HTMLElement} host
-     */
-    function renderLoading(host) {
+    function renderLoading(host, message = 'Os dados desta seção estão sendo preparados.') {
         host.replaceChildren(
             createState(
                 'bi-arrow-repeat report-loading-icon',
                 'Carregando relatório',
-                'Os dados desta seção estão sendo preparados.'
+                message
             )
         );
 
         host.setAttribute('aria-busy', 'true');
     }
 
-    /**
-     * @param {HTMLElement} host
-     * @param {string} section
-     * @param {string} message
-     */
     function renderError(host, section, message) {
         host.replaceChildren(
             createState(
                 'bi-exclamation-circle',
                 'Não foi possível carregar esta seção',
-                message
-                    || 'Tente novamente em alguns instantes.',
+                message || 'Tente novamente em alguns instantes.',
                 section
             )
         );
@@ -227,47 +165,26 @@
         host.setAttribute('aria-busy', 'false');
     }
 
-    /**
-     * O HTML recebido deverá ser produzido exclusivamente
-     * pelas partials PHP internas, com dados escapados no backend.
-     *
-     * @param {HTMLElement} host
-     * @param {string} html
-     */
     function renderHtml(host, html) {
         host.innerHTML = html;
         host.setAttribute('aria-busy', 'false');
     }
 
-    /**
-     * Executa a consulta JSON com timeout e cache de promessas.
-     *
-     * @param {URLSearchParams} params
-     * @param {string} requestKey
-     * @returns {Promise<Record<string, unknown>>}
-     */
     async function requestJson(params, requestKey) {
         if (pendingRequests.has(requestKey)) {
             return pendingRequests.get(requestKey);
         }
 
         const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 30000);
 
-        const timeout = window.setTimeout(
-            () => controller.abort(),
-            30000
-        );
-
-        const promise = fetch(
-            `${endpoint}?${params.toString()}`,
-            {
-                method: 'GET',
-                credentials: 'same-origin',
-                headers: jsonHeaders,
-                cache: 'no-store',
-                signal: controller.signal,
-            }
-        )
+        const promise = fetch(requestUrl(params), {
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: jsonHeaders,
+            cache: 'no-store',
+            signal: controller.signal,
+        })
             .then(async (response) => {
                 let payload = null;
 
@@ -277,19 +194,15 @@
                     payload = null;
                 }
 
-                if (
-                    !response.ok
-                    || !payload
-                    || payload.success !== true
-                ) {
-                    const message = (
-                        payload
-                        && typeof payload.message === 'string'
-                    )
+                if (!response.ok || !payload || payload.success !== true) {
+                    const message = payload && typeof payload.message === 'string'
                         ? payload.message
                         : 'Não foi possível carregar esta seção do relatório.';
 
-                    throw new Error(message);
+                    const requestError = new Error(message);
+                    requestError.status = response.status;
+
+                    throw requestError;
                 }
 
                 return payload;
@@ -304,230 +217,32 @@
         return promise;
     }
 
-    /**
-     * Carrega uma seção recolhível.
-     *
-     * @param {HTMLElement} sectionElement
-     * @param {Record<string, unknown>} overrides
-     * @param {boolean} force
-     */
-    async function loadSection(
-        sectionElement,
-        overrides = {},
-        force = false
-    ) {
-        if (!(sectionElement instanceof HTMLElement)) {
-            return;
-        }
-
-        const section = sectionElement.dataset.section || '';
-
-        if (
-            ![
-                'clientes',
-                'servicos',
-                'equipe',
-            ].includes(section)
-        ) {
-            return;
-        }
-
-        const host = sectionHost(sectionElement);
-
-        if (host === null) {
-            return;
-        }
-
-        const params = normalizedParams(
-            section,
-            overrides
-        );
-
-        const key = cacheKey(section, params);
-
-        /*
-         * A mesma combinação já está exibida.
-         */
-        if (
-            !force
-            && sectionElement.dataset.loadedKey === key
-        ) {
-            return;
-        }
-
-        /*
-         * A combinação já foi carregada anteriormente.
-         */
-        if (!force && cache.has(key)) {
-            renderHtml(
-                host,
-                cache.get(key)
-            );
-
-            sectionElement.dataset.loadedKey = key;
-            sectionElement.dataset.currentParams =
-                params.toString();
-
-            updateSectionActions(
-                sectionElement,
-                params
-            );
-
-            return;
-        }
-
-        renderLoading(host);
-
-        try {
-            const payload = await requestJson(
-                params,
-                key
-            );
-
-            const html = typeof payload.html === 'string'
-                ? payload.html
-                : '';
-
-            if (html === '') {
-                throw new Error(
-                    'A seção não retornou conteúdo válido.'
-                );
-            }
-
-            cache.set(key, html);
-
-            renderHtml(
-                host,
-                html
-            );
-
-            sectionElement.dataset.loadedKey = key;
-            sectionElement.dataset.currentParams =
-                params.toString();
-
-            updateSectionActions(
-                sectionElement,
-                params
-            );
-        } catch (error) {
-            const message = (
-                error instanceof Error
-                && error.name === 'AbortError'
-            )
-                ? 'A consulta demorou mais que o esperado. Tente novamente.'
-                : (
-                    error instanceof Error
-                        ? error.message
-                        : 'Não foi possível carregar esta seção do relatório.'
-                );
-
-            renderError(
-                host,
-                section,
-                message
-            );
-        }
-    }
-
-    /**
-     * Atualiza URLs internas de exportação conforme os filtros atuais.
-     *
-     * @param {HTMLElement} sectionElement
-     * @param {URLSearchParams} params
-     */
-    function updateSectionActions(
-        sectionElement,
-        params
-    ) {
-        const section =
-            sectionElement.dataset.section || '';
-
-        const exportLink = sectionElement.querySelector(
-            '[data-report-export-section]'
-        );
-
-        if (exportLink instanceof HTMLAnchorElement) {
-            const exportParams =
-                new URLSearchParams(params);
-
-            exportParams.set(
-                'secao',
-                section
-            );
-
-            exportLink.href = [
-                'actions/relatorio-exportar.php?',
-                exportParams.toString(),
-            ].join('');
-        }
-    }
-
-    /**
-     * @param {string} section
-     * @returns {HTMLElement|null}
-     */
-    function sectionElementByName(section) {
-        const elements = root.querySelectorAll(
-            '[data-report-section]'
-        );
-
-        for (const element of elements) {
-            if (
-                element instanceof HTMLElement
-                && element.dataset.section === section
-            ) {
-                return element;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Retorna os parâmetros atualmente exibidos na seção.
-     *
-     * @param {HTMLElement} sectionElement
-     * @returns {URLSearchParams}
-     */
     function currentSectionParams(sectionElement) {
-        const current =
-            sectionElement.dataset.currentParams || '';
+        const current = sectionElement.dataset.currentParams || '';
 
         if (current !== '') {
             return new URLSearchParams(current);
         }
 
-        return normalizedParams(
-            sectionElement.dataset.section || ''
-        );
+        return normalizedParams(sectionElement.dataset.section || '');
     }
 
-    /**
-     * Preserva busca e ordenação da seção ao trocar página.
-     *
-     * @param {HTMLElement} sectionElement
-     * @param {Record<string, unknown>} changes
-     * @returns {Record<string, string|number>}
-     */
-    function sectionOverridesFromCurrent(
-        sectionElement,
-        changes = {}
-    ) {
-        const params =
-            currentSectionParams(sectionElement);
-
+    function sectionOverridesFromCurrent(sectionElement, changes = {}) {
+        const params = currentSectionParams(sectionElement);
         const result = {};
 
         for (const [key, value] of params.entries()) {
-            if (
-                ![
-                    'modo',
-                    'competencia',
-                    'data_inicial',
-                    'data_final',
-                    'secao',
-                ].includes(key)
-            ) {
+            if (![
+                'modo',
+                'competencia',
+                'data_inicial',
+                'data_final',
+                'secao',
+                'acao',
+                'client_id',
+                'cliente_id',
+                'group_key',
+            ].includes(key)) {
                 result[key] = value;
             }
         }
@@ -538,35 +253,217 @@
         };
     }
 
-    /**
-     * Alterna os campos visíveis do filtro global.
-     */
+    function updateSectionActions(sectionElement, params) {
+        const section = sectionElement.dataset.section || '';
+        const exportLink = sectionElement.querySelector('[data-report-export-section]');
+
+        if (!(exportLink instanceof HTMLAnchorElement)) {
+            return;
+        }
+
+        const exportParams = new URLSearchParams(params);
+
+        exportParams.delete('acao');
+        exportParams.delete('client_id');
+        exportParams.delete('cliente_id');
+        exportParams.delete('group_key');
+        exportParams.set('secao', section);
+
+        const url = new URL('actions/relatorio-exportar.php', document.baseURI);
+        url.search = orderedParams(exportParams).toString();
+
+        exportLink.href = url.toString();
+    }
+
+    async function loadSection(sectionElement, overrides = {}, force = false) {
+        if (!(sectionElement instanceof HTMLElement)) {
+            return;
+        }
+
+        const section = sectionElement.dataset.section || '';
+
+        if (!['clientes', 'servicos', 'equipe'].includes(section)) {
+            return;
+        }
+
+        const host = sectionHost(sectionElement);
+
+        if (host === null) {
+            return;
+        }
+
+        const params = normalizedParams(section, overrides);
+        const key = cacheKey(section, params);
+
+        if (!force && sectionElement.dataset.loadedKey === key) {
+            return;
+        }
+
+        if (!force && cache.has(key)) {
+            renderHtml(host, cache.get(key));
+            sectionElement.dataset.loadedKey = key;
+            sectionElement.dataset.currentParams = params.toString();
+            updateSectionActions(sectionElement, params);
+            return;
+        }
+
+        renderLoading(host);
+
+        try {
+            const payload = await requestJson(params, key);
+            const html = typeof payload.html === 'string' ? payload.html : '';
+
+            if (html === '') {
+                throw new Error('A seção não retornou conteúdo válido.');
+            }
+
+            cache.set(key, html);
+            renderHtml(host, html);
+            sectionElement.dataset.loadedKey = key;
+            sectionElement.dataset.currentParams = params.toString();
+            updateSectionActions(sectionElement, params);
+        } catch (error) {
+            const message = error instanceof Error && error.name === 'AbortError'
+                ? 'A consulta demorou mais que o esperado. Tente novamente.'
+                : error instanceof Error
+                    ? error.message
+                    : 'Não foi possível carregar esta seção do relatório.';
+
+            renderError(host, section, message);
+        }
+    }
+
+    function detailModalInstance() {
+        if (!(detailModalElement instanceof HTMLElement)) {
+            return null;
+        }
+
+        return window.bootstrap?.Modal.getOrCreateInstance(detailModalElement) || null;
+    }
+
+    async function loadDetail(params, title, force = false) {
+        if (!(detailModalBody instanceof HTMLElement)) {
+            return;
+        }
+
+        const key = cacheKey('detalhes', params);
+
+        if (detailModalTitle instanceof HTMLElement) {
+            detailModalTitle.textContent = title;
+        }
+
+        if (!force && cache.has(key)) {
+            renderHtml(detailModalBody, cache.get(key));
+            return;
+        }
+
+        renderLoading(
+            detailModalBody,
+            'Os registros vinculados estão sendo preparados.'
+        );
+
+        try {
+            const payload = await requestJson(params, key);
+            const html = typeof payload.html === 'string' ? payload.html : '';
+
+            if (html === '') {
+                throw new Error('O detalhamento não retornou conteúdo válido.');
+            }
+
+            cache.set(key, html);
+            renderHtml(detailModalBody, html);
+        } catch (error) {
+            const message = error instanceof Error && error.name === 'AbortError'
+                ? 'A consulta demorou mais que o esperado. Tente novamente.'
+                : error instanceof Error
+                    ? error.message
+                    : 'Não foi possível carregar o detalhamento.';
+
+            renderError(detailModalBody, '', message);
+        }
+    }
+
+    async function openDetail(button, type) {
+        const section = type === 'cliente' ? 'clientes' : 'servicos';
+        const sectionElement = sectionElementByName(section);
+
+        if (!(sectionElement instanceof HTMLElement)) {
+            return;
+        }
+
+        const params = new URLSearchParams(currentSectionParams(sectionElement));
+
+        params.set('secao', section);
+        params.set('acao', 'detalhes');
+        params.set('page', '1');
+
+        if (type === 'cliente') {
+            params.set('client_id', button.dataset.clientId || '');
+            params.delete('group_key');
+        } else {
+            params.set('group_key', button.dataset.groupKey || '');
+            params.delete('client_id');
+            params.delete('cliente_id');
+        }
+
+        detailState = {
+            section,
+            type,
+            title: type === 'cliente'
+                ? 'Ordens de serviço do cliente'
+                : 'Execuções do serviço',
+            params: orderedParams(params),
+        };
+
+        detailModalInstance()?.show();
+
+        await loadDetail(detailState.params, detailState.title);
+    }
+
+    async function changeDetailPage(page) {
+        if (!detailState || !Number.isInteger(page) || page < 1) {
+            return;
+        }
+
+        const params = new URLSearchParams(detailState.params);
+        params.set('page', String(page));
+
+        detailState.params = orderedParams(params);
+
+        await loadDetail(detailState.params, detailState.title);
+    }
+
     function setupPeriodMode() {
         if (!(filterForm instanceof HTMLFormElement)) {
             return;
         }
 
-        const modeFields = [
-            ...filterForm.querySelectorAll(
-                '[name="modo"]'
-            ),
-        ];
+        const modeFields = [...filterForm.querySelectorAll('[name="modo"]')];
+        const monthFields = filterForm.querySelector('[data-period-month-fields]');
+        const customFields = [...filterForm.querySelectorAll('[data-period-custom-fields]')];
 
-        const monthFields = filterForm.querySelector(
-            '[data-period-month-fields]'
-        );
+        const setFieldsState = (container, enabled) => {
+            if (!(container instanceof HTMLElement)) {
+                return;
+            }
 
-        const customFields = filterForm.querySelector(
-            '[data-period-custom-fields]'
-        );
+            container.hidden = !enabled;
+
+            container.querySelectorAll('input, select, textarea').forEach((field) => {
+                if (
+                    field instanceof HTMLInputElement
+                    || field instanceof HTMLSelectElement
+                    || field instanceof HTMLTextAreaElement
+                ) {
+                    field.disabled = !enabled;
+                }
+            });
+        };
 
         const refresh = () => {
-            const checked = modeFields.find(
-                (field) => (
-                    field instanceof HTMLInputElement
-                    && field.checked
-                )
-            );
+            const checked = modeFields.find((field) => (
+                field instanceof HTMLInputElement && field.checked
+            ));
 
             const mode = checked instanceof HTMLInputElement
                 ? checked.value
@@ -574,386 +471,251 @@
 
             const monthMode = mode === 'mes';
 
-            if (monthFields instanceof HTMLElement) {
-                monthFields.hidden = !monthMode;
-
-                monthFields
-                    .querySelectorAll('input, select')
-                    .forEach((field) => {
-                        if (
-                            field instanceof HTMLInputElement
-                            || field instanceof HTMLSelectElement
-                        ) {
-                            field.disabled = !monthMode;
-                        }
-                    });
-            }
-
-            if (customFields instanceof HTMLElement) {
-                customFields.hidden = monthMode;
-
-                customFields
-                    .querySelectorAll('input, select')
-                    .forEach((field) => {
-                        if (
-                            field instanceof HTMLInputElement
-                            || field instanceof HTMLSelectElement
-                        ) {
-                            field.disabled = monthMode;
-                        }
-                    });
-            }
+            setFieldsState(monthFields, monthMode);
+            customFields.forEach((container) => setFieldsState(container, !monthMode));
         };
 
         modeFields.forEach((field) => {
-            field.addEventListener(
-                'change',
-                refresh
-            );
+            field.addEventListener('change', refresh);
         });
 
         refresh();
     }
 
-    /**
-     * Abre o detalhamento de cliente ou serviço.
-     *
-     * @param {HTMLElement} button
-     * @param {'cliente'|'servico'} type
-     */
-    async function openDetail(button, type) {
-        const modalElement =
-            document.getElementById('report-detail-modal');
+    function preparePrint(section) {
+        root.dataset.printingSection = section;
 
-        const body = modalElement?.querySelector(
-            '[data-report-detail-body]'
-        );
+        const sectionElement = sectionElementByName(section);
 
-        const title = modalElement?.querySelector(
-            '[data-report-detail-title]'
-        );
+        if (sectionElement instanceof HTMLElement) {
+            printedCollapse = {
+                element: sectionElement,
+                wasShown: sectionElement.classList.contains('show'),
+                styleDisplay: sectionElement.style.display,
+            };
 
-        if (
-            !(modalElement instanceof HTMLElement)
-            || !(body instanceof HTMLElement)
-        ) {
+            sectionElement.classList.add('show');
+            sectionElement.style.display = 'block';
+        }
+
+        window.print();
+    }
+
+    function cleanupPrint() {
+        delete root.dataset.printingSection;
+
+        if (printedCollapse && printedCollapse.element instanceof HTMLElement) {
+            if (!printedCollapse.wasShown) {
+                printedCollapse.element.classList.remove('show');
+            }
+
+            printedCollapse.element.style.display = printedCollapse.styleDisplay;
+        }
+
+        printedCollapse = null;
+    }
+
+    root.addEventListener('show.bs.collapse', (event) => {
+        const target = event.target;
+
+        if (target instanceof HTMLElement && target.matches('[data-report-section]')) {
+            loadSection(target);
+        }
+    });
+
+    root.addEventListener('submit', (event) => {
+        const form = event.target;
+
+        if (!(form instanceof HTMLFormElement) || !form.matches('[data-report-section-filter]')) {
             return;
         }
 
-        const section = type === 'cliente'
-            ? 'clientes'
-            : 'servicos';
+        event.preventDefault();
 
-        const params = normalizedParams(
-            section,
-            {
-                acao: 'detalhes',
-                client_id: type === 'cliente'
-                    ? button.dataset.clientId || ''
-                    : '',
-                group_key: type === 'servico'
-                    ? button.dataset.groupKey || ''
-                    : '',
-            }
-        );
+        const sectionElement = form.closest('[data-report-section]');
 
-        const key = cacheKey(
-            `${section}:detalhes`,
-            params
-        );
-
-        if (title instanceof HTMLElement) {
-            title.textContent = type === 'cliente'
-                ? 'Ordens de serviço do cliente'
-                : 'Execuções do serviço';
+        if (!(sectionElement instanceof HTMLElement)) {
+            return;
         }
 
-        renderLoading(body);
+        const changes = {page: 1};
+        const data = new FormData(form);
 
-        const modal = window.bootstrap?.Modal
-            .getOrCreateInstance(modalElement);
-
-        modal?.show();
-
-        try {
-            if (cache.has(key)) {
-                renderHtml(
-                    body,
-                    cache.get(key)
-                );
-
-                return;
+        for (const [key, value] of data.entries()) {
+            if (typeof value === 'string') {
+                changes[key] = value.trim();
             }
-
-            const payload = await requestJson(
-                params,
-                key
-            );
-
-            const html = typeof payload.html === 'string'
-                ? payload.html
-                : '';
-
-            if (html === '') {
-                throw new Error(
-                    'O detalhamento não retornou conteúdo válido.'
-                );
-            }
-
-            cache.set(key, html);
-
-            renderHtml(
-                body,
-                html
-            );
-        } catch (error) {
-            renderError(
-                body,
-                '',
-                error instanceof Error
-                    ? error.message
-                    : 'Não foi possível carregar o detalhamento.'
-            );
         }
-    }
 
-    /*
-     * Carrega a seção apenas quando ela for aberta.
-     */
-    root.addEventListener(
-        'show.bs.collapse',
-        (event) => {
-            const target = event.target;
+        loadSection(
+            sectionElement,
+            sectionOverridesFromCurrent(sectionElement, changes)
+        );
+    });
+
+    root.addEventListener('reset', (event) => {
+        const form = event.target;
+
+        if (!(form instanceof HTMLFormElement) || !form.matches('[data-report-section-filter]')) {
+            return;
+        }
+
+        const sectionElement = form.closest('[data-report-section]');
+
+        if (!(sectionElement instanceof HTMLElement)) {
+            return;
+        }
+
+        window.setTimeout(() => {
+            const searchField = form.querySelector('[name="busca"], [name="search"]');
+
+            if (searchField instanceof HTMLInputElement) {
+                searchField.value = '';
+            }
+
+            loadSection(
+                sectionElement,
+                sectionOverridesFromCurrent(sectionElement, {
+                    busca: '',
+                    search: '',
+                    page: 1,
+                })
+            );
+        }, 0);
+    });
+
+    document.addEventListener('click', (event) => {
+        const target = event.target;
+
+        if (!(target instanceof Element)) {
+            return;
+        }
+
+        const retry = target.closest('[data-report-retry]');
+
+        if (retry instanceof HTMLElement) {
+            const sectionElement = sectionElementByName(retry.dataset.reportRetry || '');
+
+            if (sectionElement !== null) {
+                loadSection(
+                    sectionElement,
+                    sectionOverridesFromCurrent(sectionElement),
+                    true
+                );
+            }
+
+            return;
+        }
+
+        const pageButton = target.closest('[data-report-page-number]');
+
+        if (pageButton instanceof HTMLButtonElement) {
+            const sectionElement = pageButton.closest('[data-report-section]');
+            const page = Number.parseInt(pageButton.dataset.reportPageNumber || '', 10);
 
             if (
-                target instanceof HTMLElement
-                && target.matches(
-                    '[data-report-section]'
-                )
+                sectionElement instanceof HTMLElement
+                && Number.isInteger(page)
+                && page > 0
             ) {
-                loadSection(target);
+                loadSection(
+                    sectionElement,
+                    sectionOverridesFromCurrent(sectionElement, {page})
+                );
             }
+
+            return;
         }
-    );
 
-    /*
-     * Busca interna de clientes ou serviços.
-     */
-    root.addEventListener(
-        'submit',
-        (event) => {
-            const form = event.target;
+        const detailPageButton = target.closest('[data-report-detail-page]');
 
-            if (
-                !(form instanceof HTMLFormElement)
-                || !form.matches(
-                    '[data-report-section-filter]'
-                )
-            ) {
-                return;
-            }
-
-            event.preventDefault();
-
-            const sectionElement = form.closest(
-                '[data-report-section]'
+        if (detailPageButton instanceof HTMLButtonElement) {
+            const page = Number.parseInt(
+                detailPageButton.dataset.reportDetailPage || '',
+                10
             );
+
+            changeDetailPage(page);
+            return;
+        }
+
+        const sortButton = target.closest('[data-report-sort]');
+
+        if (sortButton instanceof HTMLButtonElement) {
+            const sectionElement = sortButton.closest('[data-report-section]');
 
             if (!(sectionElement instanceof HTMLElement)) {
                 return;
             }
 
-            const data = new FormData(form);
-
-            const changes = {
-                page: 1,
-            };
-
-            for (const [key, value] of data.entries()) {
-                if (typeof value === 'string') {
-                    changes[key] = value.trim();
-                }
-            }
+            const sort = sortButton.dataset.reportSort || '';
+            const currentDirection = sortButton.dataset.reportDirection || 'desc';
+            const direction = currentDirection === 'asc' ? 'desc' : 'asc';
 
             loadSection(
                 sectionElement,
-                sectionOverridesFromCurrent(
-                    sectionElement,
-                    changes
+                sectionOverridesFromCurrent(sectionElement, {
+                    sort,
+                    direction,
+                    page: 1,
+                })
+            );
+
+            return;
+        }
+
+        const clientButton = target.closest('[data-report-client-orders]');
+
+        if (clientButton instanceof HTMLElement) {
+            openDetail(clientButton, 'cliente');
+            return;
+        }
+
+        const serviceButton = target.closest('[data-report-service-executions]');
+
+        if (serviceButton instanceof HTMLElement) {
+            openDetail(serviceButton, 'servico');
+            return;
+        }
+
+        const printButton = target.closest('[data-report-print-section]');
+
+        if (printButton instanceof HTMLElement) {
+            const section = printButton.dataset.reportPrintSection || '';
+
+            if (section !== '') {
+                preparePrint(section);
+            }
+        }
+    });
+
+    detailModalElement?.addEventListener('hidden.bs.modal', () => {
+        detailState = null;
+
+        if (detailModalBody instanceof HTMLElement) {
+            detailModalBody.replaceChildren(
+                createState(
+                    'bi-list-check',
+                    'Selecione um registro',
+                    'O detalhamento será exibido aqui.'
                 )
             );
         }
-    );
+    });
 
-    /*
-     * Paginação, ordenação, detalhamento, retry e impressão.
-     */
-    root.addEventListener(
-        'click',
-        (event) => {
-            const target = event.target;
-
-            if (!(target instanceof Element)) {
-                return;
-            }
-
-            const retry = target.closest(
-                '[data-report-retry]'
-            );
-
-            if (retry instanceof HTMLElement) {
-                const sectionElement =
-                    sectionElementByName(
-                        retry.dataset.reportRetry || ''
-                    );
-
-                if (sectionElement !== null) {
-                    loadSection(
-                        sectionElement,
-                        sectionOverridesFromCurrent(
-                            sectionElement
-                        ),
-                        true
-                    );
-                }
-
-                return;
-            }
-
-            const pageButton = target.closest(
-                '[data-report-page-number]'
-            );
-
-            if (
-                pageButton instanceof HTMLButtonElement
-            ) {
-                const sectionElement =
-                    pageButton.closest(
-                        '[data-report-section]'
-                    );
-
-                const page = Number.parseInt(
-                    pageButton.dataset.reportPageNumber || '',
-                    10
-                );
-
-                if (
-                    sectionElement instanceof HTMLElement
-                    && Number.isInteger(page)
-                    && page > 0
-                ) {
-                    loadSection(
-                        sectionElement,
-                        sectionOverridesFromCurrent(
-                            sectionElement,
-                            {page}
-                        )
-                    );
-                }
-
-                return;
-            }
-
-            const sortButton = target.closest(
-                '[data-report-sort]'
-            );
-
-            if (
-                sortButton instanceof HTMLButtonElement
-            ) {
-                const sectionElement =
-                    sortButton.closest(
-                        '[data-report-section]'
-                    );
-
-                if (
-                    !(sectionElement instanceof HTMLElement)
-                ) {
-                    return;
-                }
-
-                const sort =
-                    sortButton.dataset.reportSort || '';
-
-                const currentDirection =
-                    sortButton.dataset.reportDirection
-                    || 'desc';
-
-                const direction =
-                    currentDirection === 'asc'
-                        ? 'desc'
-                        : 'asc';
-
-                loadSection(
-                    sectionElement,
-                    sectionOverridesFromCurrent(
-                        sectionElement,
-                        {
-                            sort,
-                            direction,
-                            page: 1,
-                        }
-                    )
-                );
-
-                return;
-            }
-
-            const clientButton = target.closest(
-                '[data-report-client-orders]'
-            );
-
-            if (clientButton instanceof HTMLElement) {
-                openDetail(
-                    clientButton,
-                    'cliente'
-                );
-
-                return;
-            }
-
-            const serviceButton = target.closest(
-                '[data-report-service-executions]'
-            );
-
-            if (serviceButton instanceof HTMLElement) {
-                openDetail(
-                    serviceButton,
-                    'servico'
-                );
-
-                return;
-            }
-
-            const printButton = target.closest(
-                '[data-report-print-section]'
-            );
-
-            if (printButton instanceof HTMLElement) {
-                const section =
-                    printButton.dataset.reportPrintSection
-                    || '';
-
-                root.dataset.printingSection = section;
-
-                window.print();
-
-                window.setTimeout(
-                    () => {
-                        delete root.dataset.printingSection;
-                    },
-                    0
-                );
-            }
-        }
-    );
-
-    window.addEventListener(
-        'afterprint',
-        () => {
-            delete root.dataset.printingSection;
-        }
-    );
+    window.addEventListener('afterprint', cleanupPrint);
 
     setupPeriodMode();
+
+    root.querySelectorAll('[data-report-section]').forEach((element) => {
+        if (!(element instanceof HTMLElement)) {
+            return;
+        }
+
+        const section = element.dataset.section || '';
+
+        if (section !== '') {
+            updateSectionActions(element, normalizedParams(section));
+        }
+    });
 })();
