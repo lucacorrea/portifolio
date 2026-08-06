@@ -13,9 +13,7 @@ use Throwable;
 
 final class BudgetRepository
 {
-    public function __construct(private readonly PDO $connection)
-    {
-    }
+    public function __construct(private readonly PDO $connection) {}
 
     /** @return Budget[] */
     public function findAll(array $filters = []): array
@@ -251,56 +249,132 @@ final class BudgetRepository
         $statement->execute(['id' => $id, 'reason' => $reason]);
     }
 
-    public function softDelete(int $id, int $userId): void
-    {
+    public function softDelete(
+        int $id,
+        int $userId
+    ): void {
         $this->assertPositiveId($id);
         $this->assertPositiveId($userId);
-        $ownsTransaction = !$this->connection->inTransaction();
+
+        $ownsTransaction =
+            !$this->connection->inTransaction();
+
+        if ($ownsTransaction) {
+            $this->connection->beginTransaction();
+        }
+
         try {
-            if ($ownsTransaction) {
-                $this->connection->beginTransaction();
-            }
             $statement = $this->connection->prepare(
-                'SELECT id, status, excluido_em FROM orcamentos WHERE id = :id FOR UPDATE'
+                'SELECT
+                id,
+                numero,
+                status,
+                excluido_em
+             FROM orcamentos
+             WHERE id = :id
+             LIMIT 1
+             FOR UPDATE'
             );
-            $statement->execute(['id' => $id]);
+
+            $statement->execute([
+                'id' => $id,
+            ]);
+
             $budget = $statement->fetch();
+
             if ($budget === false) {
-                throw new InvalidArgumentException('Orçamento não encontrado.');
-            }
-            if ($budget['excluido_em'] !== null) {
-                if ($ownsTransaction) {
-                    $this->connection->commit();
-                }
-                return;
-            }
-            if ($budget['status'] === 'aprovado') {
-                throw new InvalidArgumentException('Orçamento aprovado não pode ser excluído. Exclua ou estorne a OS vinculada antes.');
+                throw new InvalidArgumentException(
+                    'Orçamento não encontrado.'
+                );
             }
 
-            $linkedOrder = $this->connection->prepare(
-                'SELECT id FROM ordens_servico
-                  WHERE orcamento_id = :id AND excluida_em IS NULL
-                  LIMIT 1 FOR UPDATE'
-            );
-            $linkedOrder->execute(['id' => $id]);
-            if ($linkedOrder->fetch() !== false) {
-                throw new InvalidArgumentException('Orçamento com OS vinculada não pode ser excluído.');
+            if ($budget['excluido_em'] !== null) {
+                throw new InvalidArgumentException(
+                    'Este orçamento já foi excluído.'
+                );
+            }
+
+            /*
+         * Bloqueia somente OS operacional ativa.
+         *
+         * OS cancelada com orçamento liberado não impede
+         * a exclusão lógica do orçamento.
+         */
+            $linkedOrderStatement =
+                $this->connection->prepare(
+                    "SELECT
+                    id,
+                    numero,
+                    status
+                 FROM ordens_servico
+                 WHERE orcamento_id = :budget_id
+                   AND excluida_em IS NULL
+                   AND (
+                        status <> 'cancelada'
+                        OR orcamento_liberado = 0
+                   )
+                 ORDER BY id DESC
+                 LIMIT 1
+                 FOR UPDATE"
+                );
+
+            $linkedOrderStatement->execute([
+                'budget_id' => $id,
+            ]);
+
+            $linkedOrder =
+                $linkedOrderStatement->fetch();
+
+            if ($linkedOrder !== false) {
+                $orderNumber = trim(
+                    (string) (
+                        $linkedOrder['numero']
+                        ?? ''
+                    )
+                );
+
+                if ($orderNumber === '') {
+                    $orderNumber =
+                        'OS #' . (int) $linkedOrder['id'];
+                }
+
+                throw new InvalidArgumentException(
+                    'O orçamento não pode ser excluído porque está vinculado à '
+                        . $orderNumber
+                        . '. Exclua, cancele com liberação ou regularize a OS primeiro.'
+                );
             }
 
             $update = $this->connection->prepare(
                 'UPDATE orcamentos
-                    SET excluido_em = CURRENT_TIMESTAMP, excluido_por = :user_id
-                  WHERE id = :id AND excluido_em IS NULL'
+                SET excluido_em = CURRENT_TIMESTAMP,
+                    excluido_por = :user_id
+              WHERE id = :id
+                AND excluido_em IS NULL'
             );
-            $update->execute(['id' => $id, 'user_id' => $userId]);
+
+            $update->execute([
+                'id' => $id,
+                'user_id' => $userId,
+            ]);
+
+            if ($update->rowCount() !== 1) {
+                throw new InvalidArgumentException(
+                    'O orçamento foi alterado por outro usuário. Atualize a página e tente novamente.'
+                );
+            }
+
             if ($ownsTransaction) {
                 $this->connection->commit();
             }
         } catch (Throwable $exception) {
-            if ($ownsTransaction && $this->connection->inTransaction()) {
+            if (
+                $ownsTransaction
+                && $this->connection->inTransaction()
+            ) {
                 $this->connection->rollBack();
             }
+
             throw $exception;
         }
     }
