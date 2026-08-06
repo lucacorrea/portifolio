@@ -31,8 +31,7 @@ final class WeeklyServicePlanningService
     public function __construct(
         private readonly PDO $connection,
         private readonly ServiceOrderManagementService $orders
-    ) {
-    }
+    ) {}
 
     /**
      * Cadastra um serviço semanal sem criar Ordem de Serviço.
@@ -167,8 +166,8 @@ final class WeeklyServicePlanningService
                             $primaryEmployeeId,
                             $supportEmployeeId,
                         ],
-                        static fn (?int $id): bool =>
-                            $id !== null
+                        static fn(?int $id): bool =>
+                        $id !== null
                     )
                 );
 
@@ -414,16 +413,12 @@ final class WeeklyServicePlanningService
 
                 $primaryEmployeeId =
                     $this->nullableInt(
-                        $planning[
-                            'funcionario_principal_id'
-                        ] ?? null
+                        $planning['funcionario_principal_id'] ?? null
                     );
 
                 $supportEmployeeId =
                     $this->nullableInt(
-                        $planning[
-                            'funcionario_apoio_id'
-                        ] ?? null
+                        $planning['funcionario_apoio_id'] ?? null
                     );
 
                 if ($primaryEmployeeId === null) {
@@ -441,15 +436,11 @@ final class WeeklyServicePlanningService
                 );
 
                 $start = new DateTimeImmutable(
-                    (string) $planning[
-                        'agendado_inicio'
-                    ]
+                    (string) $planning['agendado_inicio']
                 );
 
                 $end = new DateTimeImmutable(
-                    (string) $planning[
-                        'agendado_fim'
-                    ]
+                    (string) $planning['agendado_fim']
                 );
 
                 $employeeIds = array_values(
@@ -458,8 +449,8 @@ final class WeeklyServicePlanningService
                             $primaryEmployeeId,
                             $supportEmployeeId,
                         ],
-                        static fn (?int $id): bool =>
-                            $id !== null
+                        static fn(?int $id): bool =>
+                        $id !== null
                     )
                 );
 
@@ -476,10 +467,10 @@ final class WeeklyServicePlanningService
 
                 $team = ServiceOrderTeamData::fromArray([
                     'funcionario_principal_id' =>
-                        $primaryEmployeeId,
+                    $primaryEmployeeId,
 
                     'funcionario_apoio_id' =>
-                        $supportEmployeeId,
+                    $supportEmployeeId,
                 ]);
 
                 $schedule =
@@ -498,11 +489,11 @@ final class WeeklyServicePlanningService
                     ),
 
                     'equipment_location' =>
-                        $planning['local_servico']
+                    $planning['local_servico']
                         ?? null,
 
                     'notes' =>
-                        $planning['observacao']
+                    $planning['observacao']
                         ?? null,
 
                     'items' => [
@@ -746,11 +737,11 @@ final class WeeklyServicePlanningService
                   planejamento.ordem_servico_id
 
              WHERE '
-            . implode(
-                ' AND ',
-                $where
-            )
-            . '
+                . implode(
+                    ' AND ',
+                    $where
+                )
+                . '
 
              ORDER BY
                 planejamento.agendado_inicio ASC,
@@ -947,6 +938,9 @@ final class WeeklyServicePlanningService
     /**
      * @param int[] $employeeIds
      */
+    /**
+     * @param int[] $employeeIds
+     */
     private function validateEmployees(
         array $employeeIds
     ): void {
@@ -954,13 +948,16 @@ final class WeeklyServicePlanningService
             return;
         }
 
+        $employeeIds = array_values(
+            array_unique($employeeIds)
+        );
+
         $placeholders = [];
         $parameters = [];
 
         foreach (
-            array_values(
-                array_unique($employeeIds)
-            ) as $index => $employeeId
+            $employeeIds
+            as $index => $employeeId
         ) {
             $key = 'employee_' . $index;
 
@@ -968,34 +965,67 @@ final class WeeklyServicePlanningService
             $parameters[$key] = $employeeId;
         }
 
-        $statement = $this->connection->prepare(
-            'SELECT id
-               FROM funcionarios
-              WHERE id IN (
-                ' . implode(', ', $placeholders) . '
-              )
-              FOR UPDATE'
+        $statement =
+            $this->connection->prepare(
+                'SELECT
+                id,
+                nome,
+                status
+             FROM funcionarios
+             WHERE id IN (
+                '
+                    . implode(
+                        ', ',
+                        $placeholders
+                    )
+                    . '
+             )
+             FOR UPDATE'
+            );
+
+        $statement->execute(
+            $parameters
         );
 
-        $statement->execute($parameters);
+        $employees = [];
 
-        $foundIds = array_map(
-            'intval',
-            $statement->fetchAll(
-                PDO::FETCH_COLUMN
-            )
-        );
+        foreach (
+            $statement->fetchAll()
+            as $employee
+        ) {
+            $employees[(int) $employee['id']] = $employee;
+        }
 
-        foreach ($employeeIds as $employeeId) {
+        foreach (
+            $employeeIds
+            as $employeeId
+        ) {
             if (
-                !in_array(
-                    $employeeId,
-                    $foundIds,
-                    true
+                !isset(
+                    $employees[$employeeId]
                 )
             ) {
                 throw new InvalidArgumentException(
                     'Funcionário selecionado não foi encontrado.'
+                );
+            }
+
+            $employee =
+                $employees[$employeeId];
+
+            if (
+                (string) (
+                    $employee['status']
+                    ?? ''
+                ) !== 'ativo'
+            ) {
+                throw new InvalidArgumentException(
+                    'O funcionário '
+                        . (string) (
+                            $employee['nome']
+                            ?? ''
+                        )
+                        . ' está inativo e não pode ser atribuído ao planejamento.'
                 );
             }
         }
@@ -1055,11 +1085,11 @@ final class WeeklyServicePlanningService
 
               WHERE funcionario.id IN (
                     '
-                    . implode(
-                        ', ',
-                        $osPlaceholders
-                    )
-                    . '
+                . implode(
+                    ', ',
+                    $osPlaceholders
+                )
+                . '
               )
 
                 AND ordem.excluida_em IS NULL
@@ -1142,11 +1172,11 @@ final class WeeklyServicePlanningService
                     planejamento.funcionario_principal_id
                     IN (
                         '
-                        . implode(
-                            ', ',
-                            $primaryPlaceholders
-                        )
-                        . '
+            . implode(
+                ', ',
+                $primaryPlaceholders
+            )
+            . '
                     )
 
                     OR
@@ -1154,11 +1184,11 @@ final class WeeklyServicePlanningService
                     planejamento.funcionario_apoio_id
                     IN (
                         '
-                        . implode(
-                            ', ',
-                            $supportPlaceholders
-                        )
-                        . '
+            . implode(
+                ', ',
+                $supportPlaceholders
+            )
+            . '
                     )
                 )
 
@@ -1173,9 +1203,7 @@ final class WeeklyServicePlanningService
                 ' AND planejamento.id
                     <> :ignore_planning_id';
 
-            $planningParameters[
-                'ignore_planning_id'
-            ] = $ignorePlanningId;
+            $planningParameters['ignore_planning_id'] = $ignorePlanningId;
         }
 
         $planningSql .= ' FOR UPDATE';
@@ -1203,8 +1231,8 @@ final class WeeklyServicePlanningService
             array_unique(
                 array_filter(
                     $conflictingNames,
-                    static fn (string $name): bool =>
-                        trim($name) !== ''
+                    static fn(string $name): bool =>
+                    trim($name) !== ''
                 )
             )
         );
@@ -1311,7 +1339,7 @@ final class WeeklyServicePlanningService
         if ($text === '') {
             throw new InvalidArgumentException(
                 'Informe o ' . $field
-                . ' do serviço.'
+                    . ' do serviço.'
             );
         }
 
@@ -1343,11 +1371,11 @@ final class WeeklyServicePlanningService
                 )
             )
             || $date->format('Y-m-d H:i:s')
-                !== $normalized
+            !== $normalized
         ) {
             throw new InvalidArgumentException(
                 'Informe uma data válida para '
-                . $field . '.'
+                    . $field . '.'
             );
         }
 

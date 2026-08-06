@@ -1310,14 +1310,26 @@ final class ServiceOrderManagementService
     private function validateEmployees(
         ServiceOrderTeamData $team
     ): void {
-        foreach ($team->members() as $member) {
-            if (
+        foreach (
+            $team->members()
+            as $member
+        ) {
+            $employee =
                 $this->employees->findById(
                     $member->employeeId()
-                ) === null
-            ) {
+                );
+
+            if ($employee === null) {
                 throw new InvalidArgumentException(
                     'Funcionário da equipe não encontrado.'
+                );
+            }
+
+            if (!$employee->isActive()) {
+                throw new InvalidArgumentException(
+                    'O funcionário '
+                        . $employee->name()
+                        . ' está inativo e não pode ser atribuído à OS.'
                 );
             }
         }

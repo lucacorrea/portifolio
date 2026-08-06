@@ -405,7 +405,7 @@ $catalogService =
   $application->serviceManagement();
 
 $employees =
-  $employeeService->listEmployees();
+    $employeeService->listActiveEmployees();
 
 $clients =
   $clientService->listClients();
