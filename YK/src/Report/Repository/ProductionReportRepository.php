@@ -148,8 +148,8 @@ final class ProductionReportRepository
     public function inventorySummary(bool $includeCost = false): array
     {
         $costSelect = $includeCost
-            ? 'COALESCE(SUM(estoque * preco_custo), 0.00)'
-            : '0.00';
+            ? 'CAST(COALESCE(SUM(estoque * preco_custo), 0) AS DECIMAL(18,2))'
+            : 'CAST(0 AS DECIMAL(18,2))';
         $statement = $this->connection->query(
             'SELECT COUNT(*) AS active_products,
                     SUM(CASE WHEN estoque <= 0 THEN 1 ELSE 0 END) AS out_of_stock,
