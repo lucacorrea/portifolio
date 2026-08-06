@@ -568,11 +568,54 @@ final class MigrationRunner
     {
         $statement = $this->connection->prepare(
             'SELECT COLUMN_TYPE FROM information_schema.COLUMNS
-             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table_name AND COLUMN_NAME = :column_name'
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = :table_name
+               AND COLUMN_NAME = :column_name'
         );
-        $statement->execute(['table_name' => $table, 'column_name' => $column]);
+
+        $statement->execute([
+            'table_name' => $table,
+            'column_name' => $column,
+        ]);
+
         $type = $statement->fetchColumn();
-        return is_string($type) && str_contains(strtolower($type), strtolower($expected));
+
+        if (!is_string($type)) {
+            return false;
+        }
+
+        /*
+         * MariaDB pode retornar tipos inteiros com largura de exibição,
+         * por exemplo: smallint(5) unsigned.
+         *
+         * A largura entre parênteses não altera o tipo real. Ela precisa
+         * ser ignorada para que a validação reconheça corretamente
+         * "smallint(5) unsigned" como "smallint unsigned".
+         */
+        $normalizedType = preg_replace(
+            '/\\(\\d+\\)/',
+            '',
+            strtolower($type)
+        );
+
+        $normalizedExpected = preg_replace(
+            '/\\(\\d+\\)/',
+            '',
+            strtolower($expected)
+        );
+
+        if (!is_string($normalizedType) || !is_string($normalizedExpected)) {
+            return false;
+        }
+
+        $normalizedType = preg_replace('/\\s+/', ' ', trim($normalizedType));
+        $normalizedExpected = preg_replace('/\\s+/', ' ', trim($normalizedExpected));
+
+        if (!is_string($normalizedType) || !is_string($normalizedExpected)) {
+            return false;
+        }
+
+        return str_contains($normalizedType, $normalizedExpected);
     }
 
     /** @param array<int, array{0:string,1:string}> $indexes */
