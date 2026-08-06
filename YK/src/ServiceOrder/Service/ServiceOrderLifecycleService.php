@@ -13,9 +13,7 @@ final class ServiceOrderLifecycleService
 {
     private const REVERSIBLE_STATUSES = ['agendada', 'em_execucao', 'aguardando_peca'];
 
-    public function __construct(private readonly PDO $connection, private readonly CashManagementService $cash)
-    {
-    }
+    public function __construct(private readonly PDO $connection, private readonly CashManagementService $cash) {}
 
     public function reverse(int $orderId, string $reason, int $userId): void
     {
@@ -81,35 +79,78 @@ final class ServiceOrderLifecycleService
         });
     }
 
-    public function softDelete(int $orderId, int $userId): void
-    {
-        $this->transactional(function () use ($orderId, $userId): void {
-            $order = $this->lockOrder($orderId);
-            if ($order['excluida_em'] !== null) {
-                return;
-            }
-            if ($order['status'] === 'finalizada') {
-                throw new InvalidArgumentException('Estorne a OS finalizada antes de excluí-la.');
-            }
-            if ($this->hasActiveOperationalLinks($orderId)) {
-                throw new InvalidArgumentException('A OS possui vínculos operacionais ou financeiros ativos e não pode ser excluída.');
-            }
+    public function softDelete(
+        int $orderId,
+        string $reason,
+        int $userId
+    ): void {
+        if ($userId <= 0) {
+            throw new InvalidArgumentException(
+                'Usuário inválido para excluir a OS.'
+            );
+        }
 
-            $this->connection->prepare(
-                'UPDATE ordens_servico
+        $reason = $this->requiredReason($reason);
+
+        $this->transactional(
+            function () use (
+                $orderId,
+                $reason,
+                $userId
+            ): void {
+                $order = $this->lockOrder($orderId);
+
+                if ($order['excluida_em'] !== null) {
+                    throw new InvalidArgumentException(
+                        'Esta OS já foi excluída.'
+                    );
+                }
+
+                if ($order['status'] === 'finalizada') {
+                    throw new InvalidArgumentException(
+                        'Estorne a OS finalizada antes de excluí-la.'
+                    );
+                }
+
+                if ($this->hasActiveOperationalLinks($orderId)) {
+                    throw new InvalidArgumentException(
+                        'A OS possui vínculo ativo com estoque, pagamento, conta a receber, recibo ou documento fiscal. Regularize ou estorne esses vínculos antes de excluir.'
+                    );
+                }
+
+                $statement = $this->connection->prepare(
+                    'UPDATE ordens_servico
                     SET excluida_em = CURRENT_TIMESTAMP,
                         excluida_por = :user_id,
-                        motivo_exclusao = NULL,
-                        orcamento_liberado = CASE WHEN orcamento_id IS NULL THEN orcamento_liberado ELSE 1 END,
-                        orcamento_operacional_chave = NULL
-                  WHERE id = :id AND excluida_em IS NULL'
-            )->execute([
-                'id' => $orderId,
-                'user_id' => $userId,
-            ]);
-        });
-    }
+                        motivo_exclusao = :reason,
 
+                        orcamento_liberado =
+                            CASE
+                                WHEN orcamento_id IS NULL
+                                THEN orcamento_liberado
+                                ELSE 1
+                            END,
+
+                        orcamento_operacional_chave = NULL
+
+                  WHERE id = :id
+                    AND excluida_em IS NULL'
+                );
+
+                $statement->execute([
+                    'id' => $orderId,
+                    'user_id' => $userId,
+                    'reason' => $reason,
+                ]);
+
+                if ($statement->rowCount() !== 1) {
+                    throw new InvalidArgumentException(
+                        'A OS foi alterada por outro usuário. Atualize a página e tente novamente.'
+                    );
+                }
+            }
+        );
+    }
     /** @return array<string,mixed> */
     private function lockOrder(int $orderId): array
     {
@@ -226,8 +267,11 @@ final class ServiceOrderLifecycleService
             $ids[] = (int) $payment['id'];
             if ($payment['caixa_movimentacao_id'] !== null) {
                 $this->cash->reverseMovement(
-                    (int) $payment['caixa_movimentacao_id'], 'os_estorno', (int) $order['id'],
-                    $this->limit('Estorno da OS ' . ($order['numero'] ?: '#' . $order['id']) . ': ' . $reason, 255), $userId
+                    (int) $payment['caixa_movimentacao_id'],
+                    'os_estorno',
+                    (int) $order['id'],
+                    $this->limit('Estorno da OS ' . ($order['numero'] ?: '#' . $order['id']) . ': ' . $reason, 255),
+                    $userId
                 );
             }
             $reversePayment->execute([
@@ -317,7 +361,8 @@ final class ServiceOrderLifecycleService
                 AND NOT EXISTS (SELECT 1 FROM estoque_movimentacoes reversal WHERE reversal.estornado_de_id = movement.id)
               LIMIT 1 FOR UPDATE",
             "SELECT id FROM documentos_fiscais WHERE ordem_servico_id = :id
-                AND processamento_status NOT IN ('cancelado','rejeitado','erro_tecnico') LIMIT 1 FOR UPDATE",            "SELECT receipt.id FROM recibos receipt
+                AND processamento_status NOT IN ('cancelado','rejeitado','erro_tecnico') LIMIT 1 FOR UPDATE",
+            "SELECT receipt.id FROM recibos receipt
                 JOIN ordem_servico_pagamentos payment ON payment.id = receipt.pagamento_id
               WHERE payment.ordem_servico_id = :id AND receipt.status = 'emitido'
               LIMIT 1 FOR UPDATE",

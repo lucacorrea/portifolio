@@ -545,6 +545,62 @@ document.addEventListener('DOMContentLoaded', function () {
     if (modal) bootstrap.Modal.getOrCreateInstance(modal).show();
   }
 
+if (
+  recoveryModal === 'delete'
+  && window.bootstrap
+) {
+  setValue(
+    'os-delete-id',
+    recoveryData.id
+  );
 
+  setValue(
+    'os-delete-reason',
+    recoveryData.motivo
+  );
+
+  setText(
+    'os-delete-number',
+    recoveryData.id
+      ? 'OS #' + recoveryData.id
+      : 'OS selecionada'
+  );
+
+  const deleteModal = document.getElementById(
+    'modal-os-delete'
+  );
+
+  if (deleteModal) {
+    if (recoveryError) {
+      const modalBody = deleteModal.querySelector(
+        '.modal-body'
+      );
+
+      const oldAlert = deleteModal.querySelector(
+        '.js-os-delete-recovery-alert'
+      );
+
+      oldAlert?.remove();
+
+      const alert = document.createElement('div');
+
+      alert.className =
+        'alert alert-danger js-os-delete-recovery-alert';
+
+      alert.setAttribute(
+        'role',
+        'alert'
+      );
+
+      alert.textContent = recoveryError;
+
+      modalBody?.prepend(alert);
+    }
+
+    bootstrap.Modal
+      .getOrCreateInstance(deleteModal)
+      .show();
+  }
+}
 
 });

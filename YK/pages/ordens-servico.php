@@ -1061,19 +1061,107 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
         </div>
     </div><?php endif; ?>
 
-<?php if ($canDelete): ?><div class="modal fade" id="modal-os-delete" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <form class="modal-content visual-modal" method="post" action="actions/os-excluir.php">
-                <div class="modal-header">
-                    <h2 class="modal-title fs-5">Excluir OS</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+<?php if ($canDelete): ?>
+<div
+    class="modal fade"
+    id="modal-os-delete"
+    tabindex="-1"
+    aria-hidden="true"
+    aria-labelledby="os-delete-title">
+    <div class="modal-dialog modal-dialog-centered">
+        <form
+            class="modal-content visual-modal"
+            method="post"
+            action="actions/os-excluir.php"
+            autocomplete="off">
+            <div class="modal-header">
+                <div>
+                    <h2
+                        class="modal-title fs-5"
+                        id="os-delete-title">
+                        Excluir OS
+                    </h2>
+
+                    <p class="text-muted small mb-0">
+                        Exclusão lógica com histórico preservado.
+                    </p>
                 </div>
-                <div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="id" id="os-delete-id">
-                    <p class="mb-0">A <strong id="os-delete-number"></strong> será removida das telas por exclusão lógica. OS finalizada precisa ser estornada antes.</p>
+
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Fechar"></button>
+            </div>
+
+            <div class="modal-body">
+                <?= $csrf->field() ?>
+                <?php return_to_field(); ?>
+
+                <input
+                    type="hidden"
+                    name="id"
+                    id="os-delete-id">
+
+                <div
+                    class="alert alert-warning"
+                    role="alert">
+                    <i class="bi bi-exclamation-triangle"></i>
+
+                    A
+                    <strong id="os-delete-number"></strong>
+                    será removida das telas operacionais, mas
+                    continuará disponível para auditoria.
                 </div>
-                <div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Excluir OS</button></div>
-            </form>
-        </div>
-    </div><?php endif; ?>
+
+                <p class="text-muted small">
+                    OS finalizada precisa ser estornada antes.
+                    Também não será possível excluir uma OS com
+                    movimentação ativa de estoque, pagamento,
+                    conta a receber, recibo ou nota fiscal.
+                </p>
+
+                <div class="form-group mb-0">
+                    <label
+                        class="form-label"
+                        for="os-delete-reason">
+                        Motivo da exclusão
+                    </label>
+
+                    <textarea
+                        class="form-control-os"
+                        id="os-delete-reason"
+                        name="motivo"
+                        maxlength="255"
+                        rows="4"
+                        placeholder="Informe por que esta OS deve ser excluída"
+                        required></textarea>
+
+                    <small class="text-muted">
+                        O motivo será armazenado no histórico da OS.
+                    </small>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button
+                    class="btn-modal-cancel"
+                    type="button"
+                    data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+
+                <button
+                    class="btn-modal-save"
+                    type="submit">
+                    <i class="bi bi-trash3"></i>
+                    Confirmar exclusão
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+<?php endif; ?>
 
 <?php if ($canIssueReceipt): ?><div class="modal fade" id="modal-os-receipt" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
