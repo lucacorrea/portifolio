@@ -3,183 +3,1727 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/ui.php';
-require_once __DIR__ . '/../actions/painel-semanal-action-common.php';
 
-$orderService = $application->serviceOrderManagement();
-$employeeService = $application->employeeManagement();
-$clientService = $application->clientManagement();
-$catalogService = $application->serviceManagement();
+require_once __DIR__
+    . '/../actions/painel-semanal-action-common.php';
 
-try { $baseWeek = new DateTimeImmutable((string) ($_GET['week'] ?? date('Y-m-d'))); } catch (Throwable) { $baseWeek = new DateTimeImmutable('today'); }
-$weekStart = $baseWeek->modify('monday this week')->setTime(0, 0);
-$prevWeek = $weekStart->modify('-7 days');
-$nextWeek = $weekStart->modify('+7 days');
+/**
+ * Retorna um valor escalar seguro de um registro.
+ */
+function weekly_value(
+    array $row,
+    string $key,
+    string $default = ''
+): string {
+    $value = $row[$key] ?? $default;
 
-$filters = [
-    'search' => trim((string) ($_GET['search'] ?? '')),
-    'employee_id' => trim((string) ($_GET['employee_id'] ?? '')),
-    'status' => trim((string) ($_GET['status'] ?? '')),
-    'priority' => trim((string) ($_GET['priority'] ?? '')),
-    'service' => trim((string) ($_GET['service'] ?? '')),
-    'equipment' => trim((string) ($_GET['equipment'] ?? '')),
-];
-$employees = $employeeService->listEmployees();
-$clients = $clientService->listClients();
-$services = $catalogService->listServices(['status' => 'ativo']);
-$recovery = os_consume_form_recovery();
-$weekGroups = $orderService->weekSchedule($weekStart, $filters);
-$orders = [];
-foreach ($weekGroups as $dayOrders) foreach ($dayOrders as $order) $orders[] = $order;
-$teamsByOrder = $orderService->teamMembersForOrders($orders);
-
-$summary = ['agendada'=>0,'em_deslocamento'=>0,'em_execucao'=>0,'aguardando_peca'=>0,'finalizada'=>0];
-foreach ($orders as $order) {
-    if (isset($summary[$order->status()])) $summary[$order->status()]++;
+    return is_scalar($value)
+        ? (string) $value
+        : $default;
 }
 
-$canEdit = $authorization->can('painel_semanal.editar');
-$canCreate = $authorization->can('painel_semanal.adicionar');
-$canTeam = $authorization->can('painel_semanal.alterar_dupla');
-$canSchedule = $authorization->can('painel_semanal.alterar_horario');
-$canStatus = $authorization->can('painel_semanal.alterar_status');
-$canCancel = $authorization->can('painel_semanal.cancelar');
-$canViewOs = $authorization->can('os.visualizar');
-$canDelete = $authorization->can('os.excluir');
+/**
+ * Converte um valor recuperado do formulário.
+ */
+function weekly_recovery_value(
+    array $data,
+    string $key,
+    string $default = ''
+): string {
+    $value = $data[$key] ?? $default;
 
-function weekly_status_label(string $status): string { return ['agendada'=>'Agendada','em_deslocamento'=>'Em deslocamento','em_execucao'=>'Em execução','aguardando_peca'=>'Aguardando peça','finalizada'=>'Finalizada','cancelada'=>'Cancelada','aberta'=>'Aberta','aguardando_agendamento'=>'Aguardando agendamento'][$status] ?? $status; }
-function weekly_priority_label(string $priority): string { return ['baixa'=>'Baixa','media'=>'Média','alta'=>'Alta','urgente'=>'Urgente'][$priority] ?? 'Média'; }
-function weekly_time(?string $start, ?string $end): string { try { return (new DateTimeImmutable((string) $start))->format('H:i') . '–' . (new DateTimeImmutable((string) $end))->format('H:i'); } catch (Throwable) { return '-'; } }
-function weekly_team_name(array $members): string { if ($members === []) return 'Equipe nao definida'; return implode(' / ', array_map(static fn($member): string => $member->displayLine(), $members)); }
-$days = ['Monday'=>'Segunda','Tuesday'=>'Terça','Wednesday'=>'Quarta','Thursday'=>'Quinta','Friday'=>'Sexta','Saturday'=>'Sábado','Sunday'=>'Domingo'];
+    return is_scalar($value)
+        ? (string) $value
+        : $default;
+}
+
+function weekly_status_label(
+    string $status
+): string {
+    return [
+        'aguardando_confirmacao' =>
+            'Aguardando confirmação',
+
+        'confirmado' =>
+            'OS gerada',
+
+        'cancelado' =>
+            'Cancelado',
+    ][$status] ?? $status;
+}
+
+function weekly_status_badge(
+    string $status
+): string {
+    return [
+        'aguardando_confirmacao' => 'amber',
+        'confirmado' => 'green',
+        'cancelado' => 'gray',
+    ][$status] ?? 'gray';
+}
+
+function weekly_priority_label(
+    string $priority
+): string {
+    return [
+        'baixa' => 'Baixa',
+        'media' => 'Média',
+        'alta' => 'Alta',
+        'urgente' => 'Urgente',
+    ][$priority] ?? 'Média';
+}
+
+function weekly_datetime(
+    ?string $value,
+    string $format = 'd/m/Y H:i'
+): string {
+    if (
+        $value === null
+        || trim($value) === ''
+    ) {
+        return '—';
+    }
+
+    try {
+        return (
+            new DateTimeImmutable($value)
+        )->format($format);
+    } catch (Throwable) {
+        return '—';
+    }
+}
+
+function weekly_time_range(
+    ?string $start,
+    ?string $end
+): string {
+    if (
+        $start === null
+        || $end === null
+        || $start === ''
+        || $end === ''
+    ) {
+        return 'Horário não informado';
+    }
+
+    try {
+        return (
+            new DateTimeImmutable($start)
+        )->format('H:i')
+            . ' – '
+            . (
+                new DateTimeImmutable($end)
+            )->format('H:i');
+    } catch (Throwable) {
+        return 'Horário inválido';
+    }
+}
+
+function weekly_team_name(
+    array $planning
+): string {
+    $primary = trim(
+        weekly_value(
+            $planning,
+            'funcionario_principal_nome'
+        )
+    );
+
+    $support = trim(
+        weekly_value(
+            $planning,
+            'funcionario_apoio_nome'
+        )
+    );
+
+    $names = array_values(
+        array_filter(
+            [
+                $primary,
+                $support,
+            ],
+            static fn (string $name): bool =>
+                $name !== ''
+        )
+    );
+
+    return $names === []
+        ? 'Equipe não definida'
+        : implode(' / ', $names);
+}
+
+function weekly_client_options(
+    array $clients,
+    string $selected = ''
+): void {
+    foreach ($clients as $client) {
+        $id = (string) $client->id();
+
+        ?>
+        <option
+            value="<?= h($id) ?>"
+            <?= $selected === $id ? 'selected' : '' ?>
+        >
+            <?= h($client->name()) ?>
+        </option>
+        <?php
+    }
+}
+
+function weekly_service_options(
+    array $services,
+    string $selected = ''
+): void {
+    foreach ($services as $service) {
+        $id = (string) $service->id();
+
+        ?>
+        <option
+            value="<?= h($id) ?>"
+            data-duration="<?= h(
+                (string) $service->durationMinutes()
+            ) ?>"
+            <?= $selected === $id ? 'selected' : '' ?>
+        >
+            <?= h(
+                $service->displayCode()
+                . ' — '
+                . $service->name()
+            ) ?>
+        </option>
+        <?php
+    }
+}
+
+function weekly_employee_options(
+    array $employees,
+    string $selected = ''
+): void {
+    foreach ($employees as $employee) {
+        $id = (string) $employee->id();
+
+        ?>
+        <option
+            value="<?= h($id) ?>"
+            <?= $selected === $id ? 'selected' : '' ?>
+        >
+            <?= h(
+                $employee->displayCode()
+                . ' — '
+                . $employee->name()
+            ) ?>
+        </option>
+        <?php
+    }
+}
+
+function weekly_return_fields(
+    DateTimeImmutable $weekStart
+): void {
+    return_to_field();
+
+    ?>
+    <input
+        type="hidden"
+        name="return_week"
+        value="<?= h(
+            $weekStart->format('Y-m-d')
+        ) ?>"
+    >
+    <?php
+}
+
+/*
+ * Semana selecionada.
+ */
+$rawWeek = trim(
+    (string) (
+        $_GET['week']
+        ?? date('Y-m-d')
+    )
+);
+
+$baseWeek = DateTimeImmutable::createFromFormat(
+    '!Y-m-d',
+    $rawWeek
+);
+
+if (
+    $baseWeek === false
+    || $baseWeek->format('Y-m-d')
+        !== $rawWeek
+) {
+    $baseWeek =
+        new DateTimeImmutable('today');
+}
+
+$weekStart = $baseWeek
+    ->modify('monday this week')
+    ->setTime(0, 0);
+
+$weekEnd = $weekStart
+    ->modify('+7 days');
+
+$previousWeek = $weekStart
+    ->modify('-7 days');
+
+$nextWeek = $weekStart
+    ->modify('+7 days');
+
+/*
+ * Filtros.
+ */
+$search = trim(
+    (string) ($_GET['search'] ?? '')
+);
+
+if (
+    str_contains($search, "\0")
+    || mb_strlen($search, 'UTF-8') > 150
+) {
+    $search = '';
+}
+
+$status = trim(
+    (string) ($_GET['status'] ?? '')
+);
+
+if (
+    !in_array(
+        $status,
+        [
+            '',
+            'aguardando_confirmacao',
+            'confirmado',
+        ],
+        true
+    )
+) {
+    $status = '';
+}
+
+$employeeId = trim(
+    (string) (
+        $_GET['employee_id']
+        ?? ''
+    )
+);
+
+if (
+    $employeeId !== ''
+    && (
+        !ctype_digit($employeeId)
+        || (int) $employeeId <= 0
+    )
+) {
+    $employeeId = '';
+}
+
+$filters = [
+    'search' => $search,
+    'status' => $status,
+    'employee_id' => $employeeId,
+];
+
+/*
+ * Serviços usados pela página.
+ */
+$planningService =
+    $application->weeklyServicePlanning();
+
+$employeeService =
+    $application->employeeManagement();
+
+$clientService =
+    $application->clientManagement();
+
+$catalogService =
+    $application->serviceManagement();
+
+$employees =
+    $employeeService->listEmployees();
+
+$clients =
+    $clientService->listClients();
+
+$services =
+    $catalogService->listServices([
+        'status' => 'ativo',
+    ]);
+
+$plannings =
+    $planningService->listBetween(
+        $weekStart,
+        $weekEnd,
+        $filters
+    );
+
+/*
+ * Agrupamento por dia.
+ */
+$weekGroups = [];
+
+foreach ($plannings as $planning) {
+    $start = weekly_value(
+        $planning,
+        'agendado_inicio'
+    );
+
+    try {
+        $dateKey = (
+            new DateTimeImmutable($start)
+        )->format('Y-m-d');
+    } catch (Throwable) {
+        continue;
+    }
+
+    $weekGroups[$dateKey][] =
+        $planning;
+}
+
+/*
+ * Indicadores.
+ */
+$summary = [
+    'total' => 0,
+    'awaiting' => 0,
+    'confirmed' => 0,
+    'urgent' => 0,
+];
+
+foreach ($plannings as $planning) {
+    $planningStatus = weekly_value(
+        $planning,
+        'status'
+    );
+
+    $priority = weekly_value(
+        $planning,
+        'prioridade',
+        'media'
+    );
+
+    $summary['total']++;
+
+    if (
+        $planningStatus
+        === 'aguardando_confirmacao'
+    ) {
+        $summary['awaiting']++;
+    }
+
+    if (
+        $planningStatus
+        === 'confirmado'
+    ) {
+        $summary['confirmed']++;
+    }
+
+    if (
+        $priority === 'urgente'
+        && $planningStatus
+            === 'aguardando_confirmacao'
+    ) {
+        $summary['urgent']++;
+    }
+}
+
+/*
+ * Permissões.
+ */
+$canCreate = $authorization->can(
+    'painel_semanal.adicionar'
+);
+
+$canConfirm = $authorization->can(
+    'os.criar'
+);
+
+$canViewOrder = $authorization->can(
+    'os.visualizar'
+);
+
+/*
+ * Recuperação de formulário após erro.
+ */
+$recovery =
+    os_consume_form_recovery();
+
+$recoveryModal = is_array($recovery)
+    ? (string) (
+        $recovery['modal']
+        ?? ''
+    )
+    : '';
+
+$recoveryError = is_array($recovery)
+    ? (string) (
+        $recovery['error']
+        ?? ''
+    )
+    : '';
+
+$recoveryData = (
+    is_array($recovery)
+    && is_array(
+        $recovery['data']
+        ?? null
+    )
+)
+    ? $recovery['data']
+    : [];
+
+$createRecoveryData =
+    $recoveryModal === 'create'
+        ? $recoveryData
+        : [];
+
+$days = [
+    'Monday' => 'Segunda',
+    'Tuesday' => 'Terça',
+    'Wednesday' => 'Quarta',
+    'Thursday' => 'Quinta',
+    'Friday' => 'Sexta',
+    'Saturday' => 'Sábado',
+    'Sunday' => 'Domingo',
+];
+
+$pageData = json_encode(
+    [
+        'recoveryModal' => $recoveryModal,
+        'recoveryError' => $recoveryError,
+        'recoveryData' => $recoveryData,
+    ],
+    JSON_THROW_ON_ERROR
+    | JSON_HEX_TAG
+    | JSON_HEX_APOS
+    | JSON_HEX_AMP
+    | JSON_HEX_QUOT
+);
 ?>
 
-<div class="page-body weekly-page">
-<?php metric_grid([
-    ['Agendadas', (string) $summary['agendada'], 'bi-calendar2-check', '#0F766E', 'na semana'],
-    ['Em atendimento', (string) ($summary['em_deslocamento'] + $summary['em_execucao']), 'bi-tools', '#16A34A', 'em rota ou execução'],
-    ['Aguardando peça', (string) $summary['aguardando_peca'], 'bi-box-seam', '#D97706', 'pendências'],
-    ['Finalizadas', (string) $summary['finalizada'], 'bi-check2-circle', '#15803D', 'concluídas'],
-]); ?>
+<style>
+.weekly-planning-page {
+    --weekly-border: #e5e7eb;
+    --weekly-muted: #64748b;
+    --weekly-surface: #ffffff;
+    --weekly-soft: #f8fafc;
+}
 
-<form class="filter-bar" method="get" action="painel-semanal.php" data-live-filter="weekly" data-live-regions="metrics results">
-    <input type="hidden" name="week" value="<?= h($weekStart->format('Y-m-d')) ?>">
-    <div class="search-wrap"><i class="bi bi-search"></i><input class="search-input" type="search" name="search" value="<?= h($filters['search']) ?>" placeholder="Pesquisar OS, cliente ou serviço"></div>
-    <select class="filter-select" name="status"><option value="">Todos os status</option><?php foreach (['agendada','em_deslocamento','em_execucao','aguardando_peca','finalizada','cancelada'] as $status): ?><option value="<?= h($status) ?>" <?= $filters['status'] === $status ? 'selected' : '' ?>><?= h(weekly_status_label($status)) ?></option><?php endforeach; ?></select>
-    <button class="btn-filter btn-filter-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
-    <a class="btn-filter btn-filter-ghost" href="painel-semanal.php?week=<?= h($weekStart->format('Y-m-d')) ?>" data-live-filter-clear><i class="bi bi-x-lg"></i> Limpar</a>
-</form>
+.weekly-navigation {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
 
-<section class="panel weekly-board-panel" data-live-region="results">
-    <div class="panel-header"><div class="panel-title"><i class="bi bi-calendar-week"></i>Semana de <?= h($weekStart->format('d/m/Y')) ?></div><div class="d-flex gap-2"><a class="btn-filter btn-filter-ghost" href="painel-semanal.php?week=<?= h($prevWeek->format('Y-m-d')) ?>">Semana anterior</a><a class="btn-filter btn-filter-primary" href="painel-semanal.php?week=<?= h(date('Y-m-d')) ?>">Hoje</a><a class="btn-filter btn-filter-ghost" href="painel-semanal.php?week=<?= h($nextWeek->format('Y-m-d')) ?>">Próxima semana</a></div></div>
-    <div class="weekly-board">
-        <?php for ($i = 0; $i < 7; $i++): $day = $weekStart->modify('+' . $i . ' days'); $key = $day->format('Y-m-d'); $dayOrders = $weekGroups[$key] ?? []; ?>
-            <section class="week-day-column <?= $key === date('Y-m-d') ? 'is-today' : '' ?>">
-                <header class="week-day-header"><strong><?= h($days[$day->format('l')]) ?></strong><span><?= h($day->format('d/m')) ?></span></header>
-                <div class="week-day-body">
-                    <?php if ($dayOrders === []): ?><div class="week-empty-state">Sem atendimentos</div><?php else: ?>
-                        <?php $byTeam = []; foreach ($dayOrders as $order) { $byTeam[weekly_team_name($teamsByOrder[$order->id()] ?? [])][] = $order; } ?>
-                        <?php foreach ($byTeam as $teamName => $teamOrders): ?>
-                            <section class="team-group"><header class="team-group-header"><div class="team-info"><strong class="team-names"><?= h($teamName) ?></strong><span class="team-role"><?= h(count($teamOrders) . ' atendimento' . (count($teamOrders) === 1 ? '' : 's')) ?></span></div></header>
-                                <?php foreach ($teamOrders as $order): ?>
-                                    <article class="week-service-card priority-<?= h($order->priority()) ?>" data-record-actions>
-                                        <div class="week-service-header">
-                                            <div><span class="week-service-time"><?= h(weekly_time($order->scheduledStart(), $order->scheduledEnd())) ?></span><strong class="week-service-os"><?= h($order->displayNumber()) ?></strong></div>
-                                            <div class="record-actions-source week-service-actions">
-                                            <div class="dropdown table-action-dropdown">
-                                                <button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações da OS <?= h($order->displayNumber()) ?>"><i class="bi bi-three-dots-vertical"></i></button>
-                                                <ul class="dropdown-menu dropdown-menu-end">
-                                                    <?php if ($canViewOs): ?><li><button class="dropdown-item js-week-details" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-order-number="<?= h($order->displayNumber()) ?>" data-bs-toggle="modal" data-bs-target="#modal-week-details"><i class="bi bi-eye"></i> Ver detalhes</button></li><?php endif; ?>
-                                                    <?php if ($canViewOs): ?><li><a class="dropdown-item" href="ordens-servico.php?search=<?= h(rawurlencode($order->displayNumber())) ?>"><i class="bi bi-box-arrow-up-right"></i> Abrir OS</a></li><?php endif; ?>
-                                                    <?php if ($canSchedule): ?><li><button class="dropdown-item js-week-schedule" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-start="<?= h($order->scheduledStart() ?? '') ?>" data-end="<?= h($order->scheduledEnd() ?? '') ?>" data-bs-toggle="modal" data-bs-target="#modal-week-schedule"><i class="bi bi-calendar-event"></i> Reagendar</button></li><?php endif; ?>
-                                                    <?php if ($canTeam): ?><li><button class="dropdown-item js-week-team" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-primary-id="<?= h((string) ($order->primaryEmployeeId() ?? '')) ?>" data-support-id="<?= h((string) ($order->supportEmployeeId() ?? '')) ?>" data-bs-toggle="modal" data-bs-target="#modal-week-team"><i class="bi bi-people"></i> Alterar equipe</button></li><?php endif; ?>
-                                                    <?php if ($canStatus && !in_array($order->status(), ['finalizada','cancelada'], true)): ?><li><button class="dropdown-item js-week-status" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-current-status="<?= h($order->status()) ?>" data-bs-toggle="modal" data-bs-target="#modal-week-status"><i class="bi bi-arrow-repeat"></i> Alterar status</button></li><?php endif; ?>
-                                                    <?php if ($canCancel && !in_array($order->status(), ['finalizada','cancelada'], true)): ?><li><button class="dropdown-item text-danger js-week-cancel" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-order-number="<?= h($order->displayNumber()) ?>" data-bs-toggle="modal" data-bs-target="#modal-week-cancel"><i class="bi bi-x-circle"></i> Cancelar</button></li><?php endif; ?>
-                                                    <?php if ($canDelete && $order->status() !== 'finalizada'): ?><li><hr class="dropdown-divider"></li><li><button class="dropdown-item text-danger js-week-delete" type="button" data-order-id="<?= h((string) $order->id()) ?>" data-order-number="<?= h($order->displayNumber()) ?>" data-bs-toggle="modal" data-bs-target="#modal-week-delete"><i class="bi bi-trash3"></i> Excluir OS</button></li><?php endif; ?>
-                                                </ul>
+.weekly-planning-board {
+    display: grid;
+    grid-template-columns:
+        repeat(7, minmax(245px, 1fr));
+    gap: 12px;
+    min-width: 1780px;
+    padding: 14px;
+}
+
+.weekly-planning-scroll {
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+}
+
+.weekly-day-column {
+    min-height: 300px;
+    border: 1px solid var(--weekly-border);
+    border-radius: 14px;
+    background: var(--weekly-soft);
+    overflow: hidden;
+}
+
+.weekly-day-column.is-today {
+    border-color: #2563eb;
+    box-shadow:
+        0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.weekly-day-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--weekly-surface);
+    border-bottom: 1px solid var(--weekly-border);
+}
+
+.weekly-day-header strong {
+    color: #0f172a;
+    font-size: 0.88rem;
+}
+
+.weekly-day-header span {
+    color: var(--weekly-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.weekly-day-body {
+    display: grid;
+    gap: 10px;
+    padding: 10px;
+}
+
+.weekly-empty {
+    padding: 30px 12px;
+    color: #94a3b8;
+    text-align: center;
+    font-size: 0.8rem;
+}
+
+.weekly-planning-card {
+    position: relative;
+    display: grid;
+    gap: 9px;
+    padding: 13px;
+    border: 1px solid var(--weekly-border);
+    border-radius: 12px;
+    background: var(--weekly-surface);
+    box-shadow:
+        0 3px 10px rgba(15, 23, 42, 0.04);
+}
+
+.weekly-planning-card.is-awaiting {
+    border-left: 4px solid #f59e0b;
+}
+
+.weekly-planning-card.is-confirmed {
+    border-left: 4px solid #16a34a;
+}
+
+.weekly-planning-card.is-urgent {
+    box-shadow:
+        0 0 0 2px rgba(220, 38, 38, 0.1);
+}
+
+.weekly-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.weekly-card-code {
+    display: block;
+    margin-bottom: 2px;
+    color: #0f172a;
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+
+.weekly-card-time {
+    color: #475569;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.weekly-card-client {
+    color: #0f172a;
+    font-size: 0.88rem;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.weekly-card-service {
+    color: #334155;
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+.weekly-card-info {
+    display: grid;
+    gap: 5px;
+    color: #64748b;
+    font-size: 0.73rem;
+}
+
+.weekly-card-info span {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+.weekly-card-info i {
+    flex: 0 0 auto;
+    margin-top: 1px;
+}
+
+.weekly-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding-top: 8px;
+    border-top: 1px solid #eef2f7;
+}
+
+.weekly-card-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.weekly-confirm-button {
+    min-height: 34px;
+    padding: 7px 10px;
+    font-size: 0.73rem;
+}
+
+.weekly-order-link {
+    min-height: 34px;
+    padding: 7px 10px;
+    font-size: 0.73rem;
+}
+
+.weekly-priority {
+    color: #64748b;
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.weekly-priority.is-urgent {
+    color: #dc2626;
+}
+
+.weekly-confirm-summary {
+    display: grid;
+    gap: 10px;
+}
+
+.weekly-confirm-item {
+    display: grid;
+    gap: 3px;
+    padding: 10px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #f8fafc;
+}
+
+.weekly-confirm-item span {
+    color: #64748b;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.weekly-confirm-item strong {
+    color: #0f172a;
+    font-size: 0.86rem;
+}
+
+@media (max-width: 767.98px) {
+    .weekly-navigation {
+        width: 100%;
+    }
+
+    .weekly-navigation > * {
+        flex: 1 1 auto;
+        text-align: center;
+    }
+
+    .weekly-planning-board {
+        grid-template-columns:
+            repeat(7, minmax(285px, 1fr));
+    }
+}
+</style>
+
+<div class="page-body weekly-planning-page">
+    <?php
+    metric_grid([
+        [
+            'Planejados',
+            (string) $summary['total'],
+            'bi-calendar-week',
+            '#2563EB',
+            'na semana',
+        ],
+
+        [
+            'Aguardando confirmação',
+            (string) $summary['awaiting'],
+            'bi-hourglass-split',
+            '#D97706',
+            'sem OS',
+        ],
+
+        [
+            'OS geradas',
+            (string) $summary['confirmed'],
+            'bi-check2-circle',
+            '#15803D',
+            'confirmados',
+        ],
+
+        [
+            'Urgentes pendentes',
+            (string) $summary['urgent'],
+            'bi-exclamation-triangle',
+            '#DC2626',
+            'prioridade',
+        ],
+    ]);
+    ?>
+
+    <form
+        class="filter-bar"
+        method="get"
+        action="painel-semanal.php"
+        data-live-filter="weekly-planning"
+        data-live-regions="metrics results"
+    >
+        <input
+            type="hidden"
+            name="week"
+            value="<?= h(
+                $weekStart->format('Y-m-d')
+            ) ?>"
+        >
+
+        <div class="search-wrap">
+            <i class="bi bi-search"></i>
+
+            <input
+                class="search-input"
+                type="search"
+                name="search"
+                value="<?= h($search) ?>"
+                maxlength="150"
+                placeholder="Cliente, serviço, código ou OS"
+                aria-label="Pesquisar serviços semanais"
+            >
+        </div>
+
+        <select
+            class="filter-select"
+            name="status"
+            aria-label="Status"
+        >
+            <option value="">
+                Todos os status
+            </option>
+
+            <option
+                value="aguardando_confirmacao"
+                <?= $status === 'aguardando_confirmacao' ? 'selected' : '' ?>
+            >
+                Aguardando confirmação
+            </option>
+
+            <option
+                value="confirmado"
+                <?= $status === 'confirmado' ? 'selected' : '' ?>
+            >
+                OS gerada
+            </option>
+        </select>
+
+        <select
+            class="filter-select"
+            name="employee_id"
+            aria-label="Funcionário"
+        >
+            <option value="">
+                Todos os funcionários
+            </option>
+
+            <?php
+            weekly_employee_options(
+                $employees,
+                $employeeId
+            );
+            ?>
+        </select>
+
+        <button
+            class="btn-filter btn-filter-primary"
+            type="submit"
+        >
+            <i class="bi bi-funnel"></i>
+            Filtrar
+        </button>
+
+        <a
+            class="btn-filter btn-filter-ghost"
+            href="painel-semanal.php?week=<?= h(
+                $weekStart->format('Y-m-d')
+            ) ?>"
+            data-live-filter-clear
+        >
+            <i class="bi bi-x-lg"></i>
+            Limpar
+        </a>
+    </form>
+
+    <section
+        class="panel"
+        data-live-region="results"
+    >
+        <div class="panel-header">
+            <div class="panel-title">
+                <i class="bi bi-calendar-week"></i>
+
+                Semana de
+                <?= h(
+                    $weekStart->format('d/m/Y')
+                ) ?>
+                a
+                <?= h(
+                    $weekEnd
+                        ->modify('-1 day')
+                        ->format('d/m/Y')
+                ) ?>
+            </div>
+
+            <nav
+                class="weekly-navigation"
+                aria-label="Navegação semanal"
+            >
+                <a
+                    class="btn-filter btn-filter-ghost"
+                    href="painel-semanal.php?week=<?= h(
+                        $previousWeek->format('Y-m-d')
+                    ) ?>"
+                >
+                    <i class="bi bi-chevron-left"></i>
+                    Anterior
+                </a>
+
+                <a
+                    class="btn-filter btn-filter-primary"
+                    href="painel-semanal.php?week=<?= h(
+                        date('Y-m-d')
+                    ) ?>"
+                >
+                    Hoje
+                </a>
+
+                <a
+                    class="btn-filter btn-filter-ghost"
+                    href="painel-semanal.php?week=<?= h(
+                        $nextWeek->format('Y-m-d')
+                    ) ?>"
+                >
+                    Próxima
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </nav>
+        </div>
+
+        <div class="weekly-planning-scroll">
+            <div class="weekly-planning-board">
+                <?php for ($dayIndex = 0; $dayIndex < 7; $dayIndex++): ?>
+                    <?php
+                    $day = $weekStart->modify(
+                        '+' . $dayIndex . ' days'
+                    );
+
+                    $dateKey = $day->format(
+                        'Y-m-d'
+                    );
+
+                    $dayPlannings =
+                        $weekGroups[$dateKey]
+                        ?? [];
+                    ?>
+
+                    <section
+                        class="weekly-day-column<?= $dateKey === date('Y-m-d') ? ' is-today' : '' ?>"
+                    >
+                        <header class="weekly-day-header">
+                            <strong>
+                                <?= h(
+                                    $days[
+                                        $day->format('l')
+                                    ]
+                                ) ?>
+                            </strong>
+
+                            <span>
+                                <?= h(
+                                    $day->format('d/m')
+                                ) ?>
+                            </span>
+                        </header>
+
+                        <div class="weekly-day-body">
+                            <?php if ($dayPlannings === []): ?>
+                                <div class="weekly-empty">
+                                    Nenhum serviço planejado
+                                </div>
+                            <?php else: ?>
+                                <?php foreach ($dayPlannings as $planning): ?>
+                                    <?php
+                                    $planningId = weekly_value(
+                                        $planning,
+                                        'id'
+                                    );
+
+                                    $planningCode = weekly_value(
+                                        $planning,
+                                        'codigo',
+                                        'SEM'
+                                    );
+
+                                    $planningStatus = weekly_value(
+                                        $planning,
+                                        'status',
+                                        'aguardando_confirmacao'
+                                    );
+
+                                    $priority = weekly_value(
+                                        $planning,
+                                        'prioridade',
+                                        'media'
+                                    );
+
+                                    $clientName = weekly_value(
+                                        $planning,
+                                        'cliente_nome',
+                                        'Cliente não informado'
+                                    );
+
+                                    $serviceName = weekly_value(
+                                        $planning,
+                                        'servico_nome',
+                                        'Serviço não informado'
+                                    );
+
+                                    $start = weekly_value(
+                                        $planning,
+                                        'agendado_inicio'
+                                    );
+
+                                    $end = weekly_value(
+                                        $planning,
+                                        'agendado_fim'
+                                    );
+
+                                    $location = weekly_value(
+                                        $planning,
+                                        'local_servico'
+                                    );
+
+                                    $orderNumber = weekly_value(
+                                        $planning,
+                                        'ordem_servico_numero'
+                                    );
+
+                                    $orderId = weekly_value(
+                                        $planning,
+                                        'ordem_servico_id'
+                                    );
+
+                                    $teamName =
+                                        weekly_team_name(
+                                            $planning
+                                        );
+
+                                    $cardClass =
+                                        $planningStatus
+                                            === 'confirmado'
+                                                ? 'is-confirmed'
+                                                : 'is-awaiting';
+                                    ?>
+
+                                    <article
+                                        class="weekly-planning-card <?= h($cardClass) ?><?= $priority === 'urgente' ? ' is-urgent' : '' ?>"
+                                    >
+                                        <div class="weekly-card-header">
+                                            <div>
+                                                <strong class="weekly-card-code">
+                                                    <?= h($planningCode) ?>
+                                                </strong>
+
+                                                <span class="weekly-card-time">
+                                                    <?= h(
+                                                        weekly_time_range(
+                                                            $start,
+                                                            $end
+                                                        )
+                                                    ) ?>
+                                                </span>
                                             </div>
+
+                                            <span
+                                                class="badge-soft badge-<?= h(
+                                                    weekly_status_badge(
+                                                        $planningStatus
+                                                    )
+                                                ) ?>"
+                                            >
+                                                <?= h(
+                                                    weekly_status_label(
+                                                        $planningStatus
+                                                    )
+                                                ) ?>
+                                            </span>
+                                        </div>
+
+                                        <div class="weekly-card-client">
+                                            <?= h($clientName) ?>
+                                        </div>
+
+                                        <div class="weekly-card-service">
+                                            <?= h($serviceName) ?>
+                                        </div>
+
+                                        <div class="weekly-card-info">
+                                            <span>
+                                                <i class="bi bi-people"></i>
+                                                <?= h($teamName) ?>
+                                            </span>
+
+                                            <?php if ($location !== ''): ?>
+                                                <span>
+                                                    <i class="bi bi-geo-alt"></i>
+                                                    <?= h($location) ?>
+                                                </span>
+                                            <?php endif; ?>
+
+                                            <?php if ($orderNumber !== ''): ?>
+                                                <span>
+                                                    <i class="bi bi-clipboard-check"></i>
+                                                    <?= h($orderNumber) ?>
+                                                </span>
+                                            <?php endif; ?>
+                                        </div>
+
+                                        <div class="weekly-card-footer">
+                                            <span
+                                                class="weekly-priority<?= $priority === 'urgente' ? ' is-urgent' : '' ?>"
+                                            >
+                                                <?= h(
+                                                    weekly_priority_label(
+                                                        $priority
+                                                    )
+                                                ) ?>
+                                            </span>
+
+                                            <div class="weekly-card-actions">
+                                                <?php
+                                                if (
+                                                    $planningStatus
+                                                        === 'aguardando_confirmacao'
+                                                    && $canConfirm
+                                                ):
+                                                ?>
+                                                    <button
+                                                        class="btn-filter btn-filter-primary weekly-confirm-button js-weekly-confirm"
+                                                        type="button"
+                                                        data-planning-id="<?= h($planningId) ?>"
+                                                        data-planning-code="<?= h($planningCode) ?>"
+                                                        data-client-name="<?= h($clientName) ?>"
+                                                        data-service-name="<?= h($serviceName) ?>"
+                                                        data-scheduled-start="<?= h($start) ?>"
+                                                        data-scheduled-end="<?= h($end) ?>"
+                                                        data-team-name="<?= h($teamName) ?>"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#modal-week-confirm"
+                                                    >
+                                                        <i class="bi bi-check2-circle"></i>
+                                                        Confirmar
+                                                    </button>
+                                                <?php endif; ?>
+
+                                                <?php
+                                                if (
+                                                    $planningStatus
+                                                        === 'confirmado'
+                                                    && $canViewOrder
+                                                    && $orderId !== ''
+                                                ):
+                                                ?>
+                                                    <a
+                                                        class="btn-filter btn-filter-ghost weekly-order-link"
+                                                        href="ordens-servico.php?search=<?= h(
+                                                            rawurlencode(
+                                                                $orderNumber
+                                                            )
+                                                        ) ?>"
+                                                    >
+                                                        <i class="bi bi-box-arrow-up-right"></i>
+                                                        Abrir OS
+                                                    </a>
+                                                <?php endif; ?>
                                             </div>
                                         </div>
-                                        <div class="week-service-client" title="<?= h($order->clientName()) ?>"><?= h($order->clientName()) ?></div>
-                                        <div class="week-service-title" title="<?= h($order->mainService() ?? 'Serviço não informado') ?>"><?= h($order->mainService() ?? 'Serviço não informado') ?></div>
-                                        <div class="week-service-footer"><div class="week-service-meta"><span class="badge-soft badge-<?= h($order->status() === 'finalizada' ? 'green' : 'blue') ?>"><?= h(weekly_status_label($order->status())) ?></span><?php if ($order->priority() === 'urgente'): ?><span class="priority-label">Urgente</span><?php endif; ?></div></div>
                                     </article>
                                 <?php endforeach; ?>
-                            </section>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </div>
-            </section>
-        <?php endfor; ?>
-    </div>
-</section>
+                            <?php endif; ?>
+                        </div>
+                    </section>
+                <?php endfor; ?>
+            </div>
+        </div>
+    </section>
 </div>
 
-<?php function week_employee_options(array $employees): void { foreach ($employees as $employee) echo '<option value="' . h((string) $employee->id()) . '">' . h($employee->displayCode() . ' — ' . $employee->name()) . '</option>'; } ?>
-<?php function week_client_options(array $clients): void { foreach ($clients as $client) echo '<option value="' . h((string) $client->id()) . '">' . h($client->name()) . '</option>'; } ?>
-<?php function week_service_options(array $services): void { foreach ($services as $service) echo '<option value="' . h((string) $service->id()) . '" data-duration="' . h((string) $service->durationMinutes()) . '">' . h($service->displayCode() . ' — ' . $service->name()) . '</option>'; } ?>
-<?php function week_return_fields(DateTimeImmutable $weekStart): void { return_to_field(); echo '<input type="hidden" name="return_week" value="' . h($weekStart->format('Y-m-d')) . '">'; } ?>
-<?php if ($canViewOs): ?>
-<div class="modal fade" id="modal-week-details" tabindex="-1" aria-labelledby="week-details-title" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-sm-down">
-    <div class="modal-content visual-modal">
-      <div class="modal-header"><div><h2 class="modal-title fs-5" id="week-details-title">Detalhes da OS</h2><p class="text-muted small mb-0" id="week-details-subtitle"></p></div><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
-      <div class="modal-body">
-        <div class="week-details-loading" id="week-details-loading" role="status">Carregando detalhes…</div>
-        <div class="alert alert-danger d-none" id="week-details-error" role="alert"></div>
-        <div class="d-none" id="week-details-content">
-          <section class="form-section"><h3 class="form-section-title">Informações principais</h3><div class="employee-detail-grid" id="week-details-summary"></div></section>
-          <section class="form-section"><h3 class="form-section-title">Equipe</h3><div class="week-details-team" id="week-details-team"></div></section>
-          <section class="form-section"><h3 class="form-section-title">Itens da OS</h3><div class="table-panel-wrap" id="week-details-items"></div></section>
-        </div>
-      </div>
-      <div class="modal-footer"><a class="btn-filter btn-filter-ghost" id="week-details-open-order" href="ordens-servico.php"><i class="bi bi-box-arrow-up-right"></i> Abrir OS</a><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Fechar</button></div>
-    </div>
-  </div>
-</div>
-<?php endif; ?>
 <?php if ($canCreate): ?>
-<div class="modal fade" id="modal-week-create" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
-    <form class="modal-content visual-modal" method="post" action="actions/painel-semanal-servico-salvar.php">
-      <div class="modal-header">
-        <div><h2 class="modal-title fs-5">Confirmar novo serviço</h2><p class="text-muted small mb-0">A OS será criada somente quando você confirmar este formulário.</p></div>
-        <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button>
-      </div>
-      <div class="modal-body">
-        <?= $csrf->field() ?><?php week_return_fields($weekStart); ?>
-        <div class="alert alert-info" role="note"><i class="bi bi-info-circle"></i> Equipe e horário são opcionais. Se informar um horário, selecione também o responsável principal.</div>
-        <section class="form-section">
-          <h3 class="form-section-title">Serviço</h3>
-          <div class="form-row">
-            <div class="form-group"><label class="form-label" for="week-create-client">Cliente</label><select class="form-control-os" name="client_id" id="week-create-client" required><option value="">Selecione</option><?php week_client_options($clients); ?></select></div>
-            <div class="form-group"><label class="form-label" for="week-create-service">Serviço</label><select class="form-control-os" name="service_id" id="week-create-service" required><option value="">Selecione</option><?php week_service_options($services); ?></select></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label class="form-label">Prioridade</label><select class="form-control-os" name="priority"><option value="baixa">Baixa</option><option value="media" selected>Média</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></div>
-            <div class="form-group"><label class="form-label">Local</label><input class="form-control-os" name="equipment_location" maxlength="150"></div>
-          </div>
-        </section>
-        <section class="form-section">
-          <h3 class="form-section-title">Equipe e horário <span class="text-muted">(opcional)</span></h3>
-          <div class="form-row">
-            <div class="form-group"><label class="form-label">Responsável principal</label><select class="form-control-os js-primary-employee" name="funcionario_principal_id"><option value="">Definir depois</option><?php week_employee_options($employees); ?></select></div>
-            <div class="form-group"><label class="form-label">Apoio</label><select class="form-control-os js-support-employee" name="funcionario_apoio_id"><option value="">Sem apoio</option><?php week_employee_options($employees); ?></select></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label class="form-label" for="week-create-start">Início</label><input class="form-control-os" type="datetime-local" name="agendado_inicio" id="week-create-start"></div>
-            <div class="form-group"><label class="form-label" for="week-create-end">Fim</label><input class="form-control-os" type="datetime-local" name="agendado_fim" id="week-create-end"></div>
-          </div>
-        </section>
-        <div class="form-group"><label class="form-label">Observação <span class="text-muted">(opcional)</span></label><textarea class="form-control-os" name="notes" maxlength="1000" rows="3"></textarea></div>
-      </div>
-      <div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit"><i class="bi bi-check2-circle"></i> Confirmar serviço e criar OS</button></div>
-    </form>
-  </div>
-</div>
+    <div
+        class="modal fade"
+        id="modal-week-create"
+        tabindex="-1"
+        aria-hidden="true"
+        aria-labelledby="week-create-title"
+    >
+        <div
+            class="modal-dialog modal-lg modal-dialog-scrollable"
+        >
+            <form
+                class="modal-content visual-modal"
+                method="post"
+                action="actions/painel-semanal-servico-salvar.php"
+                autocomplete="off"
+            >
+                <div class="modal-header">
+                    <div>
+                        <h2
+                            class="modal-title fs-5"
+                            id="week-create-title"
+                        >
+                            Planejar serviço
+                        </h2>
+
+                        <p class="text-muted small mb-0">
+                            Este cadastro não criará uma
+                            Ordem de Serviço.
+                        </p>
+                    </div>
+
+                    <button
+                        class="btn-close"
+                        type="button"
+                        data-bs-dismiss="modal"
+                        aria-label="Fechar"
+                    ></button>
+                </div>
+
+                <div class="modal-body">
+                    <?= $csrf->field() ?>
+
+                    <?php
+                    weekly_return_fields(
+                        $weekStart
+                    );
+                    ?>
+
+                    <?php
+                    if (
+                        $recoveryModal === 'create'
+                        && $recoveryError !== ''
+                    ):
+                    ?>
+                        <div
+                            class="alert alert-danger"
+                            role="alert"
+                        >
+                            <?= h($recoveryError) ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <div
+                        class="alert alert-info"
+                        role="note"
+                    >
+                        <i class="bi bi-info-circle"></i>
+
+                        O serviço ficará como
+                        <strong>
+                            Aguardando confirmação
+                        </strong>.
+
+                        A OS somente será criada quando o
+                        botão Confirmar for acionado.
+                    </div>
+
+                    <section class="form-section">
+                        <h3 class="form-section-title">
+                            Cliente e serviço
+                        </h3>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label
+                                    class="form-label"
+                                    for="week-create-client"
+                                >
+                                    Cliente
+                                </label>
+
+                                <select
+                                    class="form-control-os"
+                                    id="week-create-client"
+                                    name="client_id"
+                                    required
+                                >
+                                    <option value="">
+                                        Selecione
+                                    </option>
+
+                                    <?php
+                                    weekly_client_options(
+                                        $clients,
+                                        weekly_recovery_value(
+                                            $createRecoveryData,
+                                            'client_id'
+                                        )
+                                    );
+                                    ?>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label
+                                    class="form-label"
+                                    for="week-create-service"
+                                >
+                                    Serviço
+                                </label>
+
+                                <select
+                                    class="form-control-os"
+                                    id="week-create-service"
+                                    name="service_id"
+                                    required
+                                >
+                                    <option value="">
+                                        Selecione
+                                    </option>
+
+                                    <?php
+                                    weekly_service_options(
+                                        $services,
+                                        weekly_recovery_value(
+                                            $createRecoveryData,
+                                            'service_id'
+                                        )
+                                    );
+                                    ?>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label
+                                    class="form-label"
+                                    for="week-create-priority"
+                                >
+                                    Prioridade
+                                </label>
+
+                                <?php
+                                $recoveredPriority =
+                                    weekly_recovery_value(
+                                        $createRecoveryData,
+                                        'priority',
+                                        weekly_recovery_value(
+                                            $createRecoveryData,
+                                            'prioridade',
+                                            'media'
+                                        )
+                                    );
+                                ?>
+
+                                <select
+                                    class="form-control-os"
+                                    id="week-create-priority"
+                                    name="priority"
+                                    required
+                                >
+                                    <?php
+                                    foreach (
+                                        [
+                                            'baixa',
+                                            'media',
+                                            'alta',
+                                            'urgente',
+                                        ]
+                                        as $priorityOption
+                                    ):
+                                    ?>
+                                        <option
+                                            value="<?= h($priorityOption) ?>"
+                                            <?= $recoveredPriority === $priorityOption ? 'selected' : '' ?>
+                                        >
+                                            <?= h(
+                                                weekly_priority_label(
+                                                    $priorityOption
+                                                )
+                                            ) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label
+                                    class="form-label"
+                                    for="week-create-location"
+                                >
+                                    Local do serviço
+                                </label>
+
+                                <input
+                                    class="form-control-os"
+                                    id="week-create-location"
+                                    name="equipment_location"
+                                    value="<?= h(
+                                        weekly_recovery_value(
+                                            $createRecoveryData,
+                                            'equipment_location',
+                                            weekly_recovery_value(
+                                                $createRecoveryData,
+                                                'local_servico'
+                                            )
+                                        )
+                                    ) ?>"
+                                    maxlength="150"
+                                >
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="form-section">
+                        <h3 class="form-section-title">
+                            Data e horário
+                        </h3>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label
+                                    class="form-label"
+                                    for="week-create-start"
+                                >
+                                    Início
+                                </label>
+
+                                <input
+                                    class="form-control-os"
+                                    id="week-create-start"
+                                    name="agendado_inicio"
+                                    type="datetime-local"
+                                    value="<?= h(
+                                        str_replace(
+                                            ' ',
+                                            'T',
+                                            weekly_recovery_value(
+                                                $createRecoveryData,
+                                                'agendado_inicio'
+                                            )
+                                        )
+                                    ) ?>"
+                                    required
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label
+                                    class="form-label"
+                                    for="week-create-end"
+                                >
+                                    Fim
+                                </label>
+
+                                <input
+                                    class="form-control-os"
+                                    id="week-create-end"
+                                    name="agendado_fim"
+                                    type="datetime-local"
+                                    value="<?= h(
+                                        str_replace(
+                                            ' ',
+                                            'T',
+                                            weekly_recovery_value(
+                                                $createRecoveryData,
+                                                'agendado_fim'
+                                            )
+                                        )
+                                    ) ?>"
+                                    required
+                                >
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="form-section">
+                        <h3 class="form-section-title">
+                            Equipe
+                        </h3>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label
+                                    class="form-label"
+                                    for="week-create-primary"
+                                >
+                                    Responsável principal
+                                </label>
+
+                                <select
+                                    class="form-control-os js-week-primary-employee"
+                                    id="week-create-primary"
+                                    name="funcionario_principal_id"
+                                    required
+                                >
+                                    <option value="">
+                                        Selecione
+                                    </option>
+
+                                    <?php
+                                    weekly_employee_options(
+                                        $employees,
+                                        weekly_recovery_value(
+                                            $createRecoveryData,
+                                            'funcionario_principal_id'
+                                        )
+                                    );
+                                    ?>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label
+                                    class="form-label"
+                                    for="week-create-support"
+                                >
+                                    Funcionário de apoio
+                                </label>
+
+                                <select
+                                    class="form-control-os js-week-support-employee"
+                                    id="week-create-support"
+                                    name="funcionario_apoio_id"
+                                >
+                                    <option value="">
+                                        Sem apoio
+                                    </option>
+
+                                    <?php
+                                    weekly_employee_options(
+                                        $employees,
+                                        weekly_recovery_value(
+                                            $createRecoveryData,
+                                            'funcionario_apoio_id'
+                                        )
+                                    );
+                                    ?>
+                                </select>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="form-section">
+                        <h3 class="form-section-title">
+                            Observação
+                        </h3>
+
+                        <div class="form-group mb-0">
+                            <label
+                                class="form-label"
+                                for="week-create-notes"
+                            >
+                                Informações adicionais
+                            </label>
+
+                            <textarea
+                                class="form-control-os"
+                                id="week-create-notes"
+                                name="notes"
+                                maxlength="1000"
+                                rows="3"
+                            ><?= h(
+                                weekly_recovery_value(
+                                    $createRecoveryData,
+                                    'notes',
+                                    weekly_recovery_value(
+                                        $createRecoveryData,
+                                        'observacao'
+                                    )
+                                )
+                            ) ?></textarea>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="modal-footer">
+                    <button
+                        class="btn-modal-cancel"
+                        type="button"
+                        data-bs-dismiss="modal"
+                    >
+                        Cancelar
+                    </button>
+
+                    <button
+                        class="btn-modal-save"
+                        type="submit"
+                    >
+                        <i class="bi                    <button
+                        class="btn-modal-save"
+                        type="submit"
+                    >
+                        <i class="bi bi-calendar-plus"></i>
+                        Cadastrar planejamento
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 <?php endif; ?>
-<div class="modal fade" id="modal-week-schedule" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg"><form class="modal-content visual-modal" method="post" action="actions/painel-semanal-reagendar.php"><div class="modal-header"><h2 class="modal-title fs-5">Reagendar</h2><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php week_return_fields($weekStart); ?><input type="hidden" name="id" id="week-schedule-id"><div class="form-row"><div class="form-group"><label class="form-label">Início</label><input class="form-control-os" type="datetime-local" name="agendado_inicio" id="week-schedule-start" required></div><div class="form-group"><label class="form-label">Fim</label><input class="form-control-os" type="datetime-local" name="agendado_fim" id="week-schedule-end" required></div></div></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Salvar</button></div></form></div></div>
-<div class="modal fade" id="modal-week-team" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg"><form class="modal-content visual-modal" method="post" action="actions/painel-semanal-alterar-dupla.php"><div class="modal-header"><h2 class="modal-title fs-5">Alterar equipe</h2><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php week_return_fields($weekStart); ?><input type="hidden" name="id" id="week-team-id"><div class="form-row"><div class="form-group"><label class="form-label">Principal</label><select class="form-control-os js-primary-employee" name="funcionario_principal_id" id="week-team-primary" required><option value="">Selecione</option><?php week_employee_options($employees); ?></select></div><div class="form-group"><label class="form-label">Apoio</label><select class="form-control-os js-support-employee" name="funcionario_apoio_id" id="week-team-support"><option value="">Sem apoio</option><?php week_employee_options($employees); ?></select></div></div></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Salvar</button></div></form></div></div>
-<div class="modal fade" id="modal-week-status" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/painel-semanal-status.php"><div class="modal-header"><h2 class="modal-title fs-5">Alterar status</h2><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php week_return_fields($weekStart); ?><input type="hidden" name="id" id="week-status-id"><input type="hidden" name="operation" id="week-status-operation"><label class="form-label" for="week-status-select">Novo status</label><select class="form-control-os" id="week-status-select"><option value="start_travel">Iniciar deslocamento</option><option value="start_execution">Iniciar execução</option><option value="wait_part">Aguardar peça</option></select></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Confirmar</button></div></form></div></div>
-<div class="modal fade" id="modal-week-cancel" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/painel-semanal-cancelar.php"><div class="modal-header"><h2 class="modal-title fs-5">Cancelar OS</h2><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php week_return_fields($weekStart); ?><input type="hidden" name="id" id="week-cancel-id"><p id="week-cancel-message"></p></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Voltar</button><button class="btn-modal-save" type="submit">Confirmar</button></div></form></div></div>
-<?php if ($canDelete): ?><div class="modal fade" id="modal-week-delete" tabindex="-1" aria-labelledby="week-delete-title" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/os-excluir.php"><div class="modal-header"><h2 class="modal-title fs-5" id="week-delete-title">Excluir OS</h2><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php week_return_fields($weekStart); ?><input type="hidden" name="id" id="week-delete-id"><p class="mb-0">A <strong id="week-delete-number"></strong> será removida das telas por exclusão lógica. O histórico será preservado.</p></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit"><i class="bi bi-trash3"></i> Excluir OS</button></div></form></div></div><?php endif; ?>
-<script type="application/json" id="weekly-page-data"><?= json_encode(['recoveryModal' => $recovery['modal'] ?? ($_GET['modal'] ?? null), 'recoveryData' => $recovery['data'] ?? [], 'recoveryError' => $recovery['error'] ?? null], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?></script>
+
+<?php if ($canConfirm): ?>
+    <div
+        class="modal fade"
+        id="modal-week-confirm"
+        tabindex="-1"
+        aria-hidden="true"
+        aria-labelledby="week-confirm-title"
+    >
+        <div
+            class="modal-dialog modal-dialog-centered"
+        >
+            <form
+                class="modal-content visual-modal"
+                method="post"
+                action="actions/painel-semanal-servico-confirmar.php"
+            >
+                <div class="modal-header">
+                    <div>
+                        <h2
+                            class="modal-title fs-5"
+                            id="week-confirm-title"
+                        >
+                            Confirmar e gerar OS
+                        </h2>
+
+                        <p class="text-muted small mb-0">
+                            Esta ação criará a Ordem de Serviço.
+                        </p>
+                    </div>
+
+                    <button
+                        class="btn-close"
+                        type="button"
+                        data-bs-dismiss="modal"
+                        aria-label="Fechar"
+                    ></button>
+                </div>
+
+                <div class="modal-body">
+                    <?= $csrf->field() ?>
+
+                    <?php
+                    weekly_return_fields(
+                        $weekStart
+                    );
+                    ?>
+
+                    <input
+                        type="hidden"
+                        name="id"
+                        id="week-confirm-id"
+                    >
+
+                    <div
+                        class="alert alert-warning"
+                        role="alert"
+                    >
+                        <i class="bi bi-exclamation-triangle"></i>
+
+                        Após confirmar, o planejamento será
+                        convertido em uma Ordem de Serviço
+                        agendada.
+                    </div>
+
+                    <div class="weekly-confirm-summary">
+                        <div class="weekly-confirm-item">
+                            <span>Planejamento</span>
+
+                            <strong
+                                id="week-confirm-code"
+                            >
+                                —
+                            </strong>
+                        </div>
+
+                        <div class="weekly-confirm-item">
+                            <span>Cliente</span>
+
+                            <strong
+                                id="week-confirm-client"
+                            >
+                                —
+                            </strong>
+                        </div>
+
+                        <div class="weekly-confirm-item">
+                            <span>Serviço</span>
+
+                            <strong
+                                id="week-confirm-service"
+                            >
+                                —
+                            </strong>
+                        </div>
+
+                        <div class="weekly-confirm-item">
+                            <span>Data e horário</span>
+
+                            <strong
+                                id="week-confirm-schedule"
+                            >
+                                —
+                            </strong>
+                        </div>
+
+                        <div class="weekly-confirm-item">
+                            <span>Equipe</span>
+
+                            <strong
+                                id="week-confirm-team"
+                            >
+                                —
+                            </strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button
+                        class="btn-modal-cancel"
+                        type="button"
+                        data-bs-dismiss="modal"
+                    >
+                        Voltar
+                    </button>
+
+                    <button
+                        class="btn-modal-save"
+                        type="submit"
+                    >
+                        <i class="bi bi-check2-circle"></i>
+                        Confirmar e gerar OS
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+<?php endif; ?>
+
+<script
+    type="application/json"
+    id="weekly-page-data"
+><?= $pageData ?></script>
