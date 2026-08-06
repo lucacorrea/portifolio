@@ -598,76 +598,6 @@ foreach ($plannings as $planning) {
 }
 
 /*
- * Agrupamento por dia.
- */
-$weekGroups = [];
-
-foreach ($plannings as $planning) {
-  $start = weekly_value(
-    $planning,
-    'agendado_inicio'
-  );
-
-  try {
-    $dateKey = (
-      new DateTimeImmutable($start)
-    )->format('Y-m-d');
-  } catch (Throwable) {
-    continue;
-  }
-
-  $weekGroups[$dateKey][] =
-    $planning;
-}
-
-/*
- * Indicadores.
- */
-$summary = [
-  'total' => 0,
-  'awaiting' => 0,
-  'confirmed' => 0,
-  'urgent' => 0,
-];
-
-foreach ($plannings as $planning) {
-  $planningStatus = weekly_value(
-    $planning,
-    'status'
-  );
-
-  $priority = weekly_value(
-    $planning,
-    'prioridade',
-    'media'
-  );
-
-  $summary['total']++;
-
-  if (
-    $planningStatus
-    === 'aguardando_confirmacao'
-  ) {
-    $summary['awaiting']++;
-  }
-
-  if (
-    $planningStatus
-    === 'confirmado'
-  ) {
-    $summary['confirmed']++;
-  }
-
-  if (
-    $priority === 'urgente'
-    && $planningStatus
-    === 'aguardando_confirmacao'
-  ) {
-    $summary['urgent']++;
-  }
-}
-
-/*
  * Permissões.
  */
 $canCreate = $authorization->can(
@@ -993,63 +923,35 @@ $pageData = json_encode(
   <?php
 
     metric_grid([
-    [
-        'Atendimentos na semana',
-        (string) $summary['total'],
-        'bi-calendar-week',
-        '#2563EB',
-        'planejados e OS',
-    ],
-
-    [
-        'Aguardando confirmação',
-        (string) $summary['awaiting'],
-        'bi-hourglass-split',
-        '#D97706',
-        'ainda sem OS',
-    ],
-
-    [
-        'Ordens de Serviço',
-        (string) $summary['orders'],
-        'bi-clipboard-check',
-        '#15803D',
-        'agendadas na semana',
-    ],
-
-    [
-        'Urgentes pendentes',
-        (string) $summary['urgent'],
-        'bi-exclamation-triangle',
-        '#DC2626',
-        'prioridade',
-    ],
-    ],
-
-    [
-      'Aguardando confirmação',
-      (string) $summary['awaiting'],
-      'bi-hourglass-split',
-      '#D97706',
-      'sem OS',
-    ],
-
-    [
-      'OS geradas',
-      (string) $summary['confirmed'],
-      'bi-check2-circle',
-      '#15803D',
-      'confirmados',
-    ],
-
-    [
-      'Urgentes pendentes',
-      (string) $summary['urgent'],
-      'bi-exclamation-triangle',
-      '#DC2626',
-      'prioridade',
-    ],
-  ]);
+        [
+            'Atendimentos na semana',
+            (string) $summary['total'],
+            'bi-calendar-week',
+            '#2563EB',
+            'planejados e OS',
+        ],
+        [
+            'Aguardando confirmação',
+            (string) $summary['awaiting'],
+            'bi-hourglass-split',
+            '#D97706',
+            'ainda sem OS',
+        ],
+        [
+            'Ordens de Serviço',
+            (string) $summary['orders'],
+            'bi-clipboard-check',
+            '#15803D',
+            'agendadas na semana',
+        ],
+        [
+            'Urgentes pendentes',
+            (string) $summary['urgent'],
+            'bi-exclamation-triangle',
+            '#DC2626',
+            'prioridade',
+        ],
+    ]);
   ?>
 
   <form
@@ -1538,67 +1440,6 @@ $pageData = json_encode(
         <?php endif; ?>
     <?php endforeach; ?>
 <?php endif; ?>
-                    </div>
-
-                    <div class="weekly-card-footer">
-                      <span
-                        class="weekly-priority<?= $priority === 'urgente' ? ' is-urgent' : '' ?>">
-                        <?= h(
-                          weekly_priority_label(
-                            $priority
-                          )
-                        ) ?>
-                      </span>
-
-                      <div class="weekly-card-actions">
-                        <?php
-                        if (
-                          $planningStatus
-                          === 'aguardando_confirmacao'
-                          && $canConfirm
-                        ):
-                        ?>
-                          <button
-                            class="btn-filter btn-filter-primary weekly-confirm-button js-weekly-confirm"
-                            type="button"
-                            data-planning-id="<?= h($planningId) ?>"
-                            data-planning-code="<?= h($planningCode) ?>"
-                            data-client-name="<?= h($clientName) ?>"
-                            data-service-name="<?= h($serviceName) ?>"
-                            data-scheduled-start="<?= h($start) ?>"
-                            data-scheduled-end="<?= h($end) ?>"
-                            data-team-name="<?= h($teamName) ?>"
-                            data-bs-toggle="modal"
-                            data-bs-target="#modal-week-confirm">
-                            <i class="bi bi-check2-circle"></i>
-                            Confirmar
-                          </button>
-                        <?php endif; ?>
-
-                        <?php
-                        if (
-                          $planningStatus
-                          === 'confirmado'
-                          && $canViewOrder
-                          && $orderId !== ''
-                        ):
-                        ?>
-                          <a
-                            class="btn-filter btn-filter-ghost weekly-order-link"
-                            href="ordens-servico.php?search=<?= h(
-                                                              rawurlencode(
-                                                                $orderNumber
-                                                              )
-                                                            ) ?>">
-                            <i class="bi bi-box-arrow-up-right"></i>
-                            Abrir OS
-                          </a>
-                        <?php endif; ?>
-                      </div>
-                    </div>
-                  </article>
-                <?php endforeach; ?>
-              <?php endif; ?>
             </div>
           </section>
         <?php endfor; ?>
@@ -1980,11 +1821,8 @@ $pageData = json_encode(
           <button
             class="btn-modal-save"
             type="submit">
-            <i class="bi                    <button
-                        class=" btn-modal-save"
-              type="submit">
-              <i class="bi bi-calendar-plus"></i>
-              Cadastrar planejamento
+            <i class="bi bi-calendar-plus"></i>
+            Cadastrar planejamento
           </button>
         </div>
       </form>
