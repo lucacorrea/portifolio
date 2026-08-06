@@ -545,10 +545,6 @@ document.addEventListener('DOMContentLoaded', function () {
     if (modal) bootstrap.Modal.getOrCreateInstance(modal).show();
   }
 
-  if (recoveryModal === 'finalize' && window.bootstrap) {
-    restoreFinalizeForm(recoveryData);
-    const modal = document.getElementById('modal-os-finalize');
-    if (modal) bootstrap.Modal.getOrCreateInstance(modal).show();
-  }
+
 
 });

@@ -4,8 +4,14 @@ declare(strict_types=1);
 
 require __DIR__ . '/os-action-common.php';
 
-header('Content-Type: application/json; charset=utf-8');
-header('Cache-Control: no-store, no-cache, must-revalidate');
+header(
+    'Content-Type: application/json; charset=utf-8'
+);
+
+header(
+    'Cache-Control: no-store, no-cache, must-revalidate'
+);
+
 header('Pragma: no-cache');
 header('X-Content-Type-Options: nosniff');
 
@@ -47,6 +53,134 @@ try {
         );
     }
 
+    /*
+     * Carrega o estoque atual de todos os produtos
+     * utilizados na OS em uma única consulta.
+     */
+    $productIds = [];
+
+    foreach ($items as $item) {
+        if (
+            $item->type() === 'produto'
+            && $item->referenceId() !== null
+        ) {
+            $productIds[] = $item->referenceId();
+        }
+    }
+
+    $productIds = array_values(
+        array_unique($productIds)
+    );
+
+    $stockByProductId = [];
+
+    if ($productIds !== []) {
+        $placeholders = [];
+        $parameters = [];
+
+        foreach ($productIds as $index => $productId) {
+            $parameterName = 'product_' . $index;
+
+            $placeholders[] = ':' . $parameterName;
+            $parameters[$parameterName] = $productId;
+        }
+
+        $stockStatement = $application
+            ->database()
+            ->connection()
+            ->prepare(
+                'SELECT
+                    id,
+                    estoque,
+                    unidade,
+                    nome
+                 FROM produtos
+                 WHERE id IN (
+                    ' . implode(', ', $placeholders) . '
+                 )
+                   AND excluido_em IS NULL'
+            );
+
+        $stockStatement->execute($parameters);
+
+        foreach ($stockStatement->fetchAll() as $product) {
+            $stockByProductId[
+                (int) $product['id']
+            ] = [
+                'stock' => (string) (
+                    $product['estoque'] ?? '0.000'
+                ),
+                'unit' => (string) (
+                    $product['unidade'] ?? 'un'
+                ),
+                'name' => (string) (
+                    $product['nome'] ?? ''
+                ),
+            ];
+        }
+    }
+
+    $payloadItems = [];
+
+    foreach ($items as $item) {
+        $referenceId = $item->referenceId();
+        $isProduct = $item->type() === 'produto';
+
+        $productStock = (
+            $isProduct
+            && $referenceId !== null
+        )
+            ? (
+                $stockByProductId[$referenceId]
+                ?? null
+            )
+            : null;
+
+        $requiredQuantity = (float) (
+            $item->quantity()
+        );
+
+        $availableStock = $productStock === null
+            ? null
+            : (float) $productStock['stock'];
+
+        $stockMissing = $isProduct
+            && $productStock === null;
+
+        $stockInsufficient = $isProduct
+            && (
+                $stockMissing
+                || $availableStock === null
+                || $requiredQuantity
+                    > ($availableStock + 0.000001)
+            );
+
+        $payloadItems[] = [
+            'id' => $item->id(),
+            'type' => $item->type(),
+            'reference_id' => $referenceId,
+            'description' => $item->description(),
+            'unit' => $item->unit(),
+            'quantity' => $item->quantity(),
+            'unit_price' => $item->unitPrice(),
+            'discount' => $item->discount(),
+            'subtotal' => $item->subtotal(),
+
+            'stock_available' => $availableStock === null
+                ? null
+                : number_format(
+                    $availableStock,
+                    3,
+                    '.',
+                    ''
+                ),
+
+            'stock_missing' => $stockMissing,
+            'stock_insufficient' => $stockInsufficient,
+            'quantity_editable' => $isProduct,
+        ];
+    }
+
     $payload = [
         'order' => [
             'id' => $order->id(),
@@ -67,20 +201,7 @@ try {
             'total' => $order->total(),
         ],
 
-        'items' => array_map(
-            static fn ($item): array => [
-                'id' => $item->id(),
-                'type' => $item->type(),
-                'reference_id' => $item->referenceId(),
-                'description' => $item->description(),
-                'unit' => $item->unit(),
-                'quantity' => $item->quantity(),
-                'unit_price' => $item->unitPrice(),
-                'discount' => $item->discount(),
-                'subtotal' => $item->subtotal(),
-            ],
-            $items
-        ),
+        'items' => $payloadItems,
     ];
 
     echo json_encode(

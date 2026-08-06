@@ -239,6 +239,90 @@ $employeeOptions = array_map(static fn(Employee $employee): array => ['id' => $e
 $serviceOptions = array_map(static fn(ServiceDefinition $service): array => ['id' => $service->id(), 'name' => $service->name(), 'description' => $service->description() ?? $service->name(), 'unit' => 'un', 'value' => $service->value()], $services);
 $productOptions = array_map(static fn(Product $product): array => ['id' => $product->id(), 'name' => $product->name(), 'description' => $product->description() ?? $product->name(), 'unit' => $product->unit(), 'value' => $product->salePrice()], $products);
 ?>
+<style>
+    #os-finalize-items tr.os-stock-insufficient td {
+        background: #fff1f2;
+        color: #991b1b;
+        border-bottom-color: #fecdd3;
+    }
+
+    #os-finalize-items tr.os-stock-insufficient:hover td {
+        background: #ffe4e6;
+    }
+
+    .os-finalize-stock-badge {
+        display: block;
+        width: fit-content;
+        margin-top: 6px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        line-height: 1.3;
+    }
+
+    .os-finalize-stock-badge.is-danger {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
+    .os-finalize-stock-badge.is-success {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .os-finalize-quantity-editor {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        min-width: 250px;
+    }
+
+    .os-finalize-quantity-input {
+        width: 92px;
+        min-width: 92px;
+    }
+
+    .os-finalize-quantity-unit {
+        min-width: 28px;
+        color: #64748b;
+        font-size: 0.77rem;
+        font-weight: 700;
+    }
+
+    .os-finalize-save-quantity {
+        min-height: 38px;
+        white-space: nowrap;
+    }
+
+    .os-stock-insufficient .os-finalize-quantity-input {
+        border-color: #ef4444;
+        background: #ffffff;
+        color: #991b1b;
+    }
+
+    .os-stock-insufficient .os-finalize-quantity-input:focus {
+        border-color: #dc2626;
+        box-shadow:
+            0 0 0 3px rgba(220, 38, 38, 0.15);
+    }
+
+    .os-stock-insufficient .os-finalize-save-quantity {
+        border-color: #ef4444;
+        color: #b91c1c;
+    }
+
+    @media (max-width: 767.98px) {
+        .os-finalize-quantity-editor {
+            min-width: 190px;
+            flex-wrap: wrap;
+        }
+
+        .os-finalize-save-quantity {
+            width: 100%;
+        }
+    }
+</style>
 
 <div class="page-body service-orders-page">
     <?php metric_grid([
