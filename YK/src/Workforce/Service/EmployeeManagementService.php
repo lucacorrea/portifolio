@@ -19,14 +19,33 @@ final class EmployeeManagementService
     /**
      * @return Employee[]
      */
-    public function listEmployees(string $search = ''): array
-    {
-        return $this->employees->findAll($search);
+    public function listEmployees(
+        string $search = '',
+        ?string $status = null
+    ): array {
+        return $this->employees->findAll(
+            $search,
+            $status
+        );
     }
 
-    public function getEmployee(int $id): Employee
-    {
-        $employee = $this->employees->findById($id);
+    /**
+     * @return Employee[]
+     */
+    public function listActiveEmployees(
+        string $search = ''
+    ): array {
+        return $this->employees->findAll(
+            $search,
+            'ativo'
+        );
+    }
+
+    public function getEmployee(
+        int $id
+    ): Employee {
+        $employee =
+            $this->employees->findById($id);
 
         if ($employee === null) {
             throw new InvalidArgumentException(
@@ -40,7 +59,9 @@ final class EmployeeManagementService
     public function createEmployee(
         EmployeeFormData $data
     ): Employee {
-        return $this->employees->create($data);
+        return $this->employees->create(
+            $data
+        );
     }
 
     public function updateEmployee(
@@ -61,9 +82,28 @@ final class EmployeeManagementService
         );
     }
 
-    public function updateEmployeePhoto(int $id, ?string $photoPath): void
-    {
+    public function updateEmployeeStatus(
+        int $id,
+        string $status
+    ): void {
         $this->getEmployee($id);
-        $this->employees->updateEmployeePhoto($id, $photoPath);
+
+        $this->employees->updateStatus(
+            $id,
+            $status
+        );
+    }
+
+    public function updateEmployeePhoto(
+        int $id,
+        ?string $photoPath
+    ): void {
+        $this->getEmployee($id);
+
+        $this->employees
+            ->updateEmployeePhoto(
+                $id,
+                $photoPath
+            );
     }
 }
