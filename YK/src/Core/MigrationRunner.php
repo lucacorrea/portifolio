@@ -267,6 +267,34 @@ final class MigrationRunner
             if ($this->isCommentOnly($statement)) {
                 continue;
             }
+
+            /*
+             * EXECUTE e CALL podem retornar um ou mais conjuntos
+             * de resultados. Todos precisam ser consumidos e
+             * fechados antes da próxima consulta na mesma conexão.
+             */
+            if (preg_match('/^\s*(?:EXECUTE|CALL)\b/i', $statement) === 1) {
+                $result = $this->connection->query($statement);
+
+                if (!$result instanceof \PDOStatement) {
+                    throw new MigrationException(
+                        'Não foi possível executar uma instrução dinâmica da migration.'
+                    );
+                }
+
+                try {
+                    do {
+                        if ($result->columnCount() > 0) {
+                            $result->fetchAll(PDO::FETCH_NUM);
+                        }
+                    } while ($result->nextRowset());
+                } finally {
+                    $result->closeCursor();
+                }
+
+                continue;
+            }
+
             $this->connection->exec($statement);
         }
     }
