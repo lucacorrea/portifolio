@@ -9,40 +9,48 @@ os_require_post_request();
 
 [$application, $session] =
     os_action_context(
-        'painel_semanal.adicionar'
+        'os.criar'
     );
 
 $redirectTarget =
     painel_semanal_return_target();
+
+$planningId = 0;
 
 try {
     $user = $application
         ->authorization()
         ->requireLogin();
 
-    $planning = $application
+    $planningId =
+        os_posted_positive_int('id');
+
+    $result = $application
         ->weeklyServicePlanning()
-        ->create(
-            $_POST,
+        ->confirm(
+            $planningId,
             $user->id()
         );
 
     $session->flash(
         'success',
-        $planning['code']
-        . ' cadastrado e aguardando confirmação. '
-        . 'Nenhuma Ordem de Serviço foi criada.'
+        $result['planning_code']
+        . ' confirmado e convertido na '
+        . $result['order_number']
+        . '.'
     );
 } catch (InvalidArgumentException $exception) {
     os_store_form_recovery(
-        'create',
-        $_POST,
+        'confirm',
+        [
+            'id' => $planningId,
+        ],
         $exception->getMessage()
     );
 
     $redirectTarget =
         painel_semanal_return_target(
-            'create'
+            'confirm'
         );
 
     $session->flash(
@@ -51,22 +59,24 @@ try {
     );
 } catch (Throwable $exception) {
     error_log(
-        'Weekly service planning create failed: '
+        'Weekly service confirmation failed: '
         . $exception->getMessage()
     );
 
     $message =
-        'Não foi possível cadastrar o serviço semanal.';
+        'Não foi possível confirmar o serviço e gerar a OS. Nenhuma alteração parcial foi mantida.';
 
     os_store_form_recovery(
-        'create',
-        $_POST,
+        'confirm',
+        [
+            'id' => $planningId,
+        ],
         $message
     );
 
     $redirectTarget =
         painel_semanal_return_target(
-            'create'
+            'confirm'
         );
 
     $session->flash(

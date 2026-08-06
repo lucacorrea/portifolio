@@ -78,8 +78,7 @@ final class ServiceOrderManagementService
         private readonly ServiceRepository $services,
         private readonly ProductRepository $products,
         private readonly ?BudgetRepository $budgets = null
-    ) {
-    }
+    ) {}
 
     /**
      * @return ServiceOrder[]
@@ -145,7 +144,7 @@ final class ServiceOrderManagementService
     {
         return $this->orders->findTeamMembersForOrders(
             array_map(
-                static fn (ServiceOrder $order): int => $order->id(),
+                static fn(ServiceOrder $order): int => $order->id(),
                 $orders
             )
         );
@@ -237,8 +236,8 @@ final class ServiceOrderManagementService
                     ? 'rascunho'
                     : (
                         $schedule === null
-                            ? 'aguardando_agendamento'
-                            : 'agendada'
+                        ? 'aguardando_agendamento'
+                        : 'agendada'
                     );
 
                 $items = [];
@@ -888,10 +887,10 @@ final class ServiceOrderManagementService
                 $orderTotal = max(
                     0.0,
                     $servicesTotal
-                    + $productsTotal
-                    + $othersTotal
-                    - (float) $order->discount()
-                    + (float) $order->increase()
+                        + $productsTotal
+                        + $othersTotal
+                        - (float) $order->discount()
+                        + (float) $order->increase()
                 );
 
                 $updateOrder =
@@ -1442,10 +1441,10 @@ final class ServiceOrderManagementService
             $order->status() === 'cancelada'
             && $order->budgetId() !== null
             && $this->orders
-                ->hasOtherOperationalOrderForBudget(
-                    $order->budgetId(),
-                    $order->id()
-                )
+            ->hasOtherOperationalOrderForBudget(
+                $order->budgetId(),
+                $order->id()
+            )
         ) {
             throw new InvalidArgumentException(
                 'Não é possível reabrir: o orçamento já possui outra OS operacional.'
@@ -1542,26 +1541,26 @@ final class ServiceOrderManagementService
             'equipment_capacity' => $order->equipmentCapacity(),
 
             'equipment_serial_number' =>
-                $order->equipmentSerialNumber(),
+            $order->equipmentSerialNumber(),
 
             'equipment_environment' =>
-                $order->equipmentEnvironment(),
+            $order->equipmentEnvironment(),
 
             'equipment_location' =>
-                $order->equipmentLocation(),
+            $order->equipmentLocation(),
 
             'reported_problem' =>
-                $order->reportedProblem(),
+            $order->reportedProblem(),
 
             'identified_problem' =>
-                $order->identifiedProblem(),
+            $order->identifiedProblem(),
 
             'diagnosis' => $order->diagnosis(),
             'solution' => $order->solution(),
             'recommendation' => $order->recommendation(),
 
             'internal_notes' =>
-                $order->internalNotes(),
+            $order->internalNotes(),
 
             'notes' => $order->notes(),
             'discount' => $order->discount(),
@@ -1635,10 +1634,10 @@ final class ServiceOrderManagementService
 
         return ServiceOrderTeamData::fromArray([
             'funcionario_principal_id' =>
-                $order->primaryEmployeeId(),
+            $order->primaryEmployeeId(),
 
             'funcionario_apoio_id' =>
-                $order->supportEmployeeId(),
+            $order->supportEmployeeId(),
         ]);
     }
 
@@ -1764,19 +1763,36 @@ final class ServiceOrderManagementService
      *
      * @return T
      */
+    /**
+     * @template T
+     *
+     * @param callable():T $callback
+     *
+     * @return T
+     */
     private function transactional(
         callable $callback
     ): mixed {
-        $this->connection->beginTransaction();
+        $ownsTransaction =
+            !$this->connection->inTransaction();
+
+        if ($ownsTransaction) {
+            $this->connection->beginTransaction();
+        }
 
         try {
             $result = $callback();
 
-            $this->connection->commit();
+            if ($ownsTransaction) {
+                $this->connection->commit();
+            }
 
             return $result;
         } catch (Throwable $exception) {
-            if ($this->connection->inTransaction()) {
+            if (
+                $ownsTransaction
+                && $this->connection->inTransaction()
+            ) {
                 $this->connection->rollBack();
             }
 
