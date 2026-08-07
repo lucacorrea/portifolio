@@ -9,9 +9,7 @@ use Throwable;
 
 final class FiscalConfigurationRepository
 {
-    public function __construct(private readonly PDO $connection)
-    {
-    }
+    public function __construct(private readonly PDO $connection) {}
 
     /** @return array<string,mixed> */
     public function companyFiscalData(): array
@@ -42,8 +40,8 @@ final class FiscalConfigurationRepository
     {
         $statement = $this->connection->prepare(
             $this->configurationSql()
-            . ' WHERE cfg.ambiente = :environment AND cfg.modelo = :model'
-            . ' ORDER BY cfg.versao DESC LIMIT 1'
+                . ' WHERE cfg.ambiente = :environment AND cfg.modelo = :model'
+                . ' ORDER BY cfg.versao DESC LIMIT 1'
         );
         $statement->execute(['environment' => $environment, 'model' => $model]);
         $row = $statement->fetch();
@@ -207,7 +205,7 @@ final class FiscalConfigurationRepository
     {
         return $this->transactional(function () use ($metadata, $secret, $userId): int {
             $statement = $this->connection->prepare(
-            'INSERT INTO fiscal_certificados
+                'INSERT INTO fiscal_certificados
                 (arquivo_referencia, arquivo_sha256, certificado_fingerprint_sha256,
                  certificado_serial, titular_cnpj, titular_nome, valido_de, valido_ate,
                  senha_ciphertext, senha_nonce, senha_tag, cifra_algoritmo, chave_versao,
@@ -218,20 +216,20 @@ final class FiscalConfigurationRepository
                  \'ativo\', :user_id)'
             );
             $statement->execute([
-            'reference' => $metadata['reference'],
-            'file_sha256' => $metadata['file_sha256'],
-            'fingerprint' => $metadata['fingerprint'],
-            'serial' => $metadata['serial'] ?: null,
-            'holder_cnpj' => $metadata['holder_cnpj'],
-            'holder_name' => $metadata['holder_name'] ?: null,
-            'valid_from' => date('Y-m-d H:i:s', (int) $metadata['valid_from']),
-            'valid_to' => date('Y-m-d H:i:s', (int) $metadata['valid_to']),
-            'ciphertext' => base64_decode($secret['ciphertext'], true),
-            'nonce' => base64_decode($secret['nonce'], true),
-            'tag' => base64_decode($secret['tag'], true),
-            'algorithm' => $secret['algorithm'],
-            'key_version' => $secret['key_version'],
-            'user_id' => $userId,
+                'reference' => $metadata['reference'],
+                'file_sha256' => $metadata['file_sha256'],
+                'fingerprint' => $metadata['fingerprint'],
+                'serial' => $metadata['serial'] ?: null,
+                'holder_cnpj' => $metadata['holder_cnpj'],
+                'holder_name' => $metadata['holder_name'] ?: null,
+                'valid_from' => date('Y-m-d H:i:s', (int) $metadata['valid_from']),
+                'valid_to' => date('Y-m-d H:i:s', (int) $metadata['valid_to']),
+                'ciphertext' => base64_decode($secret['ciphertext'], true),
+                'nonce' => base64_decode($secret['nonce'], true),
+                'tag' => base64_decode($secret['tag'], true),
+                'algorithm' => $secret['algorithm'],
+                'key_version' => $secret['key_version'],
+                'user_id' => $userId,
             ]);
             $id = (int) $this->connection->lastInsertId();
             $this->audit('certificado', $id, 'cadastrado', null, null, $userId, [
@@ -258,10 +256,14 @@ final class FiscalConfigurationRepository
                      :csc_algorithm, :secret_key_version, \'rascunho\', :user_id)'
             );
             $statement->execute([
-                'environment' => $data['environment'], 'model' => $data['model'],
-                'version' => $version, 'state' => $data['state'],
-                'schema_version' => $data['schema_version'], 'qr_version' => $data['qr_version'],
-                'certificate_id' => $data['certificate_id'], 'csc_id' => $data['csc_id'],
+                'environment' => $data['environment'],
+                'model' => $data['model'],
+                'version' => $version,
+                'state' => $data['state'],
+                'schema_version' => $data['schema_version'],
+                'qr_version' => $data['qr_version'],
+                'certificate_id' => $data['certificate_id'],
+                'csc_id' => $data['csc_id'],
                 'csc_ciphertext' => $csc === null ? null : base64_decode($csc['ciphertext'], true),
                 'csc_nonce' => $csc === null ? null : base64_decode($csc['nonce'], true),
                 'csc_tag' => $csc === null ? null : base64_decode($csc['tag'], true),
@@ -271,31 +273,99 @@ final class FiscalConfigurationRepository
             ]);
             $id = (int) $this->connection->lastInsertId();
             $this->audit('configuracao', $id, 'versao_criada', $data['environment'], $data['model'], $userId, [
-                'version' => $version, 'has_csc' => $csc !== null,
+                'version' => $version,
+                'has_csc' => $csc !== null,
             ]);
             return $id;
         });
     }
 
     /** @param array<string,mixed> $data */
-    public function saveSeries(array $data, int $userId): void
-    {
-        $this->transactional(function () use ($data, $userId): void {
-            $this->connection->prepare(
-                'INSERT INTO fiscal_series
-                    (ambiente, modelo, serie, proximo_numero, status, criado_por, atualizado_por)
-                 VALUES (:environment, :model, :series, :next_number, \'ativa\', :user_id, :user_id)
-                 ON DUPLICATE KEY UPDATE
-                    proximo_numero = GREATEST(proximo_numero, VALUES(proximo_numero)),
-                    status = \'ativa\', atualizado_por = VALUES(atualizado_por)'
-            )->execute([
-                'environment' => $data['environment'], 'model' => $data['model'],
-                'series' => $data['series'], 'next_number' => $data['next_number'], 'user_id' => $userId,
-            ]);
-            $this->audit('serie', null, 'configurada', $data['environment'], $data['model'], $userId, [
-                'series' => $data['series'], 'next_number' => $data['next_number'],
-            ]);
-        });
+    /**
+     * @param array<string,mixed> $data
+     */
+    public function saveSeries(
+        array $data,
+        int $userId
+    ): void {
+        $this->transactional(
+            function () use (
+                $data,
+                $userId
+            ): void {
+                $statement =
+                    $this->connection->prepare(
+                        'INSERT INTO fiscal_series
+                        (
+                            ambiente,
+                            modelo,
+                            serie,
+                            proximo_numero,
+                            status,
+                            criado_por,
+                            atualizado_por
+                        )
+                     VALUES
+                        (
+                            :environment,
+                            :model,
+                            :series,
+                            :next_number,
+                            \'ativa\',
+                            :created_by,
+                            :updated_by
+                        )
+
+                     ON DUPLICATE KEY UPDATE
+
+                        proximo_numero = GREATEST(
+                            proximo_numero,
+                            VALUES(proximo_numero)
+                        ),
+
+                        status = \'ativa\',
+
+                        atualizado_por =
+                            VALUES(atualizado_por)'
+                    );
+
+                $statement->execute([
+                    'environment' =>
+                    $data['environment'],
+
+                    'model' =>
+                    $data['model'],
+
+                    'series' =>
+                    $data['series'],
+
+                    'next_number' =>
+                    $data['next_number'],
+
+                    'created_by' =>
+                    $userId,
+
+                    'updated_by' =>
+                    $userId,
+                ]);
+
+                $this->audit(
+                    'serie',
+                    null,
+                    'configurada',
+                    $data['environment'],
+                    $data['model'],
+                    $userId,
+                    [
+                        'series' =>
+                        $data['series'],
+
+                        'next_number' =>
+                        $data['next_number'],
+                    ]
+                );
+            }
+        );
     }
 
     public function activateConfiguration(int $id, string $environment, string $model, int $userId): void
@@ -345,8 +415,12 @@ final class FiscalConfigurationRepository
                 (entidade_tipo, entidade_id, acao, ambiente, modelo, usuario_id, detalhes)
              VALUES (:type, :id, :action, :environment, :model, :user_id, :details)'
         )->execute([
-            'type' => $type, 'id' => $id, 'action' => $action,
-            'environment' => $environment, 'model' => $model, 'user_id' => $userId,
+            'type' => $type,
+            'id' => $id,
+            'action' => $action,
+            'environment' => $environment,
+            'model' => $model,
+            'user_id' => $userId,
             'details' => json_encode($details, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
         ]);
     }
