@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../assets/css/app.css">
+  <link rel="stylesheet" href="../assets/css/agenda.css">
 </head>
 <body>
 
@@ -87,6 +88,10 @@
   <div class="toolbar-left"><button class="btn btn-secondary">←</button><button class="btn btn-secondary">Agosto 2026</button><button class="btn btn-secondary">→</button></div>
   <div class="filters"><select><option>Mês</option><option>Semana</option><option>Dia</option></select><select><option>Todas as equipes</option><option>Fotografia</option><option>Vídeo</option><option>Jornalismo</option></select></div>
 </div>
+<div class="agenda-help">
+  <div><strong>Clique em um compromisso</strong><span>Veja tema, responsável, equipe escalada, horário, local e observações sem sair da agenda.</span></div>
+  <span class="agenda-help-badge">Detalhes rápidos</span>
+</div>
 <div class="calendar-layout">
   <article class="card calendar-card">
     <div class="calendar-head">
@@ -98,29 +103,130 @@
       <div class="calendar-day muted"><span class="day-number">26</span></div><div class="calendar-day muted"><span class="day-number">27</span></div><div class="calendar-day muted"><span class="day-number">28</span></div><div class="calendar-day muted"><span class="day-number">29</span></div><div class="calendar-day muted"><span class="day-number">30</span></div><div class="calendar-day muted"><span class="day-number">31</span></div>
       <div class="calendar-day"><span class="day-number">1</span></div><div class="calendar-day"><span class="day-number">2</span></div><div class="calendar-day"><span class="day-number">3</span></div><div class="calendar-day"><span class="day-number">4</span></div><div class="calendar-day"><span class="day-number">5</span></div><div class="calendar-day"><span class="day-number">6</span></div><div class="calendar-day"><span class="day-number">7</span></div>
       <div class="calendar-day"><span class="day-number">8</span></div><div class="calendar-day"><span class="day-number">9</span></div>
-      <div class="calendar-day today"><span class="day-number">10</span><span class="cal-event pauta">08:30 Briefing UBS</span><span class="cal-event cobertura">09:00 Inauguração UBS</span><span class="cal-event cobertura">10:30 Kits escolares</span><span class="cal-event entrega">13:30 Reel Feira</span><span class="cal-event publicacao">18:00 Agenda Prefeito</span></div>
-      <div class="calendar-day"><span class="day-number">11</span><span class="cal-event pauta">08:00 Agosto Lilás</span><span class="cal-event entrega">15:00 Revisão vídeo</span></div>
-      <div class="calendar-day"><span class="day-number">12</span><span class="cal-event cobertura">09:30 Agenda Gabinete</span><span class="cal-event publicacao">17:30 Matéria</span></div>
-      <div class="calendar-day"><span class="day-number">13</span><span class="cal-event cobertura">07:30 Vacinação</span></div>
-      <div class="calendar-day"><span class="day-number">14</span><span class="cal-event entrega">14:00 Master vídeo</span></div>
-      <div class="calendar-day"><span class="day-number">15</span><span class="cal-event publicacao">18:30 Reel Juventude</span></div>
+      <div class="calendar-day today"><span class="day-number">10</span><button type="button" class="cal-event pauta agenda-open" data-event-id="briefing-ubs">08:30 Briefing UBS</button><button type="button" class="cal-event cobertura agenda-open" data-event-id="inauguracao-ubs">09:00 Inauguração UBS</button><button type="button" class="cal-event cobertura agenda-open" data-event-id="kits-escolares">10:30 Kits escolares</button><button type="button" class="cal-event entrega agenda-open" data-event-id="reel-feira">13:30 Reel Feira</button><button type="button" class="cal-event publicacao agenda-open" data-event-id="agenda-prefeito">18:00 Agenda Prefeito</button></div>
+      <div class="calendar-day"><span class="day-number">11</span><button type="button" class="cal-event pauta agenda-open" data-event-id="agosto-lilas">08:00 Agosto Lilás</button><button type="button" class="cal-event entrega agenda-open" data-event-id="revisao-video">15:00 Revisão vídeo</button></div>
+      <div class="calendar-day"><span class="day-number">12</span><button type="button" class="cal-event cobertura agenda-open" data-event-id="agenda-gabinete">09:30 Agenda Gabinete</button><button type="button" class="cal-event publicacao agenda-open" data-event-id="materia-institucional">17:30 Matéria</button></div>
+      <div class="calendar-day"><span class="day-number">13</span><button type="button" class="cal-event cobertura agenda-open" data-event-id="vacinacao">07:30 Vacinação</button></div>
+      <div class="calendar-day"><span class="day-number">14</span><button type="button" class="cal-event entrega agenda-open" data-event-id="master-video">14:00 Master vídeo</button></div>
+      <div class="calendar-day"><span class="day-number">15</span><button type="button" class="cal-event publicacao agenda-open" data-event-id="reel-juventude">18:30 Reel Juventude</button></div>
       <div class="calendar-day"><span class="day-number">16</span></div><div class="calendar-day"><span class="day-number">17</span></div><div class="calendar-day"><span class="day-number">18</span></div><div class="calendar-day"><span class="day-number">19</span></div><div class="calendar-day"><span class="day-number">20</span></div><div class="calendar-day"><span class="day-number">21</span></div><div class="calendar-day"><span class="day-number">22</span></div><div class="calendar-day"><span class="day-number">23</span></div><div class="calendar-day"><span class="day-number">24</span></div><div class="calendar-day"><span class="day-number">25</span></div><div class="calendar-day"><span class="day-number">26</span></div><div class="calendar-day"><span class="day-number">27</span></div><div class="calendar-day"><span class="day-number">28</span></div><div class="calendar-day"><span class="day-number">29</span></div><div class="calendar-day"><span class="day-number">30</span></div><div class="calendar-day"><span class="day-number">31</span></div>
     </div>
   </article>
   <aside class="card agenda-day-list">
     <div class="card-head"><div><span class="kicker">Hoje</span><h3>10 de agosto</h3><div class="card-subtitle">5 compromissos</div></div><span class="badge blue">Segunda</span></div>
-    <div class="timeline">
-      <div class="timeline-item"><time>08:30</time><i></i><div><strong>Briefing UBS Grande Vitória</strong><span>Sala da SECOM • equipe completa</span></div></div>
-      <div class="timeline-item"><time>09:00</time><i></i><div><strong>Inauguração da UBS</strong><span>SEMSA • cobertura completa</span></div></div>
-      <div class="timeline-item"><time>10:30</time><i></i><div><strong>Entrega de kits escolares</strong><span>SEMED • foto + matéria</span></div></div>
-      <div class="timeline-item"><time>13:30</time><i></i><div><strong>Prazo Reel Feira</strong><span>João • V3</span></div></div>
-      <div class="timeline-item"><time>18:00</time><i></i><div><strong>Publicar Agenda do Prefeito</strong><span>Instagram + Facebook</span></div></div>
+    <div class="timeline agenda-timeline">
+      <button type="button" class="timeline-item agenda-open" data-event-id="briefing-ubs">
+        <time>08:30</time><i></i><div><strong>Briefing UBS Grande Vitória</strong><span>Ana Lima • Sala da SECOM</span><small>3 profissionais escalados</small></div>
+      </button>
+      <button type="button" class="timeline-item agenda-open" data-event-id="inauguracao-ubs">
+        <time>09:00</time><i></i><div><strong>Inauguração da UBS</strong><span>Ana Lima • SEMSA</span><small>Foto, vídeo e jornalismo</small></div>
+      </button>
+      <button type="button" class="timeline-item agenda-open" data-event-id="kits-escolares">
+        <time>10:30</time><i></i><div><strong>Entrega de kits escolares</strong><span>Pedro Lima • SEMED</span><small>Foto e matéria</small></div>
+      </button>
+      <button type="button" class="timeline-item agenda-open" data-event-id="reel-feira">
+        <time>13:30</time><i></i><div><strong>Prazo Reel Feira</strong><span>João Silva • Produção</span><small>Versão V3</small></div>
+      </button>
+      <button type="button" class="timeline-item agenda-open" data-event-id="agenda-prefeito">
+        <time>18:00</time><i></i><div><strong>Publicar Agenda do Prefeito</strong><span>Maria Souza • Social Media</span><small>Instagram + Facebook</small></div>
+      </button>
     </div>
   </aside>
 </div>
 
 </div></section>
 </main>
+
+<!-- MODAL: DETALHES DO COMPROMISSO -->
+<div class="agenda-modal" id="agendaModal" aria-hidden="true">
+  <div class="agenda-modal-backdrop" data-agenda-close></div>
+
+  <section class="agenda-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="agendaModalTitle">
+    <header class="agenda-modal-header">
+      <div class="agenda-modal-heading">
+        <span class="agenda-modal-type" id="agendaModalType">Cobertura</span>
+        <h2 id="agendaModalTitle">Detalhes do compromisso</h2>
+        <p id="agendaModalTheme">Tema da atividade</p>
+      </div>
+
+      <button type="button" class="agenda-modal-close" data-agenda-close aria-label="Fechar modal">×</button>
+    </header>
+
+    <div class="agenda-modal-body">
+      <section class="agenda-primary-info">
+        <article class="agenda-info-card agenda-info-time">
+          <span>Horário</span>
+          <strong id="agendaModalTime">09:00</strong>
+          <small id="agendaModalDuration">09:00 às 11:00</small>
+        </article>
+
+        <article class="agenda-info-card agenda-info-responsible">
+          <span>Responsável</span>
+          <strong id="agendaModalResponsible">Ana Lima</strong>
+          <small id="agendaModalResponsibleRole">Jornalismo / Coordenação</small>
+        </article>
+
+        <article class="agenda-info-card">
+          <span>Local</span>
+          <strong id="agendaModalLocation">Grande Vitória</strong>
+          <small id="agendaModalAddress">Coari - AM</small>
+        </article>
+
+        <article class="agenda-info-card">
+          <span>Secretaria / origem</span>
+          <strong id="agendaModalDepartment">SEMSA</strong>
+          <small id="agendaModalPauta">P-2026-0187</small>
+        </article>
+      </section>
+
+      <section class="agenda-modal-section">
+        <div class="agenda-section-title">
+          <div>
+            <span>Equipe escalada</span>
+            <h3>Quem vai</h3>
+          </div>
+          <span class="agenda-team-count" id="agendaTeamCount">3 pessoas</span>
+        </div>
+
+        <div class="agenda-team-grid" id="agendaModalTeam"></div>
+      </section>
+
+      <section class="agenda-modal-section">
+        <div class="agenda-section-title">
+          <div>
+            <span>Orientação</span>
+            <h3>Sobre o compromisso</h3>
+          </div>
+        </div>
+
+        <div class="agenda-detail-grid">
+          <div class="agenda-detail-box">
+            <span>Tema</span>
+            <strong id="agendaModalSubject">Inauguração da UBS Grande Vitória</strong>
+          </div>
+
+          <div class="agenda-detail-box">
+            <span>Necessidades</span>
+            <strong id="agendaModalNeeds">Fotografia • Vídeo • Jornalismo</strong>
+          </div>
+
+          <div class="agenda-detail-box agenda-detail-full">
+            <span>Observações / briefing</span>
+            <p id="agendaModalNotes">Orientações da pauta.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <footer class="agenda-modal-footer">
+      <button type="button" class="btn btn-secondary" data-agenda-close>Fechar</button>
+      <a class="btn btn-secondary" href="pautas.html" id="agendaModalPautaLink">Ver pauta</a>
+      <button type="button" class="btn btn-primary" data-demo="Editar compromisso da agenda">Editar compromisso</button>
+    </footer>
+  </section>
+</div>
+
 <script src="../assets/js/app.js"></script>
+<script src="../assets/js/agenda.js"></script>
 </body>
 </html>
