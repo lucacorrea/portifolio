@@ -1,232 +1,2254 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#0f172a">
   <title>Agenda • SECOM Coari</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../assets/css/app.css">
-  <link rel="stylesheet" href="../assets/css/agenda.css">
+
+  <style>
+    :root{
+      --bg:#f4f7fb;
+      --surface:#ffffff;
+      --surface-2:#f8fafc;
+      --text:#0f172a;
+      --muted:#64748b;
+      --muted-2:#94a3b8;
+      --line:#e2e8f0;
+      --line-2:#cbd5e1;
+      --primary:#0f172a;
+      --primary-2:#1e293b;
+      --blue:#2563eb;
+      --blue-soft:#dbeafe;
+      --green:#15803d;
+      --green-soft:#dcfce7;
+      --yellow:#b45309;
+      --yellow-soft:#fef3c7;
+      --purple:#7e22ce;
+      --purple-soft:#f3e8ff;
+      --red:#b91c1c;
+      --red-soft:#fee2e2;
+      --radius:16px;
+      --shadow:0 10px 30px rgba(15,23,42,.06);
+      --sidebar:278px;
+    }
+
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    html,body{
+      margin:0;
+      min-height:100%;
+      font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+
+    body{font-size:14px}
+    body.modal-open{overflow:hidden}
+    a{text-decoration:none;color:inherit}
+    button,input,select,textarea{font:inherit}
+    button{cursor:pointer}
+    .hidden{display:none!important}
+
+    /* =========================================================
+       SIDEBAR
+       ========================================================= */
+    .sidebar{
+      width:var(--sidebar);
+      position:fixed;
+      inset:0 auto 0 0;
+      z-index:70;
+      display:flex;
+      flex-direction:column;
+      background:var(--primary);
+      color:#fff;
+      transition:transform .22s ease,width .22s ease;
+      box-shadow:10px 0 30px rgba(15,23,42,.05);
+    }
+
+    .brand{
+      height:86px;
+      padding:18px 20px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      flex:0 0 auto;
+    }
+
+    .brand-logo{
+      width:44px;
+      height:44px;
+      border-radius:13px;
+      display:grid;
+      place-items:center;
+      background:#fff;
+      color:var(--primary);
+      font-weight:900;
+      letter-spacing:-.04em;
+    }
+
+    .brand strong,.brand span{display:block}
+    .brand strong{font-size:15px}
+    .brand span{font-size:11px;color:#94a3b8;margin-top:3px}
+
+    .nav{
+      flex:1;
+      overflow:auto;
+      padding:14px 12px 20px;
+    }
+
+    .nav::-webkit-scrollbar{width:5px}
+    .nav::-webkit-scrollbar-thumb{background:#334155;border-radius:99px}
+
+    .nav-label{
+      padding:18px 12px 7px;
+      color:#64748b;
+      font-size:9px;
+      letter-spacing:.15em;
+      text-transform:uppercase;
+      font-weight:900;
+    }
+
+    .nav-link{
+      display:flex;
+      align-items:center;
+      gap:11px;
+      padding:10px 12px;
+      margin:2px 0;
+      border-radius:11px;
+      color:#cbd5e1;
+      font-size:12px;
+      font-weight:700;
+      transition:.15s ease;
+    }
+
+    .nav-link:hover{
+      background:#162238;
+      color:#fff;
+      transform:translateX(1px);
+    }
+
+    .nav-link.active{
+      background:var(--primary-2);
+      color:#fff;
+      box-shadow:inset 3px 0 0 #60a5fa;
+    }
+
+    .nav-icon{
+      width:24px;
+      flex:0 0 auto;
+      text-align:center;
+      font-size:15px;
+    }
+
+    .nav-text{white-space:nowrap}
+
+    .nav-badge{
+      margin-left:auto;
+      min-width:22px;
+      height:20px;
+      padding:0 6px;
+      border-radius:999px;
+      display:grid;
+      place-items:center;
+      background:#334155;
+      color:#cbd5e1;
+      font-size:9px;
+    }
+
+    .sidebar-footer{
+      padding:14px;
+      border-top:1px solid rgba(255,255,255,.08);
+    }
+
+    .storage-box{
+      padding:14px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;
+      background:#111c31;
+    }
+
+    .storage-row{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      font-size:10px;
+    }
+
+    .storage-box small{
+      display:block;
+      margin-top:9px;
+      color:#94a3b8;
+      line-height:1.45;
+    }
+
+    .progress{
+      height:7px;
+      margin-top:10px;
+      overflow:hidden;
+      border-radius:999px;
+      background:#263449;
+    }
+
+    .progress span{
+      display:block;
+      height:100%;
+      border-radius:999px;
+      background:#60a5fa;
+    }
+
+    /* =========================================================
+       MAIN / TOPBAR
+       ========================================================= */
+    .main{
+      margin-left:var(--sidebar);
+      width:calc(100% - var(--sidebar));
+      min-height:100vh;
+    }
+
+    .topbar{
+      min-height:86px;
+      position:sticky;
+      top:0;
+      z-index:60;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      padding:14px 24px;
+      border-bottom:1px solid rgba(226,232,240,.9);
+      background:rgba(255,255,255,.95);
+      backdrop-filter:blur(16px);
+    }
+
+    .topbar-left{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-width:0;
+    }
+
+    .page-heading{min-width:0}
+
+    .topbar h1{
+      margin:0;
+      font-size:20px;
+      line-height:1.25;
+    }
+
+    .topbar p{
+      margin:4px 0 0;
+      color:var(--muted);
+      font-size:11px;
+    }
+
+    .topbar-actions{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex:0 0 auto;
+    }
+
+    .quick-search{
+      width:300px;
+      height:40px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:0 11px;
+      border:1px solid var(--line);
+      border-radius:11px;
+      background:#fff;
+    }
+
+    .quick-search input{
+      width:100%;
+      border:0;
+      outline:0;
+      background:transparent;
+      font-size:11px;
+    }
+
+    .quick-search kbd{
+      padding:2px 5px;
+      border:1px solid var(--line);
+      border-bottom-width:2px;
+      border-radius:5px;
+      background:var(--surface-2);
+      color:var(--muted);
+      font-size:9px;
+    }
+
+    .icon-btn{
+      width:40px;
+      height:40px;
+      display:grid;
+      place-items:center;
+      border:1px solid var(--line);
+      border-radius:11px;
+      background:#fff;
+      color:#334155;
+      position:relative;
+    }
+
+    .icon-btn:hover{background:var(--surface-2)}
+
+    .notification-dot{
+      position:absolute;
+      width:7px;
+      height:7px;
+      top:7px;
+      right:8px;
+      border-radius:50%;
+      background:#ef4444;
+      box-shadow:0 0 0 2px white;
+    }
+
+    .user-chip{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding-left:12px;
+      border-left:1px solid var(--line);
+    }
+
+    .avatar{
+      width:40px;
+      height:40px;
+      display:grid;
+      place-items:center;
+      border-radius:12px;
+      background:#e2e8f0;
+      font-size:12px;
+      font-weight:900;
+    }
+
+    .user-copy strong,.user-copy span{display:block}
+    .user-copy strong{font-size:11px}
+    .user-copy span{font-size:9px;color:var(--muted);margin-top:2px}
+
+    /* =========================================================
+       CONTEÚDO
+       ========================================================= */
+    .content{padding:22px 24px 36px}
+    .content-inner{max-width:1680px;margin:0 auto}
+
+    .breadcrumb{
+      display:flex;
+      align-items:center;
+      gap:7px;
+      margin-bottom:12px;
+      color:var(--muted);
+      font-size:10px;
+    }
+
+    .breadcrumb a{color:#475569}
+    .breadcrumb .sep{color:#cbd5e1}
+
+    .page-intro{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:18px;
+      margin-bottom:18px;
+    }
+
+    .page-intro h2{
+      margin:5px 0 0;
+      font-size:24px;
+      letter-spacing:-.02em;
+    }
+
+    .page-intro p{
+      max-width:850px;
+      margin:7px 0 0;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.55;
+    }
+
+    .page-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .kicker{
+      color:var(--muted);
+      font-size:9px;
+      font-weight:900;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+    }
+
+    .btn{
+      border:0;
+      border-radius:10px;
+      padding:10px 14px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      white-space:nowrap;
+      font-size:11px;
+      font-weight:800;
+      transition:.15s ease;
+    }
+
+    .btn:hover{transform:translateY(-1px)}
+    .btn-primary{background:var(--primary);color:#fff}
+    .btn-secondary{background:#fff;border:1px solid var(--line);color:var(--text)}
+
+    .four-col{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:12px;
+      margin-bottom:16px;
+    }
+
+    .metric-card,.card{
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      background:#fff;
+      box-shadow:0 1px 2px rgba(15,23,42,.04);
+    }
+
+    .metric-card{
+      padding:15px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+
+    .metric-icon{
+      width:42px;
+      height:42px;
+      flex:0 0 auto;
+      display:grid;
+      place-items:center;
+      border-radius:12px;
+      background:#f1f5f9;
+      font-size:17px;
+    }
+
+    .metric-card strong,.metric-card span{display:block}
+    .metric-card strong{font-size:18px;letter-spacing:-.03em}
+    .metric-card span{margin-top:3px;color:var(--muted);font-size:9px}
+
+    .page-toolbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:14px;
+      flex-wrap:wrap;
+    }
+
+    .toolbar-left,.filters{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .filters select{
+      min-height:38px;
+      padding:9px 10px;
+      border:1px solid var(--line);
+      border-radius:10px;
+      background:#fff;
+      color:#334155;
+      font-size:10px;
+    }
+
+    /* =========================================================
+       AJUDA DA AGENDA
+       ========================================================= */
+    .agenda-help{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      margin-bottom:14px;
+      padding:12px 14px;
+      border:1px solid #dbeafe;
+      border-radius:12px;
+      background:#eff6ff;
+    }
+
+    .agenda-help strong,.agenda-help span{display:block}
+    .agenda-help strong{color:#1e3a8a;font-size:11px}
+    .agenda-help div>span{
+      margin-top:3px;
+      color:#64748b;
+      font-size:9px;
+      line-height:1.45;
+    }
+
+    .agenda-help-badge{
+      flex:0 0 auto;
+      padding:6px 9px;
+      border-radius:999px;
+      background:#dbeafe;
+      color:#1d4ed8!important;
+      font-size:9px!important;
+      font-weight:900;
+    }
+
+    /* =========================================================
+       CALENDÁRIO
+       ========================================================= */
+    .calendar-layout{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 340px;
+      gap:14px;
+    }
+
+    .calendar-card{padding:16px}
+
+    .calendar-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:14px;
+    }
+
+    .calendar-head h3{margin:0;font-size:15px}
+
+    .legend{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .legend span{
+      display:flex;
+      align-items:center;
+      gap:4px;
+      color:var(--muted);
+      font-size:9px;
+    }
+
+    .legend i{
+      width:7px;
+      height:7px;
+      display:inline-block;
+      border-radius:50%;
+    }
+
+    .legend .pauta{background:var(--blue)}
+    .legend .cobertura{background:var(--purple)}
+    .legend .entrega{background:#d97706}
+    .legend .publicacao{background:var(--green)}
+
+    .weekdays,.calendar-grid{
+      display:grid;
+      grid-template-columns:repeat(7,1fr);
+    }
+
+    .weekdays span{
+      padding:7px;
+      text-align:center;
+      color:#94a3b8;
+      font-size:8px;
+      font-weight:900;
+    }
+
+    .calendar-day{
+      min-height:112px;
+      padding:7px;
+      border-top:1px solid var(--line);
+      border-right:1px solid var(--line);
+      background:#fff;
+      overflow:hidden;
+    }
+
+    .calendar-day:nth-child(7n+1){border-left:1px solid var(--line)}
+    .calendar-day.muted{background:var(--surface-2);color:#94a3b8}
+    .calendar-day.today{
+      outline:2px solid var(--primary);
+      outline-offset:-2px;
+    }
+
+    .day-number{
+      width:24px;
+      height:24px;
+      display:grid;
+      place-items:center;
+      border-radius:7px;
+      font-size:9px;
+      font-weight:900;
+    }
+
+    .today .day-number{background:var(--primary);color:#fff}
+
+    .cal-event{
+      width:100%;
+      display:block;
+      margin-top:4px;
+      padding:4px 5px;
+      border:0;
+      border-radius:6px;
+      text-align:left;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      font-size:8px;
+      font-weight:800;
+      cursor:pointer;
+    }
+
+    .cal-event:hover{
+      filter:brightness(.97);
+      box-shadow:inset 0 0 0 1px rgba(15,23,42,.1);
+    }
+
+    .cal-event.pauta{background:var(--blue-soft);color:#1d4ed8}
+    .cal-event.cobertura{background:var(--purple-soft);color:#7e22ce}
+    .cal-event.entrega{background:var(--yellow-soft);color:#92400e}
+    .cal-event.publicacao{background:var(--green-soft);color:#166534}
+
+    /* =========================================================
+       AGENDA LATERAL
+       ========================================================= */
+    .agenda-day-list{
+      max-height:650px;
+      overflow:auto;
+      padding:18px;
+    }
+
+    .card-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:14px;
+      margin-bottom:16px;
+    }
+
+    .card-head h3{
+      margin:5px 0 0;
+      font-size:15px;
+    }
+
+    .card-subtitle{
+      margin-top:4px;
+      color:var(--muted);
+      font-size:10px;
+    }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:5px;
+      padding:5px 8px;
+      border-radius:999px;
+      white-space:nowrap;
+      font-size:9px;
+      font-weight:900;
+    }
+
+    .badge::before{
+      content:"";
+      width:6px;
+      height:6px;
+      border-radius:50%;
+      background:currentColor;
+    }
+
+    .badge.blue{background:var(--blue-soft);color:#1d4ed8}
+
+    .timeline{
+      display:flex;
+      flex-direction:column;
+    }
+
+    .timeline-item{
+      width:100%;
+      position:relative;
+      display:grid;
+      grid-template-columns:55px 12px 1fr;
+      gap:10px;
+      align-items:start;
+      padding:10px 7px;
+      border:0;
+      border-radius:10px;
+      background:transparent;
+      text-align:left;
+      transition:.15s ease;
+    }
+
+    .timeline-item:hover{
+      background:#f8fafc;
+      transform:translateX(2px);
+    }
+
+    .timeline-item:not(:last-child)::after{
+      content:"";
+      position:absolute;
+      left:66px;
+      top:24px;
+      bottom:-4px;
+      width:1px;
+      background:#e2e8f0;
+    }
+
+    .timeline-item time{
+      color:#334155;
+      font-size:10px;
+      font-weight:900;
+    }
+
+    .timeline-item i{
+      width:8px;
+      height:8px;
+      margin-top:3px;
+      border-radius:50%;
+      background:var(--blue);
+      box-shadow:0 0 0 3px #dbeafe;
+      position:relative;
+      z-index:1;
+    }
+
+    .timeline-item strong,.timeline-item span,.timeline-item small{display:block}
+    .timeline-item strong{font-size:11px}
+    .timeline-item span{margin-top:3px;color:var(--muted);font-size:9px}
+    .timeline-item small{margin-top:4px;color:#94a3b8;font-size:8px;font-weight:700}
+
+    /* =========================================================
+       MODAL
+       ========================================================= */
+    .agenda-modal{
+      position:fixed;
+      inset:0;
+      z-index:200;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+    }
+
+    .agenda-modal.is-open{display:flex}
+
+    .agenda-modal-backdrop{
+      position:absolute;
+      inset:0;
+      background:rgba(15,23,42,.62);
+      backdrop-filter:blur(5px);
+    }
+
+    .agenda-modal-dialog{
+      position:relative;
+      z-index:1;
+      width:min(900px,100%);
+      max-height:min(92vh,920px);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      border:1px solid var(--line);
+      border-radius:20px;
+      background:#fff;
+      box-shadow:0 30px 90px rgba(15,23,42,.28);
+      animation:modalIn .18s ease;
+    }
+
+    @keyframes modalIn{
+      from{opacity:0;transform:translateY(12px) scale(.985)}
+      to{opacity:1;transform:none}
+    }
+
+    .agenda-modal-header{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:20px;
+      padding:22px 24px 19px;
+      border-bottom:1px solid var(--line);
+      background:
+        radial-gradient(circle at 95% 0%,rgba(37,99,235,.08),transparent 32%),
+        #fff;
+    }
+
+    .agenda-modal-heading{min-width:0}
+
+    .agenda-modal-type{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:5px 8px;
+      border-radius:999px;
+      background:var(--blue-soft);
+      color:#1d4ed8;
+      font-size:9px;
+      font-weight:900;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+    }
+
+    .agenda-modal-type::before{
+      content:"";
+      width:6px;
+      height:6px;
+      border-radius:50%;
+      background:currentColor;
+    }
+
+    .agenda-modal-heading h2{
+      margin:8px 0 0;
+      font-size:21px;
+      line-height:1.2;
+      letter-spacing:-.025em;
+    }
+
+    .agenda-modal-heading p{
+      margin:6px 0 0;
+      color:var(--muted);
+      font-size:11px;
+      line-height:1.45;
+    }
+
+    .agenda-modal-close{
+      width:38px;
+      height:38px;
+      flex:0 0 auto;
+      border:1px solid var(--line);
+      border-radius:11px;
+      background:#fff;
+      color:#475569;
+      font-size:22px;
+      line-height:1;
+    }
+
+    .agenda-modal-body{
+      overflow:auto;
+      padding:20px 24px 24px;
+    }
+
+    .agenda-primary-info{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:10px;
+    }
+
+    .agenda-info-card{
+      min-width:0;
+      padding:13px;
+      border:1px solid var(--line);
+      border-radius:13px;
+      background:#f8fafc;
+    }
+
+    .agenda-info-card>span,.agenda-info-card strong,.agenda-info-card small{display:block}
+
+    .agenda-info-card>span{
+      color:var(--muted);
+      font-size:8px;
+      font-weight:900;
+      letter-spacing:.07em;
+      text-transform:uppercase;
+    }
+
+    .agenda-info-card strong{
+      margin-top:6px;
+      font-size:12px;
+      line-height:1.3;
+      overflow-wrap:anywhere;
+    }
+
+    .agenda-info-card small{
+      margin-top:4px;
+      color:var(--muted);
+      font-size:8px;
+      line-height:1.4;
+    }
+
+    .agenda-info-time{
+      border-color:#bfdbfe;
+      background:#eff6ff;
+    }
+
+    .agenda-info-time strong{color:#1d4ed8;font-size:18px}
+
+    .agenda-info-responsible{
+      border-color:#c7d2fe;
+      background:#eef2ff;
+    }
+
+    .agenda-info-responsible strong{color:#3730a3}
+
+    .agenda-modal-section{
+      margin-top:20px;
+      padding-top:18px;
+      border-top:1px solid var(--line);
+    }
+
+    .agenda-section-title{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:14px;
+      margin-bottom:11px;
+    }
+
+    .agenda-section-title span{
+      display:block;
+      color:var(--muted);
+      font-size:8px;
+      font-weight:900;
+      letter-spacing:.07em;
+      text-transform:uppercase;
+    }
+
+    .agenda-section-title h3{
+      margin:4px 0 0;
+      font-size:14px;
+    }
+
+    .agenda-team-count{
+      padding:5px 8px;
+      border-radius:999px;
+      background:#f1f5f9;
+      color:#475569!important;
+      text-transform:none!important;
+      letter-spacing:0!important;
+    }
+
+    .agenda-team-grid{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:9px;
+    }
+
+    .agenda-person{
+      min-width:0;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:11px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:#fff;
+    }
+
+    .agenda-person-responsible{
+      border-color:#c7d2fe;
+      background:#f5f7ff;
+    }
+
+    .agenda-person-avatar{
+      width:38px;
+      height:38px;
+      flex:0 0 auto;
+      display:grid;
+      place-items:center;
+      border-radius:11px;
+      background:#e2e8f0;
+      color:#334155;
+      font-size:10px;
+      font-weight:900;
+    }
+
+    .agenda-person-responsible .agenda-person-avatar{
+      background:#4f46e5;
+      color:#fff;
+    }
+
+    .agenda-person-info{min-width:0}
+    .agenda-person-info strong,.agenda-person-info span{display:block}
+    .agenda-person-info strong{
+      font-size:10px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .agenda-person-info span{
+      margin-top:3px;
+      color:var(--muted);
+      font-size:8px;
+      line-height:1.4;
+    }
+
+    .agenda-person-tag{
+      display:inline-flex!important;
+      width:max-content;
+      margin-top:5px!important;
+      padding:3px 5px;
+      border-radius:999px;
+      background:#e0e7ff;
+      color:#4338ca!important;
+      font-size:7px!important;
+      font-weight:900;
+    }
+
+    .agenda-detail-grid{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:9px;
+    }
+
+    .agenda-detail-box{
+      padding:12px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:#f8fafc;
+    }
+
+    .agenda-detail-box>span,.agenda-detail-box strong{display:block}
+
+    .agenda-detail-box>span{
+      color:var(--muted);
+      font-size:8px;
+      font-weight:900;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+    }
+
+    .agenda-detail-box strong{
+      margin-top:5px;
+      font-size:10px;
+      line-height:1.5;
+    }
+
+    .agenda-detail-box p{
+      margin:5px 0 0;
+      color:#475569;
+      font-size:9px;
+      line-height:1.65;
+    }
+
+    .agenda-detail-full{grid-column:1/-1}
+
+    .agenda-modal-footer{
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      gap:8px;
+      padding:14px 24px;
+      border-top:1px solid var(--line);
+      background:#f8fafc;
+    }
+
+    .agenda-modal[data-type="cobertura"] .agenda-modal-type{
+      background:var(--purple-soft);
+      color:#7e22ce;
+    }
+
+    .agenda-modal[data-type="entrega"] .agenda-modal-type{
+      background:var(--yellow-soft);
+      color:#92400e;
+    }
+
+    .agenda-modal[data-type="publicacao"] .agenda-modal-type{
+      background:var(--green-soft);
+      color:#166534;
+    }
+
+    /* =========================================================
+       OVERLAY MOBILE
+       ========================================================= */
+    .mobile-overlay{
+      display:none;
+      position:fixed;
+      inset:0;
+      z-index:65;
+      background:rgba(15,23,42,.42);
+      opacity:0;
+      pointer-events:none;
+      transition:.2s;
+    }
+
+    .mobile-overlay.show{
+      opacity:1;
+      pointer-events:auto;
+    }
+
+    /* =========================================================
+       RESPONSIVO
+       ========================================================= */
+    @media(max-width:1180px){
+      .quick-search{display:none}
+      .calendar-layout{grid-template-columns:1fr}
+      .agenda-day-list{max-height:none}
+    }
+
+    @media(max-width:900px){
+      .sidebar{
+        width:min(290px,86vw);
+        transform:translateX(-100%);
+      }
+
+      .sidebar.mobile-open{transform:translateX(0)}
+
+      .main{
+        margin-left:0;
+        width:100%;
+      }
+
+      .mobile-overlay{display:block}
+      .content{padding:16px}
+      .topbar{padding:12px 16px}
+      .four-col{grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
+
+    @media(max-width:760px){
+      .agenda-modal{
+        padding:0;
+        align-items:flex-end;
+      }
+
+      .agenda-modal-dialog{
+        width:100%;
+        max-height:94vh;
+        border-radius:18px 18px 0 0;
+      }
+
+      .agenda-modal-header{padding:18px 16px 15px}
+      .agenda-modal-body{padding:16px}
+      .agenda-modal-heading h2{font-size:18px}
+      .agenda-primary-info{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .agenda-team-grid{grid-template-columns:1fr}
+
+      .agenda-modal-footer{
+        padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+        display:grid;
+        grid-template-columns:1fr 1fr;
+      }
+
+      .agenda-modal-footer .btn-primary{grid-column:1/-1}
+    }
+
+    @media(max-width:620px){
+      .new-pauta-btn,.user-copy{display:none}
+
+      .page-intro{
+        align-items:flex-start;
+        flex-direction:column;
+      }
+
+      .page-actions{width:100%}
+      .page-actions .btn{flex:1}
+      .four-col{grid-template-columns:1fr 1fr}
+      .agenda-help-badge{display:none}
+      .calendar-day{min-height:80px;padding:5px}
+
+      .cal-event{
+        height:7px;
+        padding:0;
+        font-size:0;
+      }
+
+      .day-number{
+        width:21px;
+        height:21px;
+      }
+
+      .content{padding:14px 12px 28px}
+    }
+
+    @media(max-width:460px){
+      .four-col{grid-template-columns:1fr}
+      .agenda-primary-info{grid-template-columns:1fr}
+      .agenda-detail-grid{grid-template-columns:1fr}
+      .agenda-detail-full{grid-column:auto}
+      .topbar p{display:none}
+    }
+  </style>
 </head>
+
 <body>
 
-<aside class="sidebar">
-  <div class="brand">
-    <div class="brand-logo">SC</div>
-    <div class="brand-copy"><strong>SECOM</strong><span>Prefeitura de Coari</span></div>
-  </div>
-  <nav class="nav">
-<a class="nav-link" href="../index.html"><span class="nav-icon">⌂</span><span class="nav-text">Dashboard</span></a>
-<a class="nav-link active" href="agenda.html"><span class="nav-icon">▦</span><span class="nav-text">Agenda</span><span class="nav-badge">8</span></a>
-<div class="nav-label">Comunicação</div>
-<a class="nav-link" href="pautas.html"><span class="nav-icon">▤</span><span class="nav-text">Pautas</span><span class="nav-badge">12</span></a>
-<a class="nav-link" href="coberturas.html"><span class="nav-icon">◉</span><span class="nav-text">Coberturas</span><span class="nav-badge">5</span></a>
-<a class="nav-link" href="demandas.html"><span class="nav-icon">◫</span><span class="nav-text">Demandas</span><span class="nav-badge">3</span></a>
-<div class="nav-label">Produção</div>
-<a class="nav-link" href="producoes.html"><span class="nav-icon">✎</span><span class="nav-text">Produções</span><span class="nav-badge">14</span></a>
-<a class="nav-link" href="materias.html"><span class="nav-icon">▧</span><span class="nav-text">Matérias</span><span class="nav-badge">4</span></a>
-<a class="nav-link" href="aprovacoes.html"><span class="nav-icon">✓</span><span class="nav-text">Aprovações</span><span class="nav-badge">7</span></a>
-<a class="nav-link" href="publicacoes.html"><span class="nav-icon">↑</span><span class="nav-text">Publicações</span><span class="nav-badge">9</span></a>
-<div class="nav-label">Acervo</div>
-<a class="nav-link" href="acervo.html"><span class="nav-icon">▣</span><span class="nav-text">Acervo institucional</span></a>
-<a class="nav-link" href="originais.html"><span class="nav-icon">🔒</span><span class="nav-text">Originais</span></a>
-<a class="nav-link" href="masters.html"><span class="nav-icon">▶</span><span class="nav-text">Masters</span></a>
-<a class="nav-link" href="preservacao.html"><span class="nav-icon">◈</span><span class="nav-text">Preservação</span></a>
-<div class="nav-label">Gestão</div>
-<a class="nav-link" href="equipe.html"><span class="nav-icon">♟</span><span class="nav-text">Equipe</span></a>
-<a class="nav-link" href="secretarias.html"><span class="nav-icon">▥</span><span class="nav-text">Secretarias</span></a>
-<a class="nav-link" href="relatorios.html"><span class="nav-icon">▤</span><span class="nav-text">Relatórios</span></a>
-<a class="nav-link" href="auditoria.html"><span class="nav-icon">◴</span><span class="nav-text">Auditoria</span></a>
-<div class="nav-label">Sistema</div>
-<a class="nav-link" href="usuarios.html"><span class="nav-icon">♙</span><span class="nav-text">Usuários</span></a>
-<a class="nav-link" href="configuracoes.html"><span class="nav-icon">⚙</span><span class="nav-text">Configurações</span></a>
-<a class="nav-link" href="perfil.html"><span class="nav-icon">○</span><span class="nav-text">Meu perfil</span></a>
-
-  </nav>
-  <div class="sidebar-footer">
-    <div class="storage-box">
-      <div class="storage-copy">
-        <div class="storage-row"><span>Armazenamento</span><strong>8,4 / 20 TB</strong></div>
+  <!-- =========================================================
+       SIDEBAR
+       ========================================================= -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-logo">SC</div>
+      <div class="brand-copy">
+        <strong>SECOM</strong>
+        <span>Prefeitura de Coari</span>
       </div>
-      <div class="progress"><span style="width:42%"></span></div>
-      <div class="storage-copy"><small>Originais protegidos • Integridade 100%</small></div>
     </div>
-  </div>
-</aside>
-<div class="mobile-overlay"></div>
-<main class="main">
 
-<header class="topbar">
-  <div class="topbar-left">
-    <button class="icon-btn" data-sidebar-toggle title="Recolher/abrir menu">☰</button>
-    <div class="page-heading"><h1>Agenda</h1><p>Pautas, coberturas, entregas e publicações</p></div>
-  </div>
-  <div class="topbar-actions">
-    <div class="quick-search desktop-only">⌕ <input data-global-search placeholder="Buscar pauta, arquivo, pessoa..."><kbd>Enter</kbd></div>
-    <a class="btn btn-primary new-pauta-btn" href="pautas.html">+ Nova pauta</a>
-    <button class="icon-btn" data-demo="3 itens aguardam sua atenção">🔔<span class="notification-dot"></span></button>
-    <a class="user-chip" href="perfil.html">
-      <div class="avatar">AS</div><div class="user-copy"><strong>Administrador SECOM</strong><span>Gestão</span></div>
-    </a>
-  </div>
-</header>
-<section class="content"><div class="content-inner">
-<div class="breadcrumb"><a href="../index.html">Dashboard</a> <span class="sep">/</span> <span>Agenda</span></div>
-<div class="page-intro">
-  <div><span class="kicker">Planejamento diário</span><h2>Agenda integrada</h2><p>A agenda combina compromissos, coberturas, prazos internos, aprovações e horários de publicação.</p></div>
-  <div class="page-actions"><button class="btn btn-secondary">Hoje</button><button class="btn btn-primary" data-demo="Cadastro de novo compromisso">+ Novo compromisso</button></div>
-</div>
-<div class="four-col">
-  <article class="metric-card"><div class="metric-icon">▦</div><div><strong>8</strong><span>Compromissos hoje</span></div></article>
-  <article class="metric-card"><div class="metric-icon">◉</div><div><strong>3</strong><span>Coberturas em campo</span></div></article>
-  <article class="metric-card"><div class="metric-icon">⌛</div><div><strong>5</strong><span>Prazos de entrega</span></div></article>
-  <article class="metric-card"><div class="metric-icon">↑</div><div><strong>4</strong><span>Publicações programadas</span></div></article>
-</div>
-<div class="page-toolbar">
-  <div class="toolbar-left"><button class="btn btn-secondary">←</button><button class="btn btn-secondary">Agosto 2026</button><button class="btn btn-secondary">→</button></div>
-  <div class="filters"><select><option>Mês</option><option>Semana</option><option>Dia</option></select><select><option>Todas as equipes</option><option>Fotografia</option><option>Vídeo</option><option>Jornalismo</option></select></div>
-</div>
-<div class="agenda-help">
-  <div><strong>Clique em um compromisso</strong><span>Veja tema, responsável, equipe escalada, horário, local e observações sem sair da agenda.</span></div>
-  <span class="agenda-help-badge">Detalhes rápidos</span>
-</div>
-<div class="calendar-layout">
-  <article class="card calendar-card">
-    <div class="calendar-head">
-      <h3>Agosto 2026</h3>
-      <div class="legend"><span><i class="pauta"></i>Pauta</span><span><i class="cobertura"></i>Cobertura</span><span><i class="entrega"></i>Entrega</span><span><i class="publicacao"></i>Publicação</span></div>
-    </div>
-    <div class="weekdays"><span>DOM</span><span>SEG</span><span>TER</span><span>QUA</span><span>QUI</span><span>SEX</span><span>SÁB</span></div>
-    <div class="calendar-grid">
-      <div class="calendar-day muted"><span class="day-number">26</span></div><div class="calendar-day muted"><span class="day-number">27</span></div><div class="calendar-day muted"><span class="day-number">28</span></div><div class="calendar-day muted"><span class="day-number">29</span></div><div class="calendar-day muted"><span class="day-number">30</span></div><div class="calendar-day muted"><span class="day-number">31</span></div>
-      <div class="calendar-day"><span class="day-number">1</span></div><div class="calendar-day"><span class="day-number">2</span></div><div class="calendar-day"><span class="day-number">3</span></div><div class="calendar-day"><span class="day-number">4</span></div><div class="calendar-day"><span class="day-number">5</span></div><div class="calendar-day"><span class="day-number">6</span></div><div class="calendar-day"><span class="day-number">7</span></div>
-      <div class="calendar-day"><span class="day-number">8</span></div><div class="calendar-day"><span class="day-number">9</span></div>
-      <div class="calendar-day today"><span class="day-number">10</span><button type="button" class="cal-event pauta agenda-open" data-event-id="briefing-ubs">08:30 Briefing UBS</button><button type="button" class="cal-event cobertura agenda-open" data-event-id="inauguracao-ubs">09:00 Inauguração UBS</button><button type="button" class="cal-event cobertura agenda-open" data-event-id="kits-escolares">10:30 Kits escolares</button><button type="button" class="cal-event entrega agenda-open" data-event-id="reel-feira">13:30 Reel Feira</button><button type="button" class="cal-event publicacao agenda-open" data-event-id="agenda-prefeito">18:00 Agenda Prefeito</button></div>
-      <div class="calendar-day"><span class="day-number">11</span><button type="button" class="cal-event pauta agenda-open" data-event-id="agosto-lilas">08:00 Agosto Lilás</button><button type="button" class="cal-event entrega agenda-open" data-event-id="revisao-video">15:00 Revisão vídeo</button></div>
-      <div class="calendar-day"><span class="day-number">12</span><button type="button" class="cal-event cobertura agenda-open" data-event-id="agenda-gabinete">09:30 Agenda Gabinete</button><button type="button" class="cal-event publicacao agenda-open" data-event-id="materia-institucional">17:30 Matéria</button></div>
-      <div class="calendar-day"><span class="day-number">13</span><button type="button" class="cal-event cobertura agenda-open" data-event-id="vacinacao">07:30 Vacinação</button></div>
-      <div class="calendar-day"><span class="day-number">14</span><button type="button" class="cal-event entrega agenda-open" data-event-id="master-video">14:00 Master vídeo</button></div>
-      <div class="calendar-day"><span class="day-number">15</span><button type="button" class="cal-event publicacao agenda-open" data-event-id="reel-juventude">18:30 Reel Juventude</button></div>
-      <div class="calendar-day"><span class="day-number">16</span></div><div class="calendar-day"><span class="day-number">17</span></div><div class="calendar-day"><span class="day-number">18</span></div><div class="calendar-day"><span class="day-number">19</span></div><div class="calendar-day"><span class="day-number">20</span></div><div class="calendar-day"><span class="day-number">21</span></div><div class="calendar-day"><span class="day-number">22</span></div><div class="calendar-day"><span class="day-number">23</span></div><div class="calendar-day"><span class="day-number">24</span></div><div class="calendar-day"><span class="day-number">25</span></div><div class="calendar-day"><span class="day-number">26</span></div><div class="calendar-day"><span class="day-number">27</span></div><div class="calendar-day"><span class="day-number">28</span></div><div class="calendar-day"><span class="day-number">29</span></div><div class="calendar-day"><span class="day-number">30</span></div><div class="calendar-day"><span class="day-number">31</span></div>
-    </div>
-  </article>
-  <aside class="card agenda-day-list">
-    <div class="card-head"><div><span class="kicker">Hoje</span><h3>10 de agosto</h3><div class="card-subtitle">5 compromissos</div></div><span class="badge blue">Segunda</span></div>
-    <div class="timeline agenda-timeline">
-      <button type="button" class="timeline-item agenda-open" data-event-id="briefing-ubs">
-        <time>08:30</time><i></i><div><strong>Briefing UBS Grande Vitória</strong><span>Ana Lima • Sala da SECOM</span><small>3 profissionais escalados</small></div>
-      </button>
-      <button type="button" class="timeline-item agenda-open" data-event-id="inauguracao-ubs">
-        <time>09:00</time><i></i><div><strong>Inauguração da UBS</strong><span>Ana Lima • SEMSA</span><small>Foto, vídeo e jornalismo</small></div>
-      </button>
-      <button type="button" class="timeline-item agenda-open" data-event-id="kits-escolares">
-        <time>10:30</time><i></i><div><strong>Entrega de kits escolares</strong><span>Pedro Lima • SEMED</span><small>Foto e matéria</small></div>
-      </button>
-      <button type="button" class="timeline-item agenda-open" data-event-id="reel-feira">
-        <time>13:30</time><i></i><div><strong>Prazo Reel Feira</strong><span>João Silva • Produção</span><small>Versão V3</small></div>
-      </button>
-      <button type="button" class="timeline-item agenda-open" data-event-id="agenda-prefeito">
-        <time>18:00</time><i></i><div><strong>Publicar Agenda do Prefeito</strong><span>Maria Souza • Social Media</span><small>Instagram + Facebook</small></div>
-      </button>
+    <nav class="nav">
+      <a class="nav-link" href="../index.html">
+        <span class="nav-icon">⌂</span>
+        <span class="nav-text">Dashboard</span>
+      </a>
+
+      <a class="nav-link active" href="agenda.html">
+        <span class="nav-icon">▦</span>
+        <span class="nav-text">Agenda</span>
+        <span class="nav-badge">8</span>
+      </a>
+
+      <div class="nav-label">Comunicação</div>
+
+      <a class="nav-link" href="pautas.html">
+        <span class="nav-icon">▤</span>
+        <span class="nav-text">Pautas</span>
+        <span class="nav-badge">12</span>
+      </a>
+
+      <a class="nav-link" href="coberturas.html">
+        <span class="nav-icon">◉</span>
+        <span class="nav-text">Coberturas</span>
+        <span class="nav-badge">5</span>
+      </a>
+
+      <a class="nav-link" href="demandas.html">
+        <span class="nav-icon">◫</span>
+        <span class="nav-text">Demandas</span>
+        <span class="nav-badge">3</span>
+      </a>
+
+      <div class="nav-label">Produção</div>
+
+      <a class="nav-link" href="producoes.html">
+        <span class="nav-icon">✎</span>
+        <span class="nav-text">Produções</span>
+        <span class="nav-badge">14</span>
+      </a>
+
+      <a class="nav-link" href="materias.html">
+        <span class="nav-icon">▧</span>
+        <span class="nav-text">Matérias</span>
+        <span class="nav-badge">4</span>
+      </a>
+
+      <a class="nav-link" href="aprovacoes.html">
+        <span class="nav-icon">✓</span>
+        <span class="nav-text">Aprovações</span>
+        <span class="nav-badge">7</span>
+      </a>
+
+      <a class="nav-link" href="publicacoes.html">
+        <span class="nav-icon">↑</span>
+        <span class="nav-text">Publicações</span>
+        <span class="nav-badge">9</span>
+      </a>
+
+      <div class="nav-label">Acervo</div>
+
+      <a class="nav-link" href="acervo.html">
+        <span class="nav-icon">▣</span>
+        <span class="nav-text">Acervo institucional</span>
+      </a>
+
+      <a class="nav-link" href="originais.html">
+        <span class="nav-icon">🔒</span>
+        <span class="nav-text">Originais</span>
+      </a>
+
+      <a class="nav-link" href="masters.html">
+        <span class="nav-icon">▶</span>
+        <span class="nav-text">Masters</span>
+      </a>
+
+      <a class="nav-link" href="preservacao.html">
+        <span class="nav-icon">◈</span>
+        <span class="nav-text">Preservação</span>
+      </a>
+
+      <div class="nav-label">Gestão</div>
+
+      <a class="nav-link" href="equipe.html">
+        <span class="nav-icon">♟</span>
+        <span class="nav-text">Equipe</span>
+      </a>
+
+      <a class="nav-link" href="secretarias.html">
+        <span class="nav-icon">▥</span>
+        <span class="nav-text">Secretarias</span>
+      </a>
+
+      <a class="nav-link" href="relatorios.html">
+        <span class="nav-icon">▤</span>
+        <span class="nav-text">Relatórios</span>
+      </a>
+
+      <a class="nav-link" href="auditoria.html">
+        <span class="nav-icon">◴</span>
+        <span class="nav-text">Auditoria</span>
+      </a>
+
+      <div class="nav-label">Sistema</div>
+
+      <a class="nav-link" href="usuarios.html">
+        <span class="nav-icon">♙</span>
+        <span class="nav-text">Usuários</span>
+      </a>
+
+      <a class="nav-link" href="configuracoes.html">
+        <span class="nav-icon">⚙</span>
+        <span class="nav-text">Configurações</span>
+      </a>
+
+      <a class="nav-link" href="perfil.html">
+        <span class="nav-icon">○</span>
+        <span class="nav-text">Meu perfil</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="storage-box">
+        <div class="storage-row">
+          <span>Armazenamento</span>
+          <strong>8,4 / 20 TB</strong>
+        </div>
+        <div class="progress">
+          <span style="width:42%"></span>
+        </div>
+        <small>Originais protegidos • Integridade 100%</small>
+      </div>
     </div>
   </aside>
-</div>
 
-</div></section>
-</main>
+  <div class="mobile-overlay" id="mobileOverlay"></div>
 
-<!-- MODAL: DETALHES DO COMPROMISSO -->
-<div class="agenda-modal" id="agendaModal" aria-hidden="true">
-  <div class="agenda-modal-backdrop" data-agenda-close></div>
+  <!-- =========================================================
+       MAIN
+       ========================================================= -->
+  <main class="main">
 
-  <section class="agenda-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="agendaModalTitle">
-    <header class="agenda-modal-header">
-      <div class="agenda-modal-heading">
-        <span class="agenda-modal-type" id="agendaModalType">Cobertura</span>
-        <h2 id="agendaModalTitle">Detalhes do compromisso</h2>
-        <p id="agendaModalTheme">Tema da atividade</p>
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="icon-btn" id="sidebarToggle" title="Abrir/recolher menu">☰</button>
+
+        <div class="page-heading">
+          <h1>Agenda</h1>
+          <p>Pautas, coberturas, entregas e publicações</p>
+        </div>
       </div>
 
-      <button type="button" class="agenda-modal-close" data-agenda-close aria-label="Fechar modal">×</button>
+      <div class="topbar-actions">
+        <div class="quick-search">
+          ⌕
+          <input id="globalSearch" placeholder="Buscar pauta, pessoa, tema...">
+          <kbd>Enter</kbd>
+        </div>
+
+        <a class="btn btn-primary new-pauta-btn" href="pautas.html">+ Nova pauta</a>
+
+        <button class="icon-btn" type="button" id="notificationsBtn">
+          🔔
+          <span class="notification-dot"></span>
+        </button>
+
+        <a class="user-chip" href="perfil.html">
+          <div class="avatar">AS</div>
+          <div class="user-copy">
+            <strong>Administrador SECOM</strong>
+            <span>Gestão</span>
+          </div>
+        </a>
+      </div>
     </header>
 
-    <div class="agenda-modal-body">
-      <section class="agenda-primary-info">
-        <article class="agenda-info-card agenda-info-time">
-          <span>Horário</span>
-          <strong id="agendaModalTime">09:00</strong>
-          <small id="agendaModalDuration">09:00 às 11:00</small>
-        </article>
+    <section class="content">
+      <div class="content-inner">
 
-        <article class="agenda-info-card agenda-info-responsible">
-          <span>Responsável</span>
-          <strong id="agendaModalResponsible">Ana Lima</strong>
-          <small id="agendaModalResponsibleRole">Jornalismo / Coordenação</small>
-        </article>
+        <div class="breadcrumb">
+          <a href="../index.html">Dashboard</a>
+          <span class="sep">/</span>
+          <span>Agenda</span>
+        </div>
 
-        <article class="agenda-info-card">
-          <span>Local</span>
-          <strong id="agendaModalLocation">Grande Vitória</strong>
-          <small id="agendaModalAddress">Coari - AM</small>
-        </article>
-
-        <article class="agenda-info-card">
-          <span>Secretaria / origem</span>
-          <strong id="agendaModalDepartment">SEMSA</strong>
-          <small id="agendaModalPauta">P-2026-0187</small>
-        </article>
-      </section>
-
-      <section class="agenda-modal-section">
-        <div class="agenda-section-title">
+        <div class="page-intro">
           <div>
-            <span>Equipe escalada</span>
-            <h3>Quem vai</h3>
+            <span class="kicker">Planejamento diário</span>
+            <h2>Agenda integrada</h2>
+            <p>
+              A agenda combina compromissos, coberturas, prazos internos,
+              aprovações e horários de publicação.
+            </p>
           </div>
-          <span class="agenda-team-count" id="agendaTeamCount">3 pessoas</span>
+
+          <div class="page-actions">
+            <button class="btn btn-secondary" type="button" id="todayBtn">Hoje</button>
+            <button class="btn btn-primary" type="button" id="newCommitmentBtn">+ Novo compromisso</button>
+          </div>
         </div>
 
-        <div class="agenda-team-grid" id="agendaModalTeam"></div>
-      </section>
+        <div class="four-col">
+          <article class="metric-card">
+            <div class="metric-icon">▦</div>
+            <div>
+              <strong>8</strong>
+              <span>Compromissos hoje</span>
+            </div>
+          </article>
 
-      <section class="agenda-modal-section">
-        <div class="agenda-section-title">
+          <article class="metric-card">
+            <div class="metric-icon">◉</div>
+            <div>
+              <strong>3</strong>
+              <span>Coberturas em campo</span>
+            </div>
+          </article>
+
+          <article class="metric-card">
+            <div class="metric-icon">⌛</div>
+            <div>
+              <strong>5</strong>
+              <span>Prazos de entrega</span>
+            </div>
+          </article>
+
+          <article class="metric-card">
+            <div class="metric-icon">↑</div>
+            <div>
+              <strong>4</strong>
+              <span>Publicações programadas</span>
+            </div>
+          </article>
+        </div>
+
+        <div class="page-toolbar">
+          <div class="toolbar-left">
+            <button class="btn btn-secondary" type="button">←</button>
+            <button class="btn btn-secondary" type="button">Agosto 2026</button>
+            <button class="btn btn-secondary" type="button">→</button>
+          </div>
+
+          <div class="filters">
+            <select>
+              <option>Mês</option>
+              <option>Semana</option>
+              <option>Dia</option>
+            </select>
+
+            <select>
+              <option>Todas as equipes</option>
+              <option>Fotografia</option>
+              <option>Vídeo</option>
+              <option>Jornalismo</option>
+              <option>Social Media</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="agenda-help">
           <div>
-            <span>Orientação</span>
-            <h3>Sobre o compromisso</h3>
+            <strong>Clique em um compromisso</strong>
+            <span>
+              Veja tema, responsável, equipe escalada, horário, local e observações
+              sem sair da agenda.
+            </span>
           </div>
+          <span class="agenda-help-badge">Detalhes rápidos</span>
         </div>
 
-        <div class="agenda-detail-grid">
-          <div class="agenda-detail-box">
-            <span>Tema</span>
-            <strong id="agendaModalSubject">Inauguração da UBS Grande Vitória</strong>
-          </div>
+        <div class="calendar-layout">
 
-          <div class="agenda-detail-box">
-            <span>Necessidades</span>
-            <strong id="agendaModalNeeds">Fotografia • Vídeo • Jornalismo</strong>
-          </div>
+          <!-- CALENDÁRIO -->
+          <article class="card calendar-card">
+            <div class="calendar-head">
+              <h3>Agosto 2026</h3>
 
-          <div class="agenda-detail-box agenda-detail-full">
-            <span>Observações / briefing</span>
-            <p id="agendaModalNotes">Orientações da pauta.</p>
-          </div>
+              <div class="legend">
+                <span><i class="pauta"></i>Pauta</span>
+                <span><i class="cobertura"></i>Cobertura</span>
+                <span><i class="entrega"></i>Entrega</span>
+                <span><i class="publicacao"></i>Publicação</span>
+              </div>
+            </div>
+
+            <div class="weekdays">
+              <span>DOM</span>
+              <span>SEG</span>
+              <span>TER</span>
+              <span>QUA</span>
+              <span>QUI</span>
+              <span>SEX</span>
+              <span>SÁB</span>
+            </div>
+
+            <div class="calendar-grid">
+
+              <div class="calendar-day muted"><span class="day-number">26</span></div>
+              <div class="calendar-day muted"><span class="day-number">27</span></div>
+              <div class="calendar-day muted"><span class="day-number">28</span></div>
+              <div class="calendar-day muted"><span class="day-number">29</span></div>
+              <div class="calendar-day muted"><span class="day-number">30</span></div>
+              <div class="calendar-day muted"><span class="day-number">31</span></div>
+
+              <div class="calendar-day"><span class="day-number">1</span></div>
+              <div class="calendar-day"><span class="day-number">2</span></div>
+              <div class="calendar-day"><span class="day-number">3</span></div>
+              <div class="calendar-day"><span class="day-number">4</span></div>
+              <div class="calendar-day"><span class="day-number">5</span></div>
+              <div class="calendar-day"><span class="day-number">6</span></div>
+              <div class="calendar-day"><span class="day-number">7</span></div>
+              <div class="calendar-day"><span class="day-number">8</span></div>
+              <div class="calendar-day"><span class="day-number">9</span></div>
+
+              <div class="calendar-day today">
+                <span class="day-number">10</span>
+
+                <button type="button" class="cal-event pauta agenda-open" data-event-id="briefing-ubs">
+                  08:30 Briefing UBS
+                </button>
+
+                <button type="button" class="cal-event cobertura agenda-open" data-event-id="inauguracao-ubs">
+                  09:00 Inauguração UBS
+                </button>
+
+                <button type="button" class="cal-event cobertura agenda-open" data-event-id="kits-escolares">
+                  10:30 Kits escolares
+                </button>
+
+                <button type="button" class="cal-event entrega agenda-open" data-event-id="reel-feira">
+                  13:30 Reel Feira
+                </button>
+
+                <button type="button" class="cal-event publicacao agenda-open" data-event-id="agenda-prefeito">
+                  18:00 Agenda Prefeito
+                </button>
+              </div>
+
+              <div class="calendar-day">
+                <span class="day-number">11</span>
+
+                <button type="button" class="cal-event pauta agenda-open" data-event-id="agosto-lilas">
+                  08:00 Agosto Lilás
+                </button>
+
+                <button type="button" class="cal-event entrega agenda-open" data-event-id="revisao-video">
+                  15:00 Revisão vídeo
+                </button>
+              </div>
+
+              <div class="calendar-day">
+                <span class="day-number">12</span>
+
+                <button type="button" class="cal-event cobertura agenda-open" data-event-id="agenda-gabinete">
+                  09:30 Agenda Gabinete
+                </button>
+
+                <button type="button" class="cal-event publicacao agenda-open" data-event-id="materia-institucional">
+                  17:30 Matéria
+                </button>
+              </div>
+
+              <div class="calendar-day">
+                <span class="day-number">13</span>
+
+                <button type="button" class="cal-event cobertura agenda-open" data-event-id="vacinacao">
+                  07:30 Vacinação
+                </button>
+              </div>
+
+              <div class="calendar-day">
+                <span class="day-number">14</span>
+
+                <button type="button" class="cal-event entrega agenda-open" data-event-id="master-video">
+                  14:00 Master vídeo
+                </button>
+              </div>
+
+              <div class="calendar-day">
+                <span class="day-number">15</span>
+
+                <button type="button" class="cal-event publicacao agenda-open" data-event-id="reel-juventude">
+                  18:30 Reel Juventude
+                </button>
+              </div>
+
+              <div class="calendar-day"><span class="day-number">16</span></div>
+              <div class="calendar-day"><span class="day-number">17</span></div>
+              <div class="calendar-day"><span class="day-number">18</span></div>
+              <div class="calendar-day"><span class="day-number">19</span></div>
+              <div class="calendar-day"><span class="day-number">20</span></div>
+              <div class="calendar-day"><span class="day-number">21</span></div>
+              <div class="calendar-day"><span class="day-number">22</span></div>
+              <div class="calendar-day"><span class="day-number">23</span></div>
+              <div class="calendar-day"><span class="day-number">24</span></div>
+              <div class="calendar-day"><span class="day-number">25</span></div>
+              <div class="calendar-day"><span class="day-number">26</span></div>
+              <div class="calendar-day"><span class="day-number">27</span></div>
+              <div class="calendar-day"><span class="day-number">28</span></div>
+              <div class="calendar-day"><span class="day-number">29</span></div>
+              <div class="calendar-day"><span class="day-number">30</span></div>
+              <div class="calendar-day"><span class="day-number">31</span></div>
+
+            </div>
+          </article>
+
+          <!-- LISTA DO DIA -->
+          <aside class="card agenda-day-list">
+
+            <div class="card-head">
+              <div>
+                <span class="kicker">Hoje</span>
+                <h3>10 de agosto</h3>
+                <div class="card-subtitle">5 compromissos</div>
+              </div>
+
+              <span class="badge blue">Segunda</span>
+            </div>
+
+            <div class="timeline">
+
+              <button type="button" class="timeline-item agenda-open" data-event-id="briefing-ubs">
+                <time>08:30</time>
+                <i></i>
+                <div>
+                  <strong>Briefing UBS Grande Vitória</strong>
+                  <span>Ana Lima • Sala da SECOM</span>
+                  <small>3 profissionais escalados</small>
+                </div>
+              </button>
+
+              <button type="button" class="timeline-item agenda-open" data-event-id="inauguracao-ubs">
+                <time>09:00</time>
+                <i></i>
+                <div>
+                  <strong>Inauguração da UBS</strong>
+                  <span>Ana Lima • SEMSA</span>
+                  <small>Foto, vídeo, drone e jornalismo</small>
+                </div>
+              </button>
+
+              <button type="button" class="timeline-item agenda-open" data-event-id="kits-escolares">
+                <time>10:30</time>
+                <i></i>
+                <div>
+                  <strong>Entrega de kits escolares</strong>
+                  <span>Pedro Lima • SEMED</span>
+                  <small>Foto e matéria</small>
+                </div>
+              </button>
+
+              <button type="button" class="timeline-item agenda-open" data-event-id="reel-feira">
+                <time>13:30</time>
+                <i></i>
+                <div>
+                  <strong>Prazo Reel Feira</strong>
+                  <span>João Silva • Produção</span>
+                  <small>Versão V3</small>
+                </div>
+              </button>
+
+              <button type="button" class="timeline-item agenda-open" data-event-id="agenda-prefeito">
+                <time>18:00</time>
+                <i></i>
+                <div>
+                  <strong>Publicar Agenda do Prefeito</strong>
+                  <span>Maria Souza • Social Media</span>
+                  <small>Instagram + Facebook</small>
+                </div>
+              </button>
+
+            </div>
+          </aside>
+
         </div>
-      </section>
-    </div>
 
-    <footer class="agenda-modal-footer">
-      <button type="button" class="btn btn-secondary" data-agenda-close>Fechar</button>
-      <a class="btn btn-secondary" href="pautas.html" id="agendaModalPautaLink">Ver pauta</a>
-      <button type="button" class="btn btn-primary" data-demo="Editar compromisso da agenda">Editar compromisso</button>
-    </footer>
-  </section>
-</div>
+      </div>
+    </section>
+  </main>
 
-<script src="../assets/js/app.js"></script>
-<script src="../assets/js/agenda.js"></script>
+  <!-- =========================================================
+       MODAL DETALHES
+       ========================================================= -->
+  <div class="agenda-modal" id="agendaModal" aria-hidden="true">
+
+    <div class="agenda-modal-backdrop" data-agenda-close></div>
+
+    <section
+      class="agenda-modal-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="agendaModalTitle"
+    >
+
+      <header class="agenda-modal-header">
+
+        <div class="agenda-modal-heading">
+          <span class="agenda-modal-type" id="agendaModalType">Cobertura</span>
+          <h2 id="agendaModalTitle">Detalhes do compromisso</h2>
+          <p id="agendaModalTheme">Tema da atividade</p>
+        </div>
+
+        <button
+          type="button"
+          class="agenda-modal-close"
+          data-agenda-close
+          aria-label="Fechar modal"
+        >
+          ×
+        </button>
+
+      </header>
+
+      <div class="agenda-modal-body">
+
+        <section class="agenda-primary-info">
+
+          <article class="agenda-info-card agenda-info-time">
+            <span>Horário</span>
+            <strong id="agendaModalTime">09:00</strong>
+            <small id="agendaModalDuration">09:00 às 11:00</small>
+          </article>
+
+          <article class="agenda-info-card agenda-info-responsible">
+            <span>Responsável</span>
+            <strong id="agendaModalResponsible">Ana Lima</strong>
+            <small id="agendaModalResponsibleRole">Jornalismo / Coordenação</small>
+          </article>
+
+          <article class="agenda-info-card">
+            <span>Local</span>
+            <strong id="agendaModalLocation">Grande Vitória</strong>
+            <small id="agendaModalAddress">Coari - AM</small>
+          </article>
+
+          <article class="agenda-info-card">
+            <span>Secretaria / origem</span>
+            <strong id="agendaModalDepartment">SEMSA</strong>
+            <small id="agendaModalPauta">P-2026-0187</small>
+          </article>
+
+        </section>
+
+        <section class="agenda-modal-section">
+
+          <div class="agenda-section-title">
+            <div>
+              <span>Equipe escalada</span>
+              <h3>Quem vai</h3>
+            </div>
+
+            <span class="agenda-team-count" id="agendaTeamCount">3 pessoas</span>
+          </div>
+
+          <div class="agenda-team-grid" id="agendaModalTeam"></div>
+
+        </section>
+
+        <section class="agenda-modal-section">
+
+          <div class="agenda-section-title">
+            <div>
+              <span>Orientação</span>
+              <h3>Sobre o compromisso</h3>
+            </div>
+          </div>
+
+          <div class="agenda-detail-grid">
+
+            <div class="agenda-detail-box">
+              <span>Tema</span>
+              <strong id="agendaModalSubject">Inauguração da UBS Grande Vitória</strong>
+            </div>
+
+            <div class="agenda-detail-box">
+              <span>Necessidades</span>
+              <strong id="agendaModalNeeds">Fotografia • Vídeo • Jornalismo</strong>
+            </div>
+
+            <div class="agenda-detail-box agenda-detail-full">
+              <span>Observações / briefing</span>
+              <p id="agendaModalNotes">Orientações da pauta.</p>
+            </div>
+
+          </div>
+
+        </section>
+
+      </div>
+
+      <footer class="agenda-modal-footer">
+        <button type="button" class="btn btn-secondary" data-agenda-close>
+          Fechar
+        </button>
+
+        <a class="btn btn-secondary" href="pautas.html" id="agendaModalPautaLink">
+          Ver pauta
+        </a>
+
+        <button type="button" class="btn btn-primary" id="editCommitmentBtn">
+          Editar compromisso
+        </button>
+      </footer>
+
+    </section>
+  </div>
+
+  <script>
+    (function(){
+      'use strict';
+
+      /* =======================================================
+         DADOS MOCKADOS DA AGENDA
+         No backend isso virá do banco de dados.
+         ======================================================= */
+      const events = {
+        'briefing-ubs': {
+          type:'pauta',
+          typeLabel:'Briefing / Pauta',
+          title:'Briefing UBS Grande Vitória',
+          theme:'Alinhamento da cobertura da inauguração da UBS Grande Vitória',
+          subject:'Inauguração da UBS Grande Vitória',
+          date:'10/08/2026',
+          time:'08:30',
+          duration:'08:30 às 08:50',
+          responsible:'Ana Lima',
+          responsibleRole:'Jornalista / Responsável pela pauta',
+          department:'SEMSA',
+          pauta:'P-2026-0187',
+          pautaHref:'pauta-detalhe.html',
+          location:'Sala da SECOM',
+          address:'Prefeitura de Coari',
+          needs:'Briefing • Fotografia • Vídeo • Jornalismo',
+          notes:'Repassar roteiro da inauguração, autoridades previstas, pontos de captação, entrevistas prioritárias e divisão da equipe antes da saída.',
+          team:[
+            {name:'Ana Lima',role:'Jornalista / Coordenação',initials:'AL',responsible:true},
+            {name:'João Silva',role:'Fotógrafo',initials:'JS'},
+            {name:'Marcos Reis',role:'Cinegrafista / Drone',initials:'MR'}
+          ]
+        },
+
+        'inauguracao-ubs': {
+          type:'cobertura',
+          typeLabel:'Cobertura',
+          title:'Inauguração da UBS Grande Vitória',
+          theme:'Inauguração e entrega oficial da nova unidade de saúde',
+          subject:'Inauguração da UBS Grande Vitória',
+          date:'10/08/2026',
+          time:'09:00',
+          duration:'09:00 às 11:00',
+          responsible:'Ana Lima',
+          responsibleRole:'Jornalista / Responsável pela cobertura',
+          department:'SEMSA',
+          pauta:'P-2026-0187',
+          pautaHref:'pauta-detalhe.html',
+          location:'UBS Grande Vitória',
+          address:'Bairro Grande Vitória • Coari - AM',
+          needs:'Fotografia • Vídeo • Drone • Entrevistas • Matéria',
+          notes:'Registrar chegada das autoridades, descerramento da placa, atendimento inicial, imagens gerais da estrutura e entrevistas com gestão e moradores. Priorizar captação horizontal e vertical.',
+          team:[
+            {name:'Ana Lima',role:'Jornalista / Responsável',initials:'AL',responsible:true},
+            {name:'João Silva',role:'Fotógrafo',initials:'JS'},
+            {name:'Marcos Reis',role:'Cinegrafista / Drone',initials:'MR'},
+            {name:'Maria Souza',role:'Social Media',initials:'MS'}
+          ]
+        },
+
+        'kits-escolares': {
+          type:'cobertura',
+          typeLabel:'Cobertura',
+          title:'Entrega de kits escolares',
+          theme:'Entrega de kits escolares aos alunos da rede municipal',
+          subject:'Entrega de kits escolares',
+          date:'10/08/2026',
+          time:'10:30',
+          duration:'10:30 às 12:00',
+          responsible:'Pedro Lima',
+          responsibleRole:'Jornalismo',
+          department:'SEMED',
+          pauta:'P-2026-0188',
+          pautaHref:'pauta-detalhe.html',
+          location:'Escola Municipal',
+          address:'Coari - AM',
+          needs:'Fotografia • Entrevistas • Matéria para portal',
+          notes:'Fazer fotos da entrega, alunos com os kits e entrevista breve com representante da SEMED. Separar ao menos 15 fotos para galeria.',
+          team:[
+            {name:'Pedro Lima',role:'Jornalista / Responsável',initials:'PL',responsible:true},
+            {name:'Luana Costa',role:'Fotografia / Conteúdo',initials:'LC'}
+          ]
+        },
+
+        'reel-feira': {
+          type:'entrega',
+          typeLabel:'Prazo / Entrega',
+          title:'Entrega do Reel • Feira do Produtor',
+          theme:'Finalização do Reel da Feira do Produtor',
+          subject:'Reel Feira do Produtor',
+          date:'10/08/2026',
+          time:'13:30',
+          duration:'Prazo final: 13:30',
+          responsible:'João Silva',
+          responsibleRole:'Editor de vídeo',
+          department:'SECOM',
+          pauta:'P-2026-0184',
+          pautaHref:'pautas.html',
+          location:'Sala de edição',
+          address:'SECOM',
+          needs:'Finalização • Legenda • Trilha • Exportação vertical',
+          notes:'Entregar versão V3 pronta para aprovação. Conferir grafismo, ortografia, volume da trilha e enquadramento 9:16.',
+          team:[
+            {name:'João Silva',role:'Editor / Responsável',initials:'JS',responsible:true},
+            {name:'Ana Lima',role:'Revisão de texto',initials:'AL'}
+          ]
+        },
+
+        'agenda-prefeito': {
+          type:'publicacao',
+          typeLabel:'Publicação',
+          title:'Publicar Agenda do Prefeito',
+          theme:'Publicação da agenda institucional do dia',
+          subject:'Agenda institucional do Prefeito',
+          date:'10/08/2026',
+          time:'18:00',
+          duration:'Publicação programada para 18:00',
+          responsible:'Maria Souza',
+          responsibleRole:'Social Media',
+          department:'Gabinete / SECOM',
+          pauta:'PUB-AGENDA-0810',
+          pautaHref:'publicacoes.html',
+          location:'Publicação digital',
+          address:'Instagram + Facebook',
+          needs:'Texto final • Card aprovado • Links e marcações',
+          notes:'Conferir texto, marcações e arte final antes da publicação. Registrar os links publicados no sistema.',
+          team:[
+            {name:'Maria Souza',role:'Social Media / Responsável',initials:'MS',responsible:true},
+            {name:'Ana Lima',role:'Revisão institucional',initials:'AL'}
+          ]
+        },
+
+        'agosto-lilas': {
+          type:'pauta',
+          typeLabel:'Pauta / Campanha',
+          title:'Campanha Agosto Lilás',
+          theme:'Ação institucional de conscientização do Agosto Lilás',
+          subject:'Campanha Agosto Lilás',
+          date:'11/08/2026',
+          time:'08:00',
+          duration:'08:00 às 10:30',
+          responsible:'Ana Lima',
+          responsibleRole:'Jornalista / Coordenação',
+          department:'SEMAS',
+          pauta:'P-2026-0190',
+          pautaHref:'pauta-detalhe.html',
+          location:'SEMAS',
+          address:'Coari - AM',
+          needs:'Foto • Vídeo • Entrevistas • Matéria • Cards',
+          notes:'Registrar abertura da campanha, falas técnicas e materiais informativos. Separar conteúdo para portal e redes.',
+          team:[
+            {name:'Ana Lima',role:'Jornalista / Responsável',initials:'AL',responsible:true},
+            {name:'Luana Costa',role:'Designer / Fotografia',initials:'LC'},
+            {name:'Marcos Reis',role:'Vídeo',initials:'MR'}
+          ]
+        },
+
+        'revisao-video': {
+          type:'entrega',
+          typeLabel:'Revisão',
+          title:'Revisão do vídeo institucional',
+          theme:'Revisão técnica e institucional do vídeo',
+          subject:'Vídeo institucional',
+          date:'11/08/2026',
+          time:'15:00',
+          duration:'15:00 às 15:40',
+          responsible:'Carlos Oliveira',
+          responsibleRole:'Coordenação / Aprovação',
+          department:'SECOM',
+          pauta:'PR-0823',
+          pautaHref:'producoes.html',
+          location:'Sala de aprovação',
+          address:'SECOM',
+          needs:'Revisão de imagem • Texto • Áudio • Identidade',
+          notes:'Validar versão antes de encaminhar para aprovação final. Registrar qualquer ajuste por timecode.',
+          team:[
+            {name:'Carlos Oliveira',role:'Responsável pela revisão',initials:'CO',responsible:true},
+            {name:'Marcos Reis',role:'Editor de vídeo',initials:'MR'},
+            {name:'Ana Lima',role:'Revisão textual',initials:'AL'}
+          ]
+        },
+
+        'agenda-gabinete': {
+          type:'cobertura',
+          typeLabel:'Cobertura',
+          title:'Agenda do Gabinete',
+          theme:'Registro da agenda institucional do Gabinete',
+          subject:'Agenda institucional do Gabinete',
+          date:'12/08/2026',
+          time:'09:30',
+          duration:'09:30 às 11:30',
+          responsible:'Carlos Oliveira',
+          responsibleRole:'Coordenação de cobertura',
+          department:'Gabinete',
+          pauta:'P-2026-0191',
+          pautaHref:'pauta-detalhe.html',
+          location:'Gabinete do Prefeito',
+          address:'Prefeitura de Coari',
+          needs:'Fotografia • Vídeo curto • Registro institucional',
+          notes:'Cobertura institucional com foco em registros oficiais e conteúdo de atualização para redes.',
+          team:[
+            {name:'Carlos Oliveira',role:'Responsável',initials:'CO',responsible:true},
+            {name:'João Silva',role:'Fotógrafo',initials:'JS'},
+            {name:'Marcos Reis',role:'Cinegrafista',initials:'MR'}
+          ]
+        },
+
+        'materia-institucional': {
+          type:'publicacao',
+          typeLabel:'Publicação',
+          title:'Publicação da matéria institucional',
+          theme:'Matéria institucional para o Portal da Prefeitura',
+          subject:'Matéria institucional',
+          date:'12/08/2026',
+          time:'17:30',
+          duration:'Publicação programada para 17:30',
+          responsible:'Ana Lima',
+          responsibleRole:'Jornalista / Publicação editorial',
+          department:'SECOM',
+          pauta:'MT-0412',
+          pautaHref:'materias.html',
+          location:'Portal institucional',
+          address:'Site da Prefeitura',
+          needs:'Texto aprovado • Fotos selecionadas • Capa',
+          notes:'Publicar somente após validação final. Conferir título, legenda das fotos e links internos.',
+          team:[
+            {name:'Ana Lima',role:'Responsável editorial',initials:'AL',responsible:true},
+            {name:'Maria Souza',role:'Apoio de publicação',initials:'MS'}
+          ]
+        },
+
+        'vacinacao': {
+          type:'cobertura',
+          typeLabel:'Cobertura',
+          title:'Ação de vacinação itinerante',
+          theme:'Cobertura de vacinação itinerante na zona rural',
+          subject:'Vacinação itinerante',
+          date:'13/08/2026',
+          time:'07:30',
+          duration:'07:30 às 13:00',
+          responsible:'João Silva',
+          responsibleRole:'Fotografia / Líder de campo',
+          department:'SEMSA',
+          pauta:'P-2026-0192',
+          pautaHref:'pauta-detalhe.html',
+          location:'Zona rural',
+          address:'Coari - AM',
+          needs:'Fotografia • Vídeo • Áudio ambiente',
+          notes:'Equipe deve sair com baterias extras e armazenamento suficiente. Priorizar registro humanizado e chegada às comunidades.',
+          team:[
+            {name:'João Silva',role:'Responsável / Fotógrafo',initials:'JS',responsible:true},
+            {name:'Marcos Reis',role:'Cinegrafista',initials:'MR'}
+          ]
+        },
+
+        'master-video': {
+          type:'entrega',
+          typeLabel:'Entrega Master',
+          title:'Entrega do Master do vídeo',
+          theme:'Arquivo master do vídeo institucional',
+          subject:'Master de vídeo institucional',
+          date:'14/08/2026',
+          time:'14:00',
+          duration:'Prazo final: 14:00',
+          responsible:'Marcos Reis',
+          responsibleRole:'Editor / Finalização',
+          department:'SECOM',
+          pauta:'PR-MASTER-0814',
+          pautaHref:'masters.html',
+          location:'Sala de edição',
+          address:'SECOM',
+          needs:'Master 4K • Check de áudio • Arquivo de preservação',
+          notes:'Exportar master em alta qualidade e versão derivada para publicação. O master deverá seguir para o acervo.',
+          team:[
+            {name:'Marcos Reis',role:'Editor / Responsável',initials:'MR',responsible:true},
+            {name:'Carlos Oliveira',role:'Validação técnica',initials:'CO'}
+          ]
+        },
+
+        'reel-juventude': {
+          type:'publicacao',
+          typeLabel:'Publicação',
+          title:'Reel • Semana da Juventude',
+          theme:'Publicação de Reel da Semana da Juventude',
+          subject:'Semana da Juventude',
+          date:'15/08/2026',
+          time:'18:30',
+          duration:'Publicação programada para 18:30',
+          responsible:'Maria Souza',
+          responsibleRole:'Social Media',
+          department:'SECOM',
+          pauta:'PUB-JUV-0815',
+          pautaHref:'publicacoes.html',
+          location:'Instagram',
+          address:'@coarioficial',
+          needs:'Reel aprovado • Legenda • Capa • Marcações',
+          notes:'Conferir capa, legenda, hashtags institucionais e qualidade do arquivo final antes do envio.',
+          team:[
+            {name:'Maria Souza',role:'Social Media / Responsável',initials:'MS',responsible:true},
+            {name:'Luana Costa',role:'Design / Capa',initials:'LC'}
+          ]
+        }
+      };
+
+      /* =======================================================
+         SIDEBAR MOBILE
+         ======================================================= */
+      const sidebar = document.getElementById('sidebar');
+      const sidebarToggle = document.getElementById('sidebarToggle');
+      const overlay = document.getElementById('mobileOverlay');
+
+      function isMobile(){
+        return window.matchMedia('(max-width:900px)').matches;
+      }
+
+      sidebarToggle.addEventListener('click',function(){
+        if(isMobile()){
+          sidebar.classList.toggle('mobile-open');
+          overlay.classList.toggle('show');
+        }
+      });
+
+      overlay.addEventListener('click',function(){
+        sidebar.classList.remove('mobile-open');
+        overlay.classList.remove('show');
+      });
+
+      /* =======================================================
+         AÇÕES SIMPLES DO PROTÓTIPO
+         ======================================================= */
+      document.getElementById('notificationsBtn').addEventListener('click',function(){
+        alert('3 itens aguardam sua atenção.');
+      });
+
+      document.getElementById('todayBtn').addEventListener('click',function(){
+        document.querySelector('.calendar-day.today').scrollIntoView({
+          behavior:'smooth',
+          block:'center'
+        });
+      });
+
+      document.getElementById('newCommitmentBtn').addEventListener('click',function(){
+        alert('Próxima etapa: abrir modal de cadastro de novo compromisso.');
+      });
+
+      document.getElementById('editCommitmentBtn').addEventListener('click',function(){
+        alert('Próxima etapa: abrir edição do compromisso selecionado.');
+      });
+
+      document.getElementById('globalSearch').addEventListener('keydown',function(e){
+        if(e.key === 'Enter'){
+          alert('Busca do protótipo: ' + (this.value || 'sem termo'));
+        }
+      });
+
+      /* =======================================================
+         MODAL DE DETALHES
+         ======================================================= */
+      const modal = document.getElementById('agendaModal');
+
+      const fields = {
+        type:document.getElementById('agendaModalType'),
+        title:document.getElementById('agendaModalTitle'),
+        theme:document.getElementById('agendaModalTheme'),
+        time:document.getElementById('agendaModalTime'),
+        duration:document.getElementById('agendaModalDuration'),
+        responsible:document.getElementById('agendaModalResponsible'),
+        responsibleRole:document.getElementById('agendaModalResponsibleRole'),
+        location:document.getElementById('agendaModalLocation'),
+        address:document.getElementById('agendaModalAddress'),
+        department:document.getElementById('agendaModalDepartment'),
+        pauta:document.getElementById('agendaModalPauta'),
+        team:document.getElementById('agendaModalTeam'),
+        teamCount:document.getElementById('agendaTeamCount'),
+        subject:document.getElementById('agendaModalSubject'),
+        needs:document.getElementById('agendaModalNeeds'),
+        notes:document.getElementById('agendaModalNotes'),
+        pautaLink:document.getElementById('agendaModalPautaLink')
+      };
+
+      let lastTrigger = null;
+
+      function escapeHtml(value){
+        return String(value ?? '')
+          .replaceAll('&','&amp;')
+          .replaceAll('<','&lt;')
+          .replaceAll('>','&gt;')
+          .replaceAll('"','&quot;')
+          .replaceAll("'","&#039;");
+      }
+
+      function renderTeam(team){
+        fields.team.innerHTML = team.map(function(person){
+          return `
+            <article class="agenda-person ${person.responsible ? 'agenda-person-responsible' : ''}">
+              <div class="agenda-person-avatar">${escapeHtml(person.initials)}</div>
+              <div class="agenda-person-info">
+                <strong>${escapeHtml(person.name)}</strong>
+                <span>${escapeHtml(person.role)}</span>
+                ${person.responsible ? '<span class="agenda-person-tag">Responsável</span>' : ''}
+              </div>
+            </article>
+          `;
+        }).join('');
+
+        fields.teamCount.textContent =
+          team.length + ' ' + (team.length === 1 ? 'pessoa' : 'pessoas');
+      }
+
+      function openModal(eventId,trigger){
+        const item = events[eventId];
+        if(!item) return;
+
+        lastTrigger = trigger || null;
+
+        modal.dataset.type = item.type;
+
+        fields.type.textContent = item.typeLabel;
+        fields.title.textContent = item.title;
+        fields.theme.textContent = item.date + ' • ' + item.theme;
+        fields.time.textContent = item.time;
+        fields.duration.textContent = item.duration;
+        fields.responsible.textContent = item.responsible;
+        fields.responsibleRole.textContent = item.responsibleRole;
+        fields.location.textContent = item.location;
+        fields.address.textContent = item.address;
+        fields.department.textContent = item.department;
+        fields.pauta.textContent = item.pauta;
+        fields.subject.textContent = item.subject;
+        fields.needs.textContent = item.needs;
+        fields.notes.textContent = item.notes;
+        fields.pautaLink.href = item.pautaHref || 'pautas.html';
+
+        renderTeam(item.team || []);
+
+        modal.classList.add('is-open');
+        modal.setAttribute('aria-hidden','false');
+        document.body.classList.add('modal-open');
+
+        requestAnimationFrame(function(){
+          modal.querySelector('.agenda-modal-close')?.focus();
+        });
+      }
+
+      function closeModal(){
+        modal.classList.remove('is-open');
+        modal.setAttribute('aria-hidden','true');
+        document.body.classList.remove('modal-open');
+
+        if(lastTrigger && typeof lastTrigger.focus === 'function'){
+          lastTrigger.focus();
+        }
+      }
+
+      document.querySelectorAll('.agenda-open[data-event-id]').forEach(function(trigger){
+        trigger.addEventListener('click',function(){
+          openModal(trigger.dataset.eventId,trigger);
+        });
+      });
+
+      modal.querySelectorAll('[data-agenda-close]').forEach(function(btn){
+        btn.addEventListener('click',closeModal);
+      });
+
+      document.addEventListener('keydown',function(e){
+        if(e.key === 'Escape' && modal.classList.contains('is-open')){
+          closeModal();
+        }
+      });
+
+    })();
+  </script>
+
 </body>
 </html>
