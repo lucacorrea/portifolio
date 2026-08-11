@@ -1,49 +1,56 @@
-# SECOM Coari — UI v3
+# SECOM Coari — UI v4 Demonstração Completa
 
-Versão aprimorada do protótipo em HTML/CSS com JavaScript progressivo.
+Esta versão preserva a estrutura física completa do protótipo v3 e adiciona uma camada de demonstração funcional.
 
-## Princípios desta versão
-- Cada página continua sendo HTML completo: não fica em branco se o JavaScript falhar.
-- CSS centralizado e baseado em variáveis.
-- Sidebar recolhível no desktop e drawer no mobile.
-- Layout fluido até 1680px.
-- Tabelas com busca local progressiva.
-- Pauta detalhada virou a central completa do evento.
-- Acervo separa Original, Master e Proxy.
-- Design responsivo para desktop, notebook, tablet e celular.
+## Estrutura
 
-## Páginas principais
-- login.html
-- index.html
-- pages/agenda.html
-- pages/pautas.html
-- pages/pauta-detalhe.html
-- pages/coberturas.html
-- pages/demandas.html
-- pages/producoes.html
-- pages/materias.html
-- pages/aprovacoes.html
-- pages/publicacoes.html
-- pages/acervo.html
-- pages/originais.html
-- pages/masters.html
-- pages/preservacao.html
-- pages/equipe.html
-- pages/secretarias.html
-- pages/relatorios.html
-- pages/auditoria.html
-- pages/usuarios.html
-- pages/configuracoes.html
-- pages/perfil.html
+- `login.html`
+- `index.html` — Dashboard
+- `pages/agenda.html`
+- `pages/pautas.html`
+- `pages/pauta-detalhe.html`
+- `pages/coberturas.html`
+- `pages/demandas.html`
+- `pages/producoes.html`
+- `pages/materias.html`
+- `pages/aprovacoes.html`
+- `pages/publicacoes.html`
+- `pages/acervo.html`
+- `pages/originais.html`
+- `pages/masters.html`
+- `pages/preservacao.html`
+- `pages/equipe.html`
+- `pages/secretarias.html`
+- `pages/relatorios.html`
+- `pages/auditoria.html`
+- `pages/usuarios.html`
+- `pages/configuracoes.html`
+- `pages/perfil.html`
+- `assets/css/app.css`
+- `assets/css/demo.css`
+- `assets/js/app.js`
+- `assets/js/demo.js`
 
-## Backend futuro
-Ao converter para PHP OOP, a UI pode ser mantida:
-- layout/sidebar/topbar viram partials;
-- páginas viram views;
-- controllers chamam services;
-- services usam repositories;
-- MySQL guarda metadados e relacionamentos;
-- storage dedicado guarda bytes dos arquivos;
-- original é imutável;
-- preview/proxy é derivado;
-- auditoria registra ações sensíveis.
+## Recursos demonstrativos
+
+- Login funcional de demonstração.
+- Dashboard e navegação entre páginas reais.
+- Agenda com modal de detalhes dos compromissos.
+- Modal de cadastro de compromisso com responsável, equipe, tema, horário, local e briefing.
+- Modais de cadastro para pauta, demanda, produção, matéria, publicação, profissional, secretaria e usuário.
+- Modal de upload demonstrativo para o acervo.
+- Visualização contextual de registros e arquivos.
+- Ações de revisão, visualização, download demonstrativo e links.
+- Relatórios clicáveis e exportação CSV.
+- Verificação simulada de integridade do acervo.
+- Perfis e permissões.
+- Sidebar responsiva e recolhível.
+- As páginas continuam renderizando mesmo se a camada de demonstração JavaScript falhar.
+
+## Arquitetura futura
+
+Para produção, a recomendação é manter as páginas/views e migrar a lógica para PHP 8.x OOP:
+
+`Route -> Controller -> Service -> Repository -> MySQL / Storage`
+
+Arquivos originais devem ficar em storage protegido, sem sobrescrita e com checksum SHA-256.
