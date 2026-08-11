@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0f172a">
+  <title>Dashboard • SECOM Coari</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/app.css">
+  <link rel="stylesheet" href="assets/css/demo.css">
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-logo">SC</div>
+    <div class="brand-copy"><strong>SECOM</strong><span>Prefeitura de Coari</span></div>
+  </div>
+  <nav class="nav">
+<a class="nav-link active" href="index.html"><span class="nav-icon">⌂</span><span class="nav-text">Dashboard</span></a>
+<a class="nav-link" href="pages/agenda.html"><span class="nav-icon">▦</span><span class="nav-text">Agenda</span><span class="nav-badge">8</span></a>
+<div class="nav-label">Comunicação</div>
+<a class="nav-link" href="pages/pautas.html"><span class="nav-icon">▤</span><span class="nav-text">Pautas</span><span class="nav-badge">12</span></a>
+<a class="nav-link" href="pages/coberturas.html"><span class="nav-icon">◉</span><span class="nav-text">Coberturas</span><span class="nav-badge">5</span></a>
+<a class="nav-link" href="pages/demandas.html"><span class="nav-icon">◫</span><span class="nav-text">Demandas</span><span class="nav-badge">3</span></a>
+<div class="nav-label">Produção</div>
+<a class="nav-link" href="pages/producoes.html"><span class="nav-icon">✎</span><span class="nav-text">Produções</span><span class="nav-badge">14</span></a>
+<a class="nav-link" href="pages/materias.html"><span class="nav-icon">▧</span><span class="nav-text">Matérias</span><span class="nav-badge">4</span></a>
+<a class="nav-link" href="pages/aprovacoes.html"><span class="nav-icon">✓</span><span class="nav-text">Aprovações</span><span class="nav-badge">7</span></a>
+<a class="nav-link" href="pages/publicacoes.html"><span class="nav-icon">↑</span><span class="nav-text">Publicações</span><span class="nav-badge">9</span></a>
+<div class="nav-label">Acervo</div>
+<a class="nav-link" href="pages/acervo.html"><span class="nav-icon">▣</span><span class="nav-text">Acervo institucional</span></a>
+<a class="nav-link" href="pages/originais.html"><span class="nav-icon">🔒</span><span class="nav-text">Originais</span></a>
+<a class="nav-link" href="pages/masters.html"><span class="nav-icon">▶</span><span class="nav-text">Masters</span></a>
+<a class="nav-link" href="pages/preservacao.html"><span class="nav-icon">◈</span><span class="nav-text">Preservação</span></a>
+<div class="nav-label">Gestão</div>
+<a class="nav-link" href="pages/equipe.html"><span class="nav-icon">♟</span><span class="nav-text">Equipe</span></a>
+<a class="nav-link" href="pages/secretarias.html"><span class="nav-icon">▥</span><span class="nav-text">Secretarias</span></a>
+<a class="nav-link" href="pages/relatorios.html"><span class="nav-icon">▤</span><span class="nav-text">Relatórios</span></a>
+<a class="nav-link" href="pages/auditoria.html"><span class="nav-icon">◴</span><span class="nav-text">Auditoria</span></a>
+<div class="nav-label">Sistema</div>
+<a class="nav-link" href="pages/usuarios.html"><span class="nav-icon">♙</span><span class="nav-text">Usuários</span></a>
+<a class="nav-link" href="pages/configuracoes.html"><span class="nav-icon">⚙</span><span class="nav-text">Configurações</span></a>
+<a class="nav-link" href="pages/perfil.html"><span class="nav-icon">○</span><span class="nav-text">Meu perfil</span></a>
+
+  </nav>
+  <div class="sidebar-footer">
+    <div class="storage-box">
+      <div class="storage-copy">
+        <div class="storage-row"><span>Armazenamento</span><strong>8,4 / 20 TB</strong></div>
+      </div>
+      <div class="progress"><span style="width:42%"></span></div>
+      <div class="storage-copy"><small>Originais protegidos • Integridade 100%</small></div>
+    </div>
+  </div>
+</aside>
+<div class="mobile-overlay"></div>
+<main class="main">
+
+<header class="topbar">
+  <div class="topbar-left">
+    <button class="icon-btn" data-sidebar-toggle title="Recolher/abrir menu">☰</button>
+    <div class="page-heading"><h1>Dashboard</h1><p>Visão geral da comunicação institucional</p></div>
+  </div>
+  <div class="topbar-actions">
+    <div class="quick-search desktop-only">⌕ <input data-global-search placeholder="Buscar pauta, arquivo, pessoa..."><kbd>Enter</kbd></div>
+    <a class="btn btn-primary new-pauta-btn" href="pages/pautas.html">+ Nova pauta</a>
+    <button class="icon-btn" data-demo="3 itens aguardam sua atenção">🔔<span class="notification-dot"></span></button>
+    <a class="user-chip" href="pages/perfil.html">
+      <div class="avatar">AS</div><div class="user-copy"><strong>Administrador SECOM</strong><span>Gestão</span></div>
+    </a>
+  </div>
+</header>
+<section class="content"><div class="content-inner">
+<div class="breadcrumb"><span>Dashboard</span></div>
+<div class="page-intro">
+  <div><span class="kicker">Central operacional</span><h2>Visão geral da comunicação</h2><p>Acompanhe o que acontece hoje, gargalos de produção, agenda, publicações e saúde do acervo.</p></div>
+  <div class="page-actions"><a class="btn btn-secondary" href="pages/relatorios.html">Ver relatórios</a><a class="btn btn-primary" href="pages/pautas.html">+ Nova pauta</a></div>
+</div>
+<div class="hero-grid">
+  <article class="hero">
+    <div>
+      <span class="kicker light">Segunda-feira • 10 de agosto de 2026</span>
+      <h2>Da pauta ao acervo, sem perder o contexto nem a qualidade.</h2>
+      <p>Agenda, cobertura, material bruto, edição, aprovação e publicação ficam conectados à mesma pauta — com os originais preservados para o acervo histórico da Prefeitura.</p>
+    </div>
+    <div class="hero-actions">
+      <a class="btn btn-light" href="pages/agenda.html">Abrir agenda</a>
+      <a class="btn btn-outline" href="pages/acervo.html">Explorar acervo</a>
+    </div>
+  </article>
+
+  <article class="card">
+    <div class="card-head">
+      <div><span class="kicker">Saúde do acervo</span><h3>8,4 TB utilizados</h3><div class="card-subtitle">Capacidade atual: 20 TB</div></div>
+      <span class="badge green">Íntegro</span>
+    </div>
+    <div class="progress light"><span style="width:42%"></span></div>
+    <div class="storage-summary">
+      <div><strong>48.392</strong><span>Originais</span></div>
+      <div><strong>1.248</strong><span>Masters</span></div>
+      <div><strong>100%</strong><span>Checksums válidos</span></div>
+    </div>
+    <div class="card-divider"></div>
+    <div class="list-row"><div class="list-row-main"><strong>Último backup</strong><span>Hoje às 02:00 • sem falhas</span></div><span class="badge green">OK</span></div>
+  </article>
+</div>
+
+<div class="stats-grid">
+  <article class="stat-card"><span>Pautas hoje</span><strong>8</strong><small>3 em cobertura agora</small></article>
+  <article class="stat-card"><span>Em produção</span><strong>14</strong><small>5 vencem hoje</small></article>
+  <article class="stat-card"><span>Aguardando aprovação</span><strong>7</strong><small>2 marcadas como urgentes</small></article>
+  <article class="stat-card"><span>Prontas para publicar</span><strong>9</strong><small>3 canais diferentes</small></article>
+</div>
+
+<div class="layout-7-5">
+  <article class="card">
+    <div class="card-head">
+      <div><span class="kicker">Agenda integrada</span><h3>Operação de hoje</h3><div class="card-subtitle">Compromissos, coberturas, entregas e publicações</div></div>
+      <a class="link-btn" href="pages/agenda.html">Agenda completa →</a>
+    </div>
+    <div class="timeline">
+      <div class="timeline-item"><time>08:30</time><i></i><div><strong>Briefing • UBS Grande Vitória</strong><span>Sala da SECOM • equipe completa confirmada</span></div></div>
+      <div class="timeline-item"><time>09:00</time><i></i><div><strong>Cobertura • Inauguração da UBS Grande Vitória</strong><span>SEMSA • foto, vídeo e jornalismo</span></div></div>
+      <div class="timeline-item"><time>10:30</time><i></i><div><strong>Cobertura • Entrega de kits escolares</strong><span>SEMED • Luana e Pedro</span></div></div>
+      <div class="timeline-item"><time>13:30</time><i></i><div><strong>Prazo • Reel Feira do Produtor</strong><span>Editor: João • versão V3</span></div></div>
+      <div class="timeline-item"><time>18:00</time><i></i><div><strong>Publicação • Agenda do Prefeito</strong><span>Instagram + Facebook</span></div></div>
+    </div>
+  </article>
+
+  <article class="card">
+    <div class="card-head"><div><span class="kicker">Fluxo</span><h3>Onde o trabalho está parado</h3></div></div>
+    <div class="flow-grid">
+      <div><span>Planejamento</span><strong>12</strong></div>
+      <div><span>Cobertura</span><strong>5</strong></div>
+      <div><span>Produção</span><strong>14</strong></div>
+      <div><span>Revisão</span><strong>8</strong></div>
+      <div><span>Aprovação</span><strong>7</strong></div>
+      <div><span>Publicar</span><strong>9</strong></div>
+    </div>
+    <div class="card-divider"></div>
+    <div class="list-stack">
+      <div class="list-row"><div class="list-row-main"><strong>2 itens urgentes</strong><span>Aguardando aprovação há mais de 2h</span></div><span class="badge red">Atenção</span></div>
+      <div class="list-row"><div class="list-row-main"><strong>5 entregas hoje</strong><span>Entre 13:30 e 18:00</span></div><span class="badge yellow">Prazo</span></div>
+    </div>
+  </article>
+</div>
+
+<div class="two-col">
+  <article class="card">
+    <div class="card-head"><div><span class="kicker">Produções prioritárias</span><h3>Fila que exige ação</h3></div><a class="link-btn" href="pages/producoes.html">Ver todas →</a></div>
+    <div class="list-stack">
+      <div class="list-row"><div class="list-row-main"><strong>Reel • UBS Grande Vitória</strong><span>João Silva • V3 • prazo 17:00</span></div><span class="badge yellow">Aprovação</span></div>
+      <div class="list-row"><div class="list-row-main"><strong>Galeria • Entrega de kits</strong><span>Luana Costa • 24 fotos selecionadas</span></div><span class="badge blue">Produção</span></div>
+      <div class="list-row"><div class="list-row-main"><strong>Vídeo institucional • Obras</strong><span>Marcos Reis • V1 • 48% concluído</span></div><span class="badge blue">Edição</span></div>
+      <div class="list-row"><div class="list-row-main"><strong>Matéria • Agosto Lilás</strong><span>Ana Lima • aguardando revisão final</span></div><span class="badge purple">Revisão</span></div>
+    </div>
+  </article>
+
+  <article class="card">
+    <div class="card-head"><div><span class="kicker">Acervo recente</span><h3>Últimos originais recebidos</h3></div><a class="link-btn" href="pages/acervo.html">Abrir acervo →</a></div>
+    <div class="list-stack">
+      <div class="list-row"><div class="list-row-main"><strong>DSC_8542.ARW</strong><span>UBS Grande Vitória • 24,8 MB • RAW</span></div><span class="badge green">Original</span></div>
+      <div class="list-row"><div class="list-row-main"><strong>DJI_00291.MP4</strong><span>UBS Grande Vitória • 8,7 GB • 4K</span></div><span class="badge green">Original</span></div>
+      <div class="list-row"><div class="list-row-main"><strong>ENTREVISTA_SECRETARIA.wav</strong><span>Agosto Lilás • 182 MB • 24-bit</span></div><span class="badge green">Original</span></div>
+      <div class="list-row"><div class="list-row-main"><strong>UBS_REEL_MASTER_V3.mp4</strong><span>2,4 GB • 4K • master final</span></div><span class="badge purple">Master</span></div>
+    </div>
+  </article>
+</div>
+
+</div></section>
+</main>
+<script src="assets/js/app.js"></script>
+  <script src="assets/js/demo.js"></script>
+</body>
+</html>

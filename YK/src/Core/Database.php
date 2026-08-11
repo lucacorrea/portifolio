@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Core;
@@ -55,18 +56,28 @@ final class Database
         );
 
         try {
-            $this->connection = new PDO($dsn, $username, $password, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES => false,
-                PDO::ATTR_STRINGIFY_FETCHES => false,
-            ]);
+            $this->connection = new PDO(
+                $dsn,
+                $username,
+                $password,
+                [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES => false,
+                    PDO::ATTR_STRINGIFY_FETCHES => false,
+                    PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true,
+                ]
+            );
 
             return $this->connection;
         } catch (PDOException $exception) {
             $this->logFailure();
 
-            throw new RuntimeException('Nao foi possivel concluir a operacao.');
+            throw new RuntimeException(
+                'Nao foi possivel concluir a operacao.',
+                0,
+                $exception
+            );
         }
     }
 

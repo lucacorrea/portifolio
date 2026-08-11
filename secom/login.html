@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Login • SECOM Coari</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/app.css">
+  <link rel="stylesheet" href="assets/css/demo.css">
+</head>
+<body>
+<div class="login-page">
+  <section class="login-hero">
+    <span class="kicker light">Prefeitura Municipal de Coari</span>
+    <h1>SECOM</h1>
+    <p>Gestão integrada da comunicação institucional, com agenda, pautas, produção, publicação e preservação do acervo digital.</p>
+    <div class="login-features">
+      <div>▦ Agenda ligada às pautas e equipes</div>
+      <div>🔒 Originais preservados sem recompressão</div>
+      <div>✓ Aprovações com histórico de versões</div>
+      <div>▣ Acervo histórico organizado por evento e secretaria</div>
+    </div>
+  </section>
+  <section class="login-card">
+    <span class="kicker">Acesso ao sistema</span>
+    <h2>Bem-vindo</h2>
+    <p>Protótipo visual. A autenticação real será aplicada no backend.</p>
+    <label class="field"><span>Usuário</span><input value="admin.secom"></label>
+    <label class="field"><span>Senha</span><input type="password" value="123456"></label>
+    <button class="btn btn-primary w-100" id="demoLoginBtn" type="button" style="margin-top:16px">Entrar no sistema</button>
+<script>
+document.getElementById('demoLoginBtn').addEventListener('click',function(){
+  localStorage.setItem('secom_demo_session', JSON.stringify({nome:'Administrador SECOM',perfil:'Gestão',data:new Date().toISOString()}));
+  location.href='index.html';
+});
+</script>
+    <div class="card-divider"></div>
+    <div class="tiny muted">Ambiente de protótipo • SECOM Coari</div>
+  </section>
+</div>
+</body></html>

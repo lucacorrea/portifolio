@@ -1,15 +1,24 @@
 <?php
+
 declare(strict_types=1);
 
 $activePage = 'ordens';
 $pageTitle = 'Ordens de Serviço';
 $pageSubtitle = 'Controle dos atendimentos técnicos';
+
 $primaryActionLabel = 'Nova OS';
 $primaryActionIcon = 'bi-plus-lg';
 $primaryActionTarget = '#modal-os';
 $primaryActionPermission = 'os.criar';
+
 $requiredPermission = 'os.visualizar';
+
 $pageContent = __DIR__ . '/pages/ordens-servico.php';
-$pageScripts = ['assets/js/ordens-servico.js', 'assets/js/ordens-servico-pagamento.js'];
+
+$pageScripts = [
+    'assets/js/ordens-servico.js',
+    'assets/js/ordens-servico-pagamento.js',
+    'assets/js/ordens-servico-finalizacao.js',
+];
 
 require __DIR__ . '/includes/shell.php';

@@ -13,35 +13,35 @@ declare(strict_types=1);
 
 $period = is_array(
     $reportData['period']
-    ?? null
+        ?? null
 )
     ? $reportData['period']
     : [];
 
 $filters = is_array(
     $reportData['filters']
-    ?? null
+        ?? null
 )
     ? $reportData['filters']
     : [];
 
 $options = is_array(
     $reportData['options']
-    ?? null
+        ?? null
 )
     ? $reportData['options']
     : [];
 
 $summary = is_array(
     $reportData['summary']
-    ?? null
+        ?? null
 )
     ? $reportData['summary']
     : [];
 
 $groups = is_array(
     $reportData['groups']
-    ?? null
+        ?? null
 )
     ? $reportData['groups']
     : [];
@@ -115,8 +115,8 @@ $formatDecimal = static function (
         )
         . (
             $scale > 0
-                ? ',' . $fraction
-                : ''
+            ? ',' . $fraction
+            : ''
         );
 };
 
@@ -169,23 +169,42 @@ $formatDateTime = static function (
         );
 };
 
+$formatCountLabel = static function (
+    int $count,
+    string $singular,
+    string $plural
+): string {
+    return number_format(
+        $count,
+        0,
+        ',',
+        '.'
+    )
+        . ' '
+        . (
+            $count === 1
+            ? $singular
+            : $plural
+        );
+};
+
 $clients = is_array(
     $options['clients']
-    ?? null
+        ?? null
 )
     ? $options['clients']
     : [];
 
 $secretariats = is_array(
     $options['secretariats']
-    ?? null
+        ?? null
 )
     ? $options['secretariats']
     : [];
 
 $locations = is_array(
     $options['locations']
-    ?? null
+        ?? null
 )
     ? $options['locations']
     : [];
@@ -230,16 +249,26 @@ $clientLabel = (string) (
     $filters['client_label']
     ?? 'Todos os clientes'
 );
+
+$summaryOrdersCount = (int) (
+    $summary['orders']
+    ?? 0
+);
+
+$summaryItemsCount = (int) (
+    $summary['items']
+    ?? 0
+);
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
 
     <meta
         name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+        content="width=device-width, initial-scale=1.0">
 
     <title>
         Relatório detalhado de serviços realizados
@@ -299,8 +328,7 @@ $clientLabel = (string) (
             background: #ffffff;
             border-bottom: 1px solid var(--slate-300);
             box-shadow:
-                0 4px 16px
-                rgba(15, 23, 42, .08);
+                0 4px 16px rgba(15, 23, 42, .08);
         }
 
         .toolbar-title {
@@ -355,10 +383,8 @@ $clientLabel = (string) (
         .filter-grid {
             display: grid;
             grid-template-columns:
-                repeat(
-                    6,
-                    minmax(150px, 1fr)
-                );
+                repeat(6,
+                    minmax(150px, 1fr));
             gap: 10px;
             align-items: end;
         }
@@ -403,8 +429,7 @@ $clientLabel = (string) (
             padding: 5mm;
             background: #ffffff;
             box-shadow:
-                0 10px 30px
-                rgba(15, 23, 42, .12);
+                0 10px 30px rgba(15, 23, 42, .12);
         }
 
         .report-title {
@@ -546,24 +571,20 @@ $clientLabel = (string) (
         .order-header {
             display: grid;
             grid-template-columns:
-                1.1fr
-                1fr
-                2fr
-                2.3fr
-                1.3fr;
+                1.1fr 1fr 2.6fr 1.3fr;
             gap: 0;
             background: #d9e2f3;
             border-bottom: 1px solid #9aa8b8;
         }
 
-        .order-header > div {
+        .order-header>div {
             min-width: 0;
             padding: 6px 7px;
             border-right: 1px solid #9aa8b8;
             line-height: 1.35;
         }
 
-        .order-header > div:last-child {
+        .order-header>div:last-child {
             border-right: 0;
         }
 
@@ -630,59 +651,64 @@ $clientLabel = (string) (
             text-align: right;
         }
 
-        .technical-details {
-            display: grid;
-            grid-template-columns:
-                repeat(
-                    2,
-                    minmax(0, 1fr)
-                );
-            border-top: 1px solid #9aa8b8;
-        }
-
-        .technical-item {
-            min-height: 42px;
-            padding: 5px 7px;
-            border-right: 1px solid #c6d0dc;
-            border-bottom: 1px solid #c6d0dc;
-            line-height: 1.4;
-        }
-
-        .technical-item:nth-child(2n) {
-            border-right: 0;
-        }
-
-        .technical-item strong {
-            display: block;
-            margin-bottom: 2px;
+        .report-summary-strip {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+            padding: 8px 10px;
+            border: 1px solid #9aa8b8;
+            background: #f8fafc;
             color: var(--slate-700);
-            font-size: 7px;
+            font-size: 8.5px;
+            break-inside: avoid;
+        }
+
+        .report-summary-strip>strong {
+            margin-right: auto;
+            color: var(--slate-950);
+            font-size: 8.5px;
+            font-weight: 900;
             text-transform: uppercase;
         }
 
-        .technical-item span {
-            color: var(--slate-950);
+        .report-summary-strip span {
+            white-space: nowrap;
         }
 
-        .subtotal-line,
-        .grand-total {
-            margin-top: 5px;
-            padding: 6px 8px;
-            text-align: right;
+        .report-summary-strip span+span {
+            padding-left: 10px;
+            border-left: 1px solid #cbd5e1;
+        }
+
+        .report-summary-strip .summary-financial {
+            color: var(--slate-950);
             font-weight: 900;
         }
 
-        .subtotal-line {
-            border: 1px solid #9aa8b8;
-            background: #e5e7eb;
-            color: var(--slate-950);
+        .report-summary-strip.is-group {
+            background: #e8eef5;
+            border-color: #94a3b8;
         }
 
-        .grand-total {
-            border: 1px solid var(--navy);
+        .report-summary-strip.is-grand {
+            margin-top: 12px;
+            padding: 10px 12px;
+            border-color: var(--navy);
             background: var(--navy);
             color: #ffffff;
             font-size: 10px;
+        }
+
+        .report-summary-strip.is-grand>strong,
+        .report-summary-strip.is-grand .summary-financial {
+            color: #ffffff;
+        }
+
+        .report-summary-strip.is-grand span+span {
+            border-left-color: rgba(255, 255, 255, .35);
         }
 
         .empty-state {
@@ -697,10 +723,8 @@ $clientLabel = (string) (
         .signatures {
             display: grid;
             grid-template-columns:
-                repeat(
-                    2,
-                    minmax(0, 1fr)
-                );
+                repeat(2,
+                    minmax(0, 1fr));
             gap: 35mm;
             margin-top: 20mm;
             page-break-inside: avoid;
@@ -726,15 +750,29 @@ $clientLabel = (string) (
         @media (max-width: 1100px) {
             .filter-grid {
                 grid-template-columns:
-                    repeat(
-                        2,
-                        minmax(0, 1fr)
-                    );
+                    repeat(2,
+                        minmax(0, 1fr));
             }
 
             .print-toolbar {
                 align-items: flex-start;
                 flex-direction: column;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .report-summary-strip {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .report-summary-strip>strong {
+                margin-right: 0;
+            }
+
+            .report-summary-strip span+span {
+                padding-left: 0;
+                border-left: 0;
             }
         }
 
@@ -763,8 +801,8 @@ $clientLabel = (string) (
             }
 
             .order-block,
-            .technical-details,
-            .items-table tr {
+            .items-table tr,
+            .report-summary-strip {
                 break-inside: avoid;
             }
         }
@@ -786,16 +824,14 @@ $clientLabel = (string) (
         <div class="toolbar-actions">
             <a
                 class="toolbar-button"
-                href="<?= h($returnUrl) ?>"
-            >
+                href="<?= h($returnUrl) ?>">
                 ← Voltar aos relatórios
             </a>
 
             <button
                 class="toolbar-button primary"
                 type="button"
-                onclick="window.print()"
-            >
+                onclick="window.print()">
                 Imprimir / Salvar PDF
             </button>
         </div>
@@ -805,19 +841,16 @@ $clientLabel = (string) (
         <form
             method="get"
             action="relatorio-imprimir.php"
-            autocomplete="off"
-        >
+            autocomplete="off">
             <input
                 type="hidden"
                 name="modo"
-                value="periodo"
-            >
+                value="periodo">
 
             <input
                 type="hidden"
                 name="source_section"
-                value="<?= h($sourceSection) ?>"
-            >
+                value="<?= h($sourceSection) ?>">
 
             <div class="filter-grid">
                 <div class="field">
@@ -830,8 +863,7 @@ $clientLabel = (string) (
                         type="date"
                         name="data_inicial"
                         value="<?= h($displayStart) ?>"
-                        required
-                    >
+                        required>
                 </div>
 
                 <div class="field">
@@ -844,8 +876,7 @@ $clientLabel = (string) (
                         type="date"
                         name="data_final"
                         value="<?= h($displayEnd) ?>"
-                        required
-                    >
+                        required>
                 </div>
 
                 <div class="field">
@@ -855,8 +886,7 @@ $clientLabel = (string) (
 
                     <select
                         id="print-client"
-                        name="cliente_id"
-                    >
+                        name="cliente_id">
                         <option value="">
                             Todos os clientes
                         </option>
@@ -885,15 +915,14 @@ $clientLabel = (string) (
 
                             <option
                                 value="<?= h((string) $clientId) ?>"
-                                <?= $clientId === $selectedClientId ? 'selected' : '' ?>
-                            >
+                                <?= $clientId === $selectedClientId ? 'selected' : '' ?>>
                                 <?= h(
                                     $clientName
-                                    . (
-                                        $clientCode !== ''
+                                        . (
+                                            $clientCode !== ''
                                             ? ' — ' . $clientCode
                                             : ''
-                                    )
+                                        )
                                 ) ?>
                             </option>
                         <?php endforeach; ?>
@@ -907,8 +936,7 @@ $clientLabel = (string) (
 
                     <select
                         id="print-secretariat"
-                        name="secretaria"
-                    >
+                        name="secretaria">
                         <option value="">
                             Todas
                         </option>
@@ -928,8 +956,7 @@ $clientLabel = (string) (
 
                             <option
                                 value="<?= h($value) ?>"
-                                <?= $value === $selectedSecretariat ? 'selected' : '' ?>
-                            >
+                                <?= $value === $selectedSecretariat ? 'selected' : '' ?>>
                                 <?= h($label) ?>
                             </option>
                         <?php endforeach; ?>
@@ -943,8 +970,7 @@ $clientLabel = (string) (
 
                     <select
                         id="print-location"
-                        name="local"
-                    >
+                        name="local">
                         <option value="">
                             Todos os locais
                         </option>
@@ -964,8 +990,7 @@ $clientLabel = (string) (
 
                             <option
                                 value="<?= h($value) ?>"
-                                <?= $value === $selectedLocation ? 'selected' : '' ?>
-                            >
+                                <?= $value === $selectedLocation ? 'selected' : '' ?>>
                                 <?= h($label) ?>
                             </option>
                         <?php endforeach; ?>
@@ -983,15 +1008,13 @@ $clientLabel = (string) (
                         name="busca"
                         value="<?= h($selectedSearch) ?>"
                         maxlength="120"
-                        placeholder="OS, serviço, equipe ou diagnóstico"
-                    >
+                        placeholder="OS, cliente, serviço ou item">
                 </div>
 
                 <div class="filter-actions">
                     <button
                         class="toolbar-button primary"
-                        type="submit"
-                    >
+                        type="submit">
                         Aplicar filtros
                     </button>
 
@@ -1011,8 +1034,7 @@ $clientLabel = (string) (
 
                     <a
                         class="toolbar-button"
-                        href="relatorio-imprimir.php?<?= h($clearQuery) ?>"
-                    >
+                        href="relatorio-imprimir.php?<?= h($clearQuery) ?>">
                         Limpar
                     </a>
                 </div>
@@ -1150,7 +1172,7 @@ $clientLabel = (string) (
                         <?= h(
                             $formatQuantity(
                                 $summary['quantity_total']
-                                ?? '0'
+                                    ?? '0'
                             )
                         ) ?>
                     </td>
@@ -1168,10 +1190,8 @@ $clientLabel = (string) (
                         <td>
                             <?= h(
                                 $formatMoney(
-                                    $summary[
-                                        'executed_total'
-                                    ]
-                                    ?? '0'
+                                    $summary['executed_total']
+                                        ?? '0'
                                 )
                             ) ?>
                         </td>
@@ -1197,15 +1217,25 @@ $clientLabel = (string) (
 
                     $groupTypeLabel =
                         !empty($group['is_public'])
-                            ? 'SECRETARIA'
-                            : 'CLIENTE / UNIDADE';
+                        ? 'SECRETARIA'
+                        : 'CLIENTE / UNIDADE';
 
                     $groupLocations = is_array(
                         $group['locations']
-                        ?? null
+                            ?? null
                     )
                         ? $group['locations']
                         : [];
+
+                    $groupOrdersCount = (int) (
+                        $group['orders_count']
+                        ?? 0
+                    );
+
+                    $groupItemsCount = (int) (
+                        $group['items_count']
+                        ?? 0
+                    );
                     ?>
 
                     <section class="secretariat-group">
@@ -1232,9 +1262,7 @@ $clientLabel = (string) (
                                 <td>
                                     <?= h(
                                         (string) (
-                                            $group[
-                                                'orders_count'
-                                            ]
+                                            $group['orders_count']
                                             ?? 0
                                         )
                                     ) ?>
@@ -1243,9 +1271,7 @@ $clientLabel = (string) (
                                 <td>
                                     <?= h(
                                         (string) (
-                                            $group[
-                                                'locations_count'
-                                            ]
+                                            $group['locations_count']
                                             ?? 0
                                         )
                                     ) ?>
@@ -1254,9 +1280,7 @@ $clientLabel = (string) (
                                 <td>
                                     <?= h(
                                         (string) (
-                                            $group[
-                                                'items_count'
-                                            ]
+                                            $group['items_count']
                                             ?? 0
                                         )
                                     ) ?>
@@ -1265,10 +1289,8 @@ $clientLabel = (string) (
                                 <td>
                                     <?= h(
                                         $formatQuantity(
-                                            $group[
-                                                'quantity_total'
-                                            ]
-                                            ?? '0'
+                                            $group['quantity_total']
+                                                ?? '0'
                                         )
                                     ) ?>
                                 </td>
@@ -1277,10 +1299,8 @@ $clientLabel = (string) (
                                     <td>
                                         <?= h(
                                             $formatMoney(
-                                                $group[
-                                                    'executed_total'
-                                                ]
-                                                ?? '0'
+                                                $group['executed_total']
+                                                    ?? '0'
                                             )
                                         ) ?>
                                     </td>
@@ -1300,10 +1320,20 @@ $clientLabel = (string) (
 
                             $orders = is_array(
                                 $location['orders']
-                                ?? null
+                                    ?? null
                             )
                                 ? $location['orders']
                                 : [];
+
+                            $locationOrdersCount = (int) (
+                                $location['orders_count']
+                                ?? 0
+                            );
+
+                            $locationItemsCount = (int) (
+                                $location['items_count']
+                                ?? 0
+                            );
                             ?>
 
                             <section class="location-block">
@@ -1323,9 +1353,7 @@ $clientLabel = (string) (
 
                                         <?= h(
                                             (string) (
-                                                $location[
-                                                    'orders_count'
-                                                ]
+                                                $location['orders_count']
                                                 ?? 0
                                             )
                                         ) ?>
@@ -1338,9 +1366,7 @@ $clientLabel = (string) (
 
                                         <?= h(
                                             (string) (
-                                                $location[
-                                                    'items_count'
-                                                ]
+                                                $location['items_count']
                                                 ?? 0
                                             )
                                         ) ?>
@@ -1353,10 +1379,8 @@ $clientLabel = (string) (
 
                                         <?= h(
                                             $formatQuantity(
-                                                $location[
-                                                    'quantity_total'
-                                                ]
-                                                ?? '0'
+                                                $location['quantity_total']
+                                                    ?? '0'
                                             )
                                         ) ?>
                                     </span>
@@ -1369,10 +1393,8 @@ $clientLabel = (string) (
 
                                             <?= h(
                                                 $formatMoney(
-                                                    $location[
-                                                        'executed_total'
-                                                    ]
-                                                    ?? '0'
+                                                    $location['executed_total']
+                                                        ?? '0'
                                                 )
                                             ) ?>
                                         </span>
@@ -1387,14 +1409,14 @@ $clientLabel = (string) (
 
                                     $items = is_array(
                                         $order['items']
-                                        ?? null
+                                            ?? null
                                     )
                                         ? $order['items']
                                         : [];
 
                                     $financial = is_array(
                                         $order['financial']
-                                        ?? null
+                                            ?? null
                                     )
                                         ? $order['financial']
                                         : [];
@@ -1410,9 +1432,7 @@ $clientLabel = (string) (
                                                 <strong>
                                                     <?= h(
                                                         (string) (
-                                                            $order[
-                                                                'order_number'
-                                                            ]
+                                                            $order['order_number']
                                                             ?? '—'
                                                         )
                                                     ) ?>
@@ -1427,10 +1447,8 @@ $clientLabel = (string) (
                                                 <strong>
                                                     <?= h(
                                                         $formatDateTime(
-                                                            $order[
-                                                                'finalized_at'
-                                                            ]
-                                                            ?? ''
+                                                            $order['finalized_at']
+                                                                ?? ''
                                                         )
                                                     ) ?>
                                                 </strong>
@@ -1444,27 +1462,8 @@ $clientLabel = (string) (
                                                 <strong>
                                                     <?= h(
                                                         (string) (
-                                                            $order[
-                                                                'client_name'
-                                                            ]
+                                                            $order['client_name']
                                                             ?? '—'
-                                                        )
-                                                    ) ?>
-                                                </strong>
-                                            </div>
-
-                                            <div>
-                                                <span>
-                                                    Equipe responsável
-                                                </span>
-
-                                                <strong>
-                                                    <?= h(
-                                                        (string) (
-                                                            $order[
-                                                                'team_members'
-                                                            ]
-                                                            ?? 'EQUIPE NÃO INFORMADA'
                                                         )
                                                     ) ?>
                                                 </strong>
@@ -1481,19 +1480,18 @@ $clientLabel = (string) (
                                                     <?php if ($canViewFinancial): ?>
                                                         <?= h(
                                                             $formatMoney(
-                                                                $financial[
-                                                                    'executed_total'
-                                                                ]
-                                                                ?? '0'
+                                                                $financial['executed_total']
+                                                                    ?? '0'
                                                             )
                                                         ) ?>
                                                     <?php else: ?>
                                                         <?= h(
-                                                            (string) count(
-                                                                $items
+                                                            $formatCountLabel(
+                                                                count($items),
+                                                                'item executado',
+                                                                'itens executados'
                                                             )
                                                         ) ?>
-                                                        item(ns)
                                                     <?php endif; ?>
                                                 </strong>
                                             </div>
@@ -1543,7 +1541,7 @@ $clientLabel = (string) (
 
                                                     $itemFinancial = is_array(
                                                         $item['financial']
-                                                        ?? null
+                                                            ?? null
                                                     )
                                                         ? $item['financial']
                                                         : [];
@@ -1553,9 +1551,7 @@ $clientLabel = (string) (
                                                         <td class="col-type">
                                                             <?= h(
                                                                 (string) (
-                                                                    $item[
-                                                                        'origin_label'
-                                                                    ]
+                                                                    $item['origin_label']
                                                                     ?? 'SERVIÇO'
                                                                 )
                                                             ) ?>
@@ -1564,9 +1560,7 @@ $clientLabel = (string) (
                                                         <td class="col-description">
                                                             <?= h(
                                                                 (string) (
-                                                                    $item[
-                                                                        'description'
-                                                                    ]
+                                                                    $item['description']
                                                                     ?? 'DESCRIÇÃO NÃO INFORMADA'
                                                                 )
                                                             ) ?>
@@ -1575,10 +1569,8 @@ $clientLabel = (string) (
                                                         <td class="col-quantity">
                                                             <?= h(
                                                                 $formatQuantity(
-                                                                    $item[
-                                                                        'quantity'
-                                                                    ]
-                                                                    ?? '0'
+                                                                    $item['quantity']
+                                                                        ?? '0'
                                                                 )
                                                             ) ?>
                                                         </td>
@@ -1586,9 +1578,7 @@ $clientLabel = (string) (
                                                         <td class="col-unit">
                                                             <?= h(
                                                                 (string) (
-                                                                    $item[
-                                                                        'unit'
-                                                                    ]
+                                                                    $item['unit']
                                                                     ?? '—'
                                                                 )
                                                             ) ?>
@@ -1598,10 +1588,8 @@ $clientLabel = (string) (
                                                             <td class="col-money">
                                                                 <?= h(
                                                                     $formatMoney(
-                                                                        $itemFinancial[
-                                                                            'unit_value'
-                                                                        ]
-                                                                        ?? '0'
+                                                                        $itemFinancial['unit_value']
+                                                                            ?? '0'
                                                                     )
                                                                 ) ?>
                                                             </td>
@@ -1609,10 +1597,8 @@ $clientLabel = (string) (
                                                             <td class="col-money">
                                                                 <?= h(
                                                                     $formatMoney(
-                                                                        $itemFinancial[
-                                                                            'discount'
-                                                                        ]
-                                                                        ?? '0'
+                                                                        $itemFinancial['discount']
+                                                                            ?? '0'
                                                                     )
                                                                 ) ?>
                                                             </td>
@@ -1621,10 +1607,8 @@ $clientLabel = (string) (
                                                                 <strong>
                                                                     <?= h(
                                                                         $formatMoney(
-                                                                            $itemFinancial[
-                                                                                'subtotal'
-                                                                            ]
-                                                                            ?? '0'
+                                                                            $itemFinancial['subtotal']
+                                                                                ?? '0'
                                                                         )
                                                                     ) ?>
                                                                 </strong>
@@ -1635,211 +1619,129 @@ $clientLabel = (string) (
                                             </tbody>
                                         </table>
 
-                                        <div class="technical-details">
-                                            <div class="technical-item">
-                                                <strong>
-                                                    Problema relatado
-                                                </strong>
-
-                                                <span>
-                                                    <?= h(
-                                                        (string) (
-                                                            $order[
-                                                                'reported_problem'
-                                                            ]
-                                                            ?: 'Não informado'
-                                                        )
-                                                    ) ?>
-                                                </span>
-                                            </div>
-
-                                            <div class="technical-item">
-                                                <strong>
-                                                    Problema identificado
-                                                </strong>
-
-                                                <span>
-                                                    <?= h(
-                                                        (string) (
-                                                            $order[
-                                                                'identified_problem'
-                                                            ]
-                                                            ?: 'Não informado'
-                                                        )
-                                                    ) ?>
-                                                </span>
-                                            </div>
-
-                                            <div class="technical-item">
-                                                <strong>
-                                                    Diagnóstico
-                                                </strong>
-
-                                                <span>
-                                                    <?= h(
-                                                        (string) (
-                                                            $order[
-                                                                'diagnosis'
-                                                            ]
-                                                            ?: 'Não informado'
-                                                        )
-                                                    ) ?>
-                                                </span>
-                                            </div>
-
-                                            <div class="technical-item">
-                                                <strong>
-                                                    Solução executada
-                                                </strong>
-
-                                                <span>
-                                                    <?= h(
-                                                        (string) (
-                                                            $order[
-                                                                'solution'
-                                                            ]
-                                                            ?: 'Não informada'
-                                                        )
-                                                    ) ?>
-                                                </span>
-                                            </div>
-
-                                            <?php
-                                            if (
-                                                (string) (
-                                                    $order[
-                                                        'recommendation'
-                                                    ]
-                                                    ?? ''
-                                                ) !== ''
-                                            ):
-                                                ?>
-                                                <div
-                                                    class="technical-item"
-                                                    style="grid-column:1/-1;border-right:0;"
-                                                >
-                                                    <strong>
-                                                        Recomendação
-                                                    </strong>
-
-                                                    <span>
-                                                        <?= h(
-                                                            (string) $order[
-                                                                'recommendation'
-                                                            ]
-                                                        ) ?>
-                                                    </span>
-                                                </div>
-                                            <?php endif; ?>
-                                        </div>
                                     </article>
                                 <?php endforeach; ?>
 
-                                <div class="subtotal-line">
-                                    Subtotal do local:
+                                <div class="report-summary-strip is-location">
+                                    <strong>
+                                        Resumo do local
+                                    </strong>
 
-                                    <?= h(
-                                        (string) (
-                                            $location[
-                                                'orders_count'
-                                            ]
-                                            ?? 0
-                                        )
-                                    ) ?>
-                                    OS ·
-
-                                    <?= h(
-                                        (string) (
-                                            $location[
-                                                'items_count'
-                                            ]
-                                            ?? 0
-                                        )
-                                    ) ?>
-                                    serviço(s)/item(ns)
-
-                                    <?php if ($canViewFinancial): ?>
-                                        ·
+                                    <span>
                                         <?= h(
-                                            $formatMoney(
-                                                $location[
-                                                    'executed_total'
-                                                ]
-                                                ?? '0'
+                                            $formatCountLabel(
+                                                $locationOrdersCount,
+                                                'ordem de serviço',
+                                                'ordens de serviço'
                                             )
                                         ) ?>
+                                    </span>
+
+                                    <span>
+                                        <?= h(
+                                            $formatCountLabel(
+                                                $locationItemsCount,
+                                                'item executado',
+                                                'itens executados'
+                                            )
+                                        ) ?>
+                                    </span>
+
+                                    <?php if ($canViewFinancial): ?>
+                                        <span class="summary-financial">
+                                            Valor executado:
+
+                                            <?= h(
+                                                $formatMoney(
+                                                    $location['executed_total']
+                                                        ?? '0'
+                                                )
+                                            ) ?>
+                                        </span>
                                     <?php endif; ?>
                                 </div>
                             </section>
                         <?php endforeach; ?>
 
-                        <div class="subtotal-line">
-                            Total da secretaria / unidade:
+                        <?php if (count($groupLocations) > 1): ?>
+                            <div class="report-summary-strip is-group">
+                                <strong>
+                                    Consolidado da secretaria / unidade
+                                </strong>
 
-                            <?= h(
-                                (string) (
-                                    $group[
-                                        'orders_count'
-                                    ]
-                                    ?? 0
-                                )
-                            ) ?>
-                            OS ·
+                                <span>
+                                    <?= h(
+                                        $formatCountLabel(
+                                            $groupOrdersCount,
+                                            'ordem de serviço',
+                                            'ordens de serviço'
+                                        )
+                                    ) ?>
+                                </span>
 
-                            <?= h(
-                                (string) (
-                                    $group[
-                                        'items_count'
-                                    ]
-                                    ?? 0
-                                )
-                            ) ?>
-                            serviço(s)/item(ns)
+                                <span>
+                                    <?= h(
+                                        $formatCountLabel(
+                                            $groupItemsCount,
+                                            'item executado',
+                                            'itens executados'
+                                        )
+                                    ) ?>
+                                </span>
 
-                            <?php if ($canViewFinancial): ?>
-                                ·
-                                <?= h(
-                                    $formatMoney(
-                                        $group[
-                                            'executed_total'
-                                        ]
-                                        ?? '0'
-                                    )
-                                ) ?>
-                            <?php endif; ?>
-                        </div>
+                                <?php if ($canViewFinancial): ?>
+                                    <span class="summary-financial">
+                                        Valor executado:
+
+                                        <?= h(
+                                            $formatMoney(
+                                                $group['executed_total']
+                                                    ?? '0'
+                                            )
+                                        ) ?>
+                                    </span>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
                     </section>
                 <?php endforeach; ?>
 
-                <div class="grand-total">
-                    TOTAL GERAL:
+                <div class="report-summary-strip is-grand">
+                    <strong>
+                        Consolidado geral do período
+                    </strong>
 
-                    <?= h(
-                        (string) (
-                            $summary['orders']
-                            ?? 0
-                        )
-                    ) ?>
-                    OS ·
-
-                    <?= h(
-                        (string) (
-                            $summary['items']
-                            ?? 0
-                        )
-                    ) ?>
-                    SERVIÇO(S)/ITEM(NS)
-
-                    <?php if ($canViewFinancial): ?>
-                        ·
+                    <span>
                         <?= h(
-                            $formatMoney(
-                                $summary[
-                                    'executed_total'
-                                ]
-                                ?? '0'
+                            $formatCountLabel(
+                                $summaryOrdersCount,
+                                'ordem de serviço',
+                                'ordens de serviço'
                             )
                         ) ?>
+                    </span>
+
+                    <span>
+                        <?= h(
+                            $formatCountLabel(
+                                $summaryItemsCount,
+                                'item executado',
+                                'itens executados'
+                            )
+                        ) ?>
+                    </span>
+
+                    <?php if ($canViewFinancial): ?>
+                        <span class="summary-financial">
+                            Valor total executado:
+
+                            <?= h(
+                                $formatMoney(
+                                    $summary['executed_total']
+                                        ?? '0'
+                                )
+                            ) ?>
+                        </span>
                     <?php endif; ?>
                 </div>
 
@@ -1863,4 +1765,5 @@ $clientLabel = (string) (
         </article>
     </main>
 </body>
+
 </html>

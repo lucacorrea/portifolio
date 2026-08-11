@@ -4,82 +4,373 @@ declare(strict_types=1);
 
 use App\Catalog\DTO\ProductFormData;
 
-require __DIR__ . '/produto-action-common.php';
+require __DIR__
+    . '/produto-action-common.php';
 
 product_require_post_request();
 
-$rawProductId = trim((string) ($_POST['id'] ?? ''));
-$isEditing = $rawProductId !== '';
-$requiredPermission = $isEditing ? 'produto.editar' : 'produto.criar';
+$rawProductId = trim(
+    (string) (
+        $_POST['id']
+        ?? ''
+    )
+);
 
-[$application, $session] = product_action_context($requiredPermission);
+$isEditing =
+    $rawProductId !== '';
 
-$authorization = $application->authorization();
-$canCost = $authorization->can('produto.visualizar_preco_custo');
-$canSale = $authorization->can('produto.visualizar_preco_venda');
+$requiredPermission =
+    $isEditing
+        ? 'produto.editar'
+        : 'produto.criar';
+
+[$application, $session] =
+    product_action_context(
+        $requiredPermission
+    );
+
+$authorization =
+    $application->authorization();
+
+$canCost =
+    $authorization->can(
+        'produto.visualizar_preco_custo'
+    );
+
+$canSale =
+    $authorization->can(
+        'produto.visualizar_preco_venda'
+    );
 
 try {
-    $productId = $isEditing ? product_posted_positive_int('id') : null;
-    $service = $application->productManagement();
-    $existing = $productId !== null ? $service->getProduct($productId) : null;
+    $productId =
+        $isEditing
+            ? product_posted_positive_int(
+                'id'
+            )
+            : null;
 
-    $data = ProductFormData::fromArray([
-        'name' => $_POST['name'] ?? '',
-        'description' => $_POST['description'] ?? '',
-        'category' => $_POST['category'] ?? '',
-        'manufacturer' => $_POST['manufacturer'] ?? '',
-        'unit' => $_POST['unit'] ?? 'un',
-        'ncm' => $_POST['ncm'] ?? '',
-        'barcode' => $_POST['barcode'] ?? '',
-        'cost_price' => $canCost ? ($_POST['cost_price'] ?? '0') : '0',
-        'sale_price' => $canSale ? ($_POST['sale_price'] ?? '0') : '0',
-        'stock' => $_POST['stock'] ?? '0',
-        'minimum_stock' => $_POST['minimum_stock'] ?? '0',
-        'location' => $_POST['location'] ?? '',
-        'status' => $_POST['status'] ?? 'ativo',
-    ]);
+    $service =
+        $application
+            ->productManagement();
+
+    $existing =
+        $productId !== null
+            ? $service->getProduct(
+                $productId
+            )
+            : null;
+
+    $data =
+        ProductFormData::fromArray([
+            'name' =>
+                $_POST['name']
+                ?? '',
+
+            'description' =>
+                $_POST['description']
+                ?? '',
+
+            'category' =>
+                $_POST['category']
+                ?? '',
+
+            'manufacturer' =>
+                $_POST['manufacturer']
+                ?? '',
+
+            'unit' =>
+                $_POST['unit']
+                ?? 'UN',
+
+            'ncm' =>
+                $_POST['ncm']
+                ?? '',
+
+            'cest' =>
+                $_POST['cest']
+                ?? '',
+
+            'origin' =>
+                $_POST['origin']
+                ?? '',
+
+            'default_cfop' =>
+                $_POST['default_cfop']
+                ?? '',
+
+            'icms_cst' =>
+                $_POST['icms_cst']
+                ?? '',
+
+            'csosn' =>
+                $_POST['csosn']
+                ?? '',
+
+            'pis_cst' =>
+                $_POST['pis_cst']
+                ?? '',
+
+            'cofins_cst' =>
+                $_POST['cofins_cst']
+                ?? '',
+
+            'icms_rate' =>
+                $_POST['icms_rate']
+                ?? '',
+
+            'pis_rate' =>
+                $_POST['pis_rate']
+                ?? '',
+
+            'cofins_rate' =>
+                $_POST['cofins_rate']
+                ?? '',
+
+            'tax_gtin' =>
+                $_POST['tax_gtin']
+                ?? '',
+
+            'tax_unit' =>
+                $_POST['tax_unit']
+                ?? '',
+
+            'ibs_cbs_cst' =>
+                $_POST['ibs_cbs_cst']
+                ?? '',
+
+            'ibs_cbs_classification' =>
+                $_POST[
+                    'ibs_cbs_classification'
+                ]
+                ?? '',
+
+            'barcode' =>
+                $_POST['barcode']
+                ?? '',
+
+            'cost_price' =>
+                $canCost
+                    ? (
+                        $_POST['cost_price']
+                        ?? '0'
+                    )
+                    : '0',
+
+            'sale_price' =>
+                $canSale
+                    ? (
+                        $_POST['sale_price']
+                        ?? '0'
+                    )
+                    : '0',
+
+            'stock' =>
+                $_POST['stock']
+                ?? '0',
+
+            'minimum_stock' =>
+                $_POST['minimum_stock']
+                ?? '0',
+
+            'location' =>
+                $_POST['location']
+                ?? '',
+
+            'status' =>
+                $_POST['status']
+                ?? 'ativo',
+        ]);
 
     if ($existing !== null) {
-        $data = $data->withPrices(
-            $canCost ? $data->costPrice() : $existing->costPrice(),
-            $canSale ? $data->salePrice() : $existing->salePrice()
+        $data =
+            $data->withPrices(
+                $canCost
+                    ? $data->costPrice()
+                    : $existing->costPrice(),
+
+                $canSale
+                    ? $data->salePrice()
+                    : $existing->salePrice()
+            );
+
+        $service->updateProduct(
+            $productId,
+            $data
         );
-        $service->updateProduct($productId, $data);
-        $session->flash('success', 'Produto atualizado com sucesso.');
+
+        $session->flash(
+            'success',
+            'Produto atualizado com sucesso.'
+        );
     } else {
-        $product = $service->createProduct($data);
-        $session->flash('success', 'Produto cadastrado com o código ' . $product->displayCode() . '.');
+        $product =
+            $service->createProduct(
+                $data
+            );
+
+        $session->flash(
+            'success',
+            'Produto cadastrado com o código '
+            . $product->displayCode()
+            . '.'
+        );
     }
 } catch (InvalidArgumentException $exception) {
     $recovery = [
         'id' => $rawProductId,
-        'name' => $_POST['name'] ?? '',
-        'description' => $_POST['description'] ?? '',
-        'category' => $_POST['category'] ?? '',
-        'manufacturer' => $_POST['manufacturer'] ?? '',
-        'unit' => $_POST['unit'] ?? 'un',
-        'ncm' => $_POST['ncm'] ?? '',
-        'barcode' => $_POST['barcode'] ?? '',
-        'stock' => $_POST['stock'] ?? '0',
-        'minimum_stock' => $_POST['minimum_stock'] ?? '0',
-        'location' => $_POST['location'] ?? '',
-        'status' => $_POST['status'] ?? 'ativo',
+
+        'name' =>
+            $_POST['name']
+            ?? '',
+
+        'description' =>
+            $_POST['description']
+            ?? '',
+
+        'category' =>
+            $_POST['category']
+            ?? '',
+
+        'manufacturer' =>
+            $_POST['manufacturer']
+            ?? '',
+
+        'unit' =>
+            $_POST['unit']
+            ?? 'UN',
+
+        'ncm' =>
+            $_POST['ncm']
+            ?? '',
+
+        'cest' =>
+            $_POST['cest']
+            ?? '',
+
+        'origin' =>
+            $_POST['origin']
+            ?? '',
+
+        'default_cfop' =>
+            $_POST['default_cfop']
+            ?? '',
+
+        'icms_cst' =>
+            $_POST['icms_cst']
+            ?? '',
+
+        'csosn' =>
+            $_POST['csosn']
+            ?? '',
+
+        'pis_cst' =>
+            $_POST['pis_cst']
+            ?? '',
+
+        'cofins_cst' =>
+            $_POST['cofins_cst']
+            ?? '',
+
+        'icms_rate' =>
+            $_POST['icms_rate']
+            ?? '',
+
+        'pis_rate' =>
+            $_POST['pis_rate']
+            ?? '',
+
+        'cofins_rate' =>
+            $_POST['cofins_rate']
+            ?? '',
+
+        'tax_gtin' =>
+            $_POST['tax_gtin']
+            ?? '',
+
+        'tax_unit' =>
+            $_POST['tax_unit']
+            ?? '',
+
+        'ibs_cbs_cst' =>
+            $_POST['ibs_cbs_cst']
+            ?? '',
+
+        'ibs_cbs_classification' =>
+            $_POST[
+                'ibs_cbs_classification'
+            ]
+            ?? '',
+
+        'barcode' =>
+            $_POST['barcode']
+            ?? '',
+
+        'stock' =>
+            $_POST['stock']
+            ?? '0',
+
+        'minimum_stock' =>
+            $_POST['minimum_stock']
+            ?? '0',
+
+        'location' =>
+            $_POST['location']
+            ?? '',
+
+        'status' =>
+            $_POST['status']
+            ?? 'ativo',
     ];
 
     if ($canCost) {
-        $recovery['cost_price'] = $_POST['cost_price'] ?? '0';
+        $recovery['cost_price'] =
+            $_POST['cost_price']
+            ?? '0';
     }
 
     if ($canSale) {
-        $recovery['sale_price'] = $_POST['sale_price'] ?? '0';
+        $recovery['sale_price'] =
+            $_POST['sale_price']
+            ?? '0';
     }
 
-    product_store_form_recovery($isEditing ? 'edit' : 'create', $recovery, $exception->getMessage());
-    $session->flash('danger', $exception->getMessage());
-    product_redirect($application, 'produtos.php?modal=' . ($isEditing ? 'edit' : 'create'));
+    product_store_form_recovery(
+        $isEditing
+            ? 'edit'
+            : 'create',
+
+        $recovery,
+        $exception->getMessage()
+    );
+
+    $session->flash(
+        'danger',
+        $exception->getMessage()
+    );
+
+    product_redirect(
+        $application,
+        'produtos.php?modal='
+        . (
+            $isEditing
+                ? 'edit'
+                : 'create'
+        )
+    );
 } catch (Throwable $exception) {
-    error_log('Product save failed: ' . $exception->getMessage());
-    $session->flash('danger', 'Não foi possível salvar o produto.');
+    error_log(
+        'Product save failed: '
+        . $exception->getMessage()
+    );
+
+    $session->flash(
+        'danger',
+        'Não foi possível salvar o produto.'
+    );
 }
 
-product_redirect($application, 'produtos.php');
+product_redirect(
+    $application,
+    'produtos.php'
+);

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0f172a">
+  <title>Pautas • SECOM Coari</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/app.css">
+  <link rel="stylesheet" href="../assets/css/demo.css">
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-logo">SC</div>
+    <div class="brand-copy"><strong>SECOM</strong><span>Prefeitura de Coari</span></div>
+  </div>
+  <nav class="nav">
+<a class="nav-link" href="../index.html"><span class="nav-icon">⌂</span><span class="nav-text">Dashboard</span></a>
+<a class="nav-link" href="agenda.html"><span class="nav-icon">▦</span><span class="nav-text">Agenda</span><span class="nav-badge">8</span></a>
+<div class="nav-label">Comunicação</div>
+<a class="nav-link active" href="pautas.html"><span class="nav-icon">▤</span><span class="nav-text">Pautas</span><span class="nav-badge">12</span></a>
+<a class="nav-link" href="coberturas.html"><span class="nav-icon">◉</span><span class="nav-text">Coberturas</span><span class="nav-badge">5</span></a>
+<a class="nav-link" href="demandas.html"><span class="nav-icon">◫</span><span class="nav-text">Demandas</span><span class="nav-badge">3</span></a>
+<div class="nav-label">Produção</div>
+<a class="nav-link" href="producoes.html"><span class="nav-icon">✎</span><span class="nav-text">Produções</span><span class="nav-badge">14</span></a>
+<a class="nav-link" href="materias.html"><span class="nav-icon">▧</span><span class="nav-text">Matérias</span><span class="nav-badge">4</span></a>
+<a class="nav-link" href="aprovacoes.html"><span class="nav-icon">✓</span><span class="nav-text">Aprovações</span><span class="nav-badge">7</span></a>
+<a class="nav-link" href="publicacoes.html"><span class="nav-icon">↑</span><span class="nav-text">Publicações</span><span class="nav-badge">9</span></a>
+<div class="nav-label">Acervo</div>
+<a class="nav-link" href="acervo.html"><span class="nav-icon">▣</span><span class="nav-text">Acervo institucional</span></a>
+<a class="nav-link" href="originais.html"><span class="nav-icon">🔒</span><span class="nav-text">Originais</span></a>
+<a class="nav-link" href="masters.html"><span class="nav-icon">▶</span><span class="nav-text">Masters</span></a>
+<a class="nav-link" href="preservacao.html"><span class="nav-icon">◈</span><span class="nav-text">Preservação</span></a>
+<div class="nav-label">Gestão</div>
+<a class="nav-link" href="equipe.html"><span class="nav-icon">♟</span><span class="nav-text">Equipe</span></a>
+<a class="nav-link" href="secretarias.html"><span class="nav-icon">▥</span><span class="nav-text">Secretarias</span></a>
+<a class="nav-link" href="relatorios.html"><span class="nav-icon">▤</span><span class="nav-text">Relatórios</span></a>
+<a class="nav-link" href="auditoria.html"><span class="nav-icon">◴</span><span class="nav-text">Auditoria</span></a>
+<div class="nav-label">Sistema</div>
+<a class="nav-link" href="usuarios.html"><span class="nav-icon">♙</span><span class="nav-text">Usuários</span></a>
+<a class="nav-link" href="configuracoes.html"><span class="nav-icon">⚙</span><span class="nav-text">Configurações</span></a>
+<a class="nav-link" href="perfil.html"><span class="nav-icon">○</span><span class="nav-text">Meu perfil</span></a>
+
+  </nav>
+  <div class="sidebar-footer">
+    <div class="storage-box">
+      <div class="storage-copy">
+        <div class="storage-row"><span>Armazenamento</span><strong>8,4 / 20 TB</strong></div>
+      </div>
+      <div class="progress"><span style="width:42%"></span></div>
+      <div class="storage-copy"><small>Originais protegidos • Integridade 100%</small></div>
+    </div>
+  </div>
+</aside>
+<div class="mobile-overlay"></div>
+<main class="main">
+
+<header class="topbar">
+  <div class="topbar-left">
+    <button class="icon-btn" data-sidebar-toggle title="Recolher/abrir menu">☰</button>
+    <div class="page-heading"><h1>Pautas</h1><p>Planejamento e fluxo das coberturas</p></div>
+  </div>
+  <div class="topbar-actions">
+    <div class="quick-search desktop-only">⌕ <input data-global-search placeholder="Buscar pauta, arquivo, pessoa..."><kbd>Enter</kbd></div>
+    <a class="btn btn-primary new-pauta-btn" href="pautas.html">+ Nova pauta</a>
+    <button class="icon-btn" data-demo="3 itens aguardam sua atenção">🔔<span class="notification-dot"></span></button>
+    <a class="user-chip" href="perfil.html">
+      <div class="avatar">AS</div><div class="user-copy"><strong>Administrador SECOM</strong><span>Gestão</span></div>
+    </a>
+  </div>
+</header>
+<section class="content"><div class="content-inner">
+<div class="breadcrumb"><a href="../index.html">Dashboard</a> <span class="sep">/</span> <span>Pautas</span></div>
+<div class="page-intro">
+  <div><span class="kicker">Comunicação</span><h2>Pautas</h2><p>Cada pauta centraliza briefing, agenda, equipe, material bruto, produção, aprovação e publicação.</p></div>
+  <div class="page-actions"><button class="btn btn-secondary">Importar demanda</button><a class="btn btn-primary" href="pauta-detalhe.html">+ Nova pauta</a></div>
+</div>
+<div class="stats-grid">
+  <article class="stat-card"><span>Abertas</span><strong>26</strong><small>no período atual</small></article>
+  <article class="stat-card"><span>Em cobertura</span><strong>5</strong><small>equipes em campo</small></article>
+  <article class="stat-card"><span>Em produção</span><strong>14</strong><small>com material recebido</small></article>
+  <article class="stat-card"><span>Concluídas</span><strong>83</strong><small>neste mês</small></article>
+</div>
+<article class="card table-card">
+  <div class="table-toolbar">
+    <div class="page-toolbar" style="margin:0">
+      <div class="search-box">⌕ <input data-filter-table="#pautasTable" placeholder="Buscar por pauta, secretaria, local ou responsável"></div>
+      <div class="filters"><select><option>Todos os status</option><option>Planejada</option><option>Em cobertura</option><option>Em produção</option><option>Em aprovação</option></select><select><option>Todas as secretarias</option><option>SEMSA</option><option>SEMED</option><option>SEMAS</option><option>SEINFRA</option></select><select><option>Agosto 2026</option></select></div>
+    </div>
+  </div>
+  <div class="table-wrap"><table id="pautasTable">
+    <thead><tr><th>Pauta</th><th>Secretaria</th><th>Data / local</th><th>Equipe</th><th>Materiais</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      <tr><td><strong>Inauguração da UBS Grande Vitória</strong><small>P-2026-0187 • prioridade alta</small></td><td>SEMSA</td><td>10/08 • 09:00<small>Grande Vitória</small></td><td>João, Marcos, Ana</td><td>487 arquivos<small>7 produções</small></td><td><span class="badge blue">Em cobertura</span></td><td><div class="table-actions"><a href="pauta-detalhe.html">Abrir</a></div></td></tr>
+      <tr><td><strong>Entrega de kits escolares</strong><small>P-2026-0188</small></td><td>SEMED</td><td>10/08 • 10:30<small>Escola Municipal</small></td><td>Luana, Pedro</td><td>218 arquivos<small>4 produções</small></td><td><span class="badge blue">Em produção</span></td><td><div class="table-actions"><a href="pauta-detalhe.html">Abrir</a></div></td></tr>
+      <tr><td><strong>Vistoria de obras no Centro</strong><small>P-2026-0189</small></td><td>SEINFRA</td><td>10/08 • 14:00<small>Centro</small></td><td>Carlos, Bruno</td><td>—</td><td><span class="badge gray">Planejada</span></td><td><div class="table-actions"><a href="pauta-detalhe.html">Abrir</a></div></td></tr>
+      <tr><td><strong>Campanha Agosto Lilás</strong><small>P-2026-0190 • prioridade alta</small></td><td>SEMAS</td><td>11/08 • 08:00<small>SEMAS</small></td><td>Ana, Luana</td><td>92 arquivos<small>3 produções</small></td><td><span class="badge yellow">Em aprovação</span></td><td><div class="table-actions"><a href="pauta-detalhe.html">Abrir</a></div></td></tr>
+      <tr><td><strong>Agenda do Gabinete</strong><small>P-2026-0191</small></td><td>GABINETE</td><td>12/08 • 09:30<small>Gabinete</small></td><td>Equipe institucional</td><td>—</td><td><span class="badge gray">Planejada</span></td><td><div class="table-actions"><a href="pauta-detalhe.html">Abrir</a></div></td></tr>
+    </tbody>
+  </table></div>
+</article>
+
+</div></section>
+</main>
+<script src="../assets/js/app.js"></script>
+  <script src="../assets/js/demo.js"></script>
+</body>
+</html>

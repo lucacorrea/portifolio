@@ -47,6 +47,7 @@ use App\Sales\Repository\BudgetRepository;
 use App\Sales\Service\BudgetManagementService;
 use App\Workforce\Repository\EmployeeRepository;
 use App\Workforce\Service\EmployeeManagementService;
+use App\Schedule\Service\WeeklyServicePlanningService;
 
 final class Application
 {
@@ -93,12 +94,13 @@ final class Application
     private ?DashboardService $dashboardService = null;
     private ?ProductionReportService $productionReportService = null;
     private ?SafeRedirect $redirect = null;
+    private ?WeeklyServicePlanningService
+        $weeklyServicePlanning = null;
 
     public function __construct(
         private readonly Database $database,
         private readonly array $settings
-    ) {
-    }
+    ) {}
 
     public function database(): Database
     {
@@ -320,7 +322,20 @@ final class Application
 
         return $this->serviceOrderManagement;
     }
+    public function weeklyServicePlanning(): WeeklyServicePlanningService
+    {
+        if (
+            $this->weeklyServicePlanning === null
+        ) {
+            $this->weeklyServicePlanning =
+                new WeeklyServicePlanningService(
+                    $this->database->connection(),
+                    $this->serviceOrderManagement()
+                );
+        }
 
+        return $this->weeklyServicePlanning;
+    }
     public function agendaManagement(): AgendaManagementService
     {
         if ($this->agendaManagement === null) {
