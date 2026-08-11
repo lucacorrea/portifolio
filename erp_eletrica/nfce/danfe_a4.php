@@ -261,6 +261,7 @@ $qrTxt   = $val('//n:infNFeSupl/n:qrCode');
         .table, .table-items { width: 100%; border-collapse: collapse; margin-top: 0px; margin-bottom: 5px; table-layout: fixed; border: 1px solid #000; }
         .table th, .table-items th { border: 1px solid #000; font-size: 6px; padding: 2px; background: #f2f2f2; text-align: center; }
         .table td, .table-items td { border: 1px solid #000; font-size: 7px; padding: 1px 2px; line-height: 1; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .table-items td.product-name { font-size: 6px; line-height: 1.05; white-space: normal; overflow: visible; text-overflow: clip; word-break: break-word; overflow-wrap: anywhere; }
 
         @media print {
             body { background: #fff; padding: 0; min-width: 0; }
@@ -488,7 +489,7 @@ $qrTxt   = $val('//n:infNFeSupl/n:qrCode');
                     ?>
                     <tr>
                         <td class="center"><?= $it['cProd'] ?></td>
-                        <td style="white-space: normal;"><?= $it['xProd'] ?></td>
+                        <td class="product-name"><?= htmlspecialchars($it['xProd']) ?></td>
                         <td class="center"><?= $it['NCM'] ?></td>
                         <td class="center"><?= $it['CST'] ?></td>
                         <td class="center"><?= $it['CFOP'] ?></td>

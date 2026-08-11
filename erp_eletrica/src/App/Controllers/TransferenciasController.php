@@ -228,6 +228,102 @@ class TransferenciasController extends BaseController {
         }
     }
 
+    private function atualizarValorTotalCusto(int $transferenciaId, string $quantidadeCol = 'quantidade_enviada'): void {
+        if ($transferenciaId <= 0) {
+            return;
+        }
+
+        $colunasPermitidas = ['quantidade_solicitada', 'quantidade_enviada', 'quantidade_recebida'];
+        if (!in_array($quantidadeCol, $colunasPermitidas, true)) {
+            $quantidadeCol = 'quantidade_enviada';
+        }
+
+        $stmt = $this->pdo->prepare(
+            "UPDATE erp_transferencias
+             SET valor_total_custo = (
+                 SELECT COALESCE(SUM({$quantidadeCol} * valor_custo_unitario), 0)
+                 FROM erp_transferencias_itens
+                 WHERE transferencia_id = ?
+             )
+             WHERE id = ?"
+        );
+        $stmt->execute([$transferenciaId, $transferenciaId]);
+    }
+
+    private function nomeFilial(int $filialId): string {
+        try {
+            $stmt = $this->pdo->prepare("SELECT nome FROM filiais WHERE id = ? LIMIT 1");
+            $stmt->execute([$filialId]);
+            return (string)($stmt->fetchColumn() ?: "Filial #{$filialId}");
+        } catch (\Throwable $e) {
+            return "Filial #{$filialId}";
+        }
+    }
+
+    private function garantirLinhaEstoqueFilial(int $produtoId, int $filialId): void {
+        $stmt = $this->pdo->prepare("SELECT id FROM estoque_filiais WHERE produto_id = ? AND filial_id = ? LIMIT 1");
+        $stmt->execute([$produtoId, $filialId]);
+        if ($stmt->fetchColumn()) {
+            return;
+        }
+
+        if ((int)$filialId === (int)$this->matrizId) {
+            $stmtIns = $this->pdo->prepare(
+                "INSERT IGNORE INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo)
+                 SELECT id, ?, quantidade, estoque_minimo FROM produtos WHERE id = ?"
+            );
+            $stmtIns->execute([$filialId, $produtoId]);
+            return;
+        }
+
+        $stmtIns = $this->pdo->prepare(
+            "INSERT IGNORE INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo)
+             SELECT id, ?, 0, estoque_minimo FROM produtos WHERE id = ?"
+        );
+        $stmtIns->execute([$filialId, $produtoId]);
+    }
+
+    private function baixarEstoqueTransferencia(int $produtoId, int $filialId, float $quantidade): void {
+        if ($produtoId <= 0 || $filialId <= 0 || $quantidade <= 0) {
+            throw new \Exception("Dados invalidos para baixar estoque da transferencia.");
+        }
+
+        $this->garantirLinhaEstoqueFilial($produtoId, $filialId);
+
+        $stmt = $this->pdo->prepare(
+            "UPDATE estoque_filiais
+             SET quantidade = quantidade - ?
+             WHERE produto_id = ? AND filial_id = ? AND quantidade >= ?"
+        );
+        $stmt->execute([$quantidade, $produtoId, $filialId, $quantidade]);
+
+        if ($stmt->rowCount() === 0) {
+            $stmtInfo = $this->pdo->prepare(
+                "SELECT p.nome, COALESCE(ef.quantidade, 0) as estoque_atual
+                 FROM produtos p
+                 LEFT JOIN estoque_filiais ef ON ef.produto_id = p.id AND ef.filial_id = ?
+                 WHERE p.id = ?"
+            );
+            $stmtInfo->execute([$filialId, $produtoId]);
+            $info = $stmtInfo->fetch(\PDO::FETCH_ASSOC) ?: [];
+            $nomeProd = $info['nome'] ?? "Produto ID {$produtoId}";
+            $disponivel = (float)($info['estoque_atual'] ?? 0);
+            $nomeFilial = $this->nomeFilial($filialId);
+
+            throw new \Exception("Estoque insuficiente em {$nomeFilial} para '{$nomeProd}'. Disponivel: {$disponivel}, Tentado: {$quantidade}");
+        }
+
+        if ((int)$filialId === (int)$this->matrizId) {
+            $stmtSync = $this->pdo->prepare(
+                "UPDATE produtos p
+                 JOIN estoque_filiais ef ON ef.produto_id = p.id AND ef.filial_id = ?
+                 SET p.quantidade = ef.quantidade
+                 WHERE p.id = ?"
+            );
+            $stmtSync->execute([$filialId, $produtoId]);
+        }
+    }
+
     private function findTransferByIdempotencyKey(?string $key): ?array {
         if (!$key) {
             return null;
@@ -447,6 +543,8 @@ class TransferenciasController extends BaseController {
                 $stmtItem->execute([$transf_id, $item['produto_id'], $item['quantidade'], $custo]);
             }
 
+            $this->atualizarValorTotalCusto((int)$transf_id, 'quantidade_solicitada');
+
             $this->pdo->commit();
             setFlash('success', 'Solicitação enviada para a Matriz com sucesso!');
             $this->redirect('transferencias.php?aba=historico_recebimentos');
@@ -497,9 +595,6 @@ class TransferenciasController extends BaseController {
                     (transferencia_id, produto_id, quantidade_solicitada, quantidade_enviada, valor_custo_unitario)
                  VALUES (?, ?, ?, ?, ?)"
             );
-            $stmtDec     = $this->pdo->prepare("UPDATE estoque_filiais SET quantidade = quantidade - ? WHERE produto_id = ? AND filial_id = $mid");
-            $stmtDecGlob = $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?");
-
             // Query para verificar estoque atual
             $stmtCheck = $this->pdo->prepare("
                 SELECT p.nome, COALESCE(ef.quantidade, CASE WHEN ? = 1 THEN p.quantidade ELSE 0 END) as estoque_atual
@@ -524,7 +619,8 @@ class TransferenciasController extends BaseController {
                 if (!$estoque || $estoque['estoque_atual'] < $qtd) {
                     $nomeProd = $estoque ? $estoque['nome'] : "Produto ID $pid";
                     $disponivel = $estoque ? (float)$estoque['estoque_atual'] : 0;
-                    throw new \Exception("Estoque insuficiente na Matriz para '{$nomeProd}'. Disponível: {$disponivel}, Tentado: {$qtd}");
+                    $nomeOrigem = $this->nomeFilial((int)$origem_id);
+                    throw new \Exception("Estoque insuficiente em {$nomeOrigem} para '{$nomeProd}'. Disponível: {$disponivel}, Tentado: {$qtd}");
                 }
 
                 $pd = $this->pdo->prepare("SELECT preco_custo FROM produtos WHERE id = ?");
@@ -532,24 +628,15 @@ class TransferenciasController extends BaseController {
                 $custo = $pd->fetchColumn() ?: 0;
                 
                 $stmtItem->execute([$transf_id, $pid, $qtd, $qtd, $custo]);
-                try {
-                    $this->pdo->prepare("UPDATE estoque_filiais SET quantidade = quantidade - ? WHERE produto_id = ? AND filial_id = ?")->execute([$qtd, $pid, $origem_id]);
-                    if ((int)$origem_id === (int)$this->matrizId) {
-                        $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?")->execute([$qtd, $pid]);
-                    }
-                } catch (\Exception $ex) {
-                    if ($this->isMatriz) {
-                        $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?")->execute([$qtd, $pid]);
-                    } else {
-                        throw $ex;
-                    }
-                }
+                $this->baixarEstoqueTransferencia((int)$pid, (int)$origem_id, (float)$qtd);
                 $totalItensValidos++;
             }
 
             if ($totalItensValidos === 0) {
                 throw new \Exception("Nenhum item com quantidade válida para despacho.");
             }
+
+            $this->atualizarValorTotalCusto((int)$transf_id, 'quantidade_enviada');
 
             $this->pdo->commit();
             setFlash('success', 'Transferência despachada com sucesso!');
@@ -588,9 +675,6 @@ class TransferenciasController extends BaseController {
             }
 
             $stmtItem    = $this->pdo->prepare("UPDATE erp_transferencias_itens SET quantidade_enviada = ? WHERE transferencia_id = ? AND produto_id = ?");
-            $stmtDec     = $this->pdo->prepare("UPDATE estoque_filiais SET quantidade = quantidade - ? WHERE produto_id = ? AND filial_id = $mid");
-            $stmtDecGlob = $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?");
-
             // Query para verificar estoque atual
             $stmtCheck = $this->pdo->prepare("
                 SELECT p.nome, COALESCE(ef.quantidade, p.quantidade) as estoque_atual
@@ -610,17 +694,13 @@ class TransferenciasController extends BaseController {
                     if (!$estoque || $estoque['estoque_atual'] < $qtd) {
                         $nomeProd = $estoque ? $estoque['nome'] : "Produto ID $produto_id";
                         $disponivel = $estoque ? (float)$estoque['estoque_atual'] : 0;
-                        throw new \Exception("Estoque insuficiente na Matriz para '{$nomeProd}'. Disponível: {$disponivel}, Tentado: {$qtd}");
+                        $nomeOrigem = $this->nomeFilial((int)$mid);
+                        throw new \Exception("Estoque insuficiente em {$nomeOrigem} para '{$nomeProd}'. Disponível: {$disponivel}, Tentado: {$qtd}");
                     }
 
                     // 2. Processamento (Atualiza estoque_filiais E produtos, pois a origem é a Matriz)
                     $stmtItem->execute([$qtd, $transf_id, $produto_id]);
-                    try {
-                        $stmtDec->execute([$qtd, $produto_id]);
-                        $stmtDecGlob->execute([$qtd, $produto_id]);
-                    } catch (\Exception $ex) {
-                        $stmtDecGlob->execute([$qtd, $produto_id]);
-                    }
+                    $this->baixarEstoqueTransferencia((int)$produto_id, (int)$mid, (float)$qtd);
                     $totalQtdFinal += $qtd;
                 } elseif ($qtd < 0) {
                     throw new \Exception("Quantidade negativa não é permitida.");
@@ -630,6 +710,8 @@ class TransferenciasController extends BaseController {
             if ($totalQtdFinal <= 0) {
                 throw new \Exception("Erro: Não é possível despachar uma solicitação com quantidade total zero. Verifique o estoque da Matriz.");
             }
+
+            $this->atualizarValorTotalCusto((int)$transf_id, 'quantidade_enviada');
 
             $this->pdo->commit();
             setFlash('success', 'Solicitação aprovada and despachada com sucesso!');
@@ -723,7 +805,44 @@ class TransferenciasController extends BaseController {
         $itens_problema = $_POST['ocorrencias'] ?? [];
         $unidadeRecebimento = $this->isMatriz ? (int)$this->matrizId : (int)$this->filialLogada;
 
-        if (empty($itens_problema) && empty($mensagem)) {
+        $stmtQtdEnviada = $this->pdo->prepare(
+            "SELECT produto_id, SUM(quantidade_enviada) as quantidade_enviada
+             FROM erp_transferencias_itens
+             WHERE transferencia_id = ?
+             GROUP BY produto_id"
+        );
+        $stmtQtdEnviada->execute([$transf_id]);
+        $quantidadesEnviadas = [];
+        foreach ($stmtQtdEnviada->fetchAll(\PDO::FETCH_ASSOC) as $itemQtd) {
+            $quantidadesEnviadas[(int)$itemQtd['produto_id']] = (float)$itemQtd['quantidade_enviada'];
+        }
+
+        $itensValidos = [];
+        foreach ($itens_problema as $produto_id => $oc) {
+            if (empty($oc['selecionado'])) {
+                continue;
+            }
+
+            $pid = (int)$produto_id;
+            $qtdEnviada = $quantidadesEnviadas[$pid] ?? 0.0;
+            if ($pid <= 0 || $qtdEnviada <= 0) {
+                continue;
+            }
+
+            $qtdInformada = (float)str_replace(',', '.', (string)($oc['quantidade'] ?? 0));
+            $qtdProblema = $qtdInformada > 0 ? $qtdInformada : $qtdEnviada;
+            if ($qtdProblema > $qtdEnviada) {
+                $qtdProblema = $qtdEnviada;
+            }
+
+            $itensValidos[$pid] = [
+                'quantidade' => $qtdProblema,
+                'motivo' => $oc['motivo'] ?? 'faltante',
+                'descricao' => $oc['descricao'] ?? '',
+            ];
+        }
+
+        if (empty($itensValidos) && empty($mensagem)) {
             $this->redirect('transferencias.php?aba=em_transito&erro=' . urlencode('Informe ao menos um item com problema ou uma mensagem descritiva.'));
         }
 
@@ -737,8 +856,14 @@ class TransferenciasController extends BaseController {
                  WHERE id = ? AND destino_filial_id = ?"
             );
             $stmt->execute([$mensagem, $transf_id, $unidadeRecebimento]);
+            if ($stmt->rowCount() === 0) {
+                throw new \Exception("Transferencia invalida para relatar problema.");
+            }
 
             // 2. Registra ocorrências por item
+            $stmtDelOc = $this->pdo->prepare(
+                "DELETE FROM erp_transferencias_ocorrencias WHERE transferencia_id = ? AND produto_id = ?"
+            );
             $stmtOc = $this->pdo->prepare(
                 "INSERT INTO erp_transferencias_ocorrencias (transferencia_id, produto_id, quantidade_problema, motivo, descricao, foto)
                  VALUES (?, ?, ?, ?, ?, ?)"
@@ -750,8 +875,7 @@ class TransferenciasController extends BaseController {
                 mkdir($uploadDir, 0777, true);
             }
 
-            foreach ($itens_problema as $produto_id => $oc) {
-                if (!empty($oc['selecionado']) && $oc['quantidade'] > 0) {
+            foreach ($itensValidos as $produto_id => $oc) {
                     $fotosArray = [];
                     
                     // Tenta capturar fotos (múltiplas) deste produto
@@ -772,15 +896,15 @@ class TransferenciasController extends BaseController {
                         }
                     }
 
+                    $stmtDelOc->execute([$transf_id, $produto_id]);
                     $stmtOc->execute([
                         $transf_id, 
                         $produto_id, 
                         $oc['quantidade'], 
-                        $oc['motivo'] ?? 'defeito', 
+                        $oc['motivo'] ?? 'faltante', 
                         $oc['descricao'] ?? '',
                         !empty($fotosArray) ? json_encode($fotosArray) : null
                     ]);
-                }
             }
 
             $this->pdo->commit();
@@ -823,8 +947,8 @@ class TransferenciasController extends BaseController {
                 SUM(ti.quantidade_recebida) as quantidade_recebida,
                 MAX(ti.valor_custo_unitario) as valor_custo_unitario,
                 p.nome, p.codigo, COALESCE(NULLIF(p.unidade, ''), 'UN') as unidade,
-                COALESCE(ef.quantidade, p.quantidade) as disp_matriz,
-                (SELECT SUM(quantidade_problema) FROM erp_transferencias_ocorrencias WHERE transferencia_id = ti.transferencia_id AND produto_id = ti.produto_id) as quantidade_problema
+                COALESCE(ef.quantidade, CASE WHEN t.origem_filial_id = ? THEN p.quantidade ELSE 0 END) as disp_matriz,
+                COALESCE((SELECT SUM(quantidade_problema) FROM erp_transferencias_ocorrencias WHERE transferencia_id = ti.transferencia_id AND produto_id = ti.produto_id), 0) as quantidade_problema
                 FROM erp_transferencias_itens ti 
                 JOIN erp_transferencias t ON t.id = ti.transferencia_id
                 JOIN produtos p ON ti.produto_id = p.id 
@@ -833,15 +957,25 @@ class TransferenciasController extends BaseController {
                 GROUP BY ti.transferencia_id, ti.produto_id, p.nome, p.codigo, p.unidade, ef.quantidade, p.quantidade";
         
         $stmtI = $this->pdo->prepare($sqlItems);
-        $stmtI->execute([$transf_id]);
+        $stmtI->execute([$this->matrizId, $transf_id]);
         $items = $stmtI->fetchAll(\PDO::FETCH_ASSOC);
 
         // 3. Ocorrências detalhadas
         $stmtO = $this->pdo->prepare("
-            SELECT oc.*, p.nome, p.codigo, COALESCE(NULLIF(p.unidade, ''), 'UN') as unidade
+            SELECT
+                MIN(oc.id) as id,
+                oc.transferencia_id,
+                oc.produto_id,
+                SUM(oc.quantidade_problema) as quantidade_problema,
+                GROUP_CONCAT(oc.motivo ORDER BY oc.id SEPARATOR ', ') as motivo,
+                GROUP_CONCAT(NULLIF(oc.descricao, '') ORDER BY oc.id SEPARATOR ' | ') as descricao,
+                MAX(oc.foto) as foto,
+                MIN(oc.data_registro) as data_registro,
+                p.nome, p.codigo, COALESCE(NULLIF(p.unidade, ''), 'UN') as unidade
             FROM erp_transferencias_ocorrencias oc
             JOIN produtos p ON oc.produto_id = p.id
             WHERE oc.transferencia_id = ?
+            GROUP BY oc.transferencia_id, oc.produto_id, p.nome, p.codigo, p.unidade
         ");
         $stmtO->execute([$transf_id]);
         $ocorrencias = $stmtO->fetchAll(\PDO::FETCH_ASSOC);
@@ -896,7 +1030,12 @@ class TransferenciasController extends BaseController {
             // 2. Se for para repor, cria uma nova transferência
             if ($fluxo === 'repor') {
                 // Busca as ocorrências registradas
-                $ocs = $this->pdo->prepare("SELECT * FROM erp_transferencias_ocorrencias WHERE transferencia_id = ?");
+                $ocs = $this->pdo->prepare(
+                    "SELECT produto_id, SUM(quantidade_problema) as quantidade_problema
+                     FROM erp_transferencias_ocorrencias
+                     WHERE transferencia_id = ?
+                     GROUP BY produto_id"
+                );
                 $ocs->execute([$transf_id]);
                 $itensComProblema = $ocs->fetchAll(\PDO::FETCH_ASSOC);
 
@@ -947,24 +1086,14 @@ class TransferenciasController extends BaseController {
 
                         $stmtItem->execute([$new_id, $pid, $qtd, $qtd, $custo]);
                         
-                        try {
-                            $this->pdo->prepare("UPDATE estoque_filiais SET quantidade = quantidade - ? WHERE produto_id = ? AND filial_id = ?")->execute([$qtd, $pid, $origem_id]);
-                            if ((int)$origem_id === (int)$mid) {
-                                $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?")->execute([$qtd, $pid]);
-                            }
-                        } catch (\Exception $ex) {
-                            if ((int)$origem_id === (int)$mid) {
-                                $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?")->execute([$qtd, $pid]);
-                            } else {
-                                throw $ex;
-                            }
-                        }
+                        $this->baixarEstoqueTransferencia((int)$pid, (int)$origem_id, (float)$qtd);
                         $countReposto++;
                     }
 
                     if ($countReposto === 0) {
                         throw new \Exception("Nenhum item válido para reposição foi encontrado.");
                     }
+                    $this->atualizarValorTotalCusto((int)$new_id, 'quantidade_enviada');
                 }
             }
 

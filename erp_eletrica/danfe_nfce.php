@@ -72,6 +72,7 @@ if (!$xmlRaw) {
         .tbl{width:100%;border-collapse:collapse;table-layout:fixed;}
         .tbl thead th{border-bottom:1px dashed #000;font-weight:700;padding:2px 0;}
         .tbl td{padding:1px 0;vertical-align:top;}
+        .product-name{font-size:9px;line-height:1.05;white-space:normal;word-break:break-word;overflow-wrap:anywhere;}
         .badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;}
         .badge-ok{background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;}
         .badge-pend{background:#fef3c7;color:#92400e;border:1px solid #fcd34d;}
@@ -115,7 +116,7 @@ if (!$xmlRaw) {
             <?php $idx = 1; foreach ($itens as $it): $sub = $it['quantidade']*$it['preco_unitario']; ?>
             <tr>
                 <td class="left"><?= $idx++ ?></td>
-                <td class="left"><?= htmlspecialchars(mb_strimwidth($it['nome'],0,20,'..')) ?></td>
+                <td class="left product-name"><?= htmlspecialchars($it['nome']) ?></td>
                 <td class="right"><?= number_format($it['quantidade'],2,',','.') ?></td>
                 <td class="center"><?= htmlspecialchars($it['unidade']??'UN') ?></td>
                 <td class="right"><?= number_format($it['preco_unitario'],2,',','.') ?></td>
@@ -274,6 +275,7 @@ foreach ($dom->getElementsByTagNameNS($ns,'det') as $det) {
         .tbl{width:100%;border-collapse:collapse;table-layout:fixed}
         .tbl thead th{border-bottom:1px dashed #000;font-weight:700;padding:2px 0}
         .tbl td{padding:1px 0;vertical-align:top}
+        .product-name{font-size:9px;line-height:1.05;white-space:normal;word-break:break-word;overflow-wrap:anywhere}
         .left{text-align:left} .right{text-align:right} .center{text-align:center}
         .key{letter-spacing:1px;word-spacing:4px}
         .qr{display:block;margin:5px auto;width:min(190px,calc(100% - 16px));height:auto;aspect-ratio:1/1}
@@ -324,7 +326,7 @@ foreach ($dom->getElementsByTagNameNS($ns,'det') as $det) {
     <tr>
         <td class="left small"><?= $idx++ ?></td>
         <td class="left small"><?= htmlspecialchars($cProd) ?></td>
-        <td class="left small"><?= htmlspecialchars(lm_($xProd)) ?></td>
+        <td class="left product-name"><?= htmlspecialchars(lm_($xProd)) ?></td>
         <td class="right small"><?= number_format($qCom, 3, ',', '.') ?> <?= htmlspecialchars(lm_($uCom)) ?></td>
         <td class="right small"><?= br_($vUn) ?></td>
         <td class="right small"><?= br_($vTot) ?></td>

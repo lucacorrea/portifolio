@@ -165,6 +165,14 @@ $tipoComprovante = ($totalNovo <= 0.0001 || (($troca['tipo'] ?? '') === 'devoluc
             vertical-align: top
         }
 
+        .product-name {
+            font-size: 9px;
+            line-height: 1.08;
+            white-space: normal;
+            word-break: break-word;
+            overflow-wrap: anywhere
+        }
+
         .left {
             text-align: left
         }
@@ -339,7 +347,7 @@ $tipoComprovante = ($totalNovo <= 0.0001 || (($troca['tipo'] ?? '') === 'devoluc
                 <?php foreach ($trocaItens as $itemTroca): ?>
                 <tr>
                     <td class="left small"><?= htmlspecialchars($itemTroca['produto_original_codigo']) ?></td>
-                    <td class="left"><?= htmlspecialchars(mb_strimwidth($itemTroca['produto_original_nome'], 0, 20, '..')) ?></td>
+                    <td class="left product-name"><?= htmlspecialchars($itemTroca['produto_original_nome']) ?></td>
                     <td class="right"><?= formatarQuantidade($itemTroca['quantidade_original']) ?></td>
                     <td class="right"><?= number_format($itemTroca['preco_original'],2,',','.') ?></td>
                     <td class="right"><?= number_format(((float)$itemTroca['quantidade_original'] * (float)$itemTroca['preco_original']),2,',','.') ?></td>
@@ -374,7 +382,7 @@ $tipoComprovante = ($totalNovo <= 0.0001 || (($troca['tipo'] ?? '') === 'devoluc
                 <?php if ((float)$itemTroca['quantidade_nova'] <= 0) continue; ?>
                 <tr>
                     <td class="left small"><?= htmlspecialchars($itemTroca['produto_novo_codigo'] ?? '') ?></td>
-                    <td class="left"><?= htmlspecialchars(mb_strimwidth($itemTroca['produto_novo_nome'] ?? '', 0, 20, '..')) ?></td>
+                    <td class="left product-name"><?= htmlspecialchars($itemTroca['produto_novo_nome'] ?? '') ?></td>
                     <td class="right"><?= formatarQuantidade($itemTroca['quantidade_nova']) ?></td>
                     <td class="right"><?= number_format($itemTroca['preco_novo'],2,',','.') ?></td>
                     <td class="right"><?= number_format(((float)$itemTroca['quantidade_nova'] * (float)$itemTroca['preco_novo']),2,',','.') ?></td>

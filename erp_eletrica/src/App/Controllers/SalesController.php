@@ -225,6 +225,106 @@ class SalesController extends BaseController {
         ]);
     }
 
+    private function ensureReceivableCancelledStatus(\PDO $db): void {
+        try {
+            $stmt = $db->query("SHOW COLUMNS FROM contas_receber LIKE 'status'");
+            $col = $stmt->fetch(\PDO::FETCH_ASSOC);
+            $type = (string)($col['Type'] ?? '');
+
+            if ($type && !str_contains($type, "'cancelado'")) {
+                $db->exec("ALTER TABLE contas_receber MODIFY status ENUM('pendente','pago','atrasado','cancelado') DEFAULT 'pendente'");
+            }
+        } catch (\Throwable $e) {
+            error_log("Erro ao garantir status cancelado em contas_receber: " . $e->getMessage());
+        }
+    }
+
+    private function getSaleGrossTotal(\PDO $db, int $vendaId): float {
+        $stmt = $db->prepare("SELECT COALESCE(SUM(quantidade * preco_unitario), 0) FROM vendas_itens WHERE venda_id = ?");
+        $stmt->execute([$vendaId]);
+        return round((float)$stmt->fetchColumn(), 2);
+    }
+
+    private function getSaleDiscountRate(float $grossTotal, float $discountTotal): float {
+        if ($grossTotal <= 0.0001 || $discountTotal <= 0.0001) {
+            return 0.0;
+        }
+
+        return min(1.0, max(0.0, $discountTotal / $grossTotal));
+    }
+
+    private function recordReceivablePaymentRefund(\PDO $db, int $fiadoId, float $amount): array {
+        $remaining = round(max(0, $amount), 2);
+        $refundsByMethod = [];
+
+        if ($fiadoId <= 0 || $remaining <= 0.009) {
+            return $refundsByMethod;
+        }
+
+        $stmt = $db->prepare(
+            "SELECT metodo, valor
+             FROM fiados_pagamentos
+             WHERE fiado_id = ? AND valor > 0
+             ORDER BY created_at DESC, id DESC"
+        );
+        $stmt->execute([$fiadoId]);
+        $payments = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $stmtRefund = $db->prepare("INSERT INTO fiados_pagamentos (fiado_id, valor, metodo) VALUES (?, ?, ?)");
+
+        foreach ($payments as $payment) {
+            if ($remaining <= 0.009) {
+                break;
+            }
+
+            $paid = round((float)$payment['valor'], 2);
+            if ($paid <= 0) {
+                continue;
+            }
+
+            $refund = min($remaining, $paid);
+            $method = strtoupper((string)($payment['metodo'] ?? 'DINHEIRO'));
+            $stmtRefund->execute([$fiadoId, -$refund, $method]);
+            $refundsByMethod[$method] = ($refundsByMethod[$method] ?? 0) + $refund;
+            $remaining = round($remaining - $refund, 2);
+        }
+
+        if ($remaining > 0.009) {
+            $stmtRefund->execute([$fiadoId, -$remaining, 'DINHEIRO']);
+            $refundsByMethod['DINHEIRO'] = ($refundsByMethod['DINHEIRO'] ?? 0) + $remaining;
+        }
+
+        return $refundsByMethod;
+    }
+
+    private function registrarMovimentosEstornoFiado(\PDO $db, int $filialId, array $refundsByMethod, string $motivo): void {
+        if (empty($refundsByMethod)) {
+            return;
+        }
+
+        $cashierModel = new \App\Models\Cashier();
+        $caixaAberto = $cashierModel->getOpenForFilial($filialId);
+        if (!$caixaAberto) {
+            return;
+        }
+
+        $movementModel = new \App\Models\CashierMovement();
+        foreach ($refundsByMethod as $method => $value) {
+            $value = round((float)$value, 2);
+            if ($value <= 0) {
+                continue;
+            }
+
+            $movementModel->create([
+                'caixa_id' => $caixaAberto['id'],
+                'tipo' => 'saida',
+                'valor' => $value,
+                'motivo' => $motivo . ' (' . strtoupper((string)$method) . ')',
+                'operador_id' => $_SESSION['usuario_id']
+            ]);
+        }
+    }
+
     public function checkout() {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $data = json_decode(file_get_contents('php://input'), true) ?: [];
@@ -511,17 +611,6 @@ class SalesController extends BaseController {
                             'valor' => $entrada,
                             'metodo' => strtoupper($entradaMetodo)
                         ]);
-
-                        if (strtolower($entradaMetodo) === 'dinheiro') {
-                            $movementModel = new \App\Models\CashierMovement();
-                            $movementModel->create([
-                                'caixa_id' => $caixaAberto['id'],
-                                'tipo' => 'entrada',
-                                'valor' => $entrada,
-                                'motivo' => "Entrada Venda #{$saleId} Fiado - Cliente: {$nomePersist}",
-                                'operador_id' => $_SESSION['usuario_id']
-                            ]);
-                        }
                     }
 
                     $audit = new \App\Services\AuditLogService();
@@ -595,8 +684,6 @@ class SalesController extends BaseController {
                     $productModel->updateStock($item['id'], $item['qty'], 'saida', $_SESSION['filial_id'] ?? 1);
                 }
 
-                $db->commit();
-
                 // Record Cashier Movement
                 $movementModel = new \App\Models\CashierMovement();
 
@@ -637,6 +724,8 @@ class SalesController extends BaseController {
                         'operador_id' => $_SESSION['usuario_id'],
                     ]);
                 }
+
+                $db->commit();
 
                 echo json_encode(['success' => true, 'sale_id' => $saleId, 'tipo_nota' => $tipoNota]);
             } catch (\Exception $e) {
@@ -818,6 +907,12 @@ class SalesController extends BaseController {
         try {
             $db->beginTransaction();
 
+            $stmtSaleLock = $db->prepare("SELECT id FROM vendas WHERE id = ? FOR UPDATE");
+            $stmtSaleLock->execute([$id]);
+            if (!$stmtSaleLock->fetchColumn()) {
+                throw new \Exception("Venda nao encontrada.");
+            }
+
             $sale = $saleModel->findById($id);
             if (!$sale) throw new \Exception("Venda não encontrada.");
             
@@ -909,8 +1004,29 @@ class SalesController extends BaseController {
                     $productModel->updateStock($item['produto_id'], $item['quantidade'], 'entrada');
                 }
 
-                // 2. Financeiro (Estorno de Caixa)
-                if ($sale['forma_pagamento'] !== 'fiado') {
+                // 2. Financeiro (Estorno de Caixa/Fiado)
+                $stmtCr = $db->prepare("SELECT * FROM contas_receber WHERE venda_id = ? LIMIT 1 FOR UPDATE");
+                $stmtCr->execute([$id]);
+                $receivable = $stmtCr->fetch(\PDO::FETCH_ASSOC);
+
+                if ($receivable) {
+                    $this->ensureReceivableCancelledStatus($db);
+                    $valorPago = round((float)($receivable['valor_pago'] ?? 0), 2);
+                    $refundsByMethod = $this->recordReceivablePaymentRefund($db, (int)$receivable['id'], $valorPago);
+
+                    $db->prepare(
+                        "UPDATE contas_receber
+                         SET valor = 0, valor_pago = 0, saldo = 0, status = 'cancelado', data_pagamento = NULL
+                         WHERE id = ?"
+                    )->execute([$receivable['id']]);
+
+                    $this->registrarMovimentosEstornoFiado(
+                        $db,
+                        (int)$sale['filial_id'],
+                        $refundsByMethod,
+                        "Estorno Fiado Venda #{$id} - Motivo: {$motivo}"
+                    );
+                } elseif ($sale['forma_pagamento'] !== 'fiado') {
                     $caixaAberto = $cashierModel->getOpenForFilial($sale['filial_id']);
                     if ($caixaAberto) {
                         $movementModel->create([
@@ -921,8 +1037,6 @@ class SalesController extends BaseController {
                             'operador_id' => $_SESSION['usuario_id']
                         ]);
                     }
-                } else {
-                    $db->prepare("UPDATE contas_receber SET status = 'cancelado' WHERE venda_id = ?")->execute([$id]);
                 }
 
                 // 3. Atualizar Status Interno
@@ -951,7 +1065,7 @@ class SalesController extends BaseController {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') exit;
 
         $data = json_decode(file_get_contents('php://input'), true);
-        if (!empty($data['return_items']) || empty($data['new_product_id'])) {
+        if (!empty($data['return_items']) || !empty($data['item_id']) || empty($data['new_product_id'])) {
             $this->exchange_items_bulk($data ?: []);
             return;
         }
@@ -1179,14 +1293,25 @@ class SalesController extends BaseController {
         try {
             $db->beginTransaction();
 
+            $stmtSaleLock = $db->prepare("SELECT id FROM vendas WHERE id = ? FOR UPDATE");
+            $stmtSaleLock->execute([$vendaId]);
+            if (!$stmtSaleLock->fetchColumn()) {
+                throw new \Exception('Venda nao encontrada.');
+            }
+
             $sale = $saleModel->findById($vendaId);
             if (!$sale) throw new \Exception('Venda nao encontrada.');
             if (($sale['status'] ?? '') === 'cancelado') {
                 throw new \Exception('Nao e possivel devolver itens de venda cancelada.');
             }
 
+            $grossBefore = $this->getSaleGrossTotal($db, (int)$vendaId);
+            $currentDiscount = min((float)($sale['desconto_total'] ?? 0), $grossBefore);
+            $discountRate = $this->getSaleDiscountRate($grossBefore, $currentDiscount);
+
             $returnedRows = [];
             $totalReturned = 0.0;
+            $totalReturnedGross = 0.0;
 
             foreach ($returnItems as $itemId => $returnQty) {
                 $stmtItem = $db->prepare("SELECT * FROM vendas_itens WHERE id = ? AND venda_id = ? FOR UPDATE");
@@ -1202,8 +1327,12 @@ class SalesController extends BaseController {
                 }
 
                 $oldPrice = (float)$oldItem['preco_unitario'];
-                $lineReturnedTotal = round($returnQty * $oldPrice, 2);
-                $totalReturned += $lineReturnedTotal;
+                $lineReturnedGross = round($returnQty * $oldPrice, 2);
+                $lineReturnedDiscount = round($lineReturnedGross * $discountRate, 2);
+                $lineReturnedNet = max(0, round($lineReturnedGross - $lineReturnedDiscount, 2));
+                $effectiveReturnUnitPrice = $returnQty > 0 ? round($lineReturnedNet / $returnQty, 2) : $oldPrice;
+                $totalReturned += $lineReturnedNet;
+                $totalReturnedGross += $lineReturnedGross;
 
                 $productModel->updateStock($oldItem['produto_id'], $returnQty, 'entrada', $sale['filial_id']);
 
@@ -1218,7 +1347,7 @@ class SalesController extends BaseController {
                     'item_id' => $itemId,
                     'produto_id' => (int)$oldItem['produto_id'],
                     'return_qty' => $returnQty,
-                    'old_price' => $oldPrice,
+                    'old_price' => $effectiveReturnUnitPrice,
                 ];
             }
 
@@ -1266,8 +1395,8 @@ class SalesController extends BaseController {
             $stmtTotal = $db->prepare("SELECT COALESCE(SUM(quantidade * preco_unitario), 0) FROM vendas_itens WHERE venda_id = ?");
             $stmtTotal->execute([$vendaId]);
             $newTotalItems = round((float)$stmtTotal->fetchColumn(), 2);
-            $currentDiscount = (float)($sale['desconto_total'] ?? 0);
-            $newDiscount = $newTotalItems <= 0.0001 ? 0.0 : min($currentDiscount, $newTotalItems);
+            $returnedDiscount = min($currentDiscount, round($totalReturnedGross * $discountRate, 2));
+            $newDiscount = $newTotalItems <= 0.0001 ? 0.0 : min(max(0, round($currentDiscount - $returnedDiscount, 2)), $newTotalItems);
             $newTotalVenda = max(0, round($newTotalItems - $newDiscount, 2));
             $newStatus = $newTotalItems <= 0.0001 ? 'cancelado' : 'concluido';
 
@@ -1280,12 +1409,38 @@ class SalesController extends BaseController {
             $receivable = $stmtCr->fetch(\PDO::FETCH_ASSOC);
 
             if ($receivable) {
+                $this->ensureReceivableCancelledStatus($db);
+
                 $novoValor = max(0, round((float)$receivable['valor'] + $diff, 2));
-                $valorPago = (float)($receivable['valor_pago'] ?? 0);
-                $novoSaldo = max(0, round($novoValor - $valorPago, 2));
-                $novoStatus = $novoSaldo <= 0.009 ? 'pago' : 'pendente';
-                $db->prepare("UPDATE contas_receber SET valor = ?, saldo = ?, status = ? WHERE id = ?")
-                   ->execute([$novoValor, $novoSaldo, $novoStatus, $receivable['id']]);
+                $valorPagoAtual = round((float)($receivable['valor_pago'] ?? 0), 2);
+                $valorPagoAjustado = min($valorPagoAtual, $novoValor);
+                $valorPagoEstornar = max(0, round($valorPagoAtual - $valorPagoAjustado, 2));
+                $novoSaldo = max(0, round($novoValor - $valorPagoAjustado, 2));
+                $novoStatus = $newStatus === 'cancelado' || $novoValor <= 0.009
+                    ? 'cancelado'
+                    : ($novoSaldo <= 0.009 ? 'pago' : 'pendente');
+
+                $refundsByMethod = $this->recordReceivablePaymentRefund($db, (int)$receivable['id'], $valorPagoEstornar);
+
+                $db->prepare(
+                    "UPDATE contas_receber
+                     SET valor = ?, valor_pago = ?, saldo = ?, status = ?, data_pagamento = ?
+                     WHERE id = ?"
+                )->execute([
+                    $novoValor,
+                    $valorPagoAjustado,
+                    $novoSaldo,
+                    $novoStatus,
+                    $novoStatus === 'pago' ? date('Y-m-d') : null,
+                    $receivable['id']
+                ]);
+
+                $this->registrarMovimentosEstornoFiado(
+                    $db,
+                    (int)$sale['filial_id'],
+                    $refundsByMethod,
+                    ($newProdId ? "Estorno Troca Fiado Venda #{$vendaId}" : "Estorno Devolucao Fiado Venda #{$vendaId}")
+                );
             } elseif (abs($diff) > 0.009 && $sale['forma_pagamento'] !== 'fiado') {
                 $cashierModel = new \App\Models\Cashier();
                 $caixaAberto = $cashierModel->getOpenForFilial($sale['filial_id']);

@@ -504,6 +504,14 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
     overflow-wrap: break-word;
   }
 
+  .product-name {
+    font-size: 9px;
+    line-height: 1.05;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
   .badge {
     display: inline-block;
     background: #eef2ff;
@@ -716,7 +724,7 @@ foreach ($dom->getElementsByTagNameNS($nfeNS, 'det') as $det) {
           <tr>
             <td class="left"><?= $idx++ ?></td>
             <td class="left small"><?= htmlspecialchars($it['cProd'], ENT_QUOTES, 'UTF-8') ?></td>
-            <td><?= htmlspecialchars($it['xProd'], ENT_QUOTES, 'UTF-8') ?></td>
+            <td class="product-name"><?= htmlspecialchars($it['xProd'], ENT_QUOTES, 'UTF-8') ?></td>
             <td class="right"><?= formatarQuantidade($it['qCom']) ?><br><?= htmlspecialchars($it['uCom'], ENT_QUOTES, 'UTF-8') ?></td>
             <td class="right"><?= $it['vUn'] ?></td>
             <td class="right"><?= $it['vTot'] ?></td>

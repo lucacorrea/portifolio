@@ -74,7 +74,7 @@ class Cashier extends BaseModel {
             SELECT UPPER(fp.metodo), COALESCE(SUM(fp.valor), 0) as total
             FROM fiados_pagamentos fp
             JOIN contas_receber cr ON fp.fiado_id = cr.id
-            WHERE cr.filial_id = ? $whereTimePagos
+            WHERE cr.filial_id = ? AND cr.status <> 'cancelado' $whereTimePagos
             GROUP BY fp.metodo
         ";
         $stmtPagos = $this->db->prepare($sqlPagos);
@@ -247,7 +247,7 @@ class Cashier extends BaseModel {
             FROM fiados_pagamentos fp
             JOIN contas_receber cr ON fp.fiado_id = cr.id
             JOIN clientes c ON cr.cliente_id = c.id
-            WHERE cr.filial_id = ? $whereTimeFiado
+            WHERE cr.filial_id = ? AND cr.status <> 'cancelado' $whereTimeFiado
             ORDER BY fp.created_at DESC
         ");
         $stmtFiados->execute($paramsFiado);

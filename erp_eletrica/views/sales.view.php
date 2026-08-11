@@ -3039,7 +3039,8 @@ exchangeState = {
     newProductId: null,
     newProductName: null,
     newQty: 0,
-    newProductPrice: 0
+    newProductPrice: 0,
+    discountRate: 0
 };
 
 function resetExchangeProductSearchListener() {
@@ -3109,7 +3110,8 @@ async function openExchangeFlow() {
         newProductId: null,
         newProductName: null,
         newQty: 0,
-        newProductPrice: 0
+        newProductPrice: 0,
+        discountRate: 0
     };
 
     document.getElementById('exchangeSaleId').innerText = activeManageId;
@@ -3138,15 +3140,23 @@ async function openExchangeFlow() {
         return;
     }
 
+    const grossTotal = data.sale.itens.reduce((sum, item) => {
+        return sum + ((parseFloat(item.quantidade) || 0) * (parseFloat(item.preco_unitario) || 0));
+    }, 0);
+    const discountTotal = parseFloat(data.sale.desconto_total || 0) || 0;
+    exchangeState.discountRate = grossTotal > 0 ? Math.min(1, Math.max(0, discountTotal / grossTotal)) : 0;
+
     data.sale.itens.forEach(item => {
         const itemQty = parseFloat(item.quantidade);
         const unitPrice = parseFloat(item.preco_unitario);
+        const netUnitPrice = unitPrice * (1 - exchangeState.discountRate);
         const row = document.createElement('div');
         row.className = 'list-group-item py-3';
         row.dataset.itemId = item.id;
         row.dataset.itemName = item.produto_nome;
         row.dataset.itemQty = String(itemQty);
         row.dataset.itemPrice = String(unitPrice);
+        row.dataset.itemNetPrice = String(netUnitPrice);
         row.innerHTML = `
             <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
                 <div class="form-check me-2">
@@ -3210,7 +3220,8 @@ function getSelectedExchangeReturnItems(showAlert = false) {
             item_id: parseInt(row.dataset.itemId, 10),
             return_qty: returnQty,
             name: row.dataset.itemName,
-            price: parseFloat(row.dataset.itemPrice) || 0
+            price: parseFloat(row.dataset.itemPrice) || 0,
+            netPrice: parseFloat(row.dataset.itemNetPrice) || parseFloat(row.dataset.itemPrice) || 0
         });
     });
     if (hasInvalid && showAlert) return [];
@@ -3232,7 +3243,7 @@ function syncExchangeSelection() {
 }
 
 function exchangeReturnedTotal() {
-    return exchangeState.returnItems.reduce((sum, item) => sum + (item.return_qty * item.price), 0);
+    return exchangeState.returnItems.reduce((sum, item) => sum + (item.return_qty * (item.netPrice ?? item.price)), 0);
 }
 
 function renderExchangeSummary() {
@@ -3248,7 +3259,7 @@ function renderExchangeSummary() {
             ${exchangeState.returnItems.map(item => `
                 <div class="list-group-item d-flex justify-content-between align-items-center">
                     <span class="fw-bold">${item.name}</span>
-                    <span>${item.return_qty} x R$ ${item.price.toFixed(2).replace('.', ',')}</span>
+                    <span>${item.return_qty} x R$ ${(item.netPrice ?? item.price).toFixed(2).replace('.', ',')}</span>
                 </div>
             `).join('')}
         </div>

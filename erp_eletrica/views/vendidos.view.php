@@ -766,9 +766,19 @@
         });
 
         // --- Exchange Logic ---
-        let exchData = { vendaId: null, itemId: null, oldPrice: 0, newProdId: null };
+        let exchData = { vendaId: null, itemId: null, oldPrice: 0, oldNetPrice: 0, newProdId: null };
+        function currentDetailDiscountRate() {
+            if (!currentDetailSale || !Array.isArray(currentDetailSale.itens)) return 0;
+            const gross = currentDetailSale.itens.reduce((sum, item) => {
+                return sum + ((parseFloat(item.quantidade) || 0) * (parseFloat(item.preco_unitario) || 0));
+            }, 0);
+            const discount = parseFloat(currentDetailSale.desconto_total || 0) || 0;
+            return gross > 0 ? Math.min(1, Math.max(0, discount / gross)) : 0;
+        }
+
         window.openExchange = function(vId, iId, name, qtd, price) {
-            exchData = { vendaId: vId, itemId: iId, oldPrice: price, oldQtd: qtd };
+            const discountRate = currentDetailDiscountRate();
+            exchData = { vendaId: vId, itemId: iId, oldPrice: price, oldNetPrice: price * (1 - discountRate), oldQtd: qtd };
             document.getElementById('exch-original-name').textContent = name;
             document.getElementById('exch-original-qtd').textContent = qtd + ' unid.';
             const returnQtyInput = document.getElementById('exch-return-qty');
@@ -821,7 +831,7 @@
             const q = parseFloat(document.getElementById('exch-new-qty').value) || 0;
             const p = parseFloat(document.getElementById('exch-new-price').value) || 0;
             const newTotal = q * p;
-            const oldTotal = returnQty * exchData.oldPrice;
+            const oldTotal = returnQty * (exchData.oldNetPrice || exchData.oldPrice);
             const diff = newTotal - oldTotal;
             const diffEl = document.getElementById('exch-diff');
             diffEl.textContent = (diff >= 0 ? '+ ' : '- ') + 'R$ ' + Math.abs(diff).toLocaleString('pt-BR', {minimumFractionDigits:2});

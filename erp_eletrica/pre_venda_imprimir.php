@@ -21,6 +21,7 @@ if (!$pv) {
         .header { border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
         .code { font-size: 28px; font-weight: bold; border: 1px solid #000; padding: 10px; display: inline-block; margin: 10px 0; }
         .items { border-bottom: 1px dashed #000; margin-bottom: 10px; padding-bottom: 10px; }
+        .product-name { font-size: 11px; line-height: 1.1; word-break: break-word; overflow-wrap: anywhere; }
         .footer { font-size: 11px; }
         @media print { 
             .no-print { display: none; } 
@@ -50,7 +51,9 @@ if (!$pv) {
     <div class="items">
         <strong>ITENS:</strong><br>
         <?php foreach ($pv['itens'] as $item): ?>
-            <?= str_pad($item['quantidade'], 5) ?> x <?= substr($item['produto_nome'], 0, 20) ?>...<br>
+            <div class="product-name">
+                <?= htmlspecialchars($item['quantidade']) ?> x <?= htmlspecialchars($item['produto_nome']) ?>
+            </div>
         <?php endforeach; ?>
     </div>
 

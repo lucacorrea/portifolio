@@ -66,6 +66,7 @@ $qrCodeUrl = $val('//nfe:infNFeSupl/nfe:qrCode');
         .table { width: 100%; border-collapse: collapse; }
         .text-right { text-align: right; }
         .extra-small { font-size: 10px; }
+        .product-name { font-size: 9px; line-height: 1.05; white-space: normal; word-break: break-word; overflow-wrap: anywhere; }
         @media print {
             .no-print { display: none; }
             body { width: 100%; margin: 0; }
@@ -111,7 +112,7 @@ $qrCodeUrl = $val('//nfe:infNFeSupl/nfe:qrCode');
                 $prod = $item->getElementsByTagName('prod')->item(0);
             ?>
             <tr>
-                <td colspan="3"><?= $prod->getElementsByTagName('cProd')->item(0)->nodeValue ?> - <?= $prod->getElementsByTagName('xProd')->item(0)->nodeValue ?></td>
+                <td colspan="3" class="product-name"><?= htmlspecialchars($prod->getElementsByTagName('cProd')->item(0)->nodeValue) ?> - <?= htmlspecialchars($prod->getElementsByTagName('xProd')->item(0)->nodeValue) ?></td>
             </tr>
             <tr>
                 <td></td>

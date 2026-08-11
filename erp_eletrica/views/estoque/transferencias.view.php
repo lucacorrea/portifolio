@@ -857,9 +857,46 @@ function prepareTransferSubmit(form) {
     return true;
 }
 
+function validateTransferFormBeforeSubmit(form) {
+    const action = form.getAttribute('action') || '';
+    if (!action.includes('relatar_problema')) {
+        return true;
+    }
+
+    const selecionados = Array.from(form.querySelectorAll('.chkItem:checked'));
+    if (selecionados.length === 0) {
+        alert('Selecione o produto com problema e confirme a quantidade antes de enviar o relato.');
+        return false;
+    }
+
+    for (const chk of selecionados) {
+        const row = chk.closest('.item-relato-row');
+        const qty = row ? row.querySelector('input[type="number"]') : null;
+        if (!qty) continue;
+
+        const max = parseFloat(qty.getAttribute('max') || '0');
+        if (!parseFloat(qty.value || '0') && max > 0) {
+            qty.value = max.toFixed(3);
+        }
+
+        if (parseFloat(qty.value || '0') <= 0) {
+            alert('Informe a quantidade do produto com problema.');
+            qty.focus();
+            return false;
+        }
+    }
+
+    return true;
+}
+
 function attachTransferSubmitGuard() {
     document.querySelectorAll('form[action^="transferencias.php?action="]').forEach(form => {
         form.addEventListener('submit', (event) => {
+            if (!validateTransferFormBeforeSubmit(form)) {
+                event.preventDefault();
+                return;
+            }
+
             if (!prepareTransferSubmit(form)) {
                 event.preventDefault();
             }
@@ -1078,6 +1115,41 @@ let resolucaoModalInstance = null;
 function abrirModalResolucao(id, codigo) {
     document.getElementById('res_transf_id').value = id;
     document.getElementById('res_codigo').innerText = codigo;
+    const itensEl = document.getElementById('res_itens_ocorrencia');
+    if (itensEl) {
+        itensEl.innerHTML = '<div class="text-center py-2"><div class="spinner-border spinner-border-sm text-success" role="status"></div></div>';
+        fetch(`transferencias.php?action=get_items&id=${id}`)
+            .then(r => r.json())
+            .then(res => {
+                if (!res.success) {
+                    itensEl.innerHTML = '<div class="alert alert-warning small mb-0">Nao foi possivel carregar os produtos relatados.</div>';
+                    return;
+                }
+
+                const ocorrencias = (res.ocorrencias || []).filter(oc => parseFloat(oc.quantidade_problema || 0) > 0);
+                if (ocorrencias.length === 0) {
+                    itensEl.innerHTML = '<div class="alert alert-warning small mb-0">Nenhum produto com quantidade foi registrado neste relato.</div>';
+                    return;
+                }
+
+                itensEl.innerHTML = `
+                    <div class="border rounded bg-light overflow-hidden mb-3">
+                        ${ocorrencias.map(oc => `
+                            <div class="d-flex justify-content-between gap-2 px-3 py-2 border-bottom bg-white">
+                                <div class="text-start">
+                                    <div class="fw-bold small">${escapeHtml(oc.nome || 'Produto')}</div>
+                                    <div class="extra-small text-muted">SKU: ${escapeHtml(oc.codigo || oc.produto_id || '')}</div>
+                                </div>
+                                <span class="badge bg-danger align-self-center">${parseFloat(oc.quantidade_problema || 0).toFixed(3)} ${escapeHtml(oc.unidade || 'UN')}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            })
+            .catch(() => {
+                itensEl.innerHTML = '<div class="alert alert-warning small mb-0">Nao foi possivel carregar os produtos relatados.</div>';
+            });
+    }
     
     const modalEl = document.getElementById('modalConfirmarResolucao');
     if (!resolucaoModalInstance) {
@@ -1097,7 +1169,22 @@ function setFluxoResolucao(fluxo) {
 }
 
 function toggleItemRelato(chk, id) {
-    document.getElementById(`campos_oc_${id}`).classList.toggle('d-none', !chk.checked);
+    const campos = document.getElementById(`campos_oc_${id}`);
+    campos.classList.toggle('d-none', !chk.checked);
+
+    const qty = campos.querySelector('input[type="number"]');
+    if (!qty) return;
+
+    if (chk.checked) {
+        const max = parseFloat(qty.getAttribute('max') || '0');
+        if (!parseFloat(qty.value || '0') && max > 0) {
+            qty.value = max.toFixed(3);
+        }
+        qty.focus();
+        qty.select();
+    } else {
+        qty.value = '';
+    }
 }
 
 let resumoModalInstance = null;
@@ -1537,7 +1624,7 @@ function abrirProcessarRecebimento(id) {
 <div class="modal fade" id="modalRelato" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content border-0 shadow-lg">
-            <form action="transferencias.php?action=relatar_problema" method="POST" enctype="multipart/form-data">
+            <form action="transferencias.php?action=relatar_problema" method="POST" enctype="multipart/form-data" id="formRelatoProblema">
                 <div class="modal-header bg-danger text-white border-0">
                     <h6 class="modal-title fw-bold"><i class="fas fa-exclamation-triangle me-2"></i>Relatar Problema na Entrega</h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -1584,6 +1671,7 @@ function abrirProcessarRecebimento(id) {
                     </div>
                     <h6 class="fw-bold">Como deseja resolver o pedido <span id="res_codigo" class="text-primary"></span>?</h6>
                     <p class="small text-muted mb-4">Escolha se deseja enviar os itens faltantes/danificados novamente ou apenas encerrar o chamado.</p>
+                    <div id="res_itens_ocorrencia" class="mb-3"></div>
                     
                     <div class="d-grid gap-2">
                         <button type="button" class="btn btn-primary fw-bold py-2" onclick="setFluxoResolucao('repor')">
