@@ -146,6 +146,14 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
             vertical-align: top
         }
 
+        .product-name {
+            font-size: 9px;
+            line-height: 1.05;
+            white-space: normal;
+            word-break: break-word;
+            overflow-wrap: anywhere
+        }
+
         .left {
             text-align: left
         }
@@ -357,7 +365,7 @@ $troco         = ($valorRecebido !== null && $venda['forma_pagamento'] === 'dinh
                     <tr>
                         <td class="left"><?= $idx++ ?></td>
                         <td class="left small"><?= htmlspecialchars($it['codigo']) ?></td>
-                        <td class="left"><?= htmlspecialchars(mb_strimwidth($it['nome'], 0, 20, '..')) ?></td>
+                        <td class="left product-name"><?= htmlspecialchars($it['nome']) ?></td>
                         <td class="right"><?= formatarQuantidade($it['quantidade']) ?></td>
                         <td class="left"><?= htmlspecialchars($it['unidade'] ?? 'UN') ?></td>
                         <td class="right"><?= number_format($it['preco_unitario'],2,',','.') ?></td>

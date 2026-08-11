@@ -809,6 +809,64 @@ function initCart(formId) {
         });
     });
 }
+
+function createTransferSubmitKey() {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+        return window.crypto.randomUUID();
+    }
+
+    return `transfer-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function ensureTransferIdempotencyKey(form) {
+    const action = form.getAttribute('action') || '';
+    if (!action.includes('nova_transferencia') && !action.includes('nova_solicitacao')) {
+        return;
+    }
+
+    let input = form.querySelector('input[name="idempotency_key"]');
+    if (!input) {
+        input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'idempotency_key';
+        form.appendChild(input);
+    }
+
+    if (!input.value) {
+        input.value = createTransferSubmitKey();
+    }
+}
+
+function prepareTransferSubmit(form) {
+    if (!form) return false;
+    if (form.dataset.submitting === '1') {
+        return false;
+    }
+
+    ensureTransferIdempotencyKey(form);
+    form.dataset.submitting = '1';
+
+    form.querySelectorAll('button[type="submit"], button[onclick*="enviarCarrinho"], button[onclick*="setFluxoResolucao"]').forEach(btn => {
+        btn.disabled = true;
+        if (btn.type === 'submit') {
+            btn.dataset.originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processando...';
+        }
+    });
+
+    return true;
+}
+
+function attachTransferSubmitGuard() {
+    document.querySelectorAll('form[action^="transferencias.php?action="]').forEach(form => {
+        form.addEventListener('submit', (event) => {
+            if (!prepareTransferSubmit(form)) {
+                event.preventDefault();
+            }
+        });
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // Tabela da Matriz (Novo Despacho)
     initB2BTable('tbodyTransf', 'searchTransf', 'paginationTransf', 'paginfoTransf', 'noResultsTransf', 6);
@@ -817,6 +875,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Tabela da Filial (Nova Solicitação)
     initB2BTable('tbodyReq', 'searchReq', 'paginationReq', 'paginfoReq', 'noResultsReq', 6);
     initCart('formReq');
+    attachTransferSubmitGuard();
 
     // Clique na linha para selecionar (Global)
     document.addEventListener('click', (e) => {
@@ -938,7 +997,9 @@ function enviarCarrinho() {
     if (typeof form.requestSubmit === 'function') {
         form.requestSubmit();
     } else {
-        form.submit();
+        if (prepareTransferSubmit(form)) {
+            form.submit();
+        }
     }
 }
 
@@ -1026,8 +1087,13 @@ function abrirModalResolucao(id, codigo) {
 }
 
 function setFluxoResolucao(fluxo) {
+    const form = document.getElementById('formResolucao');
     document.getElementById('res_fluxo').value = fluxo;
-    document.getElementById('formResolucao').submit();
+    if (typeof form.requestSubmit === 'function') {
+        form.requestSubmit();
+    } else if (prepareTransferSubmit(form)) {
+        form.submit();
+    }
 }
 
 function toggleItemRelato(chk, id) {

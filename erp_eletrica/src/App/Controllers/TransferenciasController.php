@@ -39,6 +39,9 @@ class TransferenciasController extends BaseController {
             if (!in_array('problema_resolvido', $cols)) {
                 $this->pdo->exec("ALTER TABLE erp_transferencias ADD COLUMN problema_resolvido TINYINT DEFAULT 0");
             }
+            if (!in_array('idempotency_key', $cols)) {
+                $this->pdo->exec("ALTER TABLE erp_transferencias ADD COLUMN idempotency_key VARCHAR(80) NULL DEFAULT NULL");
+            }
 
             // check erp_transferencias_ocorrencias columns
             $colsOc = $this->pdo->query("DESCRIBE erp_transferencias_ocorrencias")->fetchAll(\PDO::FETCH_COLUMN);
@@ -68,12 +71,16 @@ class TransferenciasController extends BaseController {
                     tem_problema TINYINT DEFAULT 0,
                     relato_problema TEXT,
                     data_relato TIMESTAMP NULL,
-                    problema_resolvido TINYINT DEFAULT 0
+                    problema_resolvido TINYINT DEFAULT 0,
+                    idempotency_key VARCHAR(80) NULL DEFAULT NULL,
+                    UNIQUE KEY idx_erp_transferencias_idempotency_key (idempotency_key)
                 )
             ");
         }
 
         // 2. Criar tabelas auxiliares se não existirem
+        $this->ensureTransferIdempotencyIndex();
+
         $this->pdo->exec("
             CREATE TABLE IF NOT EXISTS erp_transferencias_itens (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -111,6 +118,141 @@ class TransferenciasController extends BaseController {
         $mid = $this->matrizId;
         $this->pdo->exec("INSERT IGNORE INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo)
                           SELECT id, $mid, quantidade, estoque_minimo FROM produtos");
+    }
+
+    private function ensureTransferIdempotencyIndex(): void {
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT COUNT(*)
+                 FROM INFORMATION_SCHEMA.STATISTICS
+                 WHERE TABLE_SCHEMA = DATABASE()
+                   AND TABLE_NAME = 'erp_transferencias'
+                   AND INDEX_NAME = 'idx_erp_transferencias_idempotency_key'"
+            );
+            $stmt->execute();
+
+            if ((int)$stmt->fetchColumn() === 0) {
+                $this->pdo->exec("CREATE UNIQUE INDEX idx_erp_transferencias_idempotency_key ON erp_transferencias (idempotency_key)");
+            }
+        } catch (\Throwable $e) {
+            error_log("Erro ao garantir idempotencia de transferencias: " . $e->getMessage());
+        }
+    }
+
+    private function normalizeTransferIdempotencyKey($key): ?string {
+        $key = trim((string)$key);
+        if ($key === '') {
+            return null;
+        }
+
+        $key = preg_replace('/[^A-Za-z0-9:_-]/', '', $key);
+        return $key === '' ? null : substr($key, 0, 80);
+    }
+
+    private function normalizeTransferItems(array $itens): array {
+        $normalizados = [];
+
+        foreach ($itens as $item) {
+            if (empty($item['selecionado'])) {
+                continue;
+            }
+
+            $produtoId = (int)($item['produto_id'] ?? 0);
+            $quantidade = (float)str_replace(',', '.', (string)($item['quantidade'] ?? 0));
+
+            if ($produtoId <= 0 || $quantidade <= 0) {
+                continue;
+            }
+
+            if (!isset($normalizados[$produtoId])) {
+                $normalizados[$produtoId] = [
+                    'produto_id' => $produtoId,
+                    'quantidade' => 0.0,
+                ];
+            }
+
+            $normalizados[$produtoId]['quantidade'] += $quantidade;
+        }
+
+        return array_values($normalizados);
+    }
+
+    private function mergeDuplicateTransferItems(int $transferenciaId): void {
+        if ($transferenciaId <= 0) {
+            return;
+        }
+
+        $stmt = $this->pdo->prepare(
+            "SELECT
+                produto_id,
+                MIN(id) as keep_id,
+                SUM(quantidade_solicitada) as quantidade_solicitada,
+                SUM(quantidade_enviada) as quantidade_enviada,
+                SUM(quantidade_recebida) as quantidade_recebida,
+                MAX(valor_custo_unitario) as valor_custo_unitario,
+                COUNT(*) as total_linhas
+             FROM erp_transferencias_itens
+             WHERE transferencia_id = ?
+             GROUP BY produto_id
+             HAVING COUNT(*) > 1"
+        );
+        $stmt->execute([$transferenciaId]);
+        $duplicados = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        if (empty($duplicados)) {
+            return;
+        }
+
+        $stmtUpdate = $this->pdo->prepare(
+            "UPDATE erp_transferencias_itens
+             SET quantidade_solicitada = ?,
+                 quantidade_enviada = ?,
+                 quantidade_recebida = ?,
+                 valor_custo_unitario = ?
+             WHERE id = ?"
+        );
+        $stmtDelete = $this->pdo->prepare(
+            "DELETE FROM erp_transferencias_itens
+             WHERE transferencia_id = ? AND produto_id = ? AND id <> ?"
+        );
+
+        foreach ($duplicados as $dup) {
+            $stmtUpdate->execute([
+                $dup['quantidade_solicitada'],
+                $dup['quantidade_enviada'],
+                $dup['quantidade_recebida'],
+                $dup['valor_custo_unitario'],
+                $dup['keep_id'],
+            ]);
+            $stmtDelete->execute([$transferenciaId, $dup['produto_id'], $dup['keep_id']]);
+        }
+    }
+
+    private function findTransferByIdempotencyKey(?string $key): ?array {
+        if (!$key) {
+            return null;
+        }
+
+        try {
+            $stmt = $this->pdo->prepare("SELECT * FROM erp_transferencias WHERE idempotency_key = ? LIMIT 1");
+            $stmt->execute([$key]);
+            return $stmt->fetch(\PDO::FETCH_ASSOC) ?: null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    private function redirectDuplicateTransferSubmit(?string $key, string $aba): void {
+        if ($this->findTransferByIdempotencyKey($key)) {
+            setFlash('success', 'Transferencia ja processada. O envio duplicado foi bloqueado.');
+            $this->redirect('transferencias.php?aba=' . $aba);
+        }
+    }
+
+    private function isDuplicateIdempotencyError(\Throwable $e): bool {
+        return str_contains($e->getMessage(), 'Duplicate entry')
+            || str_contains($e->getMessage(), 'idempotency_key')
+            || str_contains($e->getMessage(), 'idx_erp_transferencias_idempotency_key');
     }
 
     public function index() {
@@ -267,8 +409,9 @@ class TransferenciasController extends BaseController {
         $observacoes = trim($_POST['observacoes'] ?? '');
         $destino_id = (int)($_POST['destino_filial_id'] ?? $this->filialLogada);
         $mid = $this->matrizId;
+        $idempotencyKey = $this->normalizeTransferIdempotencyKey($_POST['idempotency_key'] ?? null);
 
-        $itensValidos = array_filter($itens, fn($item) => !empty($item['selecionado']) && $item['quantidade'] > 0);
+        $itensValidos = $this->normalizeTransferItems($itens);
 
         if ($destino_id === 0 || $destino_id === (int)$this->filialLogada) {
             $this->redirect('transferencias.php?aba=nova_solicitacao&erro=' . urlencode('Selecione uma unidade diferente da unidade atual.'));
@@ -278,6 +421,8 @@ class TransferenciasController extends BaseController {
             $this->redirect('transferencias.php?aba=nova_solicitacao&erro=' . urlencode('Selecione ao menos um produto com quantidade válida.'));
         }
 
+        $this->redirectDuplicateTransferSubmit($idempotencyKey, 'historico_recebimentos');
+
         try {
             $this->pdo->beginTransaction();
             $codigo = 'REQ-' . date('YmdHis') . '-' . rand(100, 999);
@@ -285,10 +430,10 @@ class TransferenciasController extends BaseController {
             // origem = Matriz (CD que vai enviar), destino = esta filial
             $stmt = $this->pdo->prepare(
                 "INSERT INTO erp_transferencias
-                    (codigo_transferencia, tipo, origem_filial_id, destino_filial_id, status, observacoes, usuario_id)
-                 VALUES (?, 'solicitacao', ?, ?, 'pendente', ?, ?)"
+                    (codigo_transferencia, tipo, origem_filial_id, destino_filial_id, status, observacoes, usuario_id, idempotency_key)
+                 VALUES (?, 'solicitacao', ?, ?, 'pendente', ?, ?, ?)"
             );
-            $stmt->execute([$codigo, $mid, $destino_id, $observacoes, $_SESSION['usuario_id'] ?? 0]);
+            $stmt->execute([$codigo, $mid, $destino_id, $observacoes, $_SESSION['usuario_id'] ?? 0, $idempotencyKey]);
             $transf_id = $this->pdo->lastInsertId();
 
             $stmtItem = $this->pdo->prepare(
@@ -306,7 +451,10 @@ class TransferenciasController extends BaseController {
             setFlash('success', 'Solicitação enviada para a Matriz com sucesso!');
             $this->redirect('transferencias.php?aba=historico_recebimentos');
         } catch (\Exception $e) {
-            $this->pdo->rollBack();
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            if ($idempotencyKey && $this->isDuplicateIdempotencyError($e)) {
+                $this->redirectDuplicateTransferSubmit($idempotencyKey, 'historico_recebimentos');
+            }
             $this->redirect('transferencias.php?aba=nova_solicitacao&erro=' . urlencode('Erro: ' . $e->getMessage()));
         }
     }
@@ -317,8 +465,10 @@ class TransferenciasController extends BaseController {
         $destino_id = (int)($_POST['destino_filial_id'] ?? 0);
         $mid = $this->matrizId;
         $origem_id = $this->isMatriz ? $mid : (int)$this->filialLogada;
+        $idempotencyKey = $this->normalizeTransferIdempotencyKey($_POST['idempotency_key'] ?? null);
+        $redirectAba = $this->isMatriz ? 'historico_envios' : 'historico_recebimentos';
 
-        $itensValidos = array_filter($itens, fn($item) => !empty($item['selecionado']) && $item['quantidade'] > 0);
+        $itensValidos = $this->normalizeTransferItems($itens);
 
         if (count($itensValidos) === 0 || $destino_id === 0) {
             $this->redirect('transferencias.php?aba=nova_transferencia&erro=' . urlencode('Selecione a filial destino e os produtos.'));
@@ -328,16 +478,18 @@ class TransferenciasController extends BaseController {
             $this->redirect('transferencias.php?aba=nova_transferencia&erro=' . urlencode('A origem e o destino não podem ser a mesma unidade.'));
         }
 
+        $this->redirectDuplicateTransferSubmit($idempotencyKey, $redirectAba);
+
         try {
             $this->pdo->beginTransaction();
             $codigo = 'ENV-' . date('YmdHis') . '-' . rand(100, 999);
 
             $stmt = $this->pdo->prepare(
                 "INSERT INTO erp_transferencias
-                    (codigo_transferencia, tipo, origem_filial_id, destino_filial_id, status, observacoes, usuario_id, data_envio)
-                 VALUES (?, 'transferencia', ?, ?, 'em_transito', ?, ?, NOW())"
+                    (codigo_transferencia, tipo, origem_filial_id, destino_filial_id, status, observacoes, usuario_id, data_envio, idempotency_key)
+                 VALUES (?, 'transferencia', ?, ?, 'em_transito', ?, ?, NOW(), ?)"
             );
-            $stmt->execute([$codigo, $origem_id, $destino_id, $observacoes, $_SESSION['usuario_id'] ?? 0]);
+            $stmt->execute([$codigo, $origem_id, $destino_id, $observacoes, $_SESSION['usuario_id'] ?? 0, $idempotencyKey]);
             $transf_id = $this->pdo->lastInsertId();
 
             $stmtItem    = $this->pdo->prepare(
@@ -401,9 +553,12 @@ class TransferenciasController extends BaseController {
 
             $this->pdo->commit();
             setFlash('success', 'Transferência despachada com sucesso!');
-            $this->redirect('transferencias.php?aba=' . ($this->isMatriz ? 'historico_envios' : 'historico_recebimentos'));
+            $this->redirect('transferencias.php?aba=' . $redirectAba);
         } catch (\Exception $e) {
-            $this->pdo->rollBack();
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            if ($idempotencyKey && $this->isDuplicateIdempotencyError($e)) {
+                $this->redirectDuplicateTransferSubmit($idempotencyKey, $redirectAba);
+            }
             $this->redirect('transferencias.php?aba=nova_transferencia&erro=' . urlencode('Erro: ' . $e->getMessage()));
         }
     }
@@ -424,7 +579,7 @@ class TransferenciasController extends BaseController {
             $stmt = $this->pdo->prepare(
                 "UPDATE erp_transferencias
                  SET status = 'em_transito', data_envio = NOW(), data_aprovacao = NOW()
-                 WHERE id = ? AND origem_filial_id = ?"
+                 WHERE id = ? AND origem_filial_id = ? AND status = 'pendente'"
             );
             $stmt->execute([$transf_id, $mid]);
 
@@ -508,7 +663,12 @@ class TransferenciasController extends BaseController {
                 throw new \Exception("Requisicao ja processada por outra operacao.");
             }
 
-            $itens = $this->pdo->prepare("SELECT produto_id, quantidade_enviada FROM erp_transferencias_itens WHERE transferencia_id = ?");
+            $itens = $this->pdo->prepare(
+                "SELECT produto_id, SUM(quantidade_enviada) as quantidade_enviada
+                 FROM erp_transferencias_itens
+                 WHERE transferencia_id = ?
+                 GROUP BY produto_id"
+            );
             $itens->execute([$transf_id]);
 
             $stmtInc = $this->pdo->prepare(
@@ -654,14 +814,23 @@ class TransferenciasController extends BaseController {
         }
 
         // 2. Itens
-        $sqlItems = "SELECT ti.*, p.nome, p.codigo, COALESCE(NULLIF(p.unidade, ''), 'UN') as unidade,
+        $sqlItems = "SELECT
+                MIN(ti.id) as id,
+                ti.transferencia_id,
+                ti.produto_id,
+                SUM(ti.quantidade_solicitada) as quantidade_solicitada,
+                SUM(ti.quantidade_enviada) as quantidade_enviada,
+                SUM(ti.quantidade_recebida) as quantidade_recebida,
+                MAX(ti.valor_custo_unitario) as valor_custo_unitario,
+                p.nome, p.codigo, COALESCE(NULLIF(p.unidade, ''), 'UN') as unidade,
                 COALESCE(ef.quantidade, p.quantidade) as disp_matriz,
                 (SELECT SUM(quantidade_problema) FROM erp_transferencias_ocorrencias WHERE transferencia_id = ti.transferencia_id AND produto_id = ti.produto_id) as quantidade_problema
                 FROM erp_transferencias_itens ti 
                 JOIN erp_transferencias t ON t.id = ti.transferencia_id
                 JOIN produtos p ON ti.produto_id = p.id 
                 LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = t.origem_filial_id
-                WHERE ti.transferencia_id = ?";
+                WHERE ti.transferencia_id = ?
+                GROUP BY ti.transferencia_id, ti.produto_id, p.nome, p.codigo, p.unidade, ef.quantidade, p.quantidade";
         
         $stmtI = $this->pdo->prepare($sqlItems);
         $stmtI->execute([$transf_id]);
@@ -716,9 +885,13 @@ class TransferenciasController extends BaseController {
 
             // 1. Marca como resolvido no mestre original
             $stmt = $this->pdo->prepare(
-                "UPDATE erp_transferencias SET problema_resolvido = 1 WHERE id = ? AND origem_filial_id = ?"
+                "UPDATE erp_transferencias SET problema_resolvido = 1 WHERE id = ? AND origem_filial_id = ? AND problema_resolvido = 0"
             );
             $stmt->execute([$transf_id, $dadosOrig['origem_filial_id']]);
+
+            if ($stmt->rowCount() === 0) {
+                throw new \Exception("Ocorrencia ja resolvida ou processada.");
+            }
 
             // 2. Se for para repor, cria uma nova transferência
             if ($fluxo === 'repor') {
