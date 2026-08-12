@@ -197,7 +197,7 @@
             <?php endif; ?>
 
             <?php if ($aba == 'nova_transferencia'): ?>
-                <form action="transferencias.php?action=nova_transferencia" method="POST" id="formTransf">
+                <form action="transferencias.php?action=nova_transferencia" method="POST" id="formTransf" novalidate>
                     <div class="row mb-4 g-3">
                         <div class="col-md-4">
                             <label class="form-label fw-bold small">Filial Destino</label>
@@ -449,7 +449,7 @@
             <?php endif; ?>
 
             <?php if ($aba == 'nova_transferencia'): ?>
-                <form action="transferencias.php?action=nova_transferencia" method="POST" id="formTransf">
+                <form action="transferencias.php?action=nova_transferencia" method="POST" id="formTransf" novalidate>
                     <div class="row mb-4 g-3">
                         <div class="col-md-4">
                             <label class="form-label fw-bold small">Destino</label>
@@ -775,8 +775,8 @@ function initCart(formId) {
     if (!form) return;
 
     const checkboxes = form.querySelectorAll('.chkItem');
-    const countLabel = document.getElementById('cartCount');
-    const submitBtn  = document.getElementById('btnSubmitReq') || document.getElementById('btnSubmitTransf');
+    const countLabel = form.querySelector('#cartCount') || document.getElementById('cartCount');
+    const submitBtn  = form.querySelector('button[type="submit"]');
     const viewBtns = form.querySelectorAll('.btnViewCart');
 
     const getQtyInput = (chk) => chk.closest('tr').querySelector('.qty-input');
@@ -859,6 +859,32 @@ function prepareTransferSubmit(form) {
 
 function validateTransferFormBeforeSubmit(form) {
     const action = form.getAttribute('action') || '';
+    if (action.includes('nova_transferencia')) {
+        const destino = form.querySelector('select[name="destino_filial_id"]');
+        if (destino && !destino.value) {
+            alert('Selecione a unidade de destino antes de enviar.');
+            destino.focus();
+            destino.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return false;
+        }
+
+        const selecionados = Array.from(form.querySelectorAll('.chkItem:checked'));
+        if (selecionados.length === 0) {
+            alert('Selecione ao menos um produto para enviar.');
+            return false;
+        }
+
+        const temQuantidade = selecionados.some(chk => {
+            const qty = chk.closest('tr')?.querySelector('.qty-input');
+            return qty && parseFloat(qty.value || '0') > 0;
+        });
+
+        if (!temQuantidade) {
+            alert('Informe a quantidade do produto antes de enviar.');
+            return false;
+        }
+    }
+
     if (!action.includes('relatar_problema')) {
         return true;
     }
@@ -1015,6 +1041,10 @@ function enviarCarrinho() {
     aplicarCarrinho();
     const form = document.getElementById(carrinhoFormId);
     if (!form) return;
+
+    if (!validateTransferFormBeforeSubmit(form)) {
+        return;
+    }
 
     if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
         if (typeof form.reportValidity === 'function') form.reportValidity();
