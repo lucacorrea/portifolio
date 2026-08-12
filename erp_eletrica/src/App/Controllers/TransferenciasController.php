@@ -292,11 +292,12 @@ class TransferenciasController extends BaseController {
     }
 
     private function sincronizarEstoqueLegadoDaFilial(int $filialId): void {
-        if (!$this->filialUsaEstoqueLegadoGlobal($filialId)) {
+        if ($filialId <= 0) {
             return;
         }
 
         $isMatriz = ((int)$filialId === (int)$this->matrizId) ? 1 : 0;
+        $usaLegadoGlobal = $this->filialUsaEstoqueLegadoGlobal($filialId) ? 1 : 0;
 
         try {
             $stmtIns = $this->pdo->prepare(
@@ -304,9 +305,13 @@ class TransferenciasController extends BaseController {
                  SELECT p.id, ?, p.quantidade, p.estoque_minimo
                  FROM produtos p
                  WHERE p.quantidade > 0
-                   AND (? = 1 OR p.filial_id IS NULL OR p.filial_id = ?)"
+                   AND (
+                        p.filial_id = ?
+                        OR ? = 1
+                        OR (? = 1 AND p.filial_id IS NULL)
+                   )"
             );
-            $stmtIns->execute([$filialId, $isMatriz, $filialId]);
+            $stmtIns->execute([$filialId, $filialId, $isMatriz, $usaLegadoGlobal]);
 
             $stmtFix = $this->pdo->prepare(
                 "UPDATE estoque_filiais ef
@@ -316,9 +321,13 @@ class TransferenciasController extends BaseController {
                  WHERE ef.filial_id = ?
                    AND ef.quantidade <= 0
                    AND p.quantidade > 0
-                   AND (? = 1 OR p.filial_id IS NULL OR p.filial_id = ?)"
+                   AND (
+                        p.filial_id = ?
+                        OR ? = 1
+                        OR (? = 1 AND p.filial_id IS NULL)
+                   )"
             );
-            $stmtFix->execute([$filialId, $isMatriz, $filialId]);
+            $stmtFix->execute([$filialId, $filialId, $isMatriz, $usaLegadoGlobal]);
         } catch (\Throwable $e) {
             error_log("Erro ao sincronizar estoque legado da filial {$filialId}: " . $e->getMessage());
         }
@@ -354,21 +363,24 @@ class TransferenciasController extends BaseController {
         $stmt = $this->pdo->prepare("SELECT id FROM estoque_filiais WHERE produto_id = ? AND filial_id = ? LIMIT 1");
         $stmt->execute([$produtoId, $filialId]);
         if ($stmt->fetchColumn()) {
-            if ($this->filialUsaEstoqueLegadoGlobal($filialId)) {
-                $isMatriz = ((int)$filialId === (int)$this->matrizId) ? 1 : 0;
-                $stmtFix = $this->pdo->prepare(
-                    "UPDATE estoque_filiais ef
-                     JOIN produtos p ON p.id = ef.produto_id
-                     SET ef.quantidade = p.quantidade,
-                         ef.estoque_minimo = COALESCE(NULLIF(ef.estoque_minimo, 0), p.estoque_minimo)
-                     WHERE ef.produto_id = ?
-                       AND ef.filial_id = ?
-                       AND ef.quantidade <= 0
-                       AND p.quantidade > 0
-                       AND (? = 1 OR p.filial_id IS NULL OR p.filial_id = ?)"
-                );
-                $stmtFix->execute([$produtoId, $filialId, $isMatriz, $filialId]);
-            }
+            $isMatriz = ((int)$filialId === (int)$this->matrizId) ? 1 : 0;
+            $usaLegadoGlobal = $this->filialUsaEstoqueLegadoGlobal($filialId) ? 1 : 0;
+            $stmtFix = $this->pdo->prepare(
+                "UPDATE estoque_filiais ef
+                 JOIN produtos p ON p.id = ef.produto_id
+                 SET ef.quantidade = p.quantidade,
+                     ef.estoque_minimo = COALESCE(NULLIF(ef.estoque_minimo, 0), p.estoque_minimo)
+                 WHERE ef.produto_id = ?
+                   AND ef.filial_id = ?
+                   AND ef.quantidade <= 0
+                   AND p.quantidade > 0
+                   AND (
+                        p.filial_id = ?
+                        OR ? = 1
+                        OR (? = 1 AND p.filial_id IS NULL)
+                   )"
+            );
+            $stmtFix->execute([$produtoId, $filialId, $filialId, $isMatriz, $usaLegadoGlobal]);
             return;
         }
 
