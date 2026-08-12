@@ -118,6 +118,11 @@ class TransferenciasController extends BaseController {
         $mid = $this->matrizId;
         $this->pdo->exec("INSERT IGNORE INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo)
                           SELECT id, $mid, quantidade, estoque_minimo FROM produtos");
+        $this->pdo->exec("INSERT IGNORE INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo)
+                          SELECT p.id, p.filial_id, p.quantidade, p.estoque_minimo
+                          FROM produtos p
+                          JOIN filiais f ON f.id = p.filial_id
+                          WHERE p.filial_id IS NOT NULL AND p.filial_id > 0");
     }
 
     private function ensureTransferIdempotencyIndex(): void {
@@ -260,27 +265,129 @@ class TransferenciasController extends BaseController {
         }
     }
 
+    private function filialUsaEstoqueLegadoGlobal(int $filialId): bool {
+        if ($filialId <= 0) {
+            return false;
+        }
+
+        if ((int)$filialId === (int)$this->matrizId) {
+            return true;
+        }
+
+        try {
+            $stmt = $this->pdo->prepare("SELECT nome FROM filiais WHERE id = ? LIMIT 1");
+            $stmt->execute([$filialId]);
+            $nomeOriginal = (string)($stmt->fetchColumn() ?: '');
+            $nome = function_exists('mb_strtolower')
+                ? mb_strtolower($nomeOriginal, 'UTF-8')
+                : strtolower($nomeOriginal);
+
+            return str_contains($nome, 'deposito')
+                || (str_contains($nome, 'dep') && str_contains($nome, 'sito'))
+                || str_contains($nome, 'logistica')
+                || (str_contains($nome, 'log') && str_contains($nome, 'stica'));
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    private function sincronizarEstoqueLegadoDaFilial(int $filialId): void {
+        if (!$this->filialUsaEstoqueLegadoGlobal($filialId)) {
+            return;
+        }
+
+        $isMatriz = ((int)$filialId === (int)$this->matrizId) ? 1 : 0;
+
+        try {
+            $stmtIns = $this->pdo->prepare(
+                "INSERT IGNORE INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo)
+                 SELECT p.id, ?, p.quantidade, p.estoque_minimo
+                 FROM produtos p
+                 WHERE p.quantidade > 0
+                   AND (? = 1 OR p.filial_id IS NULL OR p.filial_id = ?)"
+            );
+            $stmtIns->execute([$filialId, $isMatriz, $filialId]);
+
+            $stmtFix = $this->pdo->prepare(
+                "UPDATE estoque_filiais ef
+                 JOIN produtos p ON p.id = ef.produto_id
+                 SET ef.quantidade = p.quantidade,
+                     ef.estoque_minimo = COALESCE(NULLIF(ef.estoque_minimo, 0), p.estoque_minimo)
+                 WHERE ef.filial_id = ?
+                   AND ef.quantidade <= 0
+                   AND p.quantidade > 0
+                   AND (? = 1 OR p.filial_id IS NULL OR p.filial_id = ?)"
+            );
+            $stmtFix->execute([$filialId, $isMatriz, $filialId]);
+        } catch (\Throwable $e) {
+            error_log("Erro ao sincronizar estoque legado da filial {$filialId}: " . $e->getMessage());
+        }
+    }
+
+    private function sincronizarProdutoLegadoComEstoqueFilial(int $produtoId, int $filialId): void {
+        if ($produtoId <= 0 || $filialId <= 0) {
+            return;
+        }
+
+        $isMatriz = ((int)$filialId === (int)$this->matrizId) ? 1 : 0;
+        $usaLegadoGlobal = $this->filialUsaEstoqueLegadoGlobal($filialId) ? 1 : 0;
+
+        try {
+            $stmtSync = $this->pdo->prepare(
+                "UPDATE produtos p
+                 JOIN estoque_filiais ef ON ef.produto_id = p.id AND ef.filial_id = ?
+                 SET p.quantidade = ef.quantidade
+                 WHERE p.id = ?
+                   AND (
+                        p.filial_id = ?
+                        OR ? = 1
+                        OR (? = 1 AND p.filial_id IS NULL)
+                   )"
+            );
+            $stmtSync->execute([$filialId, $produtoId, $filialId, $isMatriz, $usaLegadoGlobal]);
+        } catch (\Throwable $e) {
+            error_log("Erro ao sincronizar produto legado {$produtoId} na filial {$filialId}: " . $e->getMessage());
+        }
+    }
+
     private function garantirLinhaEstoqueFilial(int $produtoId, int $filialId): void {
         $stmt = $this->pdo->prepare("SELECT id FROM estoque_filiais WHERE produto_id = ? AND filial_id = ? LIMIT 1");
         $stmt->execute([$produtoId, $filialId]);
         if ($stmt->fetchColumn()) {
-            return;
-        }
-
-        if ((int)$filialId === (int)$this->matrizId) {
-            $stmtIns = $this->pdo->prepare(
-                "INSERT IGNORE INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo)
-                 SELECT id, ?, quantidade, estoque_minimo FROM produtos WHERE id = ?"
-            );
-            $stmtIns->execute([$filialId, $produtoId]);
+            if ($this->filialUsaEstoqueLegadoGlobal($filialId)) {
+                $isMatriz = ((int)$filialId === (int)$this->matrizId) ? 1 : 0;
+                $stmtFix = $this->pdo->prepare(
+                    "UPDATE estoque_filiais ef
+                     JOIN produtos p ON p.id = ef.produto_id
+                     SET ef.quantidade = p.quantidade,
+                         ef.estoque_minimo = COALESCE(NULLIF(ef.estoque_minimo, 0), p.estoque_minimo)
+                     WHERE ef.produto_id = ?
+                       AND ef.filial_id = ?
+                       AND ef.quantidade <= 0
+                       AND p.quantidade > 0
+                       AND (? = 1 OR p.filial_id IS NULL OR p.filial_id = ?)"
+                );
+                $stmtFix->execute([$produtoId, $filialId, $isMatriz, $filialId]);
+            }
             return;
         }
 
         $stmtIns = $this->pdo->prepare(
             "INSERT IGNORE INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo)
-             SELECT id, ?, 0, estoque_minimo FROM produtos WHERE id = ?"
+             SELECT
+                id,
+                ?,
+                CASE
+                    WHEN ? = 1 OR filial_id = ? OR (? = 1 AND filial_id IS NULL) THEN quantidade
+                    ELSE 0
+                END,
+                estoque_minimo
+             FROM produtos
+             WHERE id = ?"
         );
-        $stmtIns->execute([$filialId, $produtoId]);
+        $isMatriz = ((int)$filialId === (int)$this->matrizId) ? 1 : 0;
+        $usaLegadoGlobal = $this->filialUsaEstoqueLegadoGlobal($filialId) ? 1 : 0;
+        $stmtIns->execute([$filialId, $isMatriz, $filialId, $usaLegadoGlobal, $produtoId]);
     }
 
     private function baixarEstoqueTransferencia(int $produtoId, int $filialId, float $quantidade): void {
@@ -313,15 +420,7 @@ class TransferenciasController extends BaseController {
             throw new \Exception("Estoque insuficiente em {$nomeFilial} para '{$nomeProd}'. Disponivel: {$disponivel}, Tentado: {$quantidade}");
         }
 
-        if ((int)$filialId === (int)$this->matrizId) {
-            $stmtSync = $this->pdo->prepare(
-                "UPDATE produtos p
-                 JOIN estoque_filiais ef ON ef.produto_id = p.id AND ef.filial_id = ?
-                 SET p.quantidade = ef.quantidade
-                 WHERE p.id = ?"
-            );
-            $stmtSync->execute([$filialId, $produtoId]);
-        }
+        $this->sincronizarProdutoLegadoComEstoqueFilial($produtoId, $filialId);
     }
 
     private function findTransferByIdempotencyKey(?string $key): ?array {
@@ -357,15 +456,24 @@ class TransferenciasController extends BaseController {
 
         // Produtos do catálogo da Matriz (com estoque específico da filial-matriz)
         $origemEstoqueId = $this->isMatriz ? $mid : (int)$this->filialLogada;
+        $this->sincronizarEstoqueLegadoDaFilial((int)$origemEstoqueId);
+        $origemEhMatriz = ((int)$origemEstoqueId === (int)$mid) ? 1 : 0;
+        $origemUsaEstoqueLegado = $this->filialUsaEstoqueLegadoGlobal((int)$origemEstoqueId) ? 1 : 0;
 
         try {
             $stmtProdutos = $this->pdo->prepare(
-                "SELECT p.*, COALESCE(
-                    (SELECT quantidade FROM estoque_filiais WHERE produto_id = p.id AND filial_id = ?),
-                    CASE WHEN ? = 1 THEN p.quantidade ELSE 0 END
-                ) as qtd_matriz FROM produtos p ORDER BY p.nome"
+                "SELECT
+                    p.*,
+                    CASE
+                        WHEN ef.id IS NOT NULL THEN ef.quantidade
+                        WHEN ? = 1 OR p.filial_id = ? OR (? = 1 AND p.filial_id IS NULL) THEN p.quantidade
+                        ELSE 0
+                    END as qtd_matriz
+                 FROM produtos p
+                 LEFT JOIN estoque_filiais ef ON ef.produto_id = p.id AND ef.filial_id = ?
+                 ORDER BY p.nome"
             );
-            $stmtProdutos->execute([$origemEstoqueId, $this->isMatriz ? 1 : 0]);
+            $stmtProdutos->execute([$origemEhMatriz, $origemEstoqueId, $origemUsaEstoqueLegado, $origemEstoqueId]);
             $produtosMatriz = $stmtProdutos->fetchAll();
         } catch (\Exception $e) {
             $produtosMatriz = $this->pdo->query("SELECT *, quantidade as qtd_matriz FROM produtos ORDER BY nome")->fetchAll();
@@ -597,12 +705,20 @@ class TransferenciasController extends BaseController {
             );
             // Query para verificar estoque atual
             $stmtCheck = $this->pdo->prepare("
-                SELECT p.nome, COALESCE(ef.quantidade, CASE WHEN ? = 1 THEN p.quantidade ELSE 0 END) as estoque_atual
+                SELECT
+                    p.nome,
+                    CASE
+                        WHEN ef.id IS NOT NULL THEN ef.quantidade
+                        WHEN ? = 1 OR p.filial_id = ? OR (? = 1 AND p.filial_id IS NULL) THEN p.quantidade
+                        ELSE 0
+                    END as estoque_atual
                 FROM produtos p
                 LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
                 WHERE p.id = ?
             ");
 
+            $origemEhMatriz = ((int)$origem_id === (int)$mid) ? 1 : 0;
+            $origemUsaEstoqueLegado = $this->filialUsaEstoqueLegadoGlobal((int)$origem_id) ? 1 : 0;
             $totalItensValidos = 0;
             foreach ($itensValidos as $item) {
                 $pid = $item['produto_id'];
@@ -613,7 +729,8 @@ class TransferenciasController extends BaseController {
                 }
 
                 // 1. Validação de Estoque (Servidor)
-                $stmtCheck->execute([$this->isMatriz ? 1 : 0, $origem_id, $pid]);
+                $this->garantirLinhaEstoqueFilial((int)$pid, (int)$origem_id);
+                $stmtCheck->execute([$origemEhMatriz, $origem_id, $origemUsaEstoqueLegado, $origem_id, $pid]);
                 $estoque = $stmtCheck->fetch(\PDO::FETCH_ASSOC);
                 
                 if (!$estoque || $estoque['estoque_atual'] < $qtd) {
@@ -778,9 +895,7 @@ class TransferenciasController extends BaseController {
                     if ($qtdFinal > 0) {
                         try {
                             $stmtInc->execute([$unidadeRecebimento, $qtdFinal, $pid, $qtdFinal]);
-                            if ($unidadeRecebimento === (int)$this->matrizId) {
-                                $this->pdo->prepare("UPDATE produtos SET quantidade = quantidade + ? WHERE id = ?")->execute([$qtdFinal, $pid]);
-                            }
+                            $this->sincronizarProdutoLegadoComEstoqueFilial((int)$pid, (int)$unidadeRecebimento);
                         } catch (\Exception $ex) {
                             error_log("Erro ao atualizar estoque_filiais: " . $ex->getMessage());
                             throw new \Exception("Erro ao internalizar produto ID $pid: " . $ex->getMessage());
@@ -947,14 +1062,30 @@ class TransferenciasController extends BaseController {
                 SUM(ti.quantidade_recebida) as quantidade_recebida,
                 MAX(ti.valor_custo_unitario) as valor_custo_unitario,
                 p.nome, p.codigo, COALESCE(NULLIF(p.unidade, ''), 'UN') as unidade,
-                COALESCE(ef.quantidade, CASE WHEN t.origem_filial_id = ? THEN p.quantidade ELSE 0 END) as disp_matriz,
+                CASE
+                    WHEN ef.id IS NOT NULL THEN ef.quantidade
+                    WHEN t.origem_filial_id = ?
+                        OR p.filial_id = t.origem_filial_id
+                        OR (
+                            p.filial_id IS NULL
+                            AND (
+                                LOWER(f_origem_estoque.nome) LIKE '%deposito%'
+                                OR (LOWER(f_origem_estoque.nome) LIKE '%dep%' AND LOWER(f_origem_estoque.nome) LIKE '%sito%')
+                                OR LOWER(f_origem_estoque.nome) LIKE '%logistica%'
+                                OR (LOWER(f_origem_estoque.nome) LIKE '%log%' AND LOWER(f_origem_estoque.nome) LIKE '%stica%')
+                            )
+                        )
+                    THEN p.quantidade
+                    ELSE 0
+                END as disp_matriz,
                 COALESCE((SELECT SUM(quantidade_problema) FROM erp_transferencias_ocorrencias WHERE transferencia_id = ti.transferencia_id AND produto_id = ti.produto_id), 0) as quantidade_problema
                 FROM erp_transferencias_itens ti 
                 JOIN erp_transferencias t ON t.id = ti.transferencia_id
                 JOIN produtos p ON ti.produto_id = p.id 
+                LEFT JOIN filiais f_origem_estoque ON f_origem_estoque.id = t.origem_filial_id
                 LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = t.origem_filial_id
                 WHERE ti.transferencia_id = ?
-                GROUP BY ti.transferencia_id, ti.produto_id, p.nome, p.codigo, p.unidade, ef.quantidade, p.quantidade";
+                GROUP BY ti.transferencia_id, ti.produto_id, p.nome, p.codigo, p.unidade, ef.id, ef.quantidade, p.quantidade, p.filial_id, t.origem_filial_id, f_origem_estoque.nome";
         
         $stmtI = $this->pdo->prepare($sqlItems);
         $stmtI->execute([$this->matrizId, $transf_id]);
@@ -1041,7 +1172,6 @@ class TransferenciasController extends BaseController {
 
                 if (!empty($itensComProblema)) {
                     $codigo = 'REP-' . date('YmdHis') . '-' . rand(100, 999);
-                    $mid = $this->matrizId;
                     $origem_id = $dadosOrig['origem_filial_id'];
 
                     $stmtNew = $this->pdo->prepare(
@@ -1056,12 +1186,20 @@ class TransferenciasController extends BaseController {
 
                     // Query para verificar estoque atual
                     $stmtCheck = $this->pdo->prepare("
-                        SELECT p.nome, COALESCE(ef.quantidade, CASE WHEN ? = 1 THEN p.quantidade ELSE 0 END) as estoque_atual
+                        SELECT
+                            p.nome,
+                            CASE
+                                WHEN ef.id IS NOT NULL THEN ef.quantidade
+                                WHEN ? = 1 OR p.filial_id = ? OR (? = 1 AND p.filial_id IS NULL) THEN p.quantidade
+                                ELSE 0
+                            END as estoque_atual
                         FROM produtos p
                         LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?
                         WHERE p.id = ?
                     ");
 
+                    $origemEhMatriz = ((int)$origem_id === (int)$this->matrizId) ? 1 : 0;
+                    $origemUsaEstoqueLegado = $this->filialUsaEstoqueLegadoGlobal((int)$origem_id) ? 1 : 0;
                     $countReposto = 0;
                     foreach ($itensComProblema as $it) {
                         $pid = $it['produto_id'];
@@ -1070,8 +1208,8 @@ class TransferenciasController extends BaseController {
                         if ($qtd <= 0) continue;
 
                         // 1. Validação de Estoque (Servidor)
-                        $isOrigMatriz = ((int)$origem_id === (int)$mid) ? 1 : 0;
-                        $stmtCheck->execute([$isOrigMatriz, $origem_id, $pid]);
+                        $this->garantirLinhaEstoqueFilial((int)$pid, (int)$origem_id);
+                        $stmtCheck->execute([$origemEhMatriz, $origem_id, $origemUsaEstoqueLegado, $origem_id, $pid]);
                         $estoque = $stmtCheck->fetch(\PDO::FETCH_ASSOC);
                         
                         if (!$estoque || $estoque['estoque_atual'] < $qtd) {
