@@ -241,13 +241,14 @@
                         <tbody id="tbodyTransf">
                             <?php foreach ($produtosMatriz as $pm): ?>
                             <?php $unidadeProduto = !empty($pm['unidade']) ? $pm['unidade'] : 'UN'; ?>
-                            <tr class="prod-row selectable-row" data-search="<?= strtolower(htmlspecialchars($pm['nome'] . ' ' . $pm['codigo'])) ?>" data-produto="<?= htmlspecialchars($pm['nome']) ?>" data-sku="<?= htmlspecialchars($pm['codigo']) ?>">
+                            <?php $nomeProdutoTela = trim(preg_replace('/\s+/', ' ', (string)$pm['nome'])); ?>
+                            <tr class="prod-row selectable-row" data-produto-id="<?= (int)$pm['id'] ?>" data-search="<?= strtolower(htmlspecialchars($nomeProdutoTela . ' ' . $pm['codigo'])) ?>" data-produto="<?= htmlspecialchars($nomeProdutoTela) ?>" data-sku="<?= htmlspecialchars($pm['codigo']) ?>">
                                 <td>
                                     <input type="checkbox" class="form-check-input chkItem" name="itens[<?= $pm['id'] ?>][selecionado]" value="1">
-                                    <input type="hidden" name="itens[<?= $pm['id'] ?>][produto_id]" value="<?= $pm['id'] ?>">
+                                    <input type="hidden" name="itens[<?= $pm['id'] ?>][produto_id]" value="<?= $pm['id'] ?>" disabled>
                                 </td>
                                 <td>
-                                    <div class="fw-bold small"><?= htmlspecialchars($pm['nome']) ?></div>
+                                    <div class="fw-bold small"><?= htmlspecialchars($nomeProdutoTela) ?></div>
                                     <div class="extra-small text-muted">SKU: <?= htmlspecialchars($pm['codigo']) ?> | Unidade: <?= htmlspecialchars($unidadeProduto) ?></div>
                                 </td>
                                 <td><span class="badge bg-secondary"><?= formatarQuantidade($pm['qtd_matriz']) ?> <?= htmlspecialchars($unidadeProduto) ?></span></td>
@@ -416,13 +417,14 @@
                         <tbody id="tbodyReq">
                             <?php foreach ($produtosMatriz as $pm): ?>
                             <?php $unidadeProduto = !empty($pm['unidade']) ? $pm['unidade'] : 'UN'; ?>
-                            <tr class="prod-row selectable-row" data-search="<?= strtolower(htmlspecialchars($pm['nome'] . ' ' . $pm['codigo'])) ?>" data-produto="<?= htmlspecialchars($pm['nome']) ?>" data-sku="<?= htmlspecialchars($pm['codigo']) ?>">
+                            <?php $nomeProdutoTela = trim(preg_replace('/\s+/', ' ', (string)$pm['nome'])); ?>
+                            <tr class="prod-row selectable-row" data-produto-id="<?= (int)$pm['id'] ?>" data-search="<?= strtolower(htmlspecialchars($nomeProdutoTela . ' ' . $pm['codigo'])) ?>" data-produto="<?= htmlspecialchars($nomeProdutoTela) ?>" data-sku="<?= htmlspecialchars($pm['codigo']) ?>">
                                 <td>
                                     <input type="checkbox" class="form-check-input chkItem" name="itens[<?= $pm['id'] ?>][selecionado]" value="1">
-                                    <input type="hidden" name="itens[<?= $pm['id'] ?>][produto_id]" value="<?= $pm['id'] ?>">
+                                    <input type="hidden" name="itens[<?= $pm['id'] ?>][produto_id]" value="<?= $pm['id'] ?>" disabled>
                                 </td>
                                 <td>
-                                    <div class="fw-bold small"><?= htmlspecialchars($pm['nome']) ?></div>
+                                    <div class="fw-bold small"><?= htmlspecialchars($nomeProdutoTela) ?></div>
                                     <div class="extra-small text-muted">SKU: <?= htmlspecialchars($pm['codigo']) ?> | Unidade: <?= htmlspecialchars($unidadeProduto) ?></div>
                                 </td>
                                 <td>
@@ -501,13 +503,14 @@
                         <tbody id="tbodyTransf">
                             <?php foreach ($produtosMatriz as $pm): ?>
                             <?php $unidadeProduto = !empty($pm['unidade']) ? $pm['unidade'] : 'UN'; ?>
-                            <tr class="prod-row selectable-row" data-search="<?= strtolower(htmlspecialchars($pm['nome'] . ' ' . $pm['codigo'])) ?>" data-produto="<?= htmlspecialchars($pm['nome']) ?>" data-sku="<?= htmlspecialchars($pm['codigo']) ?>">
+                            <?php $nomeProdutoTela = trim(preg_replace('/\s+/', ' ', (string)$pm['nome'])); ?>
+                            <tr class="prod-row selectable-row" data-produto-id="<?= (int)$pm['id'] ?>" data-search="<?= strtolower(htmlspecialchars($nomeProdutoTela . ' ' . $pm['codigo'])) ?>" data-produto="<?= htmlspecialchars($nomeProdutoTela) ?>" data-sku="<?= htmlspecialchars($pm['codigo']) ?>">
                                 <td>
                                     <input type="checkbox" class="form-check-input chkItem" name="itens[<?= $pm['id'] ?>][selecionado]" value="1">
-                                    <input type="hidden" name="itens[<?= $pm['id'] ?>][produto_id]" value="<?= $pm['id'] ?>">
+                                    <input type="hidden" name="itens[<?= $pm['id'] ?>][produto_id]" value="<?= $pm['id'] ?>" disabled>
                                 </td>
                                 <td>
-                                    <div class="fw-bold small"><?= htmlspecialchars($pm['nome']) ?></div>
+                                    <div class="fw-bold small"><?= htmlspecialchars($nomeProdutoTela) ?></div>
                                     <div class="extra-small text-muted">SKU: <?= htmlspecialchars($pm['codigo']) ?></div>
                                 </td>
                                 <td><span class="badge bg-secondary"><?= formatarQuantidade($pm['qtd_matriz']) ?> <?= htmlspecialchars($unidadeProduto) ?></span></td>
@@ -785,19 +788,23 @@ function initCart(formRef) {
         const viewBtns = form.querySelectorAll('.btnViewCart');
 
         const getQtyInput = (chk) => chk.closest('tr')?.querySelector('.qty-input');
+        const getProductIdInput = (chk) => chk.closest('tr')?.querySelector('input[name$="[produto_id]"]');
 
         const updateCart = () => {
             let cnt = 0;
             checkboxes.forEach(chk => {
                 const qty = getQtyInput(chk);
+                const produtoId = getProductIdInput(chk);
                 if (!qty) return;
 
                 if (chk.checked) {
                     cnt++;
                     qty.removeAttribute('disabled');
+                    if (produtoId) produtoId.removeAttribute('disabled');
                     if (!qty.value || parseFloat(qty.value) === 0) qty.value = 1;
                 } else {
                     qty.setAttribute('disabled', 'true');
+                    if (produtoId) produtoId.setAttribute('disabled', 'true');
                     qty.value = '';
                 }
             });
@@ -846,6 +853,23 @@ function ensureTransferIdempotencyKey(form) {
     }
 }
 
+function ensureTransferItemsPayload(form, selectedItems) {
+    const action = form.getAttribute('action') || '';
+    if (!action.includes('nova_transferencia') && !action.includes('nova_solicitacao')) {
+        return;
+    }
+
+    let input = form.querySelector('input[name="itens_payload"]');
+    if (!input) {
+        input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'itens_payload';
+        form.appendChild(input);
+    }
+
+    input.value = JSON.stringify(selectedItems);
+}
+
 function prepareTransferSubmit(form) {
     if (!form) return false;
     if (form.dataset.submitting === '1') {
@@ -875,23 +899,39 @@ function syncTransferSelections(form) {
     form.querySelectorAll('.qty-input').forEach(input => {
         const valor = parseFloat(input.value || '0');
         const chk = input.closest('tr')?.querySelector('.chkItem');
+        const produtoId = input.closest('tr')?.querySelector('input[name$="[produto_id]"]');
         if (chk && valor > 0) {
             chk.checked = true;
             input.removeAttribute('disabled');
+            if (produtoId) produtoId.removeAttribute('disabled');
         }
     });
 
+    const selectedItems = [];
+
     form.querySelectorAll('.chkItem').forEach(chk => {
-        const qty = chk.closest('tr')?.querySelector('.qty-input');
+        const tr = chk.closest('tr');
+        const qty = tr?.querySelector('.qty-input');
+        const produtoId = tr?.querySelector('input[name$="[produto_id]"]');
         if (!qty) return;
 
         if (chk.checked) {
             qty.removeAttribute('disabled');
+            if (produtoId) produtoId.removeAttribute('disabled');
             if (!qty.value || parseFloat(qty.value || '0') <= 0) {
                 qty.value = 1;
             }
+
+            selectedItems.push({
+                produto_id: produtoId?.value || tr?.dataset.produtoId || '',
+                quantidade: qty.value || '0'
+            });
+        } else if (produtoId) {
+            produtoId.setAttribute('disabled', 'true');
         }
     });
+
+    ensureTransferItemsPayload(form, selectedItems);
 }
 
 function validateTransferFormBeforeSubmit(form) {

@@ -197,6 +197,67 @@ class TransferenciasController extends BaseController {
         return array_values($normalizados);
     }
 
+    private function normalizeTransferItemsPayload($payload): array {
+        if (!is_string($payload) || trim($payload) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($payload, true);
+        if (!is_array($decoded)) {
+            return [];
+        }
+
+        $normalizados = [];
+        foreach ($decoded as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $produtoId = (int)($item['produto_id'] ?? 0);
+            $quantidade = (float)str_replace(',', '.', (string)($item['quantidade'] ?? 0));
+            if ($produtoId <= 0 || $quantidade <= 0) {
+                continue;
+            }
+
+            if (!isset($normalizados[$produtoId])) {
+                $normalizados[$produtoId] = [
+                    'produto_id' => $produtoId,
+                    'quantidade' => 0.0,
+                ];
+            }
+
+            $normalizados[$produtoId]['quantidade'] += $quantidade;
+        }
+
+        return array_values($normalizados);
+    }
+
+    private function normalizeTransferItemsFromRequest(array $itens, $payload, bool $strictSelected = false): array {
+        $erro = null;
+
+        try {
+            $normalizados = $this->normalizeTransferItems($itens, $strictSelected);
+        } catch (\InvalidArgumentException $e) {
+            $erro = $e;
+            $normalizados = [];
+        }
+
+        if (!empty($normalizados)) {
+            return $normalizados;
+        }
+
+        $payloadNormalizado = $this->normalizeTransferItemsPayload($payload);
+        if (!empty($payloadNormalizado)) {
+            return $payloadNormalizado;
+        }
+
+        if ($erro) {
+            throw $erro;
+        }
+
+        return [];
+    }
+
     private function mergeDuplicateTransferItems(int $transferenciaId): void {
         if ($transferenciaId <= 0) {
             return;
@@ -746,7 +807,7 @@ class TransferenciasController extends BaseController {
         $idempotencyKey = $this->normalizeTransferIdempotencyKey($_POST['idempotency_key'] ?? null);
 
         try {
-            $itensValidos = $this->normalizeTransferItems($itens, true);
+            $itensValidos = $this->normalizeTransferItemsFromRequest($itens, $_POST['itens_payload'] ?? null, true);
         } catch (\InvalidArgumentException $e) {
             $this->redirect('transferencias.php?aba=nova_solicitacao&erro=' . urlencode($e->getMessage()));
         }
@@ -813,7 +874,7 @@ class TransferenciasController extends BaseController {
         }
 
         try {
-            $itensValidos = $this->normalizeTransferItems($itens, true);
+            $itensValidos = $this->normalizeTransferItemsFromRequest($itens, $_POST['itens_payload'] ?? null, true);
         } catch (\InvalidArgumentException $e) {
             $this->redirect('transferencias.php?aba=nova_transferencia&erro=' . urlencode($e->getMessage()));
         }
