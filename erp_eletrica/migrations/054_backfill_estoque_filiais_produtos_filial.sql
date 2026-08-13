@@ -18,7 +18,7 @@ INSERT IGNORE INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_m
 SELECT p.id, f.id, p.quantidade, p.estoque_minimo
 FROM produtos p
 CROSS JOIN filiais f
-WHERE p.filial_id IS NULL
+WHERE COALESCE(p.filial_id, 0) = 0
   AND p.quantidade > 0
   AND (
       LOWER(f.nome) LIKE '%deposito%'
@@ -28,7 +28,7 @@ WHERE p.filial_id IS NULL
   );
 
 UPDATE estoque_filiais ef
-JOIN produtos p ON p.id = ef.produto_id AND p.filial_id IS NULL
+JOIN produtos p ON p.id = ef.produto_id AND COALESCE(p.filial_id, 0) = 0
 JOIN filiais f ON f.id = ef.filial_id
 SET ef.quantidade = p.quantidade,
     ef.estoque_minimo = COALESCE(NULLIF(ef.estoque_minimo, 0), p.estoque_minimo)

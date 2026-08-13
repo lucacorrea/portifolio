@@ -265,7 +265,7 @@
                     <div class="b2b-cart-summary">
                         <h6 class="m-0 fw-bold"><i class="fas fa-box-open text-primary me-2"></i>Itens no Caminhão: <span id="cartCount" class="badge bg-primary ms-1">0</span></h6>
                         <div class="cart-actions">
-                            <button type="button" class="btn btn-outline-primary fw-bold px-3 btnViewCart" onclick="abrirCarrinho('formTransf')" disabled>
+                            <button type="button" class="btn btn-outline-primary fw-bold px-3 btnViewCart" onclick="abrirCarrinho(this.form)" disabled>
                                 <i class="fas fa-eye me-2"></i>Visualizar
                             </button>
                             <button type="submit" class="btn btn-primary fw-bold px-4" id="btnSubmitTransf" disabled>
@@ -438,7 +438,7 @@
 
                     <div class="b2b-cart-summary">
                         <h6 class="m-0 fw-bold"><i class="fas fa-shopping-cart text-primary me-2"></i>Itens no Carrinho: <span id="cartCount" class="badge bg-primary ms-1">0</span></h6>
-                        <button type="button" class="btn btn-outline-primary fw-bold px-3 btnViewCart" onclick="abrirCarrinho('formReq')" disabled>
+                        <button type="button" class="btn btn-outline-primary fw-bold px-3 btnViewCart" onclick="abrirCarrinho(this.form)" disabled>
                             <i class="fas fa-eye me-2"></i>Visualizar
                         </button>
                         <button type="submit" class="btn btn-primary fw-bold px-4" id="btnSubmitReq" disabled>
@@ -460,7 +460,7 @@
                                         $isAtual = (int)$f['id'] === (int)($_SESSION['filial_id'] ?? 0);
                                         $isMatrizDestino = (int)$f['id'] === (int)$matrizId;
                                     ?>
-                                    <option value="<?= $f['id'] ?>" <?= $isAtual ? 'disabled' : '' ?>>
+                                    <option value="<?= $f['id'] ?>" <?= $isAtual ? 'disabled' : '' ?> <?= (!$isAtual && $isMatrizDestino) ? 'selected' : '' ?>>
                                         <?= htmlspecialchars($f['nome']) ?> (Unidade #<?= $f['id'] ?><?= $isMatrizDestino ? ' - Matriz' : '' ?><?= $isAtual ? ' - unidade atual' : '' ?>)
                                     </option>
                                 <?php endforeach; ?>
@@ -524,7 +524,7 @@
 
                     <div class="b2b-cart-summary">
                         <h6 class="m-0 fw-bold"><i class="fas fa-box-open text-primary me-2"></i>Itens para Matriz: <span id="cartCount" class="badge bg-primary ms-1">0</span></h6>
-                        <button type="button" class="btn btn-outline-primary fw-bold px-3 btnViewCart" onclick="abrirCarrinho('formTransf')" disabled>
+                        <button type="button" class="btn btn-outline-primary fw-bold px-3 btnViewCart" onclick="abrirCarrinho(this.form)" disabled>
                             <i class="fas fa-eye me-2"></i>Visualizar
                         </button>
                         <button type="submit" class="btn btn-primary fw-bold px-4" id="btnSubmitTransf" disabled>
@@ -770,9 +770,14 @@ function initB2BTable(tbodyId, searchId, paginationId, paginfoId, noResultsId, p
 }
 
 // Lógica do carrinho (compartilhada)
-function initCart(formId) {
-    const form = document.getElementById(formId);
-    if (!form) return;
+function initCart(formRef) {
+    const forms = typeof formRef === 'string'
+        ? Array.from(document.querySelectorAll(`[id="${formRef}"]`))
+        : [resolveCartForm(formRef)].filter(Boolean);
+
+    forms.forEach(form => {
+    if (form.dataset.cartReady === '1') return;
+    form.dataset.cartReady = '1';
 
     const checkboxes = form.querySelectorAll('.chkItem');
     const countLabel = form.querySelector('#cartCount') || document.getElementById('cartCount');
@@ -807,6 +812,7 @@ function initCart(formId) {
                 if (chk && !chk.checked) { chk.checked = true; updateCart(); }
             }
         });
+    });
     });
 }
 
@@ -859,7 +865,7 @@ function prepareTransferSubmit(form) {
 
 function validateTransferFormBeforeSubmit(form) {
     const action = form.getAttribute('action') || '';
-    if (action.includes('nova_transferencia')) {
+    if (action.includes('nova_transferencia') || action.includes('nova_solicitacao')) {
         const destino = form.querySelector('select[name="destino_filial_id"]');
         if (destino && !destino.value) {
             alert('Selecione a unidade de destino antes de enviar.');
@@ -874,14 +880,23 @@ function validateTransferFormBeforeSubmit(form) {
             return false;
         }
 
-        const temQuantidade = selecionados.some(chk => {
+        for (const chk of selecionados) {
             const qty = chk.closest('tr')?.querySelector('.qty-input');
-            return qty && parseFloat(qty.value || '0') > 0;
-        });
+            const nome = chk.closest('tr')?.dataset.produto || 'produto selecionado';
+            const valor = qty ? parseFloat(qty.value || '0') : 0;
+            const max = qty && qty.hasAttribute('max') ? parseFloat(qty.getAttribute('max') || '0') : null;
 
-        if (!temQuantidade) {
-            alert('Informe a quantidade do produto antes de enviar.');
-            return false;
+            if (!qty || valor <= 0) {
+                alert(`Informe uma quantidade maior que zero para ${nome}.`);
+                if (qty) qty.focus();
+                return false;
+            }
+
+            if (max !== null && !Number.isNaN(max) && valor > max) {
+                alert(`A quantidade de ${nome} é maior que o estoque disponível.`);
+                qty.focus();
+                return false;
+            }
         }
     }
 
@@ -958,6 +973,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
 let carrinhoModalInstance = null;
 let carrinhoFormId = null;
+let carrinhoFormEl = null;
+
+function resolveCartForm(formRef) {
+    if (formRef instanceof HTMLFormElement) {
+        return formRef;
+    }
+
+    if (typeof formRef === 'string') {
+        return document.getElementById(formRef);
+    }
+
+    return null;
+}
+
+function getCarrinhoForm() {
+    return carrinhoFormEl || resolveCartForm(carrinhoFormId);
+}
 
 function getItensSelecionados(form) {
     return Array.from(form.querySelectorAll('.chkItem:checked')).map(chk => {
@@ -967,11 +999,12 @@ function getItensSelecionados(form) {
     }).filter(item => item.qty && parseFloat(item.qty.value || 0) > 0);
 }
 
-function abrirCarrinho(formId) {
-    const form = document.getElementById(formId);
+function abrirCarrinho(formRef) {
+    const form = resolveCartForm(formRef);
     if (!form) return;
 
-    carrinhoFormId = formId;
+    carrinhoFormEl = form;
+    carrinhoFormId = form.id || null;
     const tbody = document.getElementById('cartEditTbody');
     const empty = document.getElementById('cartEditEmpty');
     const itens = getItensSelecionados(form);
@@ -1008,7 +1041,7 @@ function abrirCarrinho(formId) {
 }
 
 function aplicarCarrinho() {
-    const form = document.getElementById(carrinhoFormId);
+    const form = getCarrinhoForm();
     if (!form) return;
 
     const itens = getItensSelecionados(form);
@@ -1027,19 +1060,19 @@ function aplicarCarrinho() {
 }
 
 function removerItemCarrinho(index) {
-    const form = document.getElementById(carrinhoFormId);
+    const form = getCarrinhoForm();
     if (!form) return;
     const item = getItensSelecionados(form)[index];
     if (item) {
         item.chk.checked = false;
         item.chk.dispatchEvent(new Event('change', { bubbles: true }));
     }
-    abrirCarrinho(carrinhoFormId);
+    abrirCarrinho(form);
 }
 
 function enviarCarrinho() {
     aplicarCarrinho();
-    const form = document.getElementById(carrinhoFormId);
+    const form = getCarrinhoForm();
     if (!form) return;
 
     if (!validateTransferFormBeforeSubmit(form)) {

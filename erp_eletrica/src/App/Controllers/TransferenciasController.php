@@ -154,7 +154,17 @@ class TransferenciasController extends BaseController {
         return $key === '' ? null : substr($key, 0, 80);
     }
 
-    private function normalizeTransferItems(array $itens): array {
+    private function nomeProduto(int $produtoId): string {
+        try {
+            $stmt = $this->pdo->prepare("SELECT nome FROM produtos WHERE id = ? LIMIT 1");
+            $stmt->execute([$produtoId]);
+            return (string)($stmt->fetchColumn() ?: "Produto ID {$produtoId}");
+        } catch (\Throwable $e) {
+            return "Produto ID {$produtoId}";
+        }
+    }
+
+    private function normalizeTransferItems(array $itens, bool $strictSelected = false): array {
         $normalizados = [];
 
         foreach ($itens as $item) {
@@ -166,6 +176,10 @@ class TransferenciasController extends BaseController {
             $quantidade = (float)str_replace(',', '.', (string)($item['quantidade'] ?? 0));
 
             if ($produtoId <= 0 || $quantidade <= 0) {
+                if ($strictSelected) {
+                    $nomeProduto = $produtoId > 0 ? $this->nomeProduto($produtoId) : 'produto selecionado';
+                    throw new \InvalidArgumentException("Informe uma quantidade maior que zero para {$nomeProduto}.");
+                }
                 continue;
             }
 
@@ -308,7 +322,7 @@ class TransferenciasController extends BaseController {
                    AND (
                         p.filial_id = ?
                         OR ? = 1
-                        OR (? = 1 AND p.filial_id IS NULL)
+                        OR (? = 1 AND COALESCE(p.filial_id, 0) = 0)
                    )"
             );
             $stmtIns->execute([$filialId, $filialId, $isMatriz, $usaLegadoGlobal]);
@@ -324,7 +338,7 @@ class TransferenciasController extends BaseController {
                    AND (
                         p.filial_id = ?
                         OR ? = 1
-                        OR (? = 1 AND p.filial_id IS NULL)
+                        OR (? = 1 AND COALESCE(p.filial_id, 0) = 0)
                    )"
             );
             $stmtFix->execute([$filialId, $filialId, $isMatriz, $usaLegadoGlobal]);
@@ -350,7 +364,7 @@ class TransferenciasController extends BaseController {
                    AND (
                         p.filial_id = ?
                         OR ? = 1
-                        OR (? = 1 AND p.filial_id IS NULL)
+                        OR (? = 1 AND COALESCE(p.filial_id, 0) = 0)
                    )"
             );
             $stmtSync->execute([$filialId, $produtoId, $filialId, $isMatriz, $usaLegadoGlobal]);
@@ -377,7 +391,7 @@ class TransferenciasController extends BaseController {
                    AND (
                         p.filial_id = ?
                         OR ? = 1
-                        OR (? = 1 AND p.filial_id IS NULL)
+                        OR (? = 1 AND COALESCE(p.filial_id, 0) = 0)
                    )"
             );
             $stmtFix->execute([$produtoId, $filialId, $filialId, $isMatriz, $usaLegadoGlobal]);
@@ -390,7 +404,7 @@ class TransferenciasController extends BaseController {
                 id,
                 ?,
                 CASE
-                    WHEN ? = 1 OR filial_id = ? OR (? = 1 AND filial_id IS NULL) THEN quantidade
+                    WHEN ? = 1 OR filial_id = ? OR (? = 1 AND COALESCE(filial_id, 0) = 0) THEN quantidade
                     ELSE 0
                 END,
                 estoque_minimo
@@ -478,7 +492,7 @@ class TransferenciasController extends BaseController {
                     p.*,
                     CASE
                         WHEN ef.id IS NOT NULL THEN ef.quantidade
-                        WHEN ? = 1 OR p.filial_id = ? OR (? = 1 AND p.filial_id IS NULL) THEN p.quantidade
+                        WHEN ? = 1 OR p.filial_id = ? OR (? = 1 AND COALESCE(p.filial_id, 0) = 0) THEN p.quantidade
                         ELSE 0
                     END as qtd_matriz
                  FROM produtos p
@@ -627,7 +641,11 @@ class TransferenciasController extends BaseController {
         $mid = $this->matrizId;
         $idempotencyKey = $this->normalizeTransferIdempotencyKey($_POST['idempotency_key'] ?? null);
 
-        $itensValidos = $this->normalizeTransferItems($itens);
+        try {
+            $itensValidos = $this->normalizeTransferItems($itens, true);
+        } catch (\InvalidArgumentException $e) {
+            $this->redirect('transferencias.php?aba=nova_solicitacao&erro=' . urlencode($e->getMessage()));
+        }
 
         if ($destino_id === 0 || $destino_id === (int)$this->filialLogada) {
             $this->redirect('transferencias.php?aba=nova_solicitacao&erro=' . urlencode('Selecione uma unidade diferente da unidade atual.'));
@@ -686,7 +704,15 @@ class TransferenciasController extends BaseController {
         $idempotencyKey = $this->normalizeTransferIdempotencyKey($_POST['idempotency_key'] ?? null);
         $redirectAba = $this->isMatriz ? 'historico_envios' : 'historico_recebimentos';
 
-        $itensValidos = $this->normalizeTransferItems($itens);
+        if ($destino_id === 0 && !$this->isMatriz) {
+            $destino_id = (int)$mid;
+        }
+
+        try {
+            $itensValidos = $this->normalizeTransferItems($itens, true);
+        } catch (\InvalidArgumentException $e) {
+            $this->redirect('transferencias.php?aba=nova_transferencia&erro=' . urlencode($e->getMessage()));
+        }
 
         if (count($itensValidos) === 0 || $destino_id === 0) {
             $this->redirect('transferencias.php?aba=nova_transferencia&erro=' . urlencode('Selecione a filial destino e os produtos.'));
@@ -721,7 +747,7 @@ class TransferenciasController extends BaseController {
                     p.nome,
                     CASE
                         WHEN ef.id IS NOT NULL THEN ef.quantidade
-                        WHEN ? = 1 OR p.filial_id = ? OR (? = 1 AND p.filial_id IS NULL) THEN p.quantidade
+                        WHEN ? = 1 OR p.filial_id = ? OR (? = 1 AND COALESCE(p.filial_id, 0) = 0) THEN p.quantidade
                         ELSE 0
                     END as estoque_atual
                 FROM produtos p
@@ -1079,7 +1105,7 @@ class TransferenciasController extends BaseController {
                     WHEN t.origem_filial_id = ?
                         OR p.filial_id = t.origem_filial_id
                         OR (
-                            p.filial_id IS NULL
+                            COALESCE(p.filial_id, 0) = 0
                             AND (
                                 LOWER(f_origem_estoque.nome) LIKE '%deposito%'
                                 OR (LOWER(f_origem_estoque.nome) LIKE '%dep%' AND LOWER(f_origem_estoque.nome) LIKE '%sito%')
@@ -1202,7 +1228,7 @@ class TransferenciasController extends BaseController {
                             p.nome,
                             CASE
                                 WHEN ef.id IS NOT NULL THEN ef.quantidade
-                                WHEN ? = 1 OR p.filial_id = ? OR (? = 1 AND p.filial_id IS NULL) THEN p.quantidade
+                                WHEN ? = 1 OR p.filial_id = ? OR (? = 1 AND COALESCE(p.filial_id, 0) = 0) THEN p.quantidade
                                 ELSE 0
                             END as estoque_atual
                         FROM produtos p
