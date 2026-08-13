@@ -776,43 +776,46 @@ function initCart(formRef) {
         : [resolveCartForm(formRef)].filter(Boolean);
 
     forms.forEach(form => {
-    if (form.dataset.cartReady === '1') return;
-    form.dataset.cartReady = '1';
+        if (form.dataset.cartReady === '1') return;
+        form.dataset.cartReady = '1';
 
-    const checkboxes = form.querySelectorAll('.chkItem');
-    const countLabel = form.querySelector('#cartCount') || document.getElementById('cartCount');
-    const submitBtn  = form.querySelector('button[type="submit"]');
-    const viewBtns = form.querySelectorAll('.btnViewCart');
+        const checkboxes = form.querySelectorAll('.chkItem');
+        const countLabel = form.querySelector('#cartCount') || document.getElementById('cartCount');
+        const submitBtn  = form.querySelector('button[type="submit"]');
+        const viewBtns = form.querySelectorAll('.btnViewCart');
 
-    const getQtyInput = (chk) => chk.closest('tr').querySelector('.qty-input');
+        const getQtyInput = (chk) => chk.closest('tr')?.querySelector('.qty-input');
 
-    const updateCart = () => {
-        let cnt = 0;
-        checkboxes.forEach(chk => {
-            const qty = getQtyInput(chk);
-            if (chk.checked) {
-                cnt++;
-                qty.removeAttribute('disabled');
-                if (!qty.value || parseFloat(qty.value) === 0) qty.value = 1;
-            } else {
-                qty.setAttribute('disabled', 'true');
-                qty.value = '';
-            }
+        const updateCart = () => {
+            let cnt = 0;
+            checkboxes.forEach(chk => {
+                const qty = getQtyInput(chk);
+                if (!qty) return;
+
+                if (chk.checked) {
+                    cnt++;
+                    qty.removeAttribute('disabled');
+                    if (!qty.value || parseFloat(qty.value) === 0) qty.value = 1;
+                } else {
+                    qty.setAttribute('disabled', 'true');
+                    qty.value = '';
+                }
+            });
+            if (countLabel) countLabel.innerText = cnt;
+            if (submitBtn)  submitBtn.disabled = cnt === 0;
+            viewBtns.forEach(btn => btn.disabled = cnt === 0);
+        };
+
+        checkboxes.forEach(chk => chk.addEventListener('change', updateCart));
+        form.querySelectorAll('.qty-input').forEach(input => {
+            input.addEventListener('input', () => {
+                if (parseFloat(input.value) > 0) {
+                    const chk = input.closest('tr')?.querySelector('.chkItem');
+                    if (chk && !chk.checked) { chk.checked = true; updateCart(); }
+                }
+            });
         });
-        if (countLabel) countLabel.innerText = cnt;
-        if (submitBtn)  submitBtn.disabled = cnt === 0;
-        viewBtns.forEach(btn => btn.disabled = cnt === 0);
-    };
-
-    checkboxes.forEach(chk => chk.addEventListener('change', updateCart));
-    form.querySelectorAll('.qty-input').forEach(input => {
-        input.addEventListener('input', () => {
-            if (parseFloat(input.value) > 0) {
-                const chk = input.closest('tr').querySelector('.chkItem');
-                if (chk && !chk.checked) { chk.checked = true; updateCart(); }
-            }
-        });
-    });
+        updateCart();
     });
 }
 
@@ -863,9 +866,39 @@ function prepareTransferSubmit(form) {
     return true;
 }
 
+function syncTransferSelections(form) {
+    const action = form.getAttribute('action') || '';
+    if (!action.includes('nova_transferencia') && !action.includes('nova_solicitacao')) {
+        return;
+    }
+
+    form.querySelectorAll('.qty-input').forEach(input => {
+        const valor = parseFloat(input.value || '0');
+        const chk = input.closest('tr')?.querySelector('.chkItem');
+        if (chk && valor > 0) {
+            chk.checked = true;
+            input.removeAttribute('disabled');
+        }
+    });
+
+    form.querySelectorAll('.chkItem').forEach(chk => {
+        const qty = chk.closest('tr')?.querySelector('.qty-input');
+        if (!qty) return;
+
+        if (chk.checked) {
+            qty.removeAttribute('disabled');
+            if (!qty.value || parseFloat(qty.value || '0') <= 0) {
+                qty.value = 1;
+            }
+        }
+    });
+}
+
 function validateTransferFormBeforeSubmit(form) {
     const action = form.getAttribute('action') || '';
     if (action.includes('nova_transferencia') || action.includes('nova_solicitacao')) {
+        syncTransferSelections(form);
+
         const destino = form.querySelector('select[name="destino_filial_id"]');
         if (destino && !destino.value) {
             alert('Selecione a unidade de destino antes de enviar.');
@@ -948,11 +981,10 @@ function attachTransferSubmitGuard() {
 document.addEventListener('DOMContentLoaded', () => {
     // Tabela da Matriz (Novo Despacho)
     initB2BTable('tbodyTransf', 'searchTransf', 'paginationTransf', 'paginfoTransf', 'noResultsTransf', 6);
-    initCart('formTransf');
+    document.querySelectorAll('form[action*="nova_transferencia"], form[action*="nova_solicitacao"]').forEach(form => initCart(form));
 
     // Tabela da Filial (Nova Solicitação)
     initB2BTable('tbodyReq', 'searchReq', 'paginationReq', 'paginfoReq', 'noResultsReq', 6);
-    initCart('formReq');
     attachTransferSubmitGuard();
 
     // Clique na linha para selecionar (Global)

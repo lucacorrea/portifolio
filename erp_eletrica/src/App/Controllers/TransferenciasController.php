@@ -168,15 +168,16 @@ class TransferenciasController extends BaseController {
         $normalizados = [];
 
         foreach ($itens as $item) {
-            if (empty($item['selecionado'])) {
-                continue;
-            }
-
+            $selecionado = !empty($item['selecionado']);
             $produtoId = (int)($item['produto_id'] ?? 0);
             $quantidade = (float)str_replace(',', '.', (string)($item['quantidade'] ?? 0));
 
+            if (!$selecionado && $quantidade <= 0) {
+                continue;
+            }
+
             if ($produtoId <= 0 || $quantidade <= 0) {
-                if ($strictSelected) {
+                if ($strictSelected || $selecionado) {
                     $nomeProduto = $produtoId > 0 ? $this->nomeProduto($produtoId) : 'produto selecionado';
                     throw new \InvalidArgumentException("Informe uma quantidade maior que zero para {$nomeProduto}.");
                 }
@@ -817,8 +818,12 @@ class TransferenciasController extends BaseController {
             $this->redirect('transferencias.php?aba=nova_transferencia&erro=' . urlencode($e->getMessage()));
         }
 
-        if (count($itensValidos) === 0 || $destino_id === 0) {
-            $this->redirect('transferencias.php?aba=nova_transferencia&erro=' . urlencode('Selecione a filial destino e os produtos.'));
+        if ($destino_id === 0) {
+            $this->redirect('transferencias.php?aba=nova_transferencia&erro=' . urlencode('Selecione a filial destino.'));
+        }
+
+        if (count($itensValidos) === 0) {
+            $this->redirect('transferencias.php?aba=nova_transferencia&erro=' . urlencode('Selecione ao menos um produto e informe a quantidade para enviar.'));
         }
 
         if ($destino_id === $origem_id) {
