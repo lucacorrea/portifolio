@@ -279,6 +279,38 @@ class TransferenciasController extends BaseController {
         }
     }
 
+    private function normalizarTextoUnidade(string $texto): string {
+        $texto = trim($texto);
+        if ($texto === '') {
+            return '';
+        }
+
+        $texto = function_exists('mb_strtolower')
+            ? mb_strtolower($texto, 'UTF-8')
+            : strtolower($texto);
+
+        if (function_exists('iconv')) {
+            $semAcentos = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $texto);
+            if (is_string($semAcentos) && $semAcentos !== '') {
+                $texto = strtolower($semAcentos);
+            }
+        }
+
+        return $texto;
+    }
+
+    private function nomeIndicaDepositoOuLogistica(string $nome): bool {
+        $nome = $this->normalizarTextoUnidade($nome);
+
+        return $nome !== ''
+            && (
+                str_contains($nome, 'deposito')
+                || (str_contains($nome, 'dep') && str_contains($nome, 'sito'))
+                || str_contains($nome, 'logistica')
+                || (str_contains($nome, 'log') && str_contains($nome, 'stica'))
+            );
+    }
+
     private function filialUsaEstoqueLegadoGlobal(int $filialId): bool {
         if ($filialId <= 0) {
             return false;
@@ -288,21 +320,53 @@ class TransferenciasController extends BaseController {
             return true;
         }
 
-        try {
-            $stmt = $this->pdo->prepare("SELECT nome FROM filiais WHERE id = ? LIMIT 1");
-            $stmt->execute([$filialId]);
-            $nomeOriginal = (string)($stmt->fetchColumn() ?: '');
-            $nome = function_exists('mb_strtolower')
-                ? mb_strtolower($nomeOriginal, 'UTF-8')
-                : strtolower($nomeOriginal);
-
-            return str_contains($nome, 'deposito')
-                || (str_contains($nome, 'dep') && str_contains($nome, 'sito'))
-                || str_contains($nome, 'logistica')
-                || (str_contains($nome, 'log') && str_contains($nome, 'stica'));
-        } catch (\Throwable $e) {
-            return false;
+        if ((int)$filialId === (int)($this->filialLogada ?? 0) && $this->nomeIndicaDepositoOuLogistica((string)($_SESSION['filial_nome'] ?? ''))) {
+            return true;
         }
+
+        $filialEncontrada = false;
+
+        try {
+            $stmt = $this->pdo->prepare("SELECT nome, principal FROM filiais WHERE id = ? LIMIT 1");
+            $stmt->execute([$filialId]);
+            $filial = $stmt->fetch(\PDO::FETCH_ASSOC);
+            if ($filial) {
+                $filialEncontrada = true;
+                if ((int)($filial['principal'] ?? 0) === 1) {
+                    return true;
+                }
+
+                if ($this->nomeIndicaDepositoOuLogistica((string)($filial['nome'] ?? ''))) {
+                    return true;
+                }
+            }
+        } catch (\Throwable $e) {
+            error_log("Erro ao verificar filial de estoque legado {$filialId}: " . $e->getMessage());
+        }
+
+        try {
+            $stmt = $this->pdo->prepare("SELECT nome, principal FROM depositos WHERE id = ? LIMIT 1");
+            $stmt->execute([$filialId]);
+            if ($stmt->fetch(\PDO::FETCH_ASSOC)) {
+                return true;
+            }
+        } catch (\Throwable $e) {
+            // A tabela de depositos nao existe em algumas instalacoes antigas.
+        }
+
+        if (!$filialEncontrada) {
+            try {
+                $stmt = $this->pdo->prepare("SELECT 1 FROM estoque_filiais WHERE filial_id = ? LIMIT 1");
+                $stmt->execute([$filialId]);
+                if ($stmt->fetchColumn()) {
+                    return true;
+                }
+            } catch (\Throwable $e) {
+                error_log("Erro ao verificar estoque auxiliar da filial {$filialId}: " . $e->getMessage());
+            }
+        }
+
+        return false;
     }
 
     private function sincronizarEstoqueLegadoDaFilial(int $filialId): void {
@@ -416,6 +480,36 @@ class TransferenciasController extends BaseController {
         $stmtIns->execute([$filialId, $isMatriz, $filialId, $usaLegadoGlobal, $produtoId]);
     }
 
+    private function repararEstoqueLegadoParaBaixa(int $produtoId, int $filialId, float $quantidade): void {
+        $isMatriz = ((int)$filialId === (int)$this->matrizId) ? 1 : 0;
+        $usaLegadoGlobal = $this->filialUsaEstoqueLegadoGlobal($filialId) ? 1 : 0;
+
+        if ($isMatriz !== 1 && $usaLegadoGlobal !== 1) {
+            return;
+        }
+
+        try {
+            $stmt = $this->pdo->prepare(
+                "UPDATE estoque_filiais ef
+                 JOIN produtos p ON p.id = ef.produto_id
+                 SET ef.quantidade = p.quantidade,
+                     ef.estoque_minimo = COALESCE(NULLIF(ef.estoque_minimo, 0), p.estoque_minimo)
+                 WHERE ef.produto_id = ?
+                   AND ef.filial_id = ?
+                   AND ef.quantidade < ?
+                   AND p.quantidade >= ?
+                   AND (
+                        p.filial_id = ?
+                        OR ? = 1
+                        OR (? = 1 AND COALESCE(p.filial_id, 0) = 0)
+                   )"
+            );
+            $stmt->execute([$produtoId, $filialId, $quantidade, $quantidade, $filialId, $isMatriz, $usaLegadoGlobal]);
+        } catch (\Throwable $e) {
+            error_log("Erro ao reparar estoque legado para transferencia {$produtoId}/{$filialId}: " . $e->getMessage());
+        }
+    }
+
     private function baixarEstoqueTransferencia(int $produtoId, int $filialId, float $quantidade): void {
         if ($produtoId <= 0 || $filialId <= 0 || $quantidade <= 0) {
             throw new \Exception("Dados invalidos para baixar estoque da transferencia.");
@@ -429,6 +523,11 @@ class TransferenciasController extends BaseController {
              WHERE produto_id = ? AND filial_id = ? AND quantidade >= ?"
         );
         $stmt->execute([$quantidade, $produtoId, $filialId, $quantidade]);
+
+        if ($stmt->rowCount() === 0) {
+            $this->repararEstoqueLegadoParaBaixa($produtoId, $filialId, $quantidade);
+            $stmt->execute([$quantidade, $produtoId, $filialId, $quantidade]);
+        }
 
         if ($stmt->rowCount() === 0) {
             $stmtInfo = $this->pdo->prepare(
@@ -491,6 +590,10 @@ class TransferenciasController extends BaseController {
                 "SELECT
                     p.*,
                     CASE
+                        WHEN ef.id IS NOT NULL
+                             AND ? = 1
+                             AND COALESCE(p.filial_id, 0) = 0
+                             AND p.quantidade > ef.quantidade THEN p.quantidade
                         WHEN ef.id IS NOT NULL THEN ef.quantidade
                         WHEN ? = 1 OR p.filial_id = ? OR (? = 1 AND COALESCE(p.filial_id, 0) = 0) THEN p.quantidade
                         ELSE 0
@@ -499,7 +602,7 @@ class TransferenciasController extends BaseController {
                  LEFT JOIN estoque_filiais ef ON ef.produto_id = p.id AND ef.filial_id = ?
                  ORDER BY p.nome"
             );
-            $stmtProdutos->execute([$origemEhMatriz, $origemEstoqueId, $origemUsaEstoqueLegado, $origemEstoqueId]);
+            $stmtProdutos->execute([$origemUsaEstoqueLegado, $origemEhMatriz, $origemEstoqueId, $origemUsaEstoqueLegado, $origemEstoqueId]);
             $produtosMatriz = $stmtProdutos->fetchAll();
         } catch (\Exception $e) {
             $produtosMatriz = $this->pdo->query("SELECT *, quantidade as qtd_matriz FROM produtos ORDER BY nome")->fetchAll();
@@ -746,6 +849,10 @@ class TransferenciasController extends BaseController {
                 SELECT
                     p.nome,
                     CASE
+                        WHEN ef.id IS NOT NULL
+                             AND ? = 1
+                             AND COALESCE(p.filial_id, 0) = 0
+                             AND p.quantidade > ef.quantidade THEN p.quantidade
                         WHEN ef.id IS NOT NULL THEN ef.quantidade
                         WHEN ? = 1 OR p.filial_id = ? OR (? = 1 AND COALESCE(p.filial_id, 0) = 0) THEN p.quantidade
                         ELSE 0
@@ -768,7 +875,7 @@ class TransferenciasController extends BaseController {
 
                 // 1. Validação de Estoque (Servidor)
                 $this->garantirLinhaEstoqueFilial((int)$pid, (int)$origem_id);
-                $stmtCheck->execute([$origemEhMatriz, $origem_id, $origemUsaEstoqueLegado, $origem_id, $pid]);
+                $stmtCheck->execute([$origemUsaEstoqueLegado, $origemEhMatriz, $origem_id, $origemUsaEstoqueLegado, $origem_id, $pid]);
                 $estoque = $stmtCheck->fetch(\PDO::FETCH_ASSOC);
                 
                 if (!$estoque || $estoque['estoque_atual'] < $qtd) {
@@ -1101,16 +1208,30 @@ class TransferenciasController extends BaseController {
                 MAX(ti.valor_custo_unitario) as valor_custo_unitario,
                 p.nome, p.codigo, COALESCE(NULLIF(p.unidade, ''), 'UN') as unidade,
                 CASE
+                    WHEN ef.id IS NOT NULL
+                        AND COALESCE(p.filial_id, 0) = 0
+                        AND p.quantidade > ef.quantidade
+                        AND (
+                            t.origem_filial_id = ?
+                            OR COALESCE(f_origem_estoque.principal, 0) = 1
+                            OR LOWER(COALESCE(f_origem_estoque.nome, '')) LIKE '%deposito%'
+                            OR (LOWER(COALESCE(f_origem_estoque.nome, '')) LIKE '%dep%' AND LOWER(COALESCE(f_origem_estoque.nome, '')) LIKE '%sito%')
+                            OR LOWER(COALESCE(f_origem_estoque.nome, '')) LIKE '%logistica%'
+                            OR (LOWER(COALESCE(f_origem_estoque.nome, '')) LIKE '%log%' AND LOWER(COALESCE(f_origem_estoque.nome, '')) LIKE '%stica%')
+                            OR f_origem_estoque.id IS NULL
+                        ) THEN p.quantidade
                     WHEN ef.id IS NOT NULL THEN ef.quantidade
                     WHEN t.origem_filial_id = ?
                         OR p.filial_id = t.origem_filial_id
                         OR (
                             COALESCE(p.filial_id, 0) = 0
                             AND (
-                                LOWER(f_origem_estoque.nome) LIKE '%deposito%'
-                                OR (LOWER(f_origem_estoque.nome) LIKE '%dep%' AND LOWER(f_origem_estoque.nome) LIKE '%sito%')
-                                OR LOWER(f_origem_estoque.nome) LIKE '%logistica%'
-                                OR (LOWER(f_origem_estoque.nome) LIKE '%log%' AND LOWER(f_origem_estoque.nome) LIKE '%stica%')
+                                COALESCE(f_origem_estoque.principal, 0) = 1
+                                OR LOWER(COALESCE(f_origem_estoque.nome, '')) LIKE '%deposito%'
+                                OR (LOWER(COALESCE(f_origem_estoque.nome, '')) LIKE '%dep%' AND LOWER(COALESCE(f_origem_estoque.nome, '')) LIKE '%sito%')
+                                OR LOWER(COALESCE(f_origem_estoque.nome, '')) LIKE '%logistica%'
+                                OR (LOWER(COALESCE(f_origem_estoque.nome, '')) LIKE '%log%' AND LOWER(COALESCE(f_origem_estoque.nome, '')) LIKE '%stica%')
+                                OR f_origem_estoque.id IS NULL
                             )
                         )
                     THEN p.quantidade
@@ -1123,10 +1244,10 @@ class TransferenciasController extends BaseController {
                 LEFT JOIN filiais f_origem_estoque ON f_origem_estoque.id = t.origem_filial_id
                 LEFT JOIN estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = t.origem_filial_id
                 WHERE ti.transferencia_id = ?
-                GROUP BY ti.transferencia_id, ti.produto_id, p.nome, p.codigo, p.unidade, ef.id, ef.quantidade, p.quantidade, p.filial_id, t.origem_filial_id, f_origem_estoque.nome";
+                GROUP BY ti.transferencia_id, ti.produto_id, p.nome, p.codigo, p.unidade, ef.id, ef.quantidade, p.quantidade, p.filial_id, t.origem_filial_id, f_origem_estoque.id, f_origem_estoque.nome, f_origem_estoque.principal";
         
         $stmtI = $this->pdo->prepare($sqlItems);
-        $stmtI->execute([$this->matrizId, $transf_id]);
+        $stmtI->execute([$this->matrizId, $this->matrizId, $transf_id]);
         $items = $stmtI->fetchAll(\PDO::FETCH_ASSOC);
 
         // 3. Ocorrências detalhadas
@@ -1227,6 +1348,10 @@ class TransferenciasController extends BaseController {
                         SELECT
                             p.nome,
                             CASE
+                                WHEN ef.id IS NOT NULL
+                                     AND ? = 1
+                                     AND COALESCE(p.filial_id, 0) = 0
+                                     AND p.quantidade > ef.quantidade THEN p.quantidade
                                 WHEN ef.id IS NOT NULL THEN ef.quantidade
                                 WHEN ? = 1 OR p.filial_id = ? OR (? = 1 AND COALESCE(p.filial_id, 0) = 0) THEN p.quantidade
                                 ELSE 0
@@ -1247,7 +1372,7 @@ class TransferenciasController extends BaseController {
 
                         // 1. Validação de Estoque (Servidor)
                         $this->garantirLinhaEstoqueFilial((int)$pid, (int)$origem_id);
-                        $stmtCheck->execute([$origemEhMatriz, $origem_id, $origemUsaEstoqueLegado, $origem_id, $pid]);
+                        $stmtCheck->execute([$origemUsaEstoqueLegado, $origemEhMatriz, $origem_id, $origemUsaEstoqueLegado, $origem_id, $pid]);
                         $estoque = $stmtCheck->fetch(\PDO::FETCH_ASSOC);
                         
                         if (!$estoque || $estoque['estoque_atual'] < $qtd) {
