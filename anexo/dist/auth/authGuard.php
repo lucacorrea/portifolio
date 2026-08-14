@@ -4,35 +4,86 @@
 
 declare(strict_types=1);
 
-
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
-
 
 require_once __DIR__ . '/accessPolicy.php';
 
 
 /* ============================================================
- * REDIRECIONAMENTO
+ * ROTAS DO SISTEMA
  * ============================================================ */
 
 /**
- * Limpa a sessão e envia para o login.
+ * Caminhos absolutos do projeto.
+ *
+ * Como seu sistema está em /semas/, usar caminho absoluto evita
+ * redirecionamento errado dependendo da pasta da página atual.
  */
-function _redirect_to_login(): void
+const AUTH_LOGIN_URL     = '/semas/index.php';
+const AUTH_DASHBOARD_URL = '/semas/dist/dashboard.php';
+
+
+/**
+ * Páginas que o usuário COMUM pode abrir.
+ *
+ * Regra solicitada:
+ * - Dashboard
+ * - Cadastrar Pessoa
+ * - Pessoas Cadastradas
+ * - Logout
+ *
+ * IMPORTANTE:
+ * caso cadastrarSolicitante.php envie o formulário para outro
+ * arquivo PHP que também execute auth_guard(), inclua o nome
+ * desse processador nesta lista.
+ */
+const COMMON_ALLOWED_PAGES = [
+    'dashboard.php',
+    'cadastrarSolicitante.php',
+    'pessoasCadastradas.php',
+    'logout.php'
+];
+
+
+/**
+ * Páginas de gerenciamento de usuários.
+ *
+ * Admin NÃO pode acessar.
+ * Somente prefeito e secretario.
+ */
+const USER_MANAGEMENT_PAGES = [
+    'usuariosPermitidos.php',
+    'usuariosNaoPermitidos.php'
+];
+
+
+/* ============================================================
+ * HELPERS
+ * ============================================================ */
+
+/**
+ * Retorna o arquivo PHP atual.
+ */
+function auth_current_page(): string
 {
-    /*
-     * Limpa dados da sessão.
-     */
+    $scriptName = isset($_SERVER['SCRIPT_NAME'])
+        ? (string)$_SERVER['SCRIPT_NAME']
+        : '';
+
+    return basename($scriptName);
+}
+
+
+/**
+ * Destrói completamente a sessão atual.
+ */
+function auth_destroy_session(): void
+{
     $_SESSION = [];
 
-
-    /*
-     * Remove cookie da sessão.
-     */
     if (ini_get('session.use_cookies')) {
-
         $params = session_get_cookie_params();
 
         setcookie(
@@ -46,22 +97,36 @@ function _redirect_to_login(): void
         );
     }
 
-
-    /*
-     * Finaliza sessão.
-     */
     if (session_status() === PHP_SESSION_ACTIVE) {
         session_destroy();
     }
+}
 
 
-    /*
-     * Login público.
-     *
-     * Mantido de acordo com sua estrutura atual.
-     */
-    header('Location: .././index.php');
+/**
+ * Redireciona para o login e encerra a sessão.
+ *
+ * Usado especialmente quando o usuário comum sai da rede
+ * autorizada.
+ */
+function _redirect_to_login(): void
+{
+    auth_destroy_session();
 
+    header('Location: ' . AUTH_LOGIN_URL);
+    exit;
+}
+
+
+/**
+ * Redireciona para o Dashboard sem destruir a sessão.
+ *
+ * Usado quando o usuário está autenticado, mas tenta abrir
+ * uma página que seu perfil não possui permissão para acessar.
+ */
+function _redirect_to_dashboard(): void
+{
+    header('Location: ' . AUTH_DASHBOARD_URL);
     exit;
 }
 
@@ -70,6 +135,30 @@ function _redirect_to_login(): void
  * AUTH GUARD
  * ============================================================ */
 
+/**
+ * Regras:
+ *
+ * PREFEITO
+ * - acesso normal;
+ * - pode gerenciar usuários.
+ *
+ * SECRETARIO
+ * - acesso normal;
+ * - pode gerenciar usuários.
+ *
+ * ADMIN
+ * - exige autorizado = sim;
+ * - NÃO pode acessar gerenciamento de usuários.
+ *
+ * COMUM
+ * - exige autorizado = sim;
+ * - precisa estar SEMPRE na rede/IP autorizado;
+ * - se trocar de rede, sessão é destruída e volta ao index.php;
+ * - só pode abrir Dashboard, Cadastrar Pessoa e Pessoas Cadastradas.
+ *
+ * SUPORTE / outros
+ * - acesso negado.
+ */
 function auth_guard(): void
 {
     /* ========================================================
@@ -80,7 +169,6 @@ function auth_guard(): void
         empty($_SESSION['user_id']) ||
         empty($_SESSION['user_role'])
     ) {
-
         _redirect_to_login();
     }
 
@@ -90,60 +178,49 @@ function auth_guard(): void
      * ======================================================== */
 
     $role = strtolower(
-        trim(
-            (string)(
-                $_SESSION['user_role'] ?? ''
-            )
-        )
+        trim((string)($_SESSION['user_role'] ?? ''))
     );
-
 
     $autorizado = strtolower(
-        trim(
-            (string)(
-                $_SESSION['autorizado'] ?? ''
-            )
-        )
+        trim((string)($_SESSION['autorizado'] ?? ''))
     );
+
+    $currentPage = auth_current_page();
 
 
     /* ========================================================
-     * 2. PREFEITO
+     * PREFEITO
      * ======================================================== */
 
     if ($role === 'prefeito') {
-
-        /*
-         * Mantém comportamento existente.
-         */
         return;
     }
 
 
     /* ========================================================
-     * 3. SECRETÁRIO
+     * SECRETÁRIO
      * ======================================================== */
 
     if ($role === 'secretario') {
-
-        /*
-         * Mantém comportamento existente.
-         */
         return;
     }
 
 
     /* ========================================================
-     * 4. ADMIN
+     * ADMIN
      * ======================================================== */
 
     if ($role === 'admin') {
-
-        /*
-         * Admin só entra se autorizado = sim.
-         */
         if ($autorizado !== 'sim') {
             _redirect_to_login();
+        }
+
+        /*
+         * Segurança no backend:
+         * esconder o menu não é suficiente.
+         */
+        if (in_array($currentPage, USER_MANAGEMENT_PAGES, true)) {
+            _redirect_to_dashboard();
         }
 
         return;
@@ -151,51 +228,41 @@ function auth_guard(): void
 
 
     /* ========================================================
-     * 5. USUÁRIO COMUM
+     * USUÁRIO COMUM
      * ======================================================== */
 
     if ($role === 'comum') {
-
-        /*
-         * Usuário comum precisa estar autorizado.
-         */
         if ($autorizado !== 'sim') {
             _redirect_to_login();
         }
 
-
         /*
-         * Revalida a política em CADA página:
+         * A rede é revalidada em TODA requisição protegida.
          *
-         * - dia
-         * - horário
-         * - rede/IP
+         * Se o usuário logou na rede autorizada e depois mudar
+         * para outra rede/4G, a próxima página protegida encerra
+         * a sessão e manda para index.php.
          */
         $policy = access_check_common();
 
-
         if (!$policy['allowed']) {
-
             _redirect_to_login();
         }
 
-
         /*
-         * Tudo certo.
+         * Além da rede, limita quais páginas o comum pode abrir.
          */
+        if (!in_array($currentPage, COMMON_ALLOWED_PAGES, true)) {
+            _redirect_to_dashboard();
+        }
+
         return;
     }
 
 
     /* ========================================================
-     * 6. OUTROS PERFIS
+     * SUPORTE / PERFIL DESCONHECIDO
      * ======================================================== */
 
-    /*
-     * suporte ou qualquer papel desconhecido
-     * continua sem autorização.
-     */
     _redirect_to_login();
 }
-
-?>

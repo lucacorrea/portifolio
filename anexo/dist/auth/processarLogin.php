@@ -1,5 +1,7 @@
 <?php
 
+// /dist/auth/processarLogin.php
+
 declare(strict_types=1);
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -8,6 +10,13 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 
 require_once __DIR__ . '/../assets/conexao.php';
 require_once __DIR__ . '/accessPolicy.php';
+
+
+/* ============================================================
+ * CONFIGURAÇÃO
+ * ============================================================ */
+
+const LOGIN_PAGE_URL = '/semas/index.php';
 
 
 /* ============================================================
@@ -20,21 +29,43 @@ function js_alert_error(string $msg): void
 
     echo "<script>
         alert('{$msg}');
-        history.back();
+        window.location.href = '" . LOGIN_PAGE_URL . "';
     </script>";
 
     exit;
 }
 
 
+function redirect_login_silent(): void
+{
+    $_SESSION = [];
+
+    if (ini_get('session.use_cookies')) {
+        $params = session_get_cookie_params();
+
+        setcookie(
+            session_name(),
+            '',
+            time() - 42000,
+            $params['path'],
+            $params['domain'],
+            $params['secure'],
+            $params['httponly']
+        );
+    }
+
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_destroy();
+    }
+
+    header('Location: ' . LOGIN_PAGE_URL);
+    exit;
+}
+
+
 function go_success(string $to): void
 {
-    $to = addslashes($to);
-
-    echo "<script>
-        window.location.href = '{$to}';
-    </script>";
-
+    header('Location: ' . $to);
     exit;
 }
 
@@ -50,7 +81,7 @@ function only_digits(string $v): string
  * ============================================================ */
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    js_alert_error('Método inválido.');
+    redirect_login_silent();
 }
 
 
@@ -70,25 +101,17 @@ if (!isset($pdo) || !($pdo instanceof PDO)) {
 $loginIn = '';
 
 if (isset($_POST['login'])) {
-
     $loginIn = (string)$_POST['login'];
-
 } elseif (isset($_POST['email'])) {
-
     $loginIn = (string)$_POST['email'];
 }
 
 $loginIn = trim($loginIn);
 
-
 $password = isset($_POST['password'])
     ? (string)$_POST['password']
     : '';
 
-
-/* ============================================================
- * VALIDA CAMPOS
- * ============================================================ */
 
 if ($loginIn === '' || $password === '') {
     js_alert_error('Preencha todos os campos.');
@@ -99,11 +122,7 @@ if ($loginIn === '' || $password === '') {
  * NORMALIZA LOGIN
  * ============================================================ */
 
-$emailNorm = mb_strtolower(
-    $loginIn,
-    'UTF-8'
-);
-
+$emailNorm = mb_strtolower($loginIn, 'UTF-8');
 $cpfDigits = only_digits($loginIn);
 
 
@@ -112,16 +131,7 @@ $cpfDigits = only_digits($loginIn);
  * ============================================================ */
 
 try {
-
-    $pdo->setAttribute(
-        PDO::ATTR_ERRMODE,
-        PDO::ERRMODE_EXCEPTION
-    );
-
-
-    /* ========================================================
-     * BUSCA USUÁRIO
-     * ======================================================== */
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
     $stmt = $pdo->prepare("
         SELECT
@@ -140,21 +150,16 @@ try {
         LIMIT 1
     ");
 
-
     $stmt->execute([
         ':email' => $emailNorm,
         ':cpf'   => $cpfDigits
     ]);
 
-
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-
     /*
-     * Mensagem genérica é mais segura.
-     *
-     * Evita informar se determinado CPF/e-mail
-     * existe no sistema.
+     * Mensagem genérica:
+     * evita revelar se CPF/e-mail existe no sistema.
      */
     if (!$user) {
         js_alert_error('Usuário ou senha inválidos.');
@@ -162,33 +167,29 @@ try {
 
 
     /* ========================================================
-     * SENHA
+     * VERIFICA SENHA
      * ======================================================== */
 
-    $salt_hex = (string)$user['senha_salt'];
+    $saltHex = (string)$user['senha_salt'];
 
-    $calc_hash_hex = hash(
+    $calcHashHex = hash(
         'sha256',
-        $salt_hex . $password,
+        $saltHex . $password,
         false
     );
-
 
     if (
         !hash_equals(
             (string)$user['senha_hash'],
-            $calc_hash_hex
+            $calcHashHex
         )
     ) {
-
-        js_alert_error(
-            'Usuário ou senha inválidos.'
-        );
+        js_alert_error('Usuário ou senha inválidos.');
     }
 
 
     /* ========================================================
-     * PERFIL
+     * PERFIL / AUTORIZAÇÃO
      * ======================================================== */
 
     $role = strtolower(
@@ -199,7 +200,6 @@ try {
         trim((string)$user['autorizado'])
     );
 
-
     $podeEntrar = false;
 
 
@@ -208,10 +208,6 @@ try {
      * ======================================================== */
 
     if ($role === 'prefeito') {
-
-        /*
-         * Mantém sua regra atual.
-         */
         $podeEntrar = true;
     }
 
@@ -221,10 +217,6 @@ try {
      * ======================================================== */
 
     elseif ($role === 'secretario') {
-
-        /*
-         * Mantém sua regra atual.
-         */
         $podeEntrar = true;
     }
 
@@ -234,10 +226,6 @@ try {
      * ======================================================== */
 
     elseif ($role === 'admin') {
-
-        /*
-         * Admin precisa estar autorizado.
-         */
         if ($autorizado === 'sim') {
             $podeEntrar = true;
         }
@@ -249,55 +237,41 @@ try {
      * ======================================================== */
 
     elseif ($role === 'comum') {
-
         /*
-         * Primeiro:
-         * precisa estar autorizado.
+         * O comum precisa primeiro estar autorizado.
          */
         if ($autorizado !== 'sim') {
-
-            js_alert_error(
-                'Usuário não autorizado.'
-            );
+            redirect_login_silent();
         }
 
-
         /*
-         * Depois aplica:
+         * Depois precisa estar usando a rede/IP permitido.
          *
-         * - dia
-         * - horário
-         * - rede
+         * Se estiver em outra rede:
+         * - não cria sessão de login;
+         * - volta diretamente para /semas/index.php.
          */
         $policy = access_check_common();
 
-
         if (!$policy['allowed']) {
-
-            js_alert_error(
-                (string)$policy['reason']
-            );
+            redirect_login_silent();
         }
-
 
         $podeEntrar = true;
     }
 
 
     /* ========================================================
-     * NÃO AUTORIZADO
+     * SUPORTE / OUTROS
      * ======================================================== */
 
     if (!$podeEntrar) {
-
-        js_alert_error(
-            'Usuário não autorizado.'
-        );
+        js_alert_error('Usuário não autorizado.');
     }
 
 
     /* ========================================================
-     * PROTEÇÃO CONTRA SESSION FIXATION
+     * SEGURANÇA DA SESSÃO
      * ======================================================== */
 
     session_regenerate_id(true);
@@ -325,10 +299,6 @@ try {
     $_SESSION['autorizado'] =
         $autorizado;
 
-
-    /*
-     * Informações extras úteis para segurança/auditoria.
-     */
     $_SESSION['login_ip'] =
         access_client_ip();
 
@@ -340,17 +310,8 @@ try {
      * LOGIN CONCLUÍDO
      * ======================================================== */
 
-    go_success('../dashboard.php');
-
+    go_success('/semas/dist/dashboard.php');
 
 } catch (Throwable $e) {
-
-    /*
-     * Não mostramos erro do banco para o usuário.
-     */
-    js_alert_error(
-        'Erro ao efetuar login. Tente novamente.'
-    );
+    js_alert_error('Erro ao efetuar login. Tente novamente.');
 }
-
-?>

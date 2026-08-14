@@ -3,88 +3,68 @@
 declare(strict_types=1);
 
 /**
- * ============================================================
- * POLÍTICA DE ACESSO
- * ============================================================
+ * /dist/auth/accessPolicy.php
  *
- * Centraliza:
- * - horário permitido
- * - dias permitidos
- * - redes/IPs permitidos
+ * Política de rede para o perfil "comum".
  *
- * Compatível com PHP 7.2+
+ * REGRA:
+ * - somente o perfil "comum" é obrigado a estar em uma rede/IP autorizado;
+ * - se o IP atual não estiver na lista, o acesso é negado;
+ * - prefeito, secretario e admin não passam por esta restrição de rede.
+ *
+ * Compatível com PHP 7.2+.
  */
 
 date_default_timezone_set('America/Manaus');
 
 
 /* ============================================================
- * CONFIGURAÇÃO DO PERFIL COMUM
+ * CONFIGURAÇÃO DA REDE
  * ============================================================ */
 
 /**
- * Horário permitido.
- */
-const COMMON_ACCESS_START = '07:00';
-const COMMON_ACCESS_END   = '18:00';
-
-
-/**
- * Dias permitidos.
+ * Mantenha TRUE para a proteção funcionar.
  *
- * ISO-8601:
- * 1 = Segunda
- * 2 = Terça
- * 3 = Quarta
- * 4 = Quinta
- * 5 = Sexta
- * 6 = Sábado
- * 7 = Domingo
- */
-const COMMON_ALLOWED_DAYS = [
-    1,
-    2,
-    3,
-    4,
-    5
-];
-
-
-/**
- * Ativa/desativa a restrição por rede.
- *
- * IMPORTANTE:
- * deixe TRUE para realmente restringir.
+ * Se alterar para FALSE, usuários comuns poderão acessar
+ * de qualquer rede.
  */
 const COMMON_NETWORK_RESTRICTION_ENABLED = true;
 
 
 /**
- * IPs / redes autorizadas.
+ * IPs públicos / redes autorizadas.
  *
- * Você deve substituir pelos IPs reais da Secretaria/Prefeitura.
+ * IMPORTANTE:
+ * - use o IP público visto pelo servidor;
+ * - NÃO use 192.168.x.x, 10.x.x.x ou 172.16.x.x;
+ * - se a lista ficar vazia, o sistema BLOQUEIA todos os comuns
+ *   (comportamento seguro/fail-closed).
  *
- * Pode usar:
+ * Exemplos:
  *
- * IP único:
- * 177.10.20.30
- *
- * Rede:
- * 177.10.20.0/24
- *
- * IPv6 também pode ser informado.
- *
- * ATENÇÃO:
- * 203.0.113.10 abaixo é apenas um IP de EXEMPLO.
- * Enquanto não trocar, usuários comuns serão bloqueados.
+ * const COMMON_ALLOWED_NETWORKS = [
+ *     '177.85.123.40',      // IP público exato
+ *     '177.85.124.0/24',    // faixa IPv4
+ *     '2803:1234::/48',     // faixa IPv6
+ * ];
  */
 const COMMON_ALLOWED_NETWORKS = [
-    '203.0.113.10',
-
-    // Exemplos:
-    // '177.10.20.30',
-    // '177.10.20.0/24',
+    // COLOQUE AQUI O IP PÚBLICO DA REDE AUTORIZADA:
+    // '177.85.123.40',
 ];
+
+
+/**
+ * Se o site estiver atrás do Cloudflare PROXY (nuvem laranja),
+ * REMOTE_ADDR normalmente será o IP do Cloudflare e não do usuário.
+ *
+ * Deixe FALSE por padrão.
+ *
+ * Só altere para TRUE se:
+ * 1. o domínio estiver realmente usando proxy Cloudflare; E
+ * 2. o servidor não aceitar acesso direto contornando o Cloudflare.
+ */
+const ACCESS_TRUST_CLOUDFLARE_IP = false;
 
 
 /* ============================================================
@@ -92,25 +72,44 @@ const COMMON_ALLOWED_NETWORKS = [
  * ============================================================ */
 
 /**
- * Retorna o IP que realmente realizou conexão com o servidor.
- *
- * Não usamos diretamente:
- * HTTP_X_FORWARDED_FOR
- *
- * porque pode ser falsificado caso não exista proxy confiável
- * configurado.
+ * Valida e normaliza um endereço IP.
  */
-function access_client_ip(): string
+function access_valid_ip(string $ip): string
 {
-    $ip = isset($_SERVER['REMOTE_ADDR'])
-        ? trim((string)$_SERVER['REMOTE_ADDR'])
-        : '';
+    $ip = trim($ip);
 
     if ($ip === '') {
         return '';
     }
 
-    return $ip;
+    return filter_var($ip, FILTER_VALIDATE_IP) !== false ? $ip : '';
+}
+
+
+/**
+ * Retorna o IP do cliente que será usado na política de acesso.
+ *
+ * Por padrão usamos REMOTE_ADDR, pois cabeçalhos como
+ * X-Forwarded-For podem ser falsificados se não houver proxy
+ * confiável configurado.
+ */
+function access_client_ip(): string
+{
+    if (ACCESS_TRUST_CLOUDFLARE_IP) {
+        $cfIp = isset($_SERVER['HTTP_CF_CONNECTING_IP'])
+            ? access_valid_ip((string)$_SERVER['HTTP_CF_CONNECTING_IP'])
+            : '';
+
+        if ($cfIp !== '') {
+            return $cfIp;
+        }
+    }
+
+    $remoteIp = isset($_SERVER['REMOTE_ADDR'])
+        ? access_valid_ip((string)$_SERVER['REMOTE_ADDR'])
+        : '';
+
+    return $remoteIp;
 }
 
 
@@ -119,31 +118,26 @@ function access_client_ip(): string
  * ============================================================ */
 
 /**
- * Verifica se um IP pertence a um IP ou CIDR.
+ * Verifica se um IP corresponde a:
+ * - um IP exato; ou
+ * - uma rede em CIDR.
  *
- * Funciona com:
- * IPv4
- * IPv6
- *
- * Exemplos:
- *
- * 177.10.20.30
- * 177.10.20.0/24
+ * Compatível com IPv4 e IPv6.
  */
 function access_ip_matches_rule(string $ip, string $rule): bool
 {
-    $ip = trim($ip);
+    $ip   = access_valid_ip($ip);
     $rule = trim($rule);
 
     if ($ip === '' || $rule === '') {
         return false;
     }
 
-    /*
-     * Caso seja IP exato.
-     */
+    /* IP exato */
     if (strpos($rule, '/') === false) {
-        return $ip === $rule;
+        $ruleIp = access_valid_ip($rule);
+
+        return $ruleIp !== '' && $ip === $ruleIp;
     }
 
     $parts = explode('/', $rule, 2);
@@ -152,19 +146,23 @@ function access_ip_matches_rule(string $ip, string $rule): bool
         return false;
     }
 
-    $network = trim($parts[0]);
-    $prefixLength = (int)$parts[1];
+    $network      = access_valid_ip(trim($parts[0]));
+    $prefixString = trim($parts[1]);
 
-    $ipBinary = @inet_pton($ip);
+    if ($network === '' || $prefixString === '' || !ctype_digit($prefixString)) {
+        return false;
+    }
+
+    $prefixLength = (int)$prefixString;
+
+    $ipBinary      = @inet_pton($ip);
     $networkBinary = @inet_pton($network);
 
     if ($ipBinary === false || $networkBinary === false) {
         return false;
     }
 
-    /*
-     * IPv4 e IPv6 não podem ser comparados entre si.
-     */
+    /* IPv4 e IPv6 não podem ser comparados entre si. */
     if (strlen($ipBinary) !== strlen($networkBinary)) {
         return false;
     }
@@ -175,14 +173,10 @@ function access_ip_matches_rule(string $ip, string $rule): bool
         return false;
     }
 
-    $fullBytes = intdiv($prefixLength, 8);
+    $fullBytes     = intdiv($prefixLength, 8);
     $remainingBits = $prefixLength % 8;
 
-    /*
-     * Compara os bytes completos.
-     */
     if ($fullBytes > 0) {
-
         if (
             substr($ipBinary, 0, $fullBytes) !==
             substr($networkBinary, 0, $fullBytes)
@@ -191,17 +185,13 @@ function access_ip_matches_rule(string $ip, string $rule): bool
         }
     }
 
-    /*
-     * Se não existirem bits restantes,
-     * já podemos considerar válido.
-     */
     if ($remainingBits === 0) {
         return true;
     }
 
     $mask = (0xFF << (8 - $remainingBits)) & 0xFF;
 
-    $ipByte = ord($ipBinary[$fullBytes]);
+    $ipByte      = ord($ipBinary[$fullBytes]);
     $networkByte = ord($networkBinary[$fullBytes]);
 
     return (($ipByte & $mask) === ($networkByte & $mask));
@@ -212,21 +202,29 @@ function access_ip_matches_rule(string $ip, string $rule): bool
  * REDE AUTORIZADA
  * ============================================================ */
 
+/**
+ * Retorna TRUE somente se o IP estiver em uma das redes permitidas.
+ *
+ * Se a restrição estiver ligada e a lista estiver vazia,
+ * retorna FALSE para impedir liberação acidental.
+ */
 function access_network_allowed(string $ip): bool
 {
-    /*
-     * Restrição desativada.
-     */
     if (!COMMON_NETWORK_RESTRICTION_ENABLED) {
         return true;
     }
+
+    $ip = access_valid_ip($ip);
 
     if ($ip === '') {
         return false;
     }
 
-    foreach (COMMON_ALLOWED_NETWORKS as $network) {
+    if (count(COMMON_ALLOWED_NETWORKS) === 0) {
+        return false;
+    }
 
+    foreach (COMMON_ALLOWED_NETWORKS as $network) {
         if (access_ip_matches_rule($ip, (string)$network)) {
             return true;
         }
@@ -237,128 +235,30 @@ function access_network_allowed(string $ip): bool
 
 
 /* ============================================================
- * DIA AUTORIZADO
- * ============================================================ */
-
-function access_day_allowed(DateTimeImmutable $now): bool
-{
-    $day = (int)$now->format('N');
-
-    return in_array(
-        $day,
-        COMMON_ALLOWED_DAYS,
-        true
-    );
-}
-
-
-/* ============================================================
- * HORÁRIO AUTORIZADO
- * ============================================================ */
-
-function access_time_allowed(DateTimeImmutable $now): bool
-{
-    $currentMinutes =
-        ((int)$now->format('H') * 60) +
-        (int)$now->format('i');
-
-    list($startHour, $startMinute) =
-        array_map('intval', explode(':', COMMON_ACCESS_START));
-
-    list($endHour, $endMinute) =
-        array_map('intval', explode(':', COMMON_ACCESS_END));
-
-    $startMinutes = ($startHour * 60) + $startMinute;
-    $endMinutes   = ($endHour * 60) + $endMinute;
-
-
-    /*
-     * Horário normal:
-     *
-     * 07:00 até 18:00
-     */
-    if ($startMinutes <= $endMinutes) {
-
-        return
-            $currentMinutes >= $startMinutes &&
-            $currentMinutes <= $endMinutes;
-    }
-
-
-    /*
-     * Também suporta intervalo atravessando meia-noite.
-     *
-     * Exemplo:
-     * 20:00 até 06:00
-     */
-    return
-        $currentMinutes >= $startMinutes ||
-        $currentMinutes <= $endMinutes;
-}
-
-
-/* ============================================================
- * POLÍTICA COMPLETA DO PERFIL COMUM
+ * POLÍTICA DO USUÁRIO COMUM
  * ============================================================ */
 
 /**
- * Retorna:
+ * O perfil comum depende SOMENTE da rede autorizada nesta política.
  *
+ * Retorno:
  * [
- *     'allowed' => true/false,
- *     'reason'  => 'motivo',
- *     'ip'      => 'IP'
+ *     'allowed' => bool,
+ *     'reason'  => string,
+ *     'ip'      => string
  * ]
  */
 function access_check_common(): array
 {
-    $timezone = new DateTimeZone('America/Manaus');
-
-    $now = new DateTimeImmutable(
-        'now',
-        $timezone
-    );
-
     $ip = access_client_ip();
 
-
-    /* ================= DIA ================= */
-
-    if (!access_day_allowed($now)) {
-
-        return [
-            'allowed' => false,
-            'reason'  => 'Acesso não permitido neste dia.',
-            'ip'      => $ip
-        ];
-    }
-
-
-    /* ================= HORÁRIO ================= */
-
-    if (!access_time_allowed($now)) {
-
-        return [
-            'allowed' => false,
-            'reason'  => 'Acesso não permitido neste horário.',
-            'ip'      => $ip
-        ];
-    }
-
-
-    /* ================= REDE ================= */
-
     if (!access_network_allowed($ip)) {
-
         return [
             'allowed' => false,
-            'reason'  => 'Acesso permitido somente através da rede autorizada.',
+            'reason'  => 'Rede não autorizada.',
             'ip'      => $ip
         ];
     }
-
-
-    /* ================= TUDO OK ================= */
 
     return [
         'allowed' => true,
