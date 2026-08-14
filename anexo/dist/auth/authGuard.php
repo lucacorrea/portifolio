@@ -18,11 +18,11 @@ require_once __DIR__ . '/accessPolicy.php';
 /**
  * Caminhos absolutos do projeto.
  *
- * Como seu sistema está em /semas/, usar caminho absoluto evita
+ * Como seu sistema está em /anexo/, usar caminho absoluto evita
  * redirecionamento errado dependendo da pasta da página atual.
  */
-const AUTH_LOGIN_URL     = '/semas/index.php';
-const AUTH_DASHBOARD_URL = '/semas/dist/dashboard.php';
+const AUTH_LOGIN_URL     = '/anexo/index.php';
+const AUTH_DASHBOARD_URL = '/anexo/dist/dashboard.php';
 
 
 /**
