@@ -6,6 +6,7 @@ namespace App\Fiscal\Repository;
 
 use InvalidArgumentException;
 use PDO;
+use RuntimeException;
 use Throwable;
 
 final class FiscalDocumentRepository
