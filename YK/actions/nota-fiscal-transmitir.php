@@ -14,8 +14,8 @@ os_require_post_request();
 try {
     $user =
         $application
-            ->authorization()
-            ->requireLogin();
+        ->authorization()
+        ->requireLogin();
 
     $documentId =
         os_posted_positive_int(
@@ -24,29 +24,29 @@ try {
 
     $result =
         $application
-            ->fiscalAuthorization()
-            ->transmit(
-                $documentId,
-                $user->id()
-            );
+        ->fiscalAuthorization()
+        ->transmit(
+            $documentId,
+            $user->id()
+        );
 
     $type =
         $result['status'] === 'autorizado'
-            ? 'success'
-            : (
-                $result['status']
-                === 'pendente_reconsulta'
-                    ? 'warning'
-                    : 'danger'
-            );
+        ? 'success'
+        : (
+            $result['status']
+            === 'pendente_reconsulta'
+            ? 'warning'
+            : 'danger'
+        );
 
     $message =
         (
             $result['cstat'] === ''
-                ? ''
-                : 'SEFAZ '
-                    . $result['cstat']
-                    . ': '
+            ? ''
+            : 'SEFAZ '
+            . $result['cstat']
+            . ': '
         )
         . $result['reason'];
 
@@ -57,6 +57,45 @@ try {
 } catch (
     InvalidArgumentException $exception
 ) {
+    $logDirectory =
+        dirname(__DIR__)
+        . '/storage/logs';
+
+    if (!is_dir($logDirectory)) {
+        @mkdir(
+            $logDirectory,
+            0755,
+            true
+        );
+    }
+
+    $logFile =
+        $logDirectory
+        . '/fiscal-emission.log';
+
+    $logMessage = sprintf(
+        "[%s]\n"
+            . "ETAPA: VALIDACAO/PREPARACAO XML\n"
+            . "Classe: %s\n"
+            . "Mensagem: %s\n"
+            . "Arquivo: %s\n"
+            . "Linha: %d\n"
+            . "%s\n",
+
+        date('Y-m-d H:i:s'),
+        get_class($exception),
+        $exception->getMessage(),
+        $exception->getFile(),
+        $exception->getLine(),
+        str_repeat('-', 80)
+    );
+
+    @file_put_contents(
+        $logFile,
+        $logMessage,
+        FILE_APPEND | LOCK_EX
+    );
+
     $session->flash(
         'danger',
         $exception->getMessage()
@@ -83,13 +122,13 @@ try {
 
     $logMessage = sprintf(
         "[%s]\n"
-        . "ETAPA: TRANSMISSAO\n"
-        . "Classe: %s\n"
-        . "Mensagem: %s\n"
-        . "Arquivo: %s\n"
-        . "Linha: %d\n"
-        . "Trace:\n%s\n"
-        . "%s\n",
+            . "ETAPA: TRANSMISSAO\n"
+            . "Classe: %s\n"
+            . "Mensagem: %s\n"
+            . "Arquivo: %s\n"
+            . "Linha: %d\n"
+            . "Trace:\n%s\n"
+            . "%s\n",
 
         date('Y-m-d H:i:s'),
 
@@ -120,7 +159,7 @@ try {
     $session->flash(
         'danger',
         'Não foi possível transmitir o documento fiscal. '
-        . 'O erro técnico foi registrado para análise.'
+            . 'O erro técnico foi registrado para análise.'
     );
 }
 
