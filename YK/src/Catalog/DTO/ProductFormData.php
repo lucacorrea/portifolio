@@ -86,7 +86,7 @@ final class ProductFormData
                 'CEST'
             ),
 
-            origin: self::origin(
+           origin: self::normalizeOrigin(
                 $data['origin'] ?? null
             ),
 
@@ -416,8 +416,8 @@ final class ProductFormData
         return $value;
     }
 
-    private static function origin(
-        mixed $value
+    private static function normalizeOrigin(
+    mixed $value
     ): ?int {
         $value = trim(
             (string) ($value ?? '')
