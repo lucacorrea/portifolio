@@ -266,3 +266,5 @@ function auth_guard(): void
 
     _redirect_to_login();
 }
+
+?>

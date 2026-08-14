@@ -315,3 +315,5 @@ try {
 } catch (Throwable $e) {
     js_alert_error('Erro ao efetuar login. Tente novamente.');
 }
+
+?>
