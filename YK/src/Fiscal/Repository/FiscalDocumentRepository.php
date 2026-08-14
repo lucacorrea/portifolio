@@ -184,9 +184,17 @@ final class FiscalDocumentRepository
                     item.desconto, item.subtotal, product.codigo, product.nome,
                     product.ncm, product.cest, product.origem_mercadoria,
                     product.cfop_padrao, product.cst_icms, product.csosn,
-                    product.cst_pis, product.cst_cofins, product.aliquota_icms,
-                    product.aliquota_pis, product.aliquota_cofins,
-                    product.codigo_barras, product.gtin_tributavel,
+                    product.cst_pis,
+                    product.cst_cofins,
+                    product.aliquota_icms,
+                    product.aliquota_pis,
+                    product.aliquota_cofins,
+
+                    product.cst_ibs_cbs,
+                    product.classificacao_tributaria_ibs_cbs,
+
+                    product.codigo_barras,
+                    product.gtin_tributavel,
                     product.unidade_tributavel
                FROM ordem_servico_itens item
                JOIN produtos product ON product.id = item.referencia_id
