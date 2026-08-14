@@ -48,9 +48,9 @@ const COMMON_NETWORK_RESTRICTION_ENABLED = true;
  *     '2803:1234::/48',     // faixa IPv6
  * ];
  */
+
 const COMMON_ALLOWED_NETWORKS = [
-    // COLOQUE AQUI O IP PÚBLICO DA REDE AUTORIZADA:
-    // '177.85.123.40',
+    '153.67.111.146',
 ];
 
 
