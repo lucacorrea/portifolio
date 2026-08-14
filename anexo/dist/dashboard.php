@@ -439,7 +439,7 @@ $ultimos = $pdo->query("
                                 </a>
                             </li>
 
-                            <?php if ($role === 'secretario'): ?>
+                            <?php if ($role === 'secretario' || $role === 'admin'): ?>
                                 <li class="sidebar-item">
                                     <a href="../admin/index.php" class="sidebar-link" target="_blank" rel="noopener">
                                         <i class="bi bi-shield-lock-fill"></i>
