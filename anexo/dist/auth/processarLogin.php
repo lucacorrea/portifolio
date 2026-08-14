@@ -16,7 +16,7 @@ require_once __DIR__ . '/accessPolicy.php';
  * CONFIGURAÇÃO
  * ============================================================ */
 
-const LOGIN_PAGE_URL = '/semas/index.php';
+const LOGIN_PAGE_URL = '/anexo/index.php';
 
 
 /* ============================================================
@@ -249,7 +249,7 @@ try {
          *
          * Se estiver em outra rede:
          * - não cria sessão de login;
-         * - volta diretamente para /semas/index.php.
+         * - volta diretamente para /anexo/index.php.
          */
         $policy = access_check_common();
 
@@ -310,7 +310,7 @@ try {
      * LOGIN CONCLUÍDO
      * ======================================================== */
 
-    go_success('/semas/dist/dashboard.php');
+    go_success('/anexo/dist/dashboard.php');
 
 } catch (Throwable $e) {
     js_alert_error('Erro ao efetuar login. Tente novamente.');
