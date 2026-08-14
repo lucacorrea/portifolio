@@ -279,23 +279,63 @@ final class FiscalDocumentRepository
         return ['configuration' => $configurationRow, 'series' => $seriesRow];
     }
 
-    public function reserveSeriesNumber(int $seriesId, int $number, int $userId): void
-    {
-        $statement = $this->connection->prepare(
-            'UPDATE fiscal_series
-                SET ultimo_numero_reservado = :number,
-                    proximo_numero = :next_number,
-                    atualizado_por = :user_id
-              WHERE id = :id AND proximo_numero = :number'
-        );
+    public function reserveSeriesNumber(
+        int $seriesId,
+        int $number,
+        int $userId
+    ): void {
+        if (
+            $seriesId <= 0
+            || $number <= 0
+            || $userId <= 0
+        ) {
+            throw new InvalidArgumentException(
+                'Dados inválidos para reserva da numeração fiscal.'
+            );
+        }
+
+        $statement =
+            $this->connection->prepare(
+                'UPDATE fiscal_series
+
+                SET
+                    ultimo_numero_reservado =
+                        :reserved_number,
+
+                    proximo_numero =
+                        :next_number,
+
+                    atualizado_por =
+                        :user_id
+
+              WHERE id = :series_id
+
+                AND proximo_numero =
+                    :expected_number'
+            );
+
         $statement->execute([
-            'id' => $seriesId,
-            'number' => $number,
-            'next_number' => $number + 1,
-            'user_id' => $userId,
+            'reserved_number' =>
+            $number,
+
+            'next_number' =>
+            $number + 1,
+
+            'user_id' =>
+            $userId,
+
+            'series_id' =>
+            $seriesId,
+
+            'expected_number' =>
+            $number,
         ]);
+
         if ($statement->rowCount() !== 1) {
-            throw new InvalidArgumentException('A numeração fiscal foi alterada por outra emissão. Tente novamente.');
+            throw new InvalidArgumentException(
+                'A numeração fiscal foi alterada por outra emissão. '
+                    . 'Atualize a tela e tente novamente.'
+            );
         }
     }
 
