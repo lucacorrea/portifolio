@@ -93,8 +93,8 @@ final class FiscalConfigurationService
             : null;
         $cscId = $model === '65' ? self::shortText($data['csc_id'] ?? null, 40, 'ID do CSC inválido.') : null;
         $cscPlaintext = $model === '65' ? trim((string) ($data['csc'] ?? '')) : '';
-        if ($model === '65' && ($cscId === null || $cscPlaintext === '')) {
-            throw new InvalidArgumentException('Informe o ID e o CSC para configurar a NFC-e.');
+        if ($model === '65' && $qrVersion === 2 && ($cscId === null || $cscPlaintext === '')) {
+            throw new InvalidArgumentException('QR Code v2 exige o ID e o CSC da NFC-e.');
         }
         if (strlen($cscPlaintext) > 120 || str_contains($cscPlaintext, "\0")) {
             throw new InvalidArgumentException('CSC inválido.');
@@ -170,8 +170,10 @@ final class FiscalConfigurationService
             if ($state !== '' && ($configuration['uf'] ?? '') !== $state) {
                 $errors[] = 'A UF da configuração difere do endereço fiscal da empresa.';
             }
-            if ($model === '65' && (empty($configuration['has_csc']) || trim((string) ($configuration['csc_id'] ?? '')) === '')) {
-                $errors[] = 'A NFC-e exige ID do CSC e CSC protegido.';
+            if ($model === '65' && (int)($configuration['qr_code_versao'] ?? 0) === 2
+                && (empty($configuration['has_csc']) || trim((string) ($configuration['csc_id'] ?? '')) === '')
+            ) {
+                $errors[] = 'QR Code v2 exige ID do CSC e CSC protegido.';
             }
         }
 

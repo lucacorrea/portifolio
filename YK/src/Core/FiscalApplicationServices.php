@@ -17,6 +17,10 @@ use App\Fiscal\Service\FiscalRuntimeReadiness;
 use App\Fiscal\Service\FiscalSefazConnectionService;
 use App\Fiscal\Storage\FiscalCertificateStorage;
 use App\Fiscal\Storage\FiscalDocumentStorage;
+use App\Nfse\Repository\NfseDocumentRepository;
+use App\Nfse\Service\NfseDocumentService;
+use App\Nfse\Service\NfseProviderFactory;
+use App\Nfse\Storage\NfseDocumentStorage;
 
 trait FiscalApplicationServices
 {
@@ -26,6 +30,7 @@ trait FiscalApplicationServices
     private ?FiscalDocumentService $fiscalDocumentService = null;
     private ?FiscalDocumentPrintService $fiscalDocumentPrintService = null;
     private ?FiscalAuthorizationService $fiscalAuthorizationService = null;
+    private ?NfseDocumentService $nfseDocumentService = null;
 
     public function fiscalConfiguration(): FiscalConfigurationService
     {
@@ -124,5 +129,24 @@ trait FiscalApplicationServices
         }
 
         return $this->fiscalDocumentPrintService;
+    }
+
+    public function nfseDocuments(): NfseDocumentService
+    {
+        if ($this->nfseDocumentService === null) {
+            $connection = $this->database->connection();
+            $projectRoot = (string)($this->settings['project_root'] ?? dirname(__DIR__, 2));
+            $this->nfseDocumentService = new NfseDocumentService(
+                new NfseDocumentRepository($connection),
+                new FiscalDocumentRepository($connection),
+                new NfseProviderFactory(
+                    FiscalSecretVault::fromEnvironment(),
+                    FiscalCertificateStorage::forProjectRoot($projectRoot)
+                ),
+                NfseDocumentStorage::forProjectRoot($projectRoot),
+                $this->fiscalRuntimeReadiness()
+            );
+        }
+        return $this->nfseDocumentService;
     }
 }

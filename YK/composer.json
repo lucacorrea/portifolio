@@ -30,6 +30,7 @@
             "@php tests/FiscalUiSecurityTest.php",
             "@php tests/FiscalDocumentLifecycleTest.php",
             "@php tests/FiscalDocumentXmlBuilderTest.php",
+            "@php tests/NfseFiscalFlowTest.php",
             "@php tests/MigrationRunnerTest.php",
             "@php tests/WebMigrationCoordinatorTest.php"
         ]

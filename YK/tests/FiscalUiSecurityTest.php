@@ -19,8 +19,26 @@ foreach ($actions as $file => $permission) {
     $source = file_get_contents($root . '/actions/' . $file);
     fiscalUiAssert(is_string($source), 'A ação fiscal deve existir.');
     fiscalUiAssert(str_contains($source, 'os_require_post_request()'), 'A ação fiscal deve aceitar apenas POST.');
-    fiscalUiAssert(str_contains($source, "os_action_context('" . $permission . "')"), 'A ação fiscal deve exigir sua permissão específica e CSRF.');
+    fiscalUiAssert(
+        preg_match('/os_action_context\(\s*[\'\"]' . preg_quote($permission, '/') . '[\'\"]\s*\)/', $source) === 1,
+        'A ação fiscal deve exigir sua permissão específica e CSRF.'
+    );
     fiscalUiAssert(!str_contains($source, "error_log('" . '$exception->getMessage()'), 'Erros fiscais não podem registrar detalhes potencialmente sensíveis.');
+}
+
+foreach ([
+    'nfse-preparar.php'=>'nfse.emitir',
+    'nfse-transmitir.php'=>'nfse.emitir',
+    'nfse-reconsultar.php'=>'nfse.reconsultar',
+    'nfse-cancelar.php'=>'nfse.cancelar',
+    'nfse-substituir.php'=>'nfse.substituir',
+] as $file=>$permission) {
+    $source = file_get_contents($root . '/actions/' . $file);
+    fiscalUiAssert(is_string($source) && str_contains($source, 'os_require_post_request()'), 'Ação NFS-e deve aceitar apenas POST.');
+    fiscalUiAssert(
+        is_string($source) && preg_match('/os_action_context\(\s*[\'\"]' . preg_quote($permission, '/') . '[\'\"]\s*\)/', $source) === 1,
+        'Ação NFS-e deve exigir sua permissão específica e CSRF.'
+    );
 }
 
 $page = file_get_contents($root . '/pages/configuracoes-fiscais.php');

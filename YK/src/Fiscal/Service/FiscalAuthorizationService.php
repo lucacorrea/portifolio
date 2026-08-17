@@ -41,13 +41,26 @@ final class FiscalAuthorizationService
         $tools = $this->toolsFactory->create((int) $document['configuracao_id'], (string) $document['modelo']);
         $built = $this->builder->build($document);
         $signed = $tools->signNFe($built['xml']);
+        $generatedArtifact = $this->storage->store(
+            (string) $document['ambiente'], (string) $document['modelo'], $documentId, 'gerado', $built['xml']
+        );
         $artifact = $this->storage->store(
             (string) $document['ambiente'], (string) $document['modelo'], $documentId, 'assinado', $signed
         );
         $batchId = str_pad((string) random_int(1, 999999999999999), 15, '0', STR_PAD_LEFT);
-        $this->documents->transaction(function () use ($documentId, $built, $batchId, $artifact, $userId): void {
+        $this->documents->transaction(function () use ($documentId, $built, $batchId, $generatedArtifact, $artifact, $userId): void {
             $locked = $this->documents->lockDocument($documentId);
             $this->documents->markSignedForTransmission($documentId, $built['key'], $batchId, $artifact);
+            $this->documents->createTransmissionAttempt(
+                $documentId,
+                ((int)$locked['tentativas']) + 1,
+                (string)$locked['snapshot_json'],
+                $built['key'],
+                $batchId,
+                $generatedArtifact,
+                $artifact,
+                $userId
+            );
             $this->documents->addEvent(
                 $documentId, 'xml_assinado', (string) $locked['processamento_status'], 'processando', $userId,
                 ['artifact_path'=>$artifact['reference'], 'artifact_hash'=>$artifact['sha256']]
@@ -59,6 +72,9 @@ final class FiscalAuthorizationService
         } catch (Throwable $exception) {
             $this->documents->transaction(function () use ($documentId, $userId): void {
                 $this->documents->markPendingReconciliation($documentId, 'Comunicação interrompida; reconsulta obrigatória.');
+                $this->documents->updateLatestTransmissionAttempt(
+                    $documentId, 'pendente_reconsulta', null, null, '', 'Comunicação interrompida; reconsulta obrigatória.'
+                );
                 $this->documents->addEvent(
                     $documentId, 'transmissao_inconclusiva', 'processando', 'pendente_reconsulta', $userId
                 );
@@ -189,9 +205,12 @@ final class FiscalAuthorizationService
             $authorizedArtifact = $this->storage->store(
                 (string) $document['ambiente'], (string) $document['modelo'], (int) $document['id'], 'autorizado', $authorized
             );
-            $this->documents->transaction(function () use ($document, $result, $authorizedArtifact, $userId): void {
+            $this->documents->transaction(function () use ($document, $result, $responseArtifact, $authorizedArtifact, $userId): void {
                 $this->documents->markAuthorized(
                     (int) $document['id'], $result['protocol'], $result['cstat'], $result['reason'], $authorizedArtifact
+                );
+                $this->documents->updateLatestTransmissionAttempt(
+                    (int)$document['id'], 'autorizado', $responseArtifact, $result['receipt'], $result['cstat'], $result['reason']
                 );
                 $this->documents->addEvent(
                     (int) $document['id'], 'autorizacao_sefaz', (string) $document['processamento_status'],
@@ -204,11 +223,17 @@ final class FiscalAuthorizationService
         }
         if ($result['pending']) {
             $this->documents->markPendingReconciliation((int) $document['id'], $result['reason']);
+            $this->documents->updateLatestTransmissionAttempt(
+                (int)$document['id'], 'pendente_reconsulta', $responseArtifact, $result['receipt'], $result['cstat'], $result['reason']
+            );
             return ['status'=>'pendente_reconsulta','cstat'=>$result['cstat'],'reason'=>$result['reason']];
         }
         $state = in_array($result['cstat'], ['110','205','301','302'], true) ? 'denegado' : 'rejeitado';
-        $this->documents->transaction(function () use ($document, $result, $state, $userId): void {
+        $this->documents->transaction(function () use ($document, $result, $state, $responseArtifact, $userId): void {
             $this->documents->markRejected((int) $document['id'], $state, $result['cstat'], $result['reason']);
+            $this->documents->updateLatestTransmissionAttempt(
+                (int)$document['id'], $state, $responseArtifact, $result['receipt'], $result['cstat'], $result['reason']
+            );
             $this->documents->addEvent(
                 (int) $document['id'], 'retorno_sefaz', (string) $document['processamento_status'], $state, $userId,
                 ['cstat'=>$result['cstat'], 'reason'=>$result['reason']]

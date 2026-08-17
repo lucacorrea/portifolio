@@ -115,7 +115,29 @@ final class FiscalDocumentService
             $company = $this->documents->companySnapshot();
             $this->assertCompanySnapshot($company);
             $this->assertClientSnapshot($order, $model);
-            $this->assertItems($items, (int) $company['crt']);
+            $issueDate = date('Y-m-d');
+            $crt = (int) $company['crt'];
+            $requiresIbsCbs = !in_array($crt, [1, 2, 4], true) || $issueDate >= '2027-01-01';
+            $this->assertItems($items, $crt, $requiresIbsCbs);
+            if ($requiresIbsCbs) {
+                foreach ($items as $index => $item) {
+                    $rule = $this->documents->resolveIbsCbsRule(
+                        (string) $item['cst_ibs_cbs'],
+                        (string) $item['classificacao_tributaria_ibs_cbs'],
+                        $issueDate
+                    );
+                    if ($rule === null) {
+                        throw new InvalidArgumentException(
+                            'A combinação CST IBS/CBS + cClassTrib do produto ' . (string) $item['descricao']
+                            . ' não possui regra fiscal vigente cadastrada.'
+                        );
+                    }
+                    if (($rule['calculation_mode'] ?? '') !== 'standard') {
+                        throw new InvalidArgumentException('Esta classificação IBS/CBS ainda exige regra tributária não implementada.');
+                    }
+                    $items[$index]['ibs_cbs_rule'] = $rule;
+                }
+            }
 
             $profile = $this->documents->lockActiveConfigurationAndSeries($environment, $model);
             $series = $profile['series'];
@@ -133,6 +155,7 @@ final class FiscalDocumentService
             if ($productsValue <= 0) {
                 throw new InvalidArgumentException('O valor fiscal das peças/produtos deve ser maior que zero.');
             }
+            $allocatedPayments = (new FiscalPaymentAllocator())->allocate($payments, 0, $productsValue);
             $snapshot = [
                 'schema' => 1,
                 'captured_at' => date(DATE_ATOM),
@@ -150,7 +173,7 @@ final class FiscalDocumentService
                 ],
                 'items' => array_map(fn(array $item): array => $this->sanitizeSnapshot($item), $items),
                 'services' => array_map(fn(array $item): array => $this->sanitizeSnapshot($item), $services),
-                'payments' => array_map(fn(array $payment): array => $this->sanitizeSnapshot($payment), $payments),
+                'payments' => array_map(fn(array $payment): array => $this->sanitizeSnapshot($payment), $allocatedPayments),
                 'totals' => [
                     'products' => $this->formatCents($productsValue),
                     'invoice' => $this->formatCents($productsValue),
@@ -164,6 +187,7 @@ final class FiscalDocumentService
                     'series' => (int) $series['serie'],
                     'number' => $number,
                     'cnf' => $cnf,
+                    'issued_at' => date(DATE_ATOM),
                 ],
             ];
 
@@ -190,6 +214,12 @@ final class FiscalDocumentService
                 null,
                 'preparado',
                 $userId
+            );
+            $this->documents->persistPaymentAllocations(
+                $orderId,
+                $model === '55' ? 'nfe' : 'nfce',
+                $documentId,
+                $allocatedPayments
             );
 
             return ['id' => $documentId, 'created' => true, 'status' => 'preparado'];
@@ -278,7 +308,7 @@ final class FiscalDocumentService
     }
 
     /** @param array<int,array<string,mixed>> $items */
-    private function assertItems(array $items, int $crt): void
+    private function assertItems(array $items, int $crt, bool $requiresIbsCbs): void
     {
         foreach ($items as $item) {
             if (preg_match('/^\d{8}$/', (string) ($item['ncm'] ?? '')) !== 1
@@ -288,11 +318,17 @@ final class FiscalDocumentService
                 || preg_match('/^\d{2}$/', (string) ($item['cst_cofins'] ?? '')) !== 1
                 || trim((string) ($item['unidade_tributavel'] ?? '')) === ''
             ) {
-                throw new InvalidArgumentException('Complete NCM, CFOP, origem, PIS, COFINS e unidade tributável de todas as peças.');
+                throw new InvalidArgumentException('Complete NCM, CFOP, origem, PIS, COFINS, IBS/CBS, cClassTrib e unidade tributável de todas as peças.');
             }
             $icmsField = in_array($crt, [1, 2, 4], true) ? 'csosn' : 'cst_icms';
             if (trim((string) ($item[$icmsField] ?? '')) === '') {
                 throw new InvalidArgumentException('Complete o CST/CSOSN das peças utilizadas na OS.');
+            }
+            if ($requiresIbsCbs && (
+                preg_match('/^\d{3}$/', (string) ($item['cst_ibs_cbs'] ?? '')) !== 1
+                || preg_match('/^\d{6}$/', (string) ($item['classificacao_tributaria_ibs_cbs'] ?? '')) !== 1
+            )) {
+                throw new InvalidArgumentException('Complete CST IBS/CBS e cClassTrib de todas as peças exigidas para este CRT e vigência.');
             }
         }
     }

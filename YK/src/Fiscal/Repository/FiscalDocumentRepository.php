@@ -157,6 +157,7 @@ final class FiscalDocumentRepository
                     client.id AS cliente_id, client.tipo_pessoa, client.nome AS cliente_nome,
                     client.documento AS cliente_documento, client.inscricao_estadual,
                     client.indicador_ie, client.email AS cliente_email,
+                    client.telefone,
                     client.endereco, client.numero AS cliente_numero,
                     client.complemento, client.bairro, client.cidade, client.uf, client.cep,
                     client.codigo_municipio_ibge AS cliente_codigo_municipio
@@ -188,7 +189,8 @@ final class FiscalDocumentRepository
                     product.cst_pis, product.cst_cofins, product.aliquota_icms,
                     product.aliquota_pis, product.aliquota_cofins,
                     product.codigo_barras, product.gtin_tributavel,
-                    product.unidade_tributavel
+                    product.unidade_tributavel, product.cst_ibs_cbs,
+                    product.classificacao_tributaria_ibs_cbs
                FROM ordem_servico_itens item
                JOIN produtos product ON product.id = item.referencia_id
               WHERE item.ordem_servico_id = :order_id
@@ -201,13 +203,60 @@ final class FiscalDocumentRepository
         return $statement->fetchAll();
     }
 
+    /** @return array<string,mixed>|null */
+    public function resolveIbsCbsRule(string $cst, string $classification, string $issueDate): ?array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT codigo_cst, codigo_classificacao, descricao, modo_calculo,
+                    aliquota_ibs_uf, aliquota_ibs_municipio, aliquota_cbs,
+                    indicadores_json, fonte, versao_fonte, vigencia_inicio, vigencia_fim
+               FROM fiscal_ibs_cbs_classificacoes
+              WHERE codigo_cst = :cst AND codigo_classificacao = :classification
+                AND status = \'ativo\' AND vigencia_inicio <= :issue_date_start
+                AND (vigencia_fim IS NULL OR vigencia_fim >= :issue_date_end)
+              ORDER BY vigencia_inicio DESC, id DESC LIMIT 1'
+        );
+        $statement->execute([
+            'cst' => $cst,
+            'classification' => $classification,
+            'issue_date_start' => $issueDate,
+            'issue_date_end' => $issueDate,
+        ]);
+        $row = $statement->fetch();
+        if ($row === false) {
+            return null;
+        }
+        return [
+            'cst' => (string) $row['codigo_cst'],
+            'classification' => (string) $row['codigo_classificacao'],
+            'description' => (string) $row['descricao'],
+            'calculation_mode' => (string) $row['modo_calculo'],
+            'ibs_uf_rate' => (string) $row['aliquota_ibs_uf'],
+            'ibs_city_rate' => (string) $row['aliquota_ibs_municipio'],
+            'cbs_rate' => (string) $row['aliquota_cbs'],
+            'indicators' => json_decode((string) ($row['indicadores_json'] ?? '{}'), true) ?: [],
+            'source' => (string) $row['fonte'],
+            'source_version' => (string) $row['versao_fonte'],
+            'valid_from' => (string) $row['vigencia_inicio'],
+            'valid_until' => $row['vigencia_fim'] === null ? null : (string) $row['vigencia_fim'],
+        ];
+    }
+
     /** @return array<int,array<string,mixed>> */
     public function fiscalServiceItems(int $orderId): array
     {
         $statement = $this->connection->prepare(
             'SELECT item.id, item.referencia_id AS servico_id, item.descricao,
                     item.unidade, item.quantidade, item.valor_unitario,
-                    item.desconto, item.subtotal, service.codigo, service.nome
+                    item.desconto, item.subtotal, service.codigo, service.nome,
+                    service.codigo_tributacao_nacional, service.nbs, service.descricao_fiscal,
+                    service.municipio_incidencia_ibge, service.tributacao_iss,
+                    service.iss_retido, service.aliquota_iss, service.regime_especial,
+                    service.exigibilidade_iss, service.cst_pis_servico,
+                    service.cst_cofins_servico, service.aliquota_pis_servico,
+                    service.aliquota_cofins_servico, service.cst_ibs_cbs,
+                    service.classificacao_tributaria_ibs_cbs, service.cindop,
+                    service.finalidade_nfse, service.tipo_operacao
                FROM ordem_servico_itens item
           LEFT JOIN servicos service ON service.id = item.referencia_id
               WHERE item.ordem_servico_id = :order_id
@@ -229,6 +278,32 @@ final class FiscalDocumentRepository
         );
         $statement->execute(['order_id' => $orderId]);
         return $statement->fetchAll();
+    }
+
+    /** @param array<int,array<string,mixed>> $allocations */
+    public function persistPaymentAllocations(
+        int $orderId,
+        string $documentType,
+        int $documentId,
+        array $allocations
+    ): void {
+        if (!in_array($documentType, ['nfe','nfce','nfse'], true) || $documentId <= 0) {
+            throw new InvalidArgumentException('Documento da alocação fiscal inválido.');
+        }
+        $statement = $this->connection->prepare(
+            'INSERT INTO fiscal_pagamento_alocacoes
+                (ordem_servico_id,pagamento_id,tipo_documento,documento_id,valor_alocado)
+             VALUES (:order_id,:payment_id,:document_type,:document_id,:value)'
+        );
+        foreach ($allocations as $allocation) {
+            $statement->execute([
+                'order_id'=>$orderId,
+                'payment_id'=>(int)$allocation['id'],
+                'document_type'=>$documentType,
+                'document_id'=>$documentId,
+                'value'=>(string)$allocation['valor'],
+            ]);
+        }
     }
     /** @return array<string,mixed> */
     public function companySnapshot(): array
@@ -490,5 +565,75 @@ final class FiscalDocumentRepository
             }
             throw $exception;
         }
+    }
+
+    /**
+     * @param array{reference:string,sha256:string} $generated
+     * @param array{reference:string,sha256:string} $signed
+     */
+    public function createTransmissionAttempt(
+        int $documentId,
+        int $number,
+        string $snapshot,
+        string $key,
+        string $batchId,
+        array $generated,
+        array $signed,
+        int $userId
+    ): int {
+        $statement = $this->connection->prepare(
+            'INSERT INTO fiscal_documento_tentativas
+                (documento_fiscal_id,numero_tentativa,snapshot_json,
+                 xml_gerado_path,xml_gerado_sha256,xml_assinado_path,xml_assinado_sha256,
+                 chave,lote_id,status,criado_por)
+             VALUES (:document_id,:number,:snapshot,:generated_path,:generated_hash,
+                     :signed_path,:signed_hash,:access_key,:batch_id,\'enviado\',:user_id)'
+        );
+        $statement->execute([
+            'document_id'=>$documentId,
+            'number'=>$number,
+            'snapshot'=>$snapshot,
+            'generated_path'=>$generated['reference'],
+            'generated_hash'=>$generated['sha256'],
+            'signed_path'=>$signed['reference'],
+            'signed_hash'=>$signed['sha256'],
+            'access_key'=>$key,
+            'batch_id'=>$batchId,
+            'user_id'=>$userId,
+        ]);
+        return (int)$this->connection->lastInsertId();
+    }
+
+    /** @param array{reference:string,sha256:string}|null $response */
+    public function updateLatestTransmissionAttempt(
+        int $documentId,
+        string $status,
+        ?array $response,
+        ?string $receipt,
+        string $cstat,
+        string $reason
+    ): void {
+        if (!in_array($status, ['pendente_reconsulta','autorizado','rejeitado','denegado','erro_tecnico'], true)) {
+            throw new InvalidArgumentException('Estado da tentativa fiscal inválido.');
+        }
+        $statement = $this->connection->prepare(
+            'UPDATE fiscal_documento_tentativas
+                SET resposta_path=COALESCE(:response_path,resposta_path),
+                    resposta_sha256=COALESCE(:response_hash,resposta_sha256),
+                    recibo_sefaz=COALESCE(:receipt,recibo_sefaz),cstat=:cstat,xmotivo=:reason,status=:status,
+                    finalizado_em=CASE WHEN :terminal=1 THEN CURRENT_TIMESTAMP ELSE finalizado_em END
+              WHERE documento_fiscal_id=:document_id
+              ORDER BY numero_tentativa DESC LIMIT 1'
+        );
+        $statement->execute([
+            'document_id'=>$documentId,
+            'status'=>$status,
+            'response_path'=>$response['reference'] ?? null,
+            'response_hash'=>$response['sha256'] ?? null,
+            'receipt'=>$receipt,
+            'cstat'=>$cstat === '' ? null : $cstat,
+            'reason'=>substr($reason,0,255),
+            'terminal'=>in_array($status, ['autorizado','rejeitado','denegado'], true) ? 1 : 0,
+        ]);
     }
 }

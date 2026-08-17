@@ -6,6 +6,7 @@ $root = dirname(__DIR__);
 $migration = file_get_contents($root . '/database/migrations/024_fiscal_documents_lifecycle.sql');
 $numbering = file_get_contents($root . '/database/migrations/025_fiscal_document_numbering_by_model.sql');
 $hardening = file_get_contents($root . '/database/migrations/027_fiscal_authorization_hardening.sql');
+$completion = file_get_contents($root . '/database/sql/fiscal_completion_2026.sql');
 $repository = file_get_contents($root . '/src/Fiscal/Repository/FiscalDocumentRepository.php');
 $service = file_get_contents($root . '/src/Fiscal/Service/FiscalDocumentService.php');
 $authorization = file_get_contents($root . '/src/Fiscal/Service/FiscalAuthorizationService.php');
@@ -26,6 +27,11 @@ $expectations = [
     'migration stable key and reconciliation' => str_contains((string) $hardening, 'uq_documento_fiscal_chave')
         && str_contains((string) $hardening, 'reconsulta_apos'),
     'migration event history' => str_contains((string) $migration, 'CREATE TABLE IF NOT EXISTS fiscal_documento_eventos'),
+    'completion keeps immutable transmission attempts' => str_contains((string)$completion, 'CREATE TABLE IF NOT EXISTS fiscal_documento_tentativas')
+        && str_contains((string)$repository, 'createTransmissionAttempt')
+        && str_contains((string)$authorization, 'updateLatestTransmissionAttempt'),
+    'completion persists payment allocation' => str_contains((string)$completion, 'CREATE TABLE IF NOT EXISTS fiscal_pagamento_alocacoes')
+        && str_contains((string)$repository, 'persistPaymentAllocations'),
     'number unique by model' => str_contains((string) $numbering, '(ambiente, modelo, serie, numero)'),
     'repository row locking' => str_contains((string) $repository, 'FOR UPDATE'),
     'repository reserves series atomically' => str_contains((string) $repository, 'WHERE id = :id AND proximo_numero = :number'),

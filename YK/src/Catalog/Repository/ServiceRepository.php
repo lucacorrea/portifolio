@@ -42,7 +42,12 @@ final class ServiceRepository
         }
 
         $sql = 'SELECT id, codigo, nome, categoria, equipamentos_compativeis,
-                       duracao_minutos, valor, descricao, status, criado_em, atualizado_em
+                       duracao_minutos, valor, descricao, codigo_tributacao_nacional, nbs,
+                       descricao_fiscal, municipio_incidencia_ibge, tributacao_iss, iss_retido,
+                       aliquota_iss, regime_especial, exigibilidade_iss, cst_pis_servico,
+                       cst_cofins_servico, aliquota_pis_servico, aliquota_cofins_servico,
+                       cst_ibs_cbs, classificacao_tributaria_ibs_cbs, cindop,
+                       finalidade_nfse, tipo_operacao, status, criado_em, atualizado_em
                   FROM servicos';
 
         if ($where !== []) {
@@ -65,7 +70,12 @@ final class ServiceRepository
         $this->assertPositiveId($id);
         $statement = $this->connection->prepare(
             'SELECT id, codigo, nome, categoria, equipamentos_compativeis,
-                    duracao_minutos, valor, descricao, status, criado_em, atualizado_em
+                    duracao_minutos, valor, descricao, codigo_tributacao_nacional, nbs,
+                    descricao_fiscal, municipio_incidencia_ibge, tributacao_iss, iss_retido,
+                    aliquota_iss, regime_especial, exigibilidade_iss, cst_pis_servico,
+                    cst_cofins_servico, aliquota_pis_servico, aliquota_cofins_servico,
+                    cst_ibs_cbs, classificacao_tributaria_ibs_cbs, cindop,
+                    finalidade_nfse, tipo_operacao, status, criado_em, atualizado_em
                FROM servicos
               WHERE id = :id
                 AND excluido_em IS NULL
@@ -82,7 +92,12 @@ final class ServiceRepository
         $this->assertPositiveId($id);
         $statement = $this->connection->prepare(
             'SELECT id, codigo, nome, categoria, equipamentos_compativeis,
-                    duracao_minutos, valor, descricao, status, criado_em, atualizado_em
+                    duracao_minutos, valor, descricao, codigo_tributacao_nacional, nbs,
+                    descricao_fiscal, municipio_incidencia_ibge, tributacao_iss, iss_retido,
+                    aliquota_iss, regime_especial, exigibilidade_iss, cst_pis_servico,
+                    cst_cofins_servico, aliquota_pis_servico, aliquota_cofins_servico,
+                    cst_ibs_cbs, classificacao_tributaria_ibs_cbs, cindop,
+                    finalidade_nfse, tipo_operacao, status, criado_em, atualizado_em
                FROM servicos
               WHERE id = :id AND excluido_em IS NULL
               LIMIT 1 FOR UPDATE'
@@ -118,9 +133,18 @@ final class ServiceRepository
         try {
             $statement = $this->connection->prepare(
                 'INSERT INTO servicos
-                    (nome, categoria, equipamentos_compativeis, duracao_minutos, valor, descricao, status)
+                    (nome, categoria, equipamentos_compativeis, duracao_minutos, valor, descricao,
+                     codigo_tributacao_nacional, nbs, descricao_fiscal, municipio_incidencia_ibge,
+                     tributacao_iss, iss_retido, aliquota_iss, regime_especial, exigibilidade_iss,
+                     cst_pis_servico, cst_cofins_servico, aliquota_pis_servico, aliquota_cofins_servico,
+                     cst_ibs_cbs, classificacao_tributaria_ibs_cbs, cindop, finalidade_nfse, tipo_operacao, status)
                  VALUES
-                    (:name, :category, :compatible_equipment, :duration_minutes, :value, :description, :status)'
+                    (:name, :category, :compatible_equipment, :duration_minutes, :value, :description,
+                     :tax_code, :nbs, :fiscal_description, :municipality_code, :iss_taxation,
+                     :iss_withheld, :iss_rate, :special_regime, :iss_enforceability,
+                     :pis_service_cst, :cofins_service_cst, :pis_service_rate, :cofins_service_rate,
+                     :ibs_cbs_cst, :ibs_cbs_classification, :operation_indicator,
+                     :nfse_purpose, :operation_type, :status)'
             );
             $this->bindForm($statement, $data);
             $statement->execute();
@@ -162,6 +186,24 @@ final class ServiceRepository
                     duracao_minutos = :duration_minutes,
                     valor = :value,
                     descricao = :description,
+                    codigo_tributacao_nacional = :tax_code,
+                    nbs = :nbs,
+                    descricao_fiscal = :fiscal_description,
+                    municipio_incidencia_ibge = :municipality_code,
+                    tributacao_iss = :iss_taxation,
+                    iss_retido = :iss_withheld,
+                    aliquota_iss = :iss_rate,
+                    regime_especial = :special_regime,
+                    exigibilidade_iss = :iss_enforceability,
+                    cst_pis_servico = :pis_service_cst,
+                    cst_cofins_servico = :cofins_service_cst,
+                    aliquota_pis_servico = :pis_service_rate,
+                    aliquota_cofins_servico = :cofins_service_rate,
+                    cst_ibs_cbs = :ibs_cbs_cst,
+                    classificacao_tributaria_ibs_cbs = :ibs_cbs_classification,
+                    cindop = :operation_indicator,
+                    finalidade_nfse = :nfse_purpose,
+                    tipo_operacao = :operation_type,
                     status = :status
               WHERE id = :id
                 AND excluido_em IS NULL'
@@ -194,6 +236,9 @@ final class ServiceRepository
         $statement->bindValue('duration_minutes', $data->durationMinutes(), PDO::PARAM_INT);
         $statement->bindValue('value', $data->value());
         $statement->bindValue('description', $data->description());
+        foreach ($data->fiscal() as $field => $value) {
+            $statement->bindValue($field, $value, $field === 'iss_withheld' ? PDO::PARAM_INT : PDO::PARAM_STR);
+        }
         $statement->bindValue('status', $data->status());
     }
 

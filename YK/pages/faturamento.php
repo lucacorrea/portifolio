@@ -7,6 +7,9 @@ require_once __DIR__ . '/../includes/ui.php';
 $canViewFiscal = $authorization->can('nota_fiscal.visualizar');
 $canIssueFiscal = $authorization->can('nota_fiscal.emitir');
 $canCancelFiscal = $authorization->can('nota_fiscal.cancelar');
+$canViewNfse = $authorization->can('nfse.visualizar');
+$canIssueNfse = $authorization->can('nfse.emitir');
+$canRequeryNfse = $authorization->can('nfse.reconsultar');
 $canViewReceipts = $authorization->can('recibo.visualizar');
 $canIssueReceipt = $authorization->can('recibo.emitir');
 $canReprintReceipt = $authorization->can('recibo.reimprimir');
@@ -34,6 +37,11 @@ if ($canViewFiscal) {
   } catch (Throwable $exception) {
     error_log('Fiscal document listing unavailable [' . get_class($exception) . '].');
   }
+}
+$nfseDocuments = [];
+if ($canViewNfse) {
+  try { $nfseDocuments = $application->nfseDocuments()->list(); }
+  catch (Throwable $exception) { error_log('NFS-e listing unavailable [' . get_class($exception) . '].'); }
 }
 $receiptFilters = [
   'search' => trim((string) ($_GET['search'] ?? '')),
@@ -119,6 +127,33 @@ function billing_receipt_type(array $receipt): string
           </tbody></table></div>
         <?php endif; ?>
       </div>
+    </section>
+  <?php endif; ?>
+
+  <?php if ($canViewNfse): ?>
+    <section class="panel mb-4" id="documentos-nfse">
+      <div class="panel-header"><div><div class="panel-title"><i class="bi bi-building-check"></i>Serviços — DPS / NFS-e</div><p class="text-muted small mb-0 mt-1">Fluxo municipal Betha separado dos documentos estaduais. Uma DPS é criada por perfil fiscal compatível.</p></div></div>
+      <?php if ($nfseDocuments === []): ?>
+        <div class="empty-state py-5"><i class="bi bi-file-earmark-text"></i><h3>Nenhuma DPS preparada</h3><p>Conclua os dados fiscais do serviço e prepare a NFS-e a partir de uma OS finalizada.</p></div>
+      <?php else: ?>
+        <div class="table-panel-wrap"><table class="os-table"><thead><tr><th>DPS / NFS-e</th><th>OS</th><th>Cliente</th><th>Serviços</th><th>Status</th><th>Protocolo / motivo</th><th>Ações</th></tr></thead><tbody>
+        <?php foreach ($nfseDocuments as $document): $status=(string)$document['status']; ?>
+          <tr>
+            <td><strong>DPS <?= h((string)$document['serie_dps']) ?>/<?= h((string)$document['numero_dps']) ?></strong><?php if (!empty($document['numero_nfse'])): ?><br><small>NFS-e <?= h((string)$document['numero_nfse']) ?></small><?php endif; ?></td>
+            <td><?= h((string)$document['os_numero']) ?></td><td><?= h((string)$document['cliente_nome']) ?></td>
+            <td><strong><?= h(billing_receipt_money($document['valor_servicos'])) ?></strong></td>
+            <td><span class="badge-soft badge-<?= $status==='autorizado'?'green':(str_starts_with($status,'rejeitado')?'red':'amber') ?>"><?= h(ucfirst(str_replace('_',' ',$status))) ?></span></td>
+            <td><?= h((string)($document['protocolo'] ?: $document['mensagem'] ?: 'Aguardando ação')) ?></td>
+            <td class="table-actions-cell"><div class="dropdown table-action-dropdown"><button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações da NFS-e"><i class="bi bi-three-dots-vertical"></i></button><ul class="dropdown-menu dropdown-menu-end">
+              <?php if ($status==='preparado' && $canIssueNfse): ?><li><form method="post" action="actions/nfse-transmitir.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="nfse_documento_id" value="<?= h((string)$document['id']) ?>"><button class="dropdown-item" type="submit"><i class="bi bi-cloud-arrow-up"></i> Transmitir DPS</button></form></li><?php endif; ?>
+              <?php if ($status==='aguardando_validacao' && $canRequeryNfse): ?><li><form method="post" action="actions/nfse-reconsultar.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="nfse_documento_id" value="<?= h((string)$document['id']) ?>"><button class="dropdown-item" type="submit"><i class="bi bi-arrow-repeat"></i> Consultar protocolo</button></form></li><?php endif; ?>
+              <?php if ($status==='autorizado' && !empty($document['pdf_url'])): ?><li><a class="dropdown-item" href="<?= h((string)$document['pdf_url']) ?>" target="_blank" rel="noopener noreferrer"><i class="bi bi-printer"></i> Abrir DANFSe</a></li><?php endif; ?>
+              <?php if (!in_array($status,['preparado','aguardando_validacao','autorizado'],true)): ?><li><span class="dropdown-item-text text-muted">Sem ação disponível</span></li><?php endif; ?>
+            </ul></div></td>
+          </tr>
+        <?php endforeach; ?>
+        </tbody></table></div>
+      <?php endif; ?>
     </section>
   <?php endif; ?>
 

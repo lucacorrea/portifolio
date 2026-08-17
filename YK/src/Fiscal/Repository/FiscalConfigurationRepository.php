@@ -52,7 +52,7 @@ final class FiscalConfigurationRepository
     public function connectionProfile(int $configurationId): ?array
     {
         $statement = $this->connection->prepare(
-            'SELECT cfg.id, cfg.ambiente, cfg.modelo, cfg.uf, cfg.schema_versao,
+                'SELECT cfg.id, cfg.ambiente, cfg.modelo, cfg.uf, cfg.schema_versao, cfg.qr_code_versao,
                     cfg.csc_id, cfg.csc_ciphertext, cfg.csc_nonce, cfg.csc_tag,
                     cfg.csc_algoritmo, cfg.segredo_chave_versao AS csc_chave_versao,
                     cert.arquivo_referencia, cert.titular_cnpj, cert.valido_ate,

@@ -154,6 +154,7 @@ metric_grid([
                                     data-service-duration="<?= h(service_duration($service->durationMinutes())) ?>"
                                     data-service-value="<?= h($service->value()) ?>"
                                     data-service-description="<?= h($service->description() ?? '') ?>"
+                                    data-service-fiscal="<?= h(json_encode($service->fiscal(), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)) ?>"
                                     data-service-status="<?= h($service->status()) ?>"
                                     data-service-created-at="<?= h(service_date($service->createdAt())) ?>"
                                     data-service-updated-at="<?= h(service_date($service->updatedAt())) ?>"
@@ -168,6 +169,7 @@ metric_grid([
                                         data-service-duration-minutes="<?= h((string) $service->durationMinutes()) ?>"
                                         <?php if ($canChangePrice): ?>data-service-value="<?= h($service->value()) ?>"<?php endif; ?>
                                         data-service-description="<?= h($service->description() ?? '') ?>"
+                                        data-service-fiscal="<?= h(json_encode($service->fiscal(), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)) ?>"
                                         data-service-status="<?= h($service->status()) ?>"
                                     ><i class="bi bi-pencil"></i> Editar</button></li>
                                 <?php endif; ?>
@@ -201,6 +203,38 @@ function service_form_fields(array $data, bool $canChangePrice, string $prefix):
         <div class="form-group"><label class="form-label">Status</label><select class="form-control-os" id="<?= h($prefix) ?>-status" name="status"><option value="ativo" <?= service_value($data, 'status', 'ativo') === 'ativo' ? 'selected' : '' ?>>Ativo</option><option value="inativo" <?= service_value($data, 'status') === 'inativo' ? 'selected' : '' ?>>Inativo</option></select></div>
         <div class="form-group"><label class="form-label">Descrição</label><textarea class="form-control-os" id="<?= h($prefix) ?>-description" name="description" rows="3"><?= h(service_value($data, 'description')) ?></textarea></div>
     </section>
+    <section class="form-section"><h3 class="form-section-title">Dados fiscais / NFS-e</h3>
+        <p class="text-muted small">O preenchimento depende do contador e das regras de Coari/Betha. Campos condicionais podem ficar vazios até a classificação ser confirmada.</p>
+        <div class="form-row">
+            <div class="form-group"><label class="form-label">cTribNac</label><input class="form-control-os" id="<?= h($prefix) ?>-tax-code" name="tax_code" value="<?= h(service_value($data, 'tax_code')) ?>" inputmode="numeric" maxlength="6"></div>
+            <div class="form-group"><label class="form-label">NBS</label><input class="form-control-os" id="<?= h($prefix) ?>-nbs" name="nbs" value="<?= h(service_value($data, 'nbs')) ?>" inputmode="numeric" maxlength="9"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label class="form-label">Município de incidência (IBGE)</label><input class="form-control-os" id="<?= h($prefix) ?>-municipality-code" name="municipality_code" value="<?= h(service_value($data, 'municipality_code')) ?>" inputmode="numeric" maxlength="7"></div>
+            <div class="form-group"><label class="form-label">Alíquota ISS (%)</label><input class="form-control-os" id="<?= h($prefix) ?>-iss-rate" name="iss_rate" value="<?= h(service_value($data, 'iss_rate')) ?>" inputmode="decimal"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label class="form-label">Tributação ISS</label><input class="form-control-os" id="<?= h($prefix) ?>-iss-taxation" name="iss_taxation" value="<?= h(service_value($data, 'iss_taxation')) ?>" maxlength="30"></div>
+            <div class="form-group"><label class="form-label"><input type="checkbox" id="<?= h($prefix) ?>-iss-withheld" name="iss_withheld" value="1" <?= service_value($data, 'iss_withheld') === '1' ? 'checked' : '' ?>> ISS retido</label></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label class="form-label">Regime especial</label><input class="form-control-os" id="<?= h($prefix) ?>-special-regime" name="special_regime" value="<?= h(service_value($data, 'special_regime')) ?>" maxlength="30"></div>
+            <div class="form-group"><label class="form-label">Exigibilidade ISS</label><input class="form-control-os" id="<?= h($prefix) ?>-iss-enforceability" name="iss_enforceability" value="<?= h(service_value($data, 'iss_enforceability')) ?>" maxlength="30"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label class="form-label">PIS (CST / alíquota)</label><div class="form-row"><input class="form-control-os" id="<?= h($prefix) ?>-pis-service-cst" name="pis_service_cst" value="<?= h(service_value($data, 'pis_service_cst')) ?>" maxlength="2" placeholder="CST"><input class="form-control-os" id="<?= h($prefix) ?>-pis-service-rate" name="pis_service_rate" value="<?= h(service_value($data, 'pis_service_rate')) ?>" placeholder="%"></div></div>
+            <div class="form-group"><label class="form-label">COFINS (CST / alíquota)</label><div class="form-row"><input class="form-control-os" id="<?= h($prefix) ?>-cofins-service-cst" name="cofins_service_cst" value="<?= h(service_value($data, 'cofins_service_cst')) ?>" maxlength="2" placeholder="CST"><input class="form-control-os" id="<?= h($prefix) ?>-cofins-service-rate" name="cofins_service_rate" value="<?= h(service_value($data, 'cofins_service_rate')) ?>" placeholder="%"></div></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label class="form-label">CST IBS/CBS</label><input class="form-control-os" id="<?= h($prefix) ?>-ibs-cbs-cst" name="ibs_cbs_cst" value="<?= h(service_value($data, 'ibs_cbs_cst')) ?>" inputmode="numeric" maxlength="3"></div>
+            <div class="form-group"><label class="form-label">cClassTrib</label><input class="form-control-os" id="<?= h($prefix) ?>-ibs-cbs-classification" name="ibs_cbs_classification" value="<?= h(service_value($data, 'ibs_cbs_classification')) ?>" inputmode="numeric" maxlength="6"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label class="form-label">cIndOp</label><input class="form-control-os" id="<?= h($prefix) ?>-operation-indicator" name="operation_indicator" value="<?= h(service_value($data, 'operation_indicator')) ?>" inputmode="numeric" maxlength="6"></div>
+            <div class="form-group"><label class="form-label">Finalidade / tipo de operação</label><div class="form-row"><input class="form-control-os" id="<?= h($prefix) ?>-nfse-purpose" name="nfse_purpose" value="<?= h(service_value($data, 'nfse_purpose')) ?>" maxlength="2" placeholder="finNFSe"><input class="form-control-os" id="<?= h($prefix) ?>-operation-type" name="operation_type" value="<?= h(service_value($data, 'operation_type')) ?>" maxlength="2" placeholder="tpOper"></div></div>
+        </div>
+        <div class="form-group"><label class="form-label">Descrição fiscal</label><textarea class="form-control-os" id="<?= h($prefix) ?>-fiscal-description" name="fiscal_description" rows="3" maxlength="2000"><?= h(service_value($data, 'fiscal_description')) ?></textarea></div>
+    </section>
 <?php } ?>
 
 <?php if ($canCreate): ?>
@@ -227,7 +261,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const button = event.target.closest('.js-service-view, .js-service-edit, .js-service-delete');
         if (!button) return;
         if (button.classList.contains('js-service-view')) { text('view-service-subtitle', button.dataset.serviceCode); text('view-service-code', button.dataset.serviceCode); text('view-service-name', button.dataset.serviceName); text('view-service-category', button.dataset.serviceCategory); text('view-service-compatible-equipment', button.dataset.serviceCompatibleEquipment); text('view-service-duration', button.dataset.serviceDuration); text('view-service-value', moneyValue(button.dataset.serviceValue)); text('view-service-status', button.dataset.serviceStatus === 'ativo' ? 'Ativo' : 'Inativo'); text('view-service-created-at', button.dataset.serviceCreatedAt); text('view-service-updated-at', button.dataset.serviceUpdatedAt); text('view-service-description', button.dataset.serviceDescription); }
-        if (button.classList.contains('js-service-edit')) { text('edit-service-subtitle', button.dataset.serviceCode); val('edit-service-id', button.dataset.serviceId); val('edit-service-code', button.dataset.serviceCode); val('edit-service-name', button.dataset.serviceName); val('edit-service-category', button.dataset.serviceCategory); val('edit-service-compatible-equipment', button.dataset.serviceCompatibleEquipment); val('edit-service-duration-minutes', button.dataset.serviceDurationMinutes); if (canChangePrice) { val('edit-service-value', button.dataset.serviceValue); } val('edit-service-description', button.dataset.serviceDescription); val('edit-service-status', button.dataset.serviceStatus || 'ativo'); }
+        if (button.classList.contains('js-service-edit')) { text('edit-service-subtitle', button.dataset.serviceCode); val('edit-service-id', button.dataset.serviceId); val('edit-service-code', button.dataset.serviceCode); val('edit-service-name', button.dataset.serviceName); val('edit-service-category', button.dataset.serviceCategory); val('edit-service-compatible-equipment', button.dataset.serviceCompatibleEquipment); val('edit-service-duration-minutes', button.dataset.serviceDurationMinutes); if (canChangePrice) { val('edit-service-value', button.dataset.serviceValue); } val('edit-service-description', button.dataset.serviceDescription); val('edit-service-status', button.dataset.serviceStatus || 'ativo'); const fiscal = JSON.parse(button.dataset.serviceFiscal || '{}'); const map = {tax_code:'tax-code',nbs:'nbs',fiscal_description:'fiscal-description',municipality_code:'municipality-code',iss_taxation:'iss-taxation',iss_rate:'iss-rate',special_regime:'special-regime',iss_enforceability:'iss-enforceability',pis_service_cst:'pis-service-cst',pis_service_rate:'pis-service-rate',cofins_service_cst:'cofins-service-cst',cofins_service_rate:'cofins-service-rate',ibs_cbs_cst:'ibs-cbs-cst',ibs_cbs_classification:'ibs-cbs-classification',operation_indicator:'operation-indicator',nfse_purpose:'nfse-purpose',operation_type:'operation-type'}; Object.entries(map).forEach(([key,id]) => val('edit-service-'+id, fiscal[key] ?? '')); const withheld = document.getElementById('edit-service-iss-withheld'); if (withheld) withheld.checked = Number(fiscal.iss_withheld || 0) === 1; }
         if (button.classList.contains('js-service-delete')) { val('delete-service-id', button.dataset.serviceId); text('delete-service-name', button.dataset.serviceName || 'este serviço'); }
     });
     const createModal = document.getElementById('modal-servico');

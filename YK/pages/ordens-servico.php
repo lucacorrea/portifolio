@@ -77,6 +77,7 @@ $canIssueReceipt = $authorization->can('recibo.emitir');
 $canReprintReceipt = $authorization->can('recibo.reimprimir');
 $canViewFiscal = $authorization->can('nota_fiscal.visualizar');
 $canIssueFiscal = $authorization->can('nota_fiscal.emitir');
+$canIssueNfse = $authorization->can('nfse.emitir');
 $fiscalDocumentsByOrder = [];
 if ($canViewFiscal || $canIssueFiscal) {
     try {
@@ -451,6 +452,9 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                                                         </li><?php endif; ?>
                                                 <?php endforeach; ?>
                                             <?php endif; ?>
+                                            <?php if ($canIssueNfse && $order->status() === 'finalizada'): ?><li>
+                                                <form method="post" action="actions/nfse-preparar.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="ordem_servico_id" value="<?= h((string)$order->id()) ?>"><input type="hidden" name="ambiente" value="homologacao"><input type="hidden" name="idempotency_key" value="<?= h(bin2hex(random_bytes(32))) ?>"><button class="dropdown-item" type="submit"><i class="bi bi-building-check"></i> Preparar NFS-e de serviços</button></form>
+                                            </li><?php endif; ?>
                                             <?php if ($isOrderPaid): ?>
                                                 <?php foreach ($orderPayments as $payment): ?>
                                                     <?php if (!empty($payment['recibo_id']) && $payment['recibo_status'] === 'emitido' && $canReprintReceipt): ?>

@@ -52,6 +52,14 @@ final class FiscalToolsFactory
             $certificate = Certificate::readPfx($pfx, $password);
             $tools = new Tools($this->configJson($profile, $csc), $certificate);
             $tools->model((int) $model);
+            if ($model === '65' && !empty($profile['qr_code_versao'])) {
+                $qrVersion = (string) $profile['qr_code_versao'];
+                $tools->forceQRCodeVersion(match ($qrVersion) {
+                    '2', '200' => '200',
+                    '3', '300' => '300',
+                    default => throw new InvalidArgumentException('Versão do QR Code NFC-e não suportada.'),
+                });
+            }
             return $tools;
         } finally {
             if (function_exists('sodium_memzero')) {
@@ -97,7 +105,7 @@ final class FiscalToolsFactory
             'razaosocial' => (string) $profile['razao_social'],
             'cnpj' => preg_replace('/\D+/', '', (string) $profile['titular_cnpj']),
             'siglaUF' => (string) $profile['uf'],
-            'schemes' => '',
+            'schemes' => 'PL_010_V1.30',
             'versao' => (string) $profile['schema_versao'],
             'tokenIBPT' => null,
             'CSC' => $csc === '' ? null : $csc,

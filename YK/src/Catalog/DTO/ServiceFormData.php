@@ -15,6 +15,8 @@ final class ServiceFormData
         private readonly int $durationMinutes,
         private readonly string $value,
         private readonly ?string $description,
+        /** @var array<string,string|int|null> */
+        private readonly array $fiscal,
         private readonly string $status
     ) {
     }
@@ -28,6 +30,7 @@ final class ServiceFormData
             self::minutes($data['duration_minutes'] ?? 0),
             self::decimal($data['value'] ?? '0', 'valor'),
             self::longText($data['description'] ?? null),
+            self::fiscalData($data),
             self::normalizeStatus((string) ($data['status'] ?? 'ativo'))
         );
     }
@@ -38,6 +41,8 @@ final class ServiceFormData
     public function durationMinutes(): int { return $this->durationMinutes; }
     public function value(): string { return $this->value; }
     public function description(): ?string { return $this->description; }
+    /** @return array<string,string|int|null> */
+    public function fiscal(): array { return $this->fiscal; }
     public function status(): string { return $this->status; }
 
     public function withValue(string $value): self
@@ -49,6 +54,7 @@ final class ServiceFormData
             $this->durationMinutes,
             self::decimal($value, 'valor'),
             $this->description,
+            $this->fiscal,
             $this->status
         );
     }
@@ -116,17 +122,13 @@ final class ServiceFormData
             $value = str_replace(',', '.', $value);
         }
 
-        if (!preg_match('/^\d+(\.\d+)?$/', $value)) {
+        if (!preg_match('/^\d+(?:\.\d{1,2})?$/', $value)) {
             throw new InvalidArgumentException('Informe um valor válido para ' . $field . '.');
         }
 
-        $number = (float) $value;
-
-        if ($number < 0) {
-            throw new InvalidArgumentException('O campo ' . $field . ' não pode ser negativo.');
-        }
-
-        return number_format($number, 2, '.', '');
+        [$whole, $fraction] = array_pad(explode('.', $value, 2), 2, '');
+        return ltrim($whole, '0') !== '' ? ltrim($whole, '0') . '.' . str_pad(substr($fraction, 0, 2), 2, '0')
+            : '0.' . str_pad(substr($fraction, 0, 2), 2, '0');
     }
 
     private static function normalizeStatus(string $status): string
@@ -136,5 +138,54 @@ final class ServiceFormData
         }
 
         return $status;
+    }
+
+    /** @param array<string,mixed> $data @return array<string,string|int|null> */
+    private static function fiscalData(array $data): array
+    {
+        $patterns = [
+            'tax_code'=>['/^\d{6}$/','código de tributação nacional'],
+            'nbs'=>['/^\d{9}$/','NBS'],
+            'municipality_code'=>['/^\d{7}$/','município de incidência'],
+            'pis_service_cst'=>['/^\d{2}$/','CST PIS do serviço'],
+            'cofins_service_cst'=>['/^\d{2}$/','CST COFINS do serviço'],
+            'ibs_cbs_cst'=>['/^\d{3}$/','CST IBS/CBS'],
+            'ibs_cbs_classification'=>['/^\d{6}$/','cClassTrib'],
+            'operation_indicator'=>['/^\d{6}$/','cIndOp'],
+            'nfse_purpose'=>['/^\d{1,2}$/','finalidade NFS-e'],
+            'operation_type'=>['/^\d{1,2}$/','tipo de operação'],
+        ];
+        $result = [];
+        foreach ($patterns as $field => [$pattern,$label]) {
+            $value = preg_replace('/\D+/', '', trim((string)($data[$field] ?? ''))) ?? '';
+            if ($value !== '' && preg_match($pattern, $value) !== 1) {
+                throw new InvalidArgumentException('Campo fiscal inválido: ' . $label . '.');
+            }
+            $result[$field] = $value === '' ? null : $value;
+        }
+        foreach (['iss_rate','pis_service_rate','cofins_service_rate'] as $field) {
+            $raw = trim((string)($data[$field] ?? ''));
+            $result[$field] = $raw === '' ? null : self::decimalRate($raw, $field);
+        }
+        $result['fiscal_description'] = self::longText($data['fiscal_description'] ?? null);
+        $result['iss_taxation'] = self::text((string)($data['iss_taxation'] ?? ''), 'tributação ISS', 30, false);
+        $result['special_regime'] = self::text((string)($data['special_regime'] ?? ''), 'regime especial', 30, false);
+        $result['iss_enforceability'] = self::text((string)($data['iss_enforceability'] ?? ''), 'exigibilidade ISS', 30, false);
+        $result['iss_withheld'] = !empty($data['iss_withheld']) ? 1 : 0;
+        return $result;
+    }
+
+    private static function decimalRate(string $value, string $field): string
+    {
+        $value = str_replace(',', '.', trim($value));
+        if (preg_match('/^\d+(?:\.\d{1,4})?$/', $value) !== 1) {
+            throw new InvalidArgumentException('Alíquota fiscal inválida: ' . $field . '.');
+        }
+        [$whole, $fraction] = array_pad(explode('.', $value, 2), 2, '');
+        $whole = ltrim($whole, '0') ?: '0';
+        if (strlen($whole) > 3 || (int) $whole > 100 || ((int) $whole === 100 && trim($fraction, '0') !== '')) {
+            throw new InvalidArgumentException('Alíquota fiscal inválida: ' . $field . '.');
+        }
+        return $whole . '.' . str_pad($fraction, 4, '0');
     }
 }

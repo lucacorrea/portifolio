@@ -36,7 +36,7 @@ final class FiscalDocumentStorage
         if (!in_array($environment, ['homologacao', 'producao'], true)
             || !in_array($model, ['55', '65'], true)
             || $documentId <= 0
-            || !in_array($type, ['assinado', 'resposta', 'autorizado', 'cancelamento'], true)
+            || !in_array($type, ['gerado', 'assinado', 'resposta', 'autorizado', 'cancelamento'], true)
         ) {
             throw new InvalidArgumentException('Identificação do artefato fiscal inválida.');
         }
