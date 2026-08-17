@@ -176,31 +176,63 @@ final class FiscalDocumentRepository
         return $row;
     }
 
-    /** @return array<int,array<string,mixed>> */
-    public function fiscalProductItems(int $orderId): array
-    {
-        $statement = $this->connection->prepare(
-            'SELECT item.id, item.referencia_id AS produto_id, item.descricao,
-                    item.unidade, item.quantidade, item.valor_unitario,
-                    item.desconto, item.subtotal, product.codigo, product.nome,
-                    product.ncm, product.cest, product.origem_mercadoria,
-                    product.cfop_padrao, product.cst_icms, product.csosn,
-                    product.cst_pis, product.cst_cofins, product.aliquota_icms,
-                    product.aliquota_pis, product.aliquota_cofins,
-                    product.codigo_barras, product.gtin_tributavel,
-                    product.unidade_tributavel, product.cst_ibs_cbs,
-                    product.classificacao_tributaria_ibs_cbs
-               FROM ordem_servico_itens item
-               JOIN produtos product ON product.id = item.referencia_id
-              WHERE item.ordem_servico_id = :order_id
-                AND item.tipo = \'produto\'
-                AND item.subtotal > 0
-              ORDER BY item.ordem, item.id'
-        );
-        $statement->execute(['order_id' => $orderId]);
+  /**
+ * @return array<int,array<string,mixed>>
+ */
+public function fiscalProductItems(int $orderId): array
+{
+    $statement = $this->connection->prepare(
+        'SELECT
+            item.id,
+            item.referencia_id AS produto_id,
+            item.descricao,
+            item.unidade,
+            item.quantidade,
+            item.valor_unitario,
+            item.desconto,
+            item.subtotal,
 
-        return $statement->fetchAll();
-    }
+            product.codigo,
+            product.nome,
+            product.ncm,
+            product.cest,
+            product.origem_mercadoria,
+            product.cfop_padrao,
+            product.cst_icms,
+            product.csosn,
+            product.cst_pis,
+            product.cst_cofins,
+            product.aliquota_icms,
+            product.aliquota_pis,
+            product.aliquota_cofins,
+
+            product.cst_ibs_cbs,
+            product.classificacao_tributaria_ibs_cbs,
+
+            product.codigo_barras,
+            product.gtin_tributavel,
+            product.unidade_tributavel
+
+         FROM ordem_servico_itens AS item
+
+         INNER JOIN produtos AS product
+            ON product.id = item.referencia_id
+
+         WHERE item.ordem_servico_id = :order_id
+           AND item.tipo = \'produto\'
+           AND item.subtotal > 0
+
+         ORDER BY
+            item.ordem ASC,
+            item.id ASC'
+    );
+
+    $statement->execute([
+        'order_id' => $orderId,
+    ]);
+
+    return $statement->fetchAll();
+}
 
     /** @return array<string,mixed>|null */
     public function resolveIbsCbsRule(string $cst, string $classification, string $issueDate): ?array
