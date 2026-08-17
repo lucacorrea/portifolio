@@ -195,8 +195,10 @@ final class FiscalConfigurationService
             if ($count > 0) $missingProductData[] = sprintf('%s (%d)', $label, $count);
         }
         if ($missingProductData !== []) {
-            $errors[] = 'Cadastro tributário de produtos incompleto: ' . implode(', ', $missingProductData) . '.';
-        }
+    $warnings[] = 'Aviso: existem produtos ativos com cadastro tributário incompleto: '
+        . implode(', ', $missingProductData)
+        . '. A emissão será validada individualmente conforme os produtos utilizados em cada OS.';
+}
         $clientChecks = $this->repository->clientReadiness();
         $clientsWithoutAddress = (int) ($clientChecks['identified_without_address'] ?? 0);
         if ($clientsWithoutAddress > 0) {

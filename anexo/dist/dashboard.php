@@ -359,55 +359,103 @@ $ultimos = $pdo->query("
                 <!-- MENU (ANEXO padrão) -->
                 <div class="sidebar-menu">
                     <ul class="menu">
-                        <li class="sidebar-item active">
-                            <a href="dashboard.php" class="sidebar-link"><i class="bi bi-grid-fill"></i><span>Dashboard</span></a>
-                        </li>
-
-                        <li class="sidebar-item has-sub">
-                            <a href="#" class="sidebar-link"><i class="bi bi-person-lines-fill"></i><span>Solicitantes</span></a>
-                            <ul class="submenu">
-                                <li class="submenu-item"><a href="pessoasCadastradas.php">Cadastrados</a></li>
-                                <li class="submenu-item"><a href="cadastrarSolicitante.php">Novo Cadastro</a></li>
-                            </ul>
-                        </li>
-
                         <?php
-                        $role = $_SESSION['user_role'] ?? '';
-
-                        if ($role === 'prefeito' || $role === 'secretario'):
+                        $role = strtolower(trim((string)($_SESSION['user_role'] ?? '')));
                         ?>
+
+                        <!-- Dashboard: todos os perfis autorizados -->
+                        <li class="sidebar-item active">
+                            <a href="dashboard.php" class="sidebar-link">
+                                <i class="bi bi-grid-fill"></i>
+                                <span>Dashboard</span>
+                            </a>
+                        </li>
+
+                        <?php if ($role === 'comum'): ?>
+
+                            <!--
+                                PERFIL COMUM:
+                                mostra somente Dashboard,
+                                Pessoas Cadastradas e Cadastrar Pessoa.
+                            -->
+                            <li class="sidebar-item">
+                                <a href="pessoasCadastradas.php" class="sidebar-link">
+                                    <i class="bi bi-people-fill"></i>
+                                    <span>Pessoas Cadastradas</span>
+                                </a>
+                            </li>
+
+                            <li class="sidebar-item">
+                                <a href="cadastrarSolicitante.php" class="sidebar-link">
+                                    <i class="bi bi-person-plus-fill"></i>
+                                    <span>Cadastrar Pessoa</span>
+                                </a>
+                            </li>
+
+                        <?php else: ?>
+
+                            <!-- Demais perfis: mantém o menu de solicitantes -->
                             <li class="sidebar-item has-sub">
                                 <a href="#" class="sidebar-link">
-                                    <i class="bi bi-person-fill"></i>
-                                    <span>Usuários</span>
+                                    <i class="bi bi-person-lines-fill"></i>
+                                    <span>Solicitantes</span>
                                 </a>
                                 <ul class="submenu">
                                     <li class="submenu-item">
-                                        <a href="usuariosPermitidos.php">Permitidos</a>
+                                        <a href="pessoasCadastradas.php">Cadastrados</a>
                                     </li>
                                     <li class="submenu-item">
-                                        <a href="usuariosNaoPermitidos.php">Não Permitidos</a>
+                                        <a href="cadastrarSolicitante.php">Novo Cadastro</a>
                                     </li>
                                 </ul>
                             </li>
-                        <?php endif; ?>
 
-                        <li class="sidebar-item">
-                            <a href="../../gpsemas/index.php" class="sidebar-link"><i class="bi bi-map-fill"></i><span>Rastreamento</span></a>
-                        </li>
+                            <!--
+                                Usuários:
+                                SOMENTE prefeito e secretário.
+                                Admin não visualiza este menu.
+                            -->
+                            <?php if ($role === 'prefeito' || $role === 'secretario'): ?>
+                                <li class="sidebar-item has-sub">
+                                    <a href="#" class="sidebar-link">
+                                        <i class="bi bi-person-fill"></i>
+                                        <span>Usuários</span>
+                                    </a>
+                                    <ul class="submenu">
+                                        <li class="submenu-item">
+                                            <a href="usuariosPermitidos.php">Permitidos</a>
+                                        </li>
+                                        <li class="submenu-item">
+                                            <a href="usuariosNaoPermitidos.php">Não Permitidos</a>
+                                        </li>
+                                    </ul>
+                                </li>
+                            <?php endif; ?>
 
-                        <?php if (!empty($_SESSION['user_role']) && $_SESSION['user_role'] === 'secretario'): ?>
                             <li class="sidebar-item">
-                                <a href="../admin/index.php" class="sidebar-link" target="_blank" rel="noopener">
-                                    <i class="bi bi-shield-lock-fill"></i>
-                                    <span>Administrador</span>
+                                <a href="../../gpsemas/index.php" class="sidebar-link">
+                                    <i class="bi bi-map-fill"></i>
+                                    <span>Rastreamento</span>
                                 </a>
                             </li>
+
+                            <?php if ($role === 'secretario' || $role === 'admin'): ?>
+                                <li class="sidebar-item">
+                                    <a href="../admin/index.php" class="sidebar-link" target="_blank" rel="noopener">
+                                        <i class="bi bi-shield-lock-fill"></i>
+                                        <span>Administrador</span>
+                                    </a>
+                                </li>
+                            <?php endif; ?>
+
                         <?php endif; ?>
 
-
+                        <!-- Logout permanece disponível para todos -->
                         <li class="sidebar-item">
-                            <a href="./auth/logout.php" class="sidebar-link"><i class="bi bi-box-arrow-right"></i><span>Sair</span></a>
+                            <a href="./auth/logout.php" class="sidebar-link">
+                                <i class="bi bi-box-arrow-right"></i>
+                                <span>Sair</span>
+                            </a>
                         </li>
                     </ul>
                 </div>
