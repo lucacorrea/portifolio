@@ -18,6 +18,7 @@ $receivablesPage = file_get_contents($root . '/pages/contas-receber.php');
 $billingPage = file_get_contents($root . '/pages/faturamento.php');
 $configurationPage = file_get_contents($root . '/pages/configuracoes-fiscais.php');
 $composer = json_decode((string) file_get_contents($root . '/composer.json'), true, 512, JSON_THROW_ON_ERROR);
+$compactAction = preg_replace('/\s+/', '', (string) $action) ?? '';
 
 $expectations = [
     'migration lifecycle status' => str_contains((string) $migration, 'processamento_status ENUM('),
@@ -34,7 +35,10 @@ $expectations = [
         && str_contains((string)$repository, 'persistPaymentAllocations'),
     'number unique by model' => str_contains((string) $numbering, '(ambiente, modelo, serie, numero)'),
     'repository row locking' => str_contains((string) $repository, 'FOR UPDATE'),
-    'repository reserves series atomically' => str_contains((string) $repository, 'WHERE id = :id AND proximo_numero = :number'),
+    'repository reserves series atomically' => preg_match(
+        '/WHERE\s+id\s*=\s*:series_id\s+AND\s+proximo_numero\s*=\s*:expected_number/s',
+        (string) $repository
+    ) === 1 && str_contains((string) $repository, '$statement->rowCount() !== 1'),
     'service token validation' => str_contains((string) $service, '/^[a-f0-9]{64}$/'),
     'service requires finalized order' => str_contains((string) $service, "!== 'finalizada'"),
     'service snapshots services and payments' => str_contains((string) $service, "'services' =>")
@@ -52,8 +56,8 @@ $expectations = [
     'storage blocks traversal' => str_contains((string) $storage, '!str_starts_with($resolved, $root . DIRECTORY_SEPARATOR)'),
     'storage verifies checksum' => str_contains((string) $storage, 'hash_equals($expectedSha256'),
     'action is post only' => str_contains((string) $action, 'os_require_post_request()'),
-    'action requires fiscal permission' => str_contains((string) $action, "os_action_context('nota_fiscal.emitir')"),
-    'action transmits after preparation' => str_contains((string) $action, 'fiscalAuthorization()->transmit'),
+    'action requires fiscal permission' => str_contains($compactAction, "os_action_context('nota_fiscal.emitir')"),
+    'action transmits after preparation' => str_contains($compactAction, '->fiscalAuthorization()->transmit('),
     'order dropdown pattern kept' => str_contains((string) $ordersPage, 'table-action-dropdown'),
     'order non fiscal options separated' => str_contains((string) $ordersPage, 'Comprovante não fiscal sem valores')
         && str_contains((string) $ordersPage, 'Comprovante não fiscal com valores'),
