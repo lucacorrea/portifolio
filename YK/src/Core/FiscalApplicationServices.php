@@ -6,12 +6,15 @@ namespace App\Core;
 
 use App\Fiscal\Repository\FiscalConfigurationRepository;
 use App\Fiscal\Repository\FiscalDocumentRepository;
+use App\Fiscal\Repository\FiscalInutilizationRepository;
 use App\Fiscal\Security\FiscalSecretVault;
 use App\Fiscal\Service\FiscalAuthorizationService;
 use App\Fiscal\Service\FiscalConfigurationService;
 use App\Fiscal\Service\FiscalDocumentPrintService;
 use App\Fiscal\Service\FiscalDocumentService;
 use App\Fiscal\Service\FiscalDocumentXmlBuilder;
+use App\Fiscal\Service\FiscalInutilizationService;
+use App\Fiscal\Service\FiscalProductionGate;
 use App\Fiscal\Service\FiscalToolsFactory;
 use App\Fiscal\Service\FiscalRuntimeReadiness;
 use App\Fiscal\Service\FiscalSefazConnectionService;
@@ -30,6 +33,7 @@ trait FiscalApplicationServices
     private ?FiscalDocumentService $fiscalDocumentService = null;
     private ?FiscalDocumentPrintService $fiscalDocumentPrintService = null;
     private ?FiscalAuthorizationService $fiscalAuthorizationService = null;
+    private ?FiscalInutilizationService $fiscalInutilizationService = null;
     private ?NfseDocumentService $nfseDocumentService = null;
 
     public function fiscalConfiguration(): FiscalConfigurationService
@@ -129,6 +133,29 @@ trait FiscalApplicationServices
         }
 
         return $this->fiscalDocumentPrintService;
+    }
+
+    public function fiscalInutilization(): FiscalInutilizationService
+    {
+        if ($this->fiscalInutilizationService === null) {
+            $connection = $this->database->connection();
+            $projectRoot = (string) ($this->settings['project_root'] ?? dirname(__DIR__, 2));
+            $configurationRepository = new FiscalConfigurationRepository($connection);
+            $this->fiscalInutilizationService = new FiscalInutilizationService(
+                new FiscalInutilizationRepository($connection),
+                $configurationRepository,
+                new FiscalToolsFactory(
+                    $configurationRepository,
+                    FiscalSecretVault::fromEnvironment(),
+                    FiscalCertificateStorage::forProjectRoot($projectRoot),
+                    $this->fiscalRuntimeReadiness()
+                ),
+                FiscalDocumentStorage::forProjectRoot($projectRoot),
+                $this->fiscalRuntimeReadiness(),
+                new FiscalProductionGate($configurationRepository, $this->fiscalRuntimeReadiness())
+            );
+        }
+        return $this->fiscalInutilizationService;
     }
 
     public function nfseDocuments(): NfseDocumentService

@@ -164,7 +164,7 @@ final class MigrationRunner
 
     public static function supportsVersion(int $version): bool
     {
-        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27], true);
+        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28], true);
     }
 
     private function acquireLock(string $name, int $waitSeconds): bool
@@ -471,6 +471,24 @@ final class MigrationRunner
                     ['documentos_fiscais', 'uq_documento_fiscal_origem_normal'],
                     ['documentos_fiscais', 'uq_documento_fiscal_chave'],
                     ['documentos_fiscais', 'idx_documento_fiscal_reconsulta'],
+                ]),
+            28 => $this->allColumns('servicos_semanais', [
+                    'codigo', 'cliente_id', 'servico_id', 'prioridade', 'local_servico',
+                    'agendado_inicio', 'agendado_fim', 'funcionario_principal_id',
+                    'funcionario_apoio_id', 'observacao', 'status', 'ordem_servico_id',
+                    'confirmado_em', 'confirmado_por', 'cancelado_em', 'cancelado_por',
+                    'motivo_cancelamento', 'criado_por',
+                ])
+                && $this->allIndexes([
+                    ['servicos_semanais', 'uq_servicos_semanais_codigo'],
+                    ['servicos_semanais', 'uq_servicos_semanais_ordem'],
+                    ['servicos_semanais', 'idx_servicos_semanais_status_data'],
+                ])
+                && $this->allForeignKeys([
+                    'fk_servico_semanal_cliente', 'fk_servico_semanal_catalogo',
+                    'fk_servico_semanal_principal', 'fk_servico_semanal_apoio',
+                    'fk_servico_semanal_ordem', 'fk_servico_semanal_criado_usuario',
+                    'fk_servico_semanal_confirmado_usuario', 'fk_servico_semanal_cancelado_usuario',
                 ]),
             default => null,
         };

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Fiscal\Service\FiscalSafeLogger;
+
 require __DIR__ . '/os-action-common.php';
 
 os_require_post_request();
@@ -57,109 +59,17 @@ try {
 } catch (
     InvalidArgumentException $exception
 ) {
-    $logDirectory =
-        dirname(__DIR__)
-        . '/storage/logs';
-
-    if (!is_dir($logDirectory)) {
-        @mkdir(
-            $logDirectory,
-            0755,
-            true
-        );
-    }
-
-    $logFile =
-        $logDirectory
-        . '/fiscal-emission.log';
-
-    $logMessage = sprintf(
-        "[%s]\n"
-            . "ETAPA: VALIDACAO/PREPARACAO XML\n"
-            . "Classe: %s\n"
-            . "Mensagem: %s\n"
-            . "Arquivo: %s\n"
-            . "Linha: %d\n"
-            . "%s\n",
-
-        date('Y-m-d H:i:s'),
-        get_class($exception),
-        $exception->getMessage(),
-        $exception->getFile(),
-        $exception->getLine(),
-        str_repeat('-', 80)
-    );
-
-    @file_put_contents(
-        $logFile,
-        $logMessage,
-        FILE_APPEND | LOCK_EX
-    );
-
     $session->flash(
         'danger',
         $exception->getMessage()
     );
 } catch (Throwable $exception) {
-    /*
-     * Log técnico específico da transmissão fiscal.
-     */
-    $logDirectory =
-        dirname(__DIR__)
-        . '/storage/logs';
-
-    if (!is_dir($logDirectory)) {
-        @mkdir(
-            $logDirectory,
-            0755,
-            true
-        );
-    }
-
-    $logFile =
-        $logDirectory
-        . '/fiscal-emission.log';
-
-    $logMessage = sprintf(
-        "[%s]\n"
-            . "ETAPA: TRANSMISSAO\n"
-            . "Classe: %s\n"
-            . "Mensagem: %s\n"
-            . "Arquivo: %s\n"
-            . "Linha: %d\n"
-            . "Trace:\n%s\n"
-            . "%s\n",
-
-        date('Y-m-d H:i:s'),
-
-        get_class(
-            $exception
-        ),
-
-        $exception->getMessage(),
-
-        $exception->getFile(),
-
-        $exception->getLine(),
-
-        $exception->getTraceAsString(),
-
-        str_repeat(
-            '-',
-            80
-        )
-    );
-
-    @file_put_contents(
-        $logFile,
-        $logMessage,
-        FILE_APPEND | LOCK_EX
-    );
+    $correlationId = FiscalSafeLogger::record($exception, 'transmit');
 
     $session->flash(
         'danger',
         'Não foi possível transmitir o documento fiscal. '
-            . 'O erro técnico foi registrado para análise.'
+            . 'Referência: ' . $correlationId . '.'
     );
 }
 

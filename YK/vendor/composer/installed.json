@@ -316,17 +316,17 @@
         },
         {
             "name": "nfephp-org/sped-nfe",
-            "version": "v5.2.6",
-            "version_normalized": "5.2.6.0",
+            "version": "v5.2.8",
+            "version_normalized": "5.2.8.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/nfephp-org/sped-nfe.git",
-                "reference": "b77e4fc93d24b64c83738130ce4ff74a3f57180d"
+                "reference": "759fb2365e3c20141e9e445592893a01afa638a5"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/nfephp-org/sped-nfe/zipball/b77e4fc93d24b64c83738130ce4ff74a3f57180d",
-                "reference": "b77e4fc93d24b64c83738130ce4ff74a3f57180d",
+                "url": "https://api.github.com/repos/nfephp-org/sped-nfe/zipball/759fb2365e3c20141e9e445592893a01afa638a5",
+                "reference": "759fb2365e3c20141e9e445592893a01afa638a5",
                 "shasum": ""
             },
             "require": {
@@ -348,7 +348,7 @@
                 "phpunit/phpunit": "^9.3",
                 "squizlabs/php_codesniffer": "^3.6"
             },
-            "time": "2026-06-15T12:51:07+00:00",
+            "time": "2026-07-27T19:27:25+00:00",
             "type": "library",
             "extra": {
                 "branch-alias": {
@@ -395,7 +395,7 @@
             ],
             "support": {
                 "issues": "https://github.com/nfephp-org/sped-nfe/issues",
-                "source": "https://github.com/nfephp-org/sped-nfe/tree/v5.2.6"
+                "source": "https://github.com/nfephp-org/sped-nfe/tree/v5.2.8"
             },
             "install-path": "../nfephp-org/sped-nfe"
         },

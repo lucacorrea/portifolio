@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Catalog\DTO;
 
+use App\Fiscal\Tax\GtinValidator;
 use InvalidArgumentException;
 
 final class ProductFormData
@@ -490,12 +491,9 @@ final class ProductFormData
             return null;
         }
 
-        if (
-            preg_match('/^\d{1,14}$/', $value)
-            !== 1
-        ) {
+        if (!GtinValidator::isValid($value)) {
             throw new InvalidArgumentException(
-                'GTIN tributável inválido.'
+                'GTIN tributável inválido. Informe um GTIN-8, 12, 13 ou 14 com dígito verificador válido.'
             );
         }
 

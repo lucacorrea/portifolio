@@ -18,7 +18,7 @@ function fiscalRuntimeAssert(bool $condition, string $message): void
 $required = [
     'openssl' => true, 'curl' => true, 'dom' => true,
     'simplexml' => true, 'soap' => true, 'mbstring' => true,
-    'zlib' => true, 'gd' => true, 'nfephp' => true, 'sped_da' => true,
+    'zlib' => true, 'gd' => true, 'nfephp' => true, 'nfephp_release' => true, 'sped_da' => true,
 ];
 $ready = (new FiscalRuntimeReadiness($required, true, false, true))->inspect();
 fiscalRuntimeAssert($ready['homologation_ready'], 'Todos os requisitos devem liberar a homologação.');
@@ -37,6 +37,20 @@ $missingMbstring = $required;
 $missingMbstring['mbstring'] = false;
 $blocked = (new FiscalRuntimeReadiness($missingMbstring, true, true, true))->inspect();
 fiscalRuntimeAssert(!$blocked['homologation_ready'], 'Mbstring ausente deve bloquear a comunicação fiscal.');
+
+$actualRuntime = FiscalRuntimeReadiness::fromRuntime(true, true)->inspect();
+$actualChecks = [];
+foreach ($actualRuntime['checks'] as $check) {
+    $actualChecks[$check['key']] = $check['ok'];
+}
+fiscalRuntimeAssert(
+    ($actualChecks['curl'] ?? null) === extension_loaded('curl'),
+    'O readiness real deve refletir a extensão cURL carregada.'
+);
+fiscalRuntimeAssert(
+    ($actualChecks['soap'] ?? null) === class_exists('SoapClient'),
+    'O readiness real deve refletir a extensão SOAP carregada.'
+);
 
 $connectionReflection = new ReflectionClass(FiscalSefazConnectionService::class);
 $connection = $connectionReflection->newInstanceWithoutConstructor();

@@ -96,8 +96,8 @@ fiscalBuilderAssert($partialDom->loadXML($partial['xml'], LIBXML_NONET), 'NFC-e 
 fiscalBuilderAssert($partialDom->getElementsByTagName('mod')->item(0)?->nodeValue === '65', 'Modelo NFC-e ausente.');
 fiscalBuilderAssert($partialDom->getElementsByTagName('tPag')->item(0)?->nodeValue === '01', 'Parcela efetivamente recebida deve constar na NFC-e.');
 fiscalBuilderAssert($partialDom->getElementsByTagName('vPag')->item(0)?->nodeValue === '50.00', 'Valor parcial recebido incorreto.');
-fiscalBuilderAssert($partialDom->getElementsByTagName('tPag')->item(1)?->nodeValue === '90', 'Saldo ainda não recebido deve permanecer sem pagamento.');
-fiscalBuilderAssert($partialDom->getElementsByTagName('vPag')->item(1)?->nodeValue === '0.00', 'Saldo pendente não pode ser inventado como pagamento.');
+fiscalBuilderAssert($partialDom->getElementsByTagName('tPag')->item(1)?->nodeValue === '91', 'Saldo a prazo deve usar pagamento posterior.');
+fiscalBuilderAssert($partialDom->getElementsByTagName('vPag')->item(1)?->nodeValue === '50.00', 'Pagamento posterior deve completar o valor da operação.');
 $opensslOptions = [
     'config'=>dirname(PHP_BINARY) . '/extras/ssl/openssl.cnf',
     'private_key_bits'=>2048,

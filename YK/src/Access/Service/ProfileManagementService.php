@@ -71,7 +71,7 @@ final class ProfileManagementService
         }
 
         $permissionIds = $profile->isProtected()
-            ? $this->permissions->findActiveIds()
+            ? $this->permissions->findProtectedProfileIds()
             : $this->profilePermissions->findPermissionIdsByProfile($profileId);
 
         return new ProfileDetails(
@@ -98,7 +98,7 @@ final class ProfileManagementService
         $profile = $this->requireProfile($profileId);
 
         return $profile->isProtected()
-            ? $this->permissions->findActiveIds()
+            ? $this->permissions->findProtectedProfileIds()
             : $this->profilePermissions->findPermissionIdsByProfile($profileId);
     }
 
@@ -209,7 +209,7 @@ final class ProfileManagementService
             ));
 
             $permissionIds = $sourceProfile->isProtected()
-                ? $this->permissions->findActiveIds()
+                ? $this->permissions->findProtectedProfileIds()
                 : $this->normalizePermissionSelection($this->profilePermissions->findPermissionIdsByProfile($sourceId));
 
             $this->profilePermissions->sync($profileId, $permissionIds);
@@ -360,10 +360,10 @@ final class ProfileManagementService
             return;
         }
 
-        $activeIds = $this->permissions->findActiveIds();
+        $activeIds = $this->permissions->findProtectedProfileIds();
         $this->withinTransaction(function () use ($profileId, $activeIds): void {
             $this->lockProfile($profileId);
-            $this->profilePermissions->insertIgnoreMany($profileId, $activeIds);
+            $this->profilePermissions->sync($profileId, $activeIds);
         });
     }
 

@@ -49,10 +49,23 @@ final class FiscalConfigurationRepository
     }
 
     /** @return array<string,mixed>|null */
+    public function activeConfiguration(string $environment, string $model): ?array
+    {
+        $statement = $this->connection->prepare(
+            $this->configurationSql()
+                . ' WHERE cfg.ambiente = :environment AND cfg.modelo = :model AND cfg.status = \'ativa\''
+                . ' ORDER BY cfg.versao DESC LIMIT 1'
+        );
+        $statement->execute(['environment' => $environment, 'model' => $model]);
+        $row = $statement->fetch();
+        return $row === false ? null : $row;
+    }
+
+    /** @return array<string,mixed>|null */
     public function connectionProfile(int $configurationId): ?array
     {
         $statement = $this->connection->prepare(
-                'SELECT cfg.id, cfg.ambiente, cfg.modelo, cfg.uf, cfg.schema_versao, cfg.qr_code_versao,
+                'SELECT cfg.id, cfg.ambiente, cfg.modelo, cfg.uf, cfg.schema_versao, cfg.qr_code_versao, cfg.status,
                     cfg.csc_id, cfg.csc_ciphertext, cfg.csc_nonce, cfg.csc_tag,
                     cfg.csc_algoritmo, cfg.segredo_chave_versao AS csc_chave_versao,
                     cert.arquivo_referencia, cert.titular_cnpj, cert.valido_ate,
@@ -101,6 +114,43 @@ final class FiscalConfigurationRepository
     public function hasSuccessfulIntegrationTest(int $configurationId): bool
     {
         return ($this->latestIntegrationTest($configurationId)['success'] ?? false) === true;
+    }
+
+    public function hasAuthorizedHomologation(string $model): bool
+    {
+        $statement = $this->connection->prepare(
+            'SELECT 1 FROM documentos_fiscais
+              WHERE ambiente = \'homologacao\' AND modelo = :model
+                AND processamento_status = \'autorizado\'
+                AND chave REGEXP \'^[0-9]{44}$\' AND protocolo IS NOT NULL
+              LIMIT 1'
+        );
+        $statement->execute(['model' => $model]);
+        return $statement->fetchColumn() !== false;
+    }
+
+    public function hasProductionSchema(): bool
+    {
+        $tables = $this->connection->prepare(
+            'SELECT COUNT(DISTINCT table_name)
+               FROM information_schema.tables
+              WHERE table_schema = DATABASE()
+                AND table_name IN (
+                    \'fiscal_ibs_cbs_classificacoes\',\'fiscal_documento_tentativas\',
+                    \'fiscal_pagamento_alocacoes\',\'fiscal_inutilizacoes\'
+                )'
+        );
+        $tables->execute();
+        if ((int) $tables->fetchColumn() !== 4) {
+            return false;
+        }
+        $column = $this->connection->prepare(
+            'SELECT 1 FROM information_schema.columns
+              WHERE table_schema = DATABASE() AND table_name = \'documentos_fiscais\'
+                AND column_name = \'cancelamento_status\' LIMIT 1'
+        );
+        $column->execute();
+        return $column->fetchColumn() !== false;
     }
 
     public function recordIntegrationTest(
@@ -293,6 +343,17 @@ final class FiscalConfigurationRepository
                 $data,
                 $userId
             ): void {
+                $this->connection->prepare(
+                    'UPDATE fiscal_series
+                        SET status = \'inativa\', atualizado_por = :user_id
+                      WHERE ambiente = :environment AND modelo = :model
+                        AND serie <> :series AND status = \'ativa\''
+                )->execute([
+                    'user_id' => $userId,
+                    'environment' => $data['environment'],
+                    'model' => $data['model'],
+                    'series' => $data['series'],
+                ]);
                 $statement =
                     $this->connection->prepare(
                         'INSERT INTO fiscal_series

@@ -73,26 +73,15 @@ financialFlowAssertSame('boleto', $receiptForm->invoke($receipt, 'boleto'), 'Rec
 financialFlowAssertThrows(static fn() => $receiptMoney->invoke($receipt, '0'), 'Recibo de valor zero deve ser rejeitado.');
 financialFlowAssertThrows(static fn() => $receiptForm->invoke($receipt, 'cripto'), 'Forma desconhecida deve ser rejeitada.');
 
-$finalizationReflection = new ReflectionClass(ServiceOrderFinalizationService::class);
-$finalization = $finalizationReflection->newInstanceWithoutConstructor();
-$executionItems = $finalizationReflection->getMethod('executionItems');
-$executionItems->setAccessible(true);
-$items = $executionItems->invoke($finalization, [
-    'execution_items' => [[
-        'type' => 'servico',
-        'description' => 'Manutenção preventiva',
-        'quantity' => '2',
-        'unit_price' => '150,00',
-        'discount' => '10,00',
-    ]],
-]);
-financialFlowAssertSame('servico', $items[0]['type'], 'Finalização deve aceitar item de serviço válido.');
-financialFlowAssertSame(150.0, $items[0]['unit_price'], 'Valor executado deve ser normalizado no servidor.');
-financialFlowAssertThrows(
-    static fn() => $executionItems->invoke($finalization, ['execution_items' => [[
-        'type' => 'invalido', 'description' => 'Item', 'quantity' => '1', 'unit_price' => '10',
-    ]]]),
-    'Tipo de execução inválido deve ser rejeitado.'
+$finalizationSource = file_get_contents(dirname(__DIR__) . '/src/ServiceOrder/Service/ServiceOrderFinalizationService.php');
+financialFlowAssert(is_string($finalizationSource), 'Serviço de finalização deve ser legível.');
+financialFlowAssert(
+    str_contains($finalizationSource, 'persistedExecutionItems($orderId)'),
+    'Finalização deve carregar exclusivamente os itens persistidos da OS.'
+);
+financialFlowAssert(
+    !str_contains($finalizationSource, "\$data['execution_items']"),
+    'Finalização não pode confiar em itens e valores enviados pelo navegador.'
 );
 
 $finalizationAction = file_get_contents(dirname(__DIR__) . '/actions/os-finalizar.php');
