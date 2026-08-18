@@ -2,122 +2,122 @@
 
 declare(strict_types=1);
 
+require_once dirname(__DIR__) . '/lib/repository.php';
+
 $pageDefinition = [
-    'title' => 'Novo candidato',
-    'description' => 'Cadastro visual em nove etapas independentes, sem envio ou persistência de dados.',
-    'actions' => [['label' => 'Salvar rascunho', 'icon' => 'floppy']],
-    'states' => ['loading', 'error', 'success', 'blocked'],
-    'modal' => ['title' => 'Revisão do cadastro'],
+    'title' => 'Triagem social',
+    'description' => 'Ficha de cadastro do Programa Meu Primeiro Emprego, conforme o formulário utilizado pela Assistência Social.',
+    'actions' => [],
+    'states' => ['success', 'error'],
+    'modal' => ['title' => 'Cadastro'],
 ];
+
+$message = null;
+$dbReady = pe_db_ready();
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pe_action']) && $_POST['pe_action'] === 'save_triage') {
+    try {
+        pe_verify_csrf();
+        $id = pe_save_triage(pe_db(), $_POST);
+        $message = ['type' => 'success', 'text' => 'Triagem cadastrada com sucesso. Registro #' . $id . '.'];
+        $_POST = [];
+    } catch (Throwable $e) {
+        $message = ['type' => 'danger', 'text' => $e->getMessage()];
+    }
+}
 
 ob_start();
 ?>
-<section class="content-card pe-wizard-card" data-pe-wizard>
-    <div class="pe-wizard-heading">
+<section class="content-card pe-form-card">
+    <?php if (!$dbReady): ?><?= pe_db_notice() ?><?php endif; ?>
+    <?php if ($message): ?><div class="alert alert-<?= pe_h($message['type']) ?>"><?= pe_h($message['text']) ?></div><?php endif; ?>
+
+    <div class="pe-form-header">
         <div>
-            <div class="card-kicker">Cadastro demonstrativo</div>
-            <h2>Nove etapas do candidato</h2>
-            <p>Preencha cada painel para avançar. Nada será enviado ao servidor.</p>
+            <div class="card-kicker">Meu Primeiro Emprego</div>
+            <h2>Ficha de Triagem Social</h2>
+            <p>Os dados desta ficha alimentam automaticamente a visita social, a ficha cadastral e os relatórios.</p>
         </div>
-        <strong data-pe-progress-text>Etapa 1 de 9</strong>
+        <button type="button" class="btn btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir ficha</button>
     </div>
-    <div class="progress pe-wizard-progress" role="progressbar" aria-label="Progresso do cadastro" aria-valuemin="1" aria-valuemax="9" aria-valuenow="1">
-        <div class="progress-bar" data-pe-progress style="width:11.11%"></div>
-    </div>
-    <ol class="pe-wizard-steps" aria-label="Etapas do cadastro">
-        <?php foreach (['Identificação', 'Contato', 'Endereço', 'Escolaridade', 'Experiência', 'Áreas de interesse', 'Disponibilidade', 'Documentos', 'Revisão'] as $index => $step): ?>
-            <li><button type="button" data-pe-step-indicator="<?= $index ?>"<?= $index === 0 ? ' aria-current="step"' : '' ?>><span><?= $index + 1 ?></span><?= sigas_frontend_escape($step) ?></button></li>
-        <?php endforeach; ?>
-    </ol>
-    <form data-pe-wizard-form novalidate>
-        <section data-pe-step>
-            <h3 tabindex="-1">1. Identificação</h3>
-            <p>Dados básicos do perfil demonstrativo.</p>
+
+    <form method="post" class="pe-real-form" autocomplete="off" novalidate>
+        <?= pe_csrf_field() ?>
+        <input type="hidden" name="pe_action" value="save_triage">
+
+        <fieldset <?= !$dbReady ? 'disabled' : '' ?>>
+            <div class="pe-section-title"><span>1</span><div><strong>Dados de identificação</strong><small>Dados pessoais e da entrevista.</small></div></div>
             <div class="row g-3">
-                <div class="col-md-7"><label class="form-label required" for="candidateName">Nome completo</label><input class="form-control" id="candidateName" name="candidate_name" autocomplete="name" required maxlength="120"></div>
-                <div class="col-md-5"><label class="form-label required" for="candidateBirth">Data de nascimento</label><input class="form-control" id="candidateBirth" name="candidate_birth" type="date" autocomplete="bday" required></div>
-                <div class="col-md-6"><label class="form-label required" for="candidateCpf">CPF</label><input class="form-control" id="candidateCpf" name="candidate_cpf" inputmode="numeric" placeholder="000.000.000-00" required pattern="[0-9.\\-]{11,14}"></div>
-                <div class="col-md-6"><label class="form-label" for="candidateSocialName">Nome social</label><input class="form-control" id="candidateSocialName" name="candidate_social_name" maxlength="120"></div>
+                <div class="col-md-3"><label class="form-label required">Data da entrevista</label><input class="form-control" type="date" name="data_entrevista" value="<?= pe_h($_POST['data_entrevista'] ?? date('Y-m-d')) ?>" required></div>
+                <div class="col-md-9"><label class="form-label required">Nome completo do(a) beneficiário(a)</label><input class="form-control" name="nome" maxlength="160" value="<?= pe_h($_POST['nome'] ?? '') ?>" required></div>
+                <div class="col-md-3"><label class="form-label">Sexo</label><select class="form-select" name="sexo"><option value="">Selecione</option><?php foreach (['Feminino','Masculino','Outro/Não informar'] as $v): ?><option<?= (($_POST['sexo'] ?? '') === $v) ? ' selected' : '' ?>><?= pe_h($v) ?></option><?php endforeach; ?></select></div>
+                <div class="col-md-3"><label class="form-label required">Data de nascimento</label><input class="form-control" type="date" name="data_nascimento" value="<?= pe_h($_POST['data_nascimento'] ?? '') ?>" required></div>
+                <div class="col-md-3"><label class="form-label">RG</label><input class="form-control" name="rg" maxlength="40" value="<?= pe_h($_POST['rg'] ?? '') ?>"></div>
+                <div class="col-md-3"><label class="form-label">CPF</label><input class="form-control" name="cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" value="<?= pe_h($_POST['cpf'] ?? '') ?>"></div>
+                <div class="col-md-3"><label class="form-label">Estado civil</label><input class="form-control" name="estado_civil" maxlength="40" value="<?= pe_h($_POST['estado_civil'] ?? '') ?>"></div>
+                <div class="col-md-3"><label class="form-label">NIS/CadÚnico</label><input class="form-control" name="nis" maxlength="32" value="<?= pe_h($_POST['nis'] ?? '') ?>"></div>
+                <div class="col-md-6"><label class="form-label">Se declara</label><div class="pe-inline-options"><?php foreach (['Branca','Indígena','Preta','Parda','Amarela'] as $v): ?><label><input type="radio" name="cor_raca" value="<?= pe_h($v) ?>"<?= (($_POST['cor_raca'] ?? '') === $v) ? ' checked' : '' ?>> <?= pe_h($v) ?></label><?php endforeach; ?></div></div>
             </div>
-        </section>
-        <section data-pe-step hidden>
-            <h3 tabindex="-1">2. Contato</h3>
-            <p>Formas de contato preferenciais.</p>
+
+            <div class="pe-section-title"><span>2</span><div><strong>Endereço e contato</strong><small>Localização do candidato e canais de contato.</small></div></div>
             <div class="row g-3">
-                <div class="col-md-6"><label class="form-label required" for="candidatePhone">Telefone</label><input class="form-control" id="candidatePhone" name="candidate_phone" type="tel" autocomplete="tel" required maxlength="20"></div>
-                <div class="col-md-6"><label class="form-label" for="candidateEmail">E-mail</label><input class="form-control" id="candidateEmail" name="candidate_email" type="email" autocomplete="email" maxlength="160"></div>
-                <div class="col-12"><label class="form-label" for="preferredContact">Contato preferencial</label><select class="form-select" id="preferredContact" name="preferred_contact"><option>Telefone</option><option>Mensagem</option><option>E-mail</option></select></div>
+                <div class="col-md-8"><label class="form-label">Rua</label><input class="form-control" name="rua" maxlength="180" value="<?= pe_h($_POST['rua'] ?? '') ?>"></div>
+                <div class="col-md-4"><label class="form-label">Bairro</label><input class="form-control" name="bairro" maxlength="100" value="<?= pe_h($_POST['bairro'] ?? '') ?>"></div>
+                <div class="col-md-8"><label class="form-label">Ponto de referência</label><input class="form-control" name="ponto_referencia" maxlength="180" value="<?= pe_h($_POST['ponto_referencia'] ?? '') ?>"></div>
+                <div class="col-md-2"><label class="form-label">Município</label><input class="form-control" name="municipio" maxlength="100" value="<?= pe_h($_POST['municipio'] ?? 'Coari') ?>"></div>
+                <div class="col-md-2"><label class="form-label">CEP</label><input class="form-control" name="cep" inputmode="numeric" maxlength="9" value="<?= pe_h($_POST['cep'] ?? '') ?>"></div>
+                <div class="col-md-3"><label class="form-label">Contato</label><input class="form-control" name="telefone" inputmode="tel" maxlength="16" value="<?= pe_h($_POST['telefone'] ?? '') ?>"></div>
+                <div class="col-md-3"><label class="form-label">WhatsApp</label><input class="form-control" name="whatsapp" inputmode="tel" maxlength="16" value="<?= pe_h($_POST['whatsapp'] ?? '') ?>"></div>
+                <div class="col-md-6"><label class="form-label">E-mail</label><input class="form-control" type="email" name="email" maxlength="160" value="<?= pe_h($_POST['email'] ?? '') ?>"></div>
             </div>
-        </section>
-        <section data-pe-step hidden>
-            <h3 tabindex="-1">3. Endereço</h3>
-            <p>Referência territorial do candidato.</p>
+
+            <div class="pe-section-title"><span>3</span><div><strong>Informações familiares</strong><small>Composição e renda familiar.</small></div></div>
             <div class="row g-3">
-                <div class="col-md-8"><label class="form-label required" for="candidateAddress">Endereço</label><input class="form-control" id="candidateAddress" name="candidate_address" autocomplete="street-address" required maxlength="180"></div>
-                <div class="col-md-4"><label class="form-label required" for="candidateNeighborhood">Bairro</label><input class="form-control" id="candidateNeighborhood" name="candidate_neighborhood" required maxlength="80"></div>
-                <div class="col-md-4"><label class="form-label" for="candidateZone">Zona</label><select class="form-select" id="candidateZone" name="candidate_zone"><option>Urbana</option><option>Rural</option></select></div>
-                <div class="col-md-8"><label class="form-label" for="candidateReference">Ponto de referência</label><input class="form-control" id="candidateReference" name="candidate_reference" maxlength="140"></div>
+                <div class="col-md-6"><label class="form-label">Nome do responsável familiar</label><input class="form-control" name="responsavel_familiar" maxlength="160" value="<?= pe_h($_POST['responsavel_familiar'] ?? '') ?>"></div>
+                <div class="col-md-2"><label class="form-label">Membros da família</label><input class="form-control" type="number" min="0" max="99" name="total_membros_familia" value="<?= pe_h($_POST['total_membros_familia'] ?? '') ?>"></div>
+                <div class="col-md-4"><label class="form-label">Atividade dos pais/responsáveis</label><input class="form-control" name="atividade_responsaveis" maxlength="220" value="<?= pe_h($_POST['atividade_responsaveis'] ?? '') ?>"></div>
+                <div class="col-md-4"><label class="form-label">Renda familiar mensal (R$)</label><input class="form-control" name="renda_familiar_mensal" inputmode="decimal" placeholder="0,00" value="<?= pe_h($_POST['renda_familiar_mensal'] ?? '') ?>"></div>
             </div>
-        </section>
-        <section data-pe-step hidden>
-            <h3 tabindex="-1">4. Escolaridade</h3>
-            <p>Situação educacional atual.</p>
+
+            <div class="pe-section-title"><span>4</span><div><strong>Escolaridade</strong><small>Situação escolar atual.</small></div></div>
             <div class="row g-3">
-                <div class="col-md-6"><label class="form-label required" for="candidateEducation">Escolaridade</label><select class="form-select" id="candidateEducation" name="candidate_education" required><option value="">Selecione</option><option>Ensino fundamental</option><option>Ensino médio</option><option>Superior incompleto</option><option>Superior completo</option></select></div>
-                <div class="col-md-6"><label class="form-label" for="candidateSchool">Instituição de ensino</label><input class="form-control" id="candidateSchool" name="candidate_school" maxlength="140"></div>
-                <div class="col-md-6"><label class="form-label" for="candidateCourse">Curso</label><input class="form-control" id="candidateCourse" name="candidate_course" maxlength="100"></div>
-                <div class="col-md-6"><label class="form-label" for="candidateStudyShift">Turno</label><select class="form-select" id="candidateStudyShift" name="candidate_study_shift"><option>Não se aplica</option><option>Manhã</option><option>Tarde</option><option>Noite</option></select></div>
+                <div class="col-md-3"><label class="form-label">Matriculado e frequentando?</label><select class="form-select" name="matriculado"><option value="">Selecione</option><option<?= (($_POST['matriculado'] ?? '') === 'Sim') ? ' selected' : '' ?>>Sim</option><option<?= (($_POST['matriculado'] ?? '') === 'Não') ? ' selected' : '' ?>>Não</option></select></div>
+                <div class="col-md-5"><label class="form-label">Nome da unidade de ensino</label><input class="form-control" name="instituicao_ensino" maxlength="180" value="<?= pe_h($_POST['instituicao_ensino'] ?? '') ?>"></div>
+                <div class="col-md-4"><label class="form-label">Escolaridade</label><select class="form-select" name="escolaridade"><option value="">Selecione</option><?php foreach (['Ensino Fundamental Incompleto','Ensino Fundamental Completo','Ensino Médio Incompleto','Ensino Médio Completo','Ensino Superior Incompleto','Ensino Superior Completo'] as $v): ?><option<?= (($_POST['escolaridade'] ?? '') === $v) ? ' selected' : '' ?>><?= pe_h($v) ?></option><?php endforeach; ?></select></div>
+                <div class="col-md-3"><label class="form-label">Situação escolar</label><select class="form-select" name="situacao_escolar"><option value="">Selecione</option><option>Cursando</option><option>Concluído</option></select></div>
+                <div class="col-md-3"><label class="form-label">Turno de estudo</label><select class="form-select" name="turno_estudo"><option value="">Selecione</option><option>Matutino</option><option>Vespertino</option><option>Noturno</option><option>Integral</option></select></div>
             </div>
-        </section>
-        <section data-pe-step hidden>
-            <h3 tabindex="-1">5. Experiência</h3>
-            <p>Vivências profissionais e competências.</p>
+
+            <div class="pe-section-title"><span>5</span><div><strong>Situação habitacional</strong><small>Características básicas da moradia.</small></div></div>
             <div class="row g-3">
-                <div class="col-md-5"><label class="form-label required" for="candidateExperience">Experiência anterior</label><select class="form-select" id="candidateExperience" name="candidate_experience" required><option value="">Selecione</option><option>Sem experiência</option><option>Até 1 ano</option><option>Mais de 1 ano</option></select></div>
-                <div class="col-md-7"><label class="form-label" for="candidateLastRole">Última função</label><input class="form-control" id="candidateLastRole" name="candidate_last_role" maxlength="100"></div>
-                <div class="col-12"><label class="form-label" for="candidateSkills">Competências e atividades realizadas</label><textarea class="form-control" id="candidateSkills" name="candidate_skills" rows="3" maxlength="500"></textarea></div>
+                <div class="col-md-4"><label class="form-label">Situação</label><select class="form-select" name="situacao_habitacional"><option value="">Selecione</option><option>Casa própria</option><option>Área de risco</option><option>Alugada</option><option>Ocupação / invasão</option></select></div>
+                <div class="col-md-4"><label class="form-label">Condições da moradia</label><select class="form-select" name="condicao_moradia"><option value="">Selecione</option><option>Alvenaria</option><option>Madeira</option><option>Mista</option><option>Precária</option></select></div>
+                <div class="col-md-2"><label class="form-label">Nº de cômodos</label><input class="form-control" type="number" min="0" max="99" name="numero_comodos" value="<?= pe_h($_POST['numero_comodos'] ?? '') ?>"></div>
+                <div class="col-md-2"><label class="form-label">Água tratada</label><select class="form-select" name="agua_tratada"><option value="">-</option><option>Sim</option><option>Não</option></select></div>
+                <div class="col-md-2"><label class="form-label">Energia elétrica</label><select class="form-select" name="energia_eletrica"><option value="">-</option><option>Sim</option><option>Não</option></select></div>
+                <div class="col-md-2"><label class="form-label">Coleta de lixo</label><select class="form-select" name="coleta_lixo"><option value="">-</option><option>Sim</option><option>Não</option></select></div>
             </div>
-        </section>
-        <section data-pe-step hidden>
-            <h3 tabindex="-1">6. Áreas de interesse</h3>
-            <p>Selecione ao menos uma área profissional.</p>
-            <fieldset class="pe-choice-grid">
-                <legend class="visually-hidden">Áreas profissionais</legend>
-                <?php foreach (['Administrativo', 'Comércio', 'Serviços', 'Tecnologia', 'Atendimento', 'Logística'] as $index => $area): ?>
-                    <label><input class="form-check-input" type="checkbox" name="candidate_areas[]" value="<?= sigas_frontend_escape($area) ?>" data-pe-area><span><?= sigas_frontend_escape($area) ?></span></label>
-                <?php endforeach; ?>
-            </fieldset>
-        </section>
-        <section data-pe-step hidden>
-            <h3 tabindex="-1">7. Disponibilidade</h3>
-            <p>Horários e condições para participação.</p>
-            <div class="row g-3">
-                <div class="col-md-6"><label class="form-label required" for="candidateAvailability">Disponibilidade</label><select class="form-select" id="candidateAvailability" name="candidate_availability" required><option value="">Selecione</option><option>Integral</option><option>Manhã</option><option>Tarde</option></select></div>
-                <div class="col-md-6"><label class="form-label required" for="candidateHours">Carga horária</label><select class="form-select" id="candidateHours" name="candidate_hours" required><option value="">Selecione</option><option>20 horas</option><option>30 horas</option><option>40 horas</option></select></div>
-                <div class="col-12"><label class="form-label" for="candidateRestriction">Restrições ou observações</label><textarea class="form-control" id="candidateRestriction" name="candidate_restriction" rows="3" maxlength="400"></textarea></div>
-            </div>
-        </section>
-        <section data-pe-step hidden>
-            <h3 tabindex="-1">8. Documentos</h3>
-            <p>Marque os documentos apresentados para conferência visual.</p>
-            <div class="pe-document-checklist">
-                <?php foreach (['Documento de identificação', 'CPF', 'Comprovante de residência', 'Comprovante de escolaridade', 'Currículo'] as $document): ?>
-                    <label class="form-check"><input class="form-check-input" type="checkbox" name="candidate_documents[]" value="<?= sigas_frontend_escape($document) ?>"><span class="form-check-label"><?= sigas_frontend_escape($document) ?></span></label>
+
+            <div class="pe-section-title"><span>6</span><div><strong>Vulnerabilidades sociais</strong><small>Assinale as situações que se aplicam.</small></div></div>
+            <div class="pe-choice-grid pe-choice-grid--2">
+                <?php $selectedV = isset($_POST['vulnerabilidades']) && is_array($_POST['vulnerabilidades']) ? $_POST['vulnerabilidades'] : []; foreach (['Renda inferior a 1/2 salário mínimo per capita','Desemprego prolongado','Trabalho informal ou precário','Moradia em área de risco','Situação de violência (doméstica, urbana, etc.)','Uso de substâncias químicas (álcool/drogas)','Presença de pessoa com deficiência'] as $v): ?>
+                    <label><input class="form-check-input" type="checkbox" name="vulnerabilidades[]" value="<?= pe_h($v) ?>"<?= in_array($v, $selectedV, true) ? ' checked' : '' ?>><span><?= pe_h($v) ?></span></label>
                 <?php endforeach; ?>
             </div>
-            <div class="frontend-demo-notice mt-3"><i class="bi bi-info-circle"></i><div><strong>Envio reservado para integração futura</strong><span>Nenhum arquivo é solicitado ou transmitido nesta etapa visual.</span></div></div>
-        </section>
-        <section data-pe-step hidden>
-            <h3 tabindex="-1">9. Revisão</h3>
-            <p>Confira o resumo antes da confirmação visual.</p>
-            <dl class="pe-review-grid" data-pe-review></dl>
-            <div class="frontend-demo-notice"><i class="bi bi-shield-check"></i><div><strong>Confirmação demonstrativa</strong><span>A finalização não cria cadastro nem altera dados.</span></div></div>
-        </section>
-        <div class="pe-wizard-actions">
-            <button class="btn btn-light" type="button" data-pe-prev disabled><i class="bi bi-arrow-left"></i>Anterior</button>
-            <button class="btn btn-outline-primary" type="button" data-pe-save-draft><i class="bi bi-floppy"></i>Salvar rascunho</button>
-            <button class="btn btn-primary" type="button" data-pe-next>Próximo<i class="bi bi-arrow-right"></i></button>
-        </div>
+            <div class="row g-3 mt-1">
+                <div class="col-md-8"><label class="form-label">Outro</label><input class="form-control" name="vulnerabilidade_outro" maxlength="220" value="<?= pe_h($_POST['vulnerabilidade_outro'] ?? '') ?>"></div>
+                <div class="col-md-4"><label class="form-label">Técnico responsável pela triagem</label><input class="form-control" name="tecnico_triagem" maxlength="160" value="<?= pe_h($_POST['tecnico_triagem'] ?? '') ?>"></div>
+            </div>
+
+            <div class="pe-declaration">
+                <strong>Declaração</strong>
+                <p>Declaro que as informações prestadas nesta ficha são verdadeiras e autorizo o uso dos dados para fins de inclusão no Programa Meu Primeiro Emprego, observadas as normas aplicáveis de proteção de dados.</p>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mt-4 pe-no-print">
+                <button class="btn btn-light" type="reset">Limpar</button>
+                <button class="btn btn-primary" type="submit"><i class="bi bi-check2-circle"></i> Salvar triagem</button>
+            </div>
+        </fieldset>
     </form>
 </section>
 <?php
