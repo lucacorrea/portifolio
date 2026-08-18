@@ -3,8 +3,12 @@
 declare(strict_types=1);
 
 $activePage = 'ordens';
+
 $pageTitle = 'Ordens de Serviço';
-$pageSubtitle = 'Controle dos atendimentos técnicos';
+
+$pageSubtitle =
+    'Controle dos atendimentos técnicos, itens executados '
+    . 'e documentos fiscais por natureza da operação';
 
 $primaryActionLabel = 'Nova OS';
 $primaryActionIcon = 'bi-plus-lg';
@@ -13,7 +17,8 @@ $primaryActionPermission = 'os.criar';
 
 $requiredPermission = 'os.visualizar';
 
-$pageContent = __DIR__ . '/pages/ordens-servico.php';
+$pageContent =
+    __DIR__ . '/pages/ordens-servico.php';
 
 $pageScripts = [
     'assets/js/ordens-servico.js',

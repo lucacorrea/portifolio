@@ -406,14 +406,48 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                     </thead>
                     <tbody>
                         <?php foreach ($orders as $order): ?>
-                            <?php $team = $teamsByOrder[$order->id()] ?? [];
+                            <?php
+                            $team = $teamsByOrder[$order->id()] ?? [];
                             $contactPhone = os_contact_phone($order);
                             $whatsappUrl = os_whatsapp_url($order);
                             $orderPayments = $paymentsByOrder[$order->id()] ?? [];
                             $receivable = $receivableBalances[$order->id()] ?? null;
                             $isOrderPaid = is_array($receivable) && (string) ($receivable['status'] ?? '') === 'paga';
+
+                            /*
+                             * Natureza fiscal da OS
+                             *
+                             * - produto  -> NF-e/NFC-e
+                             * - servico  -> NFS-e
+                             * - outro    -> não é fiscalizado automaticamente; precisa ser classificado
+                             *
+                             * Usamos os subtotais já materializados na própria OS para evitar
+                             * consultas N+1 ao banco apenas para decidir quais ações exibir.
+                             */
+                            $orderHasProducts = (float) $order->productsSubtotal() > 0.00001;
+                            $orderHasServices = (float) $order->servicesSubtotal() > 0.00001;
+                            $orderHasOthers = (float) $order->othersSubtotal() > 0.00001;
+
                             $orderFiscalDocuments = $fiscalDocumentsByOrder[$order->id()] ?? [];
-                            $orderFiscalModels = array_map(static fn(array $document): string => (string) $document['modelo'], $orderFiscalDocuments); ?>
+
+                            /*
+                             * Chave por modelo + ambiente.
+                             *
+                             * O código anterior olhava somente o ambiente. Isso podia fazer,
+                             * por exemplo, uma NFC-e em homologação esconder indevidamente
+                             * a opção de NF-e em homologação.
+                             */
+                            $orderFiscalDocumentKeys = [];
+
+                            foreach ($orderFiscalDocuments as $document) {
+                                $documentModel = (string) ($document['modelo'] ?? '');
+                                $documentEnvironment = (string) ($document['ambiente'] ?? '');
+
+                                if ($documentModel !== '' && $documentEnvironment !== '') {
+                                    $orderFiscalDocumentKeys[$documentModel . '|' . $documentEnvironment] = true;
+                                }
+                            }
+                            ?>
                             <tr>
                                 <td>
                                     <strong><?= h($order->displayNumber()) ?></strong>
@@ -456,20 +490,220 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                                                     <li><span class="dropdown-item-text text-muted"><i class="bi bi-file-earmark-lock"></i> Modelo <?= h((string) ($fiscalDocument['modelo'] ?? '')) ?>: <?= h((string) ($fiscalDocument['processamento_status'] ?? 'rascunho')) ?></span></li>
                                                 <?php endif; ?>
                                             <?php endforeach; ?>
-                                            <?php if ($canIssueFiscal && $order->status() === 'finalizada'): ?>
-                                                <?php $documentEnvironments = array_map(static fn(array $item): string => (string) ($item['ambiente'] ?? ''), $orderFiscalDocuments); ?>
-                                                <?php foreach (['55' => 'NF-e de peças', '65' => 'NFC-e de peças'] as $fiscalModel => $fiscalLabel): ?>
-                                                    <?php if (!in_array('homologacao', $documentEnvironments, true)): ?><li>
-                                                            <form method="post" action="actions/nota-fiscal-preparar.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="ordem_servico_id" value="<?= h((string) $order->id()) ?>"><input type="hidden" name="modelo" value="<?= h($fiscalModel) ?>"><input type="hidden" name="ambiente" value="homologacao"><input type="hidden" name="idempotency_key" value="<?= h(bin2hex(random_bytes(32))) ?>"><button class="dropdown-item" type="submit"><i class="bi bi-file-earmark-check"></i> Emitir <?= h($fiscalLabel) ?> em homologação</button></form>
-                                                        </li><?php endif; ?>
-                                                    <?php if ($fiscalProductionReady[$fiscalModel] && !in_array('producao', $documentEnvironments, true)): ?><li>
-                                                            <form method="post" action="actions/nota-fiscal-preparar.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="ordem_servico_id" value="<?= h((string) $order->id()) ?>"><input type="hidden" name="modelo" value="<?= h($fiscalModel) ?>"><input type="hidden" name="ambiente" value="producao"><input type="hidden" name="idempotency_key" value="<?= h(bin2hex(random_bytes(32))) ?>"><button class="dropdown-item text-danger" type="submit"><i class="bi bi-cloud-check"></i> Emitir <?= h($fiscalLabel) ?> em produção</button></form>
-                                                        </li><?php endif; ?>
-                                                <?php endforeach; ?>
+                                            <?php if ($order->status() === 'finalizada'): ?>
+
+                                                <?php if ($orderHasProducts): ?>
+
+                                                    <li>
+                                                        <h6 class="dropdown-header">
+                                                            <i class="bi bi-box-seam me-1"></i>
+                                                            Fiscal de produtos / peças
+                                                        </h6>
+                                                    </li>
+
+                                                    <?php if ($canIssueFiscal): ?>
+
+                                                        <?php foreach (['55' => 'NF-e de peças', '65' => 'NFC-e de peças'] as $fiscalModel => $fiscalLabel): ?>
+
+                                                            <?php
+                                                            $homologationKey = $fiscalModel . '|homologacao';
+                                                            $productionKey = $fiscalModel . '|producao';
+                                                            ?>
+
+                                                            <?php if (!isset($orderFiscalDocumentKeys[$homologationKey])): ?>
+                                                                <li>
+                                                                    <form
+                                                                        method="post"
+                                                                        action="actions/nota-fiscal-preparar.php"
+                                                                    >
+                                                                        <?= $csrf->field() ?>
+                                                                        <?php return_to_field(); ?>
+
+                                                                        <input
+                                                                            type="hidden"
+                                                                            name="ordem_servico_id"
+                                                                            value="<?= h((string) $order->id()) ?>"
+                                                                        >
+
+                                                                        <input
+                                                                            type="hidden"
+                                                                            name="modelo"
+                                                                            value="<?= h($fiscalModel) ?>"
+                                                                        >
+
+                                                                        <input
+                                                                            type="hidden"
+                                                                            name="ambiente"
+                                                                            value="homologacao"
+                                                                        >
+
+                                                                        <input
+                                                                            type="hidden"
+                                                                            name="idempotency_key"
+                                                                            value="<?= h(bin2hex(random_bytes(32))) ?>"
+                                                                        >
+
+                                                                        <button
+                                                                            class="dropdown-item"
+                                                                            type="submit"
+                                                                        >
+                                                                            <i class="bi bi-file-earmark-check"></i>
+                                                                            Emitir <?= h($fiscalLabel) ?> em homologação
+                                                                        </button>
+                                                                    </form>
+                                                                </li>
+                                                            <?php endif; ?>
+
+                                                            <?php if (
+                                                                $fiscalProductionReady[$fiscalModel]
+                                                                && !isset($orderFiscalDocumentKeys[$productionKey])
+                                                            ): ?>
+                                                                <li>
+                                                                    <form
+                                                                        method="post"
+                                                                        action="actions/nota-fiscal-preparar.php"
+                                                                    >
+                                                                        <?= $csrf->field() ?>
+                                                                        <?php return_to_field(); ?>
+
+                                                                        <input
+                                                                            type="hidden"
+                                                                            name="ordem_servico_id"
+                                                                            value="<?= h((string) $order->id()) ?>"
+                                                                        >
+
+                                                                        <input
+                                                                            type="hidden"
+                                                                            name="modelo"
+                                                                            value="<?= h($fiscalModel) ?>"
+                                                                        >
+
+                                                                        <input
+                                                                            type="hidden"
+                                                                            name="ambiente"
+                                                                            value="producao"
+                                                                        >
+
+                                                                        <input
+                                                                            type="hidden"
+                                                                            name="idempotency_key"
+                                                                            value="<?= h(bin2hex(random_bytes(32))) ?>"
+                                                                        >
+
+                                                                        <button
+                                                                            class="dropdown-item text-danger"
+                                                                            type="submit"
+                                                                        >
+                                                                            <i class="bi bi-cloud-check"></i>
+                                                                            Emitir <?= h($fiscalLabel) ?> em produção
+                                                                        </button>
+                                                                    </form>
+                                                                </li>
+                                                            <?php endif; ?>
+
+                                                        <?php endforeach; ?>
+
+                                                    <?php else: ?>
+
+                                                        <li>
+                                                            <span class="dropdown-item-text text-muted">
+                                                                <i class="bi bi-lock"></i>
+                                                                Sem permissão para emitir NF-e/NFC-e de peças.
+                                                            </span>
+                                                        </li>
+
+                                                    <?php endif; ?>
+
+                                                <?php elseif ($canIssueFiscal): ?>
+
+                                                    <li>
+                                                        <span
+                                                            class="dropdown-item-text text-muted"
+                                                            title="NF-e e NFC-e são destinadas aos itens classificados como produto/peça nesta OS."
+                                                        >
+                                                            <i class="bi bi-info-circle"></i>
+                                                            NF-e/NFC-e não se aplica: OS sem peças/produtos.
+                                                        </span>
+                                                    </li>
+
+                                                <?php endif; ?>
+
+
+                                                <?php if ($orderHasServices): ?>
+
+                                                    <li>
+                                                        <h6 class="dropdown-header">
+                                                            <i class="bi bi-wrench-adjustable me-1"></i>
+                                                            Fiscal de serviços
+                                                        </h6>
+                                                    </li>
+
+                                                    <?php if ($canIssueNfse): ?>
+
+                                                        <li>
+                                                            <form
+                                                                method="post"
+                                                                action="actions/nfse-preparar.php"
+                                                            >
+                                                                <?= $csrf->field() ?>
+                                                                <?php return_to_field(); ?>
+
+                                                                <input
+                                                                    type="hidden"
+                                                                    name="ordem_servico_id"
+                                                                    value="<?= h((string) $order->id()) ?>"
+                                                                >
+
+                                                                <input
+                                                                    type="hidden"
+                                                                    name="ambiente"
+                                                                    value="homologacao"
+                                                                >
+
+                                                                <input
+                                                                    type="hidden"
+                                                                    name="idempotency_key"
+                                                                    value="<?= h(bin2hex(random_bytes(32))) ?>"
+                                                                >
+
+                                                                <button
+                                                                    class="dropdown-item"
+                                                                    type="submit"
+                                                                >
+                                                                    <i class="bi bi-building-check"></i>
+                                                                    Preparar NFS-e dos serviços
+                                                                </button>
+                                                            </form>
+                                                        </li>
+
+                                                    <?php else: ?>
+
+                                                        <li>
+                                                            <span class="dropdown-item-text text-muted">
+                                                                <i class="bi bi-info-circle"></i>
+                                                                Serviços exigem o fluxo NFS-e.
+                                                                A emissão NFS-e não está liberada para este usuário.
+                                                            </span>
+                                                        </li>
+
+                                                    <?php endif; ?>
+
+                                                <?php endif; ?>
+
+
+                                                <?php if ($orderHasOthers): ?>
+
+                                                    <li>
+                                                        <span class="dropdown-item-text text-warning">
+                                                            <i class="bi bi-exclamation-triangle"></i>
+                                                            Há itens “Outros”. Classifique-os como produto ou serviço
+                                                            antes de incluí-los em documento fiscal.
+                                                        </span>
+                                                    </li>
+
+                                                <?php endif; ?>
+
                                             <?php endif; ?>
-                                            <?php if ($canIssueNfse && $order->status() === 'finalizada'): ?><li>
-                                                <form method="post" action="actions/nfse-preparar.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="ordem_servico_id" value="<?= h((string)$order->id()) ?>"><input type="hidden" name="ambiente" value="homologacao"><input type="hidden" name="idempotency_key" value="<?= h(bin2hex(random_bytes(32))) ?>"><button class="dropdown-item" type="submit"><i class="bi bi-building-check"></i> Preparar NFS-e de serviços</button></form>
-                                            </li><?php endif; ?>
                                             <?php if ($isOrderPaid): ?>
                                                 <?php foreach ($orderPayments as $payment): ?>
                                                     <?php if (!empty($payment['recibo_id']) && $payment['recibo_status'] === 'emitido' && $canReprintReceipt): ?>
