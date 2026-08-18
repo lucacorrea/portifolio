@@ -272,18 +272,19 @@ $currentCertificateId =
                             Homologação
                         </option>
 
-                        <?php if ($canActivateProduction): ?>
-
-                            <option
-                                value="producao"
-                                <?= $selectedEnvironment === 'producao'
-                                    ? 'selected'
-                                    : '' ?>
-                            >
-                                Produção
-                            </option>
-
-                        <?php endif; ?>
+                        <option
+                            value="producao"
+                            <?= $selectedEnvironment === 'producao'
+                                ? 'selected'
+                                : '' ?>
+                            <?= !$canActivateProduction
+                                ? 'disabled'
+                                : '' ?>
+                        >
+                            Produção<?= !$canActivateProduction
+                                ? ' — sem permissão'
+                                : '' ?>
+                        </option>
 
                     </select>
 
@@ -355,6 +356,17 @@ $currentCertificateId =
 
             </div>
 
+            <?php if (!$canActivateProduction): ?>
+
+                <div class="alert alert-warning py-2 mt-3 mb-0">
+                    <i class="bi bi-lock me-1"></i>
+                    O ambiente de produção está visível, mas bloqueado para este usuário.
+                    É necessária a permissão
+                    <code>nota_fiscal.ativar_producao</code>.
+                </div>
+
+            <?php endif; ?>
+
         </div>
 
     </section>
@@ -422,6 +434,17 @@ $currentCertificateId =
                 <i class="bi bi-building-check"></i>
                 Produção
             </a>
+
+        <?php else: ?>
+
+            <span
+                class="btn-filter btn-filter-ghost disabled"
+                aria-disabled="true"
+                title="Seu usuário não possui a permissão nota_fiscal.ativar_producao"
+            >
+                <i class="bi bi-lock"></i>
+                Produção
+            </span>
 
         <?php endif; ?>
 
@@ -1325,6 +1348,12 @@ $currentCertificateId =
                                 type="hidden"
                                 name="ambiente"
                                 value="<?= h($selectedEnvironment) ?>"
+                            >
+
+                            <input
+                                type="hidden"
+                                name="modelo"
+                                value="<?= h($selectedModel) ?>"
                             >
 
                             <?php if ($selectedEnvironment === 'producao'): ?>

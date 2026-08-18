@@ -8,16 +8,16 @@ os_require_post_request();
 
 /*
 |--------------------------------------------------------------------------
-| Ambiente solicitado
+| Ambiente e modelo solicitados
 |--------------------------------------------------------------------------
-|
-| Nunca devemos considerar silenciosamente qualquer valor inválido como
-| homologação. Isso poderia esconder erro de formulário ou tentativa de
-| manipulação da requisição.
-|
 */
+
 $requestedEnvironment = strtolower(
     trim((string) ($_POST['ambiente'] ?? 'homologacao'))
+);
+
+$requestedModel = trim(
+    (string) ($_POST['modelo'] ?? '65')
 );
 
 $validEnvironments = [
@@ -25,70 +25,106 @@ $validEnvironments = [
     'producao',
 ];
 
-/*
-|--------------------------------------------------------------------------
-| Permissão
-|--------------------------------------------------------------------------
-|
-| Produção exige explicitamente a permissão de ativação/produção.
-| Homologação utiliza a permissão específica de teste.
-|
-| Para ambiente inválido ainda carregamos um contexto seguro de homologação,
-| porém a requisição será interrompida antes de chamar qualquer serviço SEFAZ.
-|
-*/
-$productionRequest = $requestedEnvironment === 'producao';
+$validModels = [
+    '55',
+    '65',
+];
+
+$productionRequest =
+    $requestedEnvironment === 'producao';
 
 $requiredPermission = $productionRequest
     ? 'nota_fiscal.ativar_producao'
     : 'nota_fiscal.testar_integracao';
 
-[$application, $session] = os_action_context($requiredPermission);
+[$application, $session] =
+    os_action_context($requiredPermission);
+
+/*
+|--------------------------------------------------------------------------
+| Fallback de retorno
+|--------------------------------------------------------------------------
+|
+| Mesmo que return_to não esteja presente, o usuário volta para o mesmo
+| ambiente e o mesmo modelo que estava testando.
+|
+*/
+
+$safeEnvironmentForReturn =
+    in_array($requestedEnvironment, $validEnvironments, true)
+        ? $requestedEnvironment
+        : 'homologacao';
+
+$safeModelForReturn =
+    in_array($requestedModel, $validModels, true)
+        ? $requestedModel
+        : '65';
+
+$fallbackUrl =
+    'configuracoes-fiscais.php'
+    . '?ambiente='
+    . rawurlencode($safeEnvironmentForReturn)
+    . '&modelo='
+    . rawurlencode($safeModelForReturn);
 
 try {
     /*
     |--------------------------------------------------------------------------
-    | Validação de ambiente
+    | Validação
     |--------------------------------------------------------------------------
     */
-    if (!in_array($requestedEnvironment, $validEnvironments, true)) {
+
+    if (
+        !in_array(
+            $requestedEnvironment,
+            $validEnvironments,
+            true
+        )
+    ) {
         throw new InvalidArgumentException(
-            'Ambiente fiscal inválido. Selecione homologação ou produção.'
+            'Ambiente fiscal inválido. '
+            . 'Selecione homologação ou produção.'
+        );
+    }
+
+    if (
+        !in_array(
+            $requestedModel,
+            $validModels,
+            true
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'Modelo fiscal inválido. '
+            . 'Selecione NF-e 55 ou NFC-e 65.'
         );
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Usuário autenticado
+    | Usuário
     |--------------------------------------------------------------------------
     */
+
     $user = $application
         ->authorization()
         ->requireLogin();
 
     /*
     |--------------------------------------------------------------------------
-    | Configuração fiscal
+    | Configuração
     |--------------------------------------------------------------------------
     */
-    $configurationId = os_posted_positive_int('configuracao_id');
+
+    $configurationId =
+        os_posted_positive_int('configuracao_id');
 
     /*
     |--------------------------------------------------------------------------
     | Teste real da SEFAZ
     |--------------------------------------------------------------------------
-    |
-    | O serviço fiscal deve:
-    |
-    | - carregar a configuração;
-    | - conferir o ambiente;
-    | - carregar o certificado A1;
-    | - montar o Tools/NFePHP;
-    | - realizar comunicação mTLS;
-    | - chamar Status Serviço;
-    | - persistir o resultado do teste;
-    |
     */
+
     $status = $application
         ->fiscalSefazConnection()
         ->test(
@@ -97,11 +133,6 @@ try {
             $productionRequest
         );
 
-    /*
-    |--------------------------------------------------------------------------
-    | Normalização da resposta
-    |--------------------------------------------------------------------------
-    */
     if (!is_array($status)) {
         throw new RuntimeException(
             'O serviço fiscal retornou uma resposta inválida.'
@@ -116,12 +147,6 @@ try {
         (string) ($status['message'] ?? '')
     );
 
-    /*
-     * O Status Serviço da NF-e/NFC-e utiliza cStat 107 para
-     * "Serviço em Operação".
-     *
-     * Também respeitamos success=true caso a camada fiscal já normalize isso.
-     */
     $serviceAvailable =
         (($status['success'] ?? false) === true)
         || $code === '107';
@@ -136,19 +161,13 @@ try {
     |--------------------------------------------------------------------------
     | Resultado
     |--------------------------------------------------------------------------
-    |
-    | IMPORTANTE:
-    | O código anterior sempre mostrava "SEFAZ disponível" caso test()
-    | simplesmente retornasse um array, mesmo que esse array tivesse
-    | code = erro_tecnico.
-    |
-    | Aqui isso foi corrigido.
-    |
     */
+
     if (!$serviceAvailable) {
-        $safeCode = $code !== ''
-            ? $code
-            : 'falha';
+        $safeCode =
+            $code !== ''
+                ? $code
+                : 'falha';
 
         $session->flash(
             'danger',
@@ -157,13 +176,16 @@ try {
             . ' indisponível ou não validada ('
             . $safeCode
             . '): '
-            . rtrim($message, ". \t\n\r\0\x0B")
+            . rtrim(
+                $message,
+                ". \t\n\r\0\x0B"
+            )
             . '.'
         );
 
         os_redirect_back(
             $application,
-            'configuracoes-fiscais.php'
+            $fallbackUrl
         );
     }
 
@@ -174,46 +196,34 @@ try {
         . ' validada com sucesso ('
         . ($code !== '' ? $code : '107')
         . '): '
-        . rtrim($message, ". \t\n\r\0\x0B")
+        . rtrim(
+            $message,
+            ". \t\n\r\0\x0B"
+        )
         . '.'
     );
 } catch (InvalidArgumentException $exception) {
-    /*
-    |--------------------------------------------------------------------------
-    | Erros de validação
-    |--------------------------------------------------------------------------
-    */
     $session->flash(
         'danger',
         $exception->getMessage()
     );
 } catch (Throwable $exception) {
-    /*
-    |--------------------------------------------------------------------------
-    | Erro técnico
-    |--------------------------------------------------------------------------
-    |
-    | O usuário recebe uma referência.
-    | O log recebe o erro completo.
-    |
-    | Não exibimos stack trace, caminho do certificado, senha ou outras
-    | informações sensíveis no navegador.
-    |
-    */
     try {
         $errorReference =
             date('Ymd-His')
             . '-'
             . bin2hex(random_bytes(4));
     } catch (Throwable $ignored) {
-        $errorReference = date('Ymd-His');
+        $errorReference =
+            date('Ymd-His');
     }
 
     error_log(
         sprintf(
-            '[Fiscal SEFAZ][%s] ambiente=%s config=%s exception=%s message=%s file=%s line=%d',
+            '[Fiscal SEFAZ][%s] ambiente=%s modelo=%s config=%s exception=%s message=%s file=%s line=%d',
             $errorReference,
             $requestedEnvironment,
+            $requestedModel,
             isset($configurationId)
                 ? (string) $configurationId
                 : 'nao_informada',
@@ -235,5 +245,5 @@ try {
 
 os_redirect_back(
     $application,
-    'configuracoes-fiscais.php'
+    $fallbackUrl
 );
