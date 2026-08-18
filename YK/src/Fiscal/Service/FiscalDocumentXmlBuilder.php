@@ -264,7 +264,7 @@ final class FiscalDocumentXmlBuilder
                 'vICMS' => Decimal::formatCents(Decimal::taxCents($baseCents, $rate)),
             ]));
         }
-        $this->addPisCofins($make, $item, $number, $subtotal);
+        $this->addPisCofins($make, $item, $number, $subtotal, $crt);
         if (!isset($item['ibs_cbs_rule'])) {
             return null;
         }
@@ -289,31 +289,86 @@ final class FiscalDocumentXmlBuilder
     }
 
     /** @param array<string,mixed> $item */
-    private function addPisCofins(Make $make, array $item, int $number, string $base): void
-    {
+    private function addPisCofins(
+        Make $make,
+        array $item,
+        int $number,
+        string $base,
+        int $crt
+    ): void {
         $baseCents = Decimal::moneyToCents($base);
-        $pisCst = (string) $item['cst_pis'];
-        $cofinsCst = (string) $item['cst_cofins'];
-        $pis = ['item' => $number, 'CST' => $pisCst];
+
+        $pisCst = trim((string) ($item['cst_pis'] ?? ''));
+        $cofinsCst = trim((string) ($item['cst_cofins'] ?? ''));
+
+        $pis = [
+            'item' => $number,
+            'CST' => $pisCst,
+        ];
+
         if (in_array($pisCst, ['01', '02'], true)) {
-            $pisRate = Decimal::rateToUnits((string) ($item['aliquota_pis'] ?? '0'));
+            $pisRate = Decimal::rateToUnits(
+                (string) ($item['aliquota_pis'] ?? '0')
+            );
+
             $pis += [
                 'vBC' => $base,
                 'pPIS' => Decimal::formatRate($pisRate),
-                'vPIS' => Decimal::formatCents(Decimal::taxCents($baseCents, $pisRate)),
+                'vPIS' => Decimal::formatCents(
+                    Decimal::taxCents($baseCents, $pisRate)
+                ),
             ];
+        } elseif (in_array($pisCst, ['04', '05', '06', '07', '08', '09'], true)) {
+            // PISNT: o NFePHP gera somente o CST.
+        } elseif ($crt === 1 && $pisCst === '99') {
+            $pis += [
+                'qBCProd' => '0.0000',
+                'vAliqProd' => '0.0000',
+                'vPIS' => '0.00',
+            ];
+        } else {
+            throw new InvalidArgumentException(
+                'O CST PIS '
+                . ($pisCst !== '' ? $pisCst : '(vazio)')
+                . ' não possui regra segura implementada para o CRT ' . $crt . '.'
+            );
         }
+
         $make->tagPIS($this->std($pis));
 
-        $cofins = ['item' => $number, 'CST' => $cofinsCst];
+        $cofins = [
+            'item' => $number,
+            'CST' => $cofinsCst,
+        ];
+
         if (in_array($cofinsCst, ['01', '02'], true)) {
-            $cofinsRate = Decimal::rateToUnits((string) ($item['aliquota_cofins'] ?? '0'));
+            $cofinsRate = Decimal::rateToUnits(
+                (string) ($item['aliquota_cofins'] ?? '0')
+            );
+
             $cofins += [
                 'vBC' => $base,
                 'pCOFINS' => Decimal::formatRate($cofinsRate),
-                'vCOFINS' => Decimal::formatCents(Decimal::taxCents($baseCents, $cofinsRate)),
+                'vCOFINS' => Decimal::formatCents(
+                    Decimal::taxCents($baseCents, $cofinsRate)
+                ),
             ];
+        } elseif (in_array($cofinsCst, ['04', '05', '06', '07', '08', '09'], true)) {
+            // COFINSNT: o NFePHP gera somente o CST.
+        } elseif ($crt === 1 && $cofinsCst === '99') {
+            $cofins += [
+                'qBCProd' => '0.0000',
+                'vAliqProd' => '0.0000',
+                'vCOFINS' => '0.00',
+            ];
+        } else {
+            throw new InvalidArgumentException(
+                'O CST COFINS '
+                . ($cofinsCst !== '' ? $cofinsCst : '(vazio)')
+                . ' não possui regra segura implementada para o CRT ' . $crt . '.'
+            );
         }
+
         $make->tagCOFINS($this->std($cofins));
     }
 
