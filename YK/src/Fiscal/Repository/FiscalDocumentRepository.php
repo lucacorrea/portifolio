@@ -97,7 +97,7 @@ final class FiscalDocumentRepository
             $params['search_client'] = $params['search_key'];
         }
 
-        $sql = 'SELECT document.id, document.ambiente, document.modelo, document.serie,
+        $sql = 'SELECT document.id, document.ordem_servico_id, document.ambiente, document.modelo, document.serie,
                        document.numero, document.processamento_status, document.valor_nota,
                        document.chave, document.protocolo, document.cstat, document.xmotivo,
                        document.emitido_em, document.autorizado_em,
@@ -176,46 +176,63 @@ final class FiscalDocumentRepository
         return $row;
     }
 
-    /** @return array<int,array<string,mixed>> */
-    public function fiscalProductItems(int $orderId): array
-    {
-        $statement = $this->connection->prepare(
-            'SELECT item.id, item.referencia_id AS produto_id, item.descricao,
-                    item.unidade, item.quantidade, item.valor_unitario,
-                    item.desconto, item.subtotal, product.codigo, product.nome,
-                    product.ncm, product.cest, product.origem_mercadoria,
-                    product.cfop_padrao, product.cst_icms, product.csosn,
-<<<<<<< HEAD
-                    product.cst_pis, product.cst_cofins, product.aliquota_icms,
-                    product.aliquota_pis, product.aliquota_cofins,
-                    product.codigo_barras, product.gtin_tributavel,
-                    product.unidade_tributavel, product.cst_ibs_cbs,
-                    product.classificacao_tributaria_ibs_cbs
-=======
-                    product.cst_pis,
-                    product.cst_cofins,
-                    product.aliquota_icms,
-                    product.aliquota_pis,
-                    product.aliquota_cofins,
+  /**
+ * @return array<int,array<string,mixed>>
+ */
+public function fiscalProductItems(int $orderId): array
+{
+    $statement = $this->connection->prepare(
+        'SELECT
+            item.id,
+            item.referencia_id AS produto_id,
+            item.descricao,
+            item.unidade,
+            item.quantidade,
+            item.valor_unitario,
+            item.desconto,
+            item.subtotal,
 
-                    product.cst_ibs_cbs,
-                    product.classificacao_tributaria_ibs_cbs,
+            product.codigo,
+            product.nome,
+            product.ncm,
+            product.cest,
+            product.origem_mercadoria,
+            product.cfop_padrao,
+            product.cst_icms,
+            product.csosn,
+            product.cst_pis,
+            product.cst_cofins,
+            product.aliquota_icms,
+            product.aliquota_pis,
+            product.aliquota_cofins,
 
-                    product.codigo_barras,
-                    product.gtin_tributavel,
-                    product.unidade_tributavel
->>>>>>> 0b7938a81790f66a01299660e26e9c3cb1962549
-               FROM ordem_servico_itens item
-               JOIN produtos product ON product.id = item.referencia_id
-              WHERE item.ordem_servico_id = :order_id
-                AND item.tipo = \'produto\'
-                AND item.subtotal > 0
-              ORDER BY item.ordem, item.id'
-        );
-        $statement->execute(['order_id' => $orderId]);
+            product.cst_ibs_cbs,
+            product.classificacao_tributaria_ibs_cbs,
 
-        return $statement->fetchAll();
-    }
+            product.codigo_barras,
+            product.gtin_tributavel,
+            product.unidade_tributavel
+
+         FROM ordem_servico_itens AS item
+
+         INNER JOIN produtos AS product
+            ON product.id = item.referencia_id
+
+         WHERE item.ordem_servico_id = :order_id
+           AND item.tipo = \'produto\'
+           AND item.subtotal > 0
+
+         ORDER BY
+            item.ordem ASC,
+            item.id ASC'
+    );
+
+    $statement->execute([
+        'order_id' => $orderId,
+    ]);
+
+    return $statement->fetchAll();
+}
 
     /** @return array<string,mixed>|null */
     public function resolveIbsCbsRule(string $cst, string $classification, string $issueDate): ?array
@@ -304,6 +321,11 @@ final class FiscalDocumentRepository
         if (!in_array($documentType, ['nfe','nfce','nfse'], true) || $documentId <= 0) {
             throw new InvalidArgumentException('Documento da alocação fiscal inválido.');
         }
+        $delete = $this->connection->prepare(
+            'DELETE FROM fiscal_pagamento_alocacoes
+              WHERE tipo_documento = :document_type AND documento_id = :document_id'
+        );
+        $delete->execute(['document_type' => $documentType, 'document_id' => $documentId]);
         $statement = $this->connection->prepare(
             'INSERT INTO fiscal_pagamento_alocacoes
                 (ordem_servico_id,pagamento_id,tipo_documento,documento_id,valor_alocado)
@@ -358,14 +380,18 @@ final class FiscalDocumentRepository
                FROM fiscal_series
               WHERE ambiente = :environment AND modelo = :model AND status = \'ativa\'
               ORDER BY serie
-              LIMIT 1
+              LIMIT 2
               FOR UPDATE'
         );
         $series->execute(['environment' => $environment, 'model' => $model]);
-        $seriesRow = $series->fetch();
-        if ($seriesRow === false) {
+        $seriesRows = $series->fetchAll();
+        if ($seriesRows === []) {
             throw new InvalidArgumentException('Cadastre uma série fiscal ativa para o ambiente e modelo escolhidos.');
         }
+        if (count($seriesRows) !== 1) {
+            throw new InvalidArgumentException('Existe mais de uma série ativa; escolha e ative somente a sequência fiscal correta.');
+        }
+        $seriesRow = $seriesRows[0];
 
         return ['configuration' => $configurationRow, 'series' => $seriesRow];
     }
@@ -548,6 +574,41 @@ final class FiscalDocumentRepository
         return $id;
     }
 
+    /** @param array<string,mixed> $data */
+    public function resetRejectedForRetry(int $id, array $data): void
+    {
+        $statement = $this->connection->prepare(
+            'UPDATE documentos_fiscais
+                SET configuracao_id = :configuration_id,
+                    idempotency_key = :idempotency_key,
+                    conta_receber_id = :receivable_id,
+                    pagamento_id = :payment_id,
+                    valor_produtos = :products_value,
+                    valor_nota = :invoice_value,
+                    snapshot_json = :snapshot_json,
+                    status = \'rascunho\', processamento_status = \'preparado\',
+                    chave = NULL, lote_id = NULL, recibo_sefaz = NULL,
+                    protocolo = NULL, cstat = NULL, xmotivo = NULL,
+                    xml_assinado_path = NULL, xml_assinado_sha256 = NULL,
+                    ultima_resposta_path = NULL, ultima_resposta_sha256 = NULL,
+                    processando_em = NULL, reconsulta_apos = NULL
+              WHERE id = :id AND processamento_status = \'rejeitado\''
+        );
+        $statement->execute([
+            'id' => $id,
+            'configuration_id' => $data['configuration_id'],
+            'idempotency_key' => $data['idempotency_key'],
+            'receivable_id' => $data['receivable_id'],
+            'payment_id' => $data['payment_id'],
+            'products_value' => $data['products_value'],
+            'invoice_value' => $data['invoice_value'],
+            'snapshot_json' => $data['snapshot_json'],
+        ]);
+        if ($statement->rowCount() !== 1) {
+            throw new InvalidArgumentException('A rejeição já foi tratada ou o documento mudou de estado.');
+        }
+    }
+
     /** @param array<string,mixed> $details */
     public function addEvent(int $documentId, string $type, ?string $previous, string $next, int $userId, array $details = []): void
     {
@@ -680,7 +741,7 @@ final class FiscalDocumentRepository
             'UPDATE documentos_fiscais
                 SET status = \'cancelada\', processamento_status = \'cancelado\',
                     cstat = :cstat, xmotivo = :reason, cancelado_em = CURRENT_TIMESTAMP,
-                    cancelamento_protocolo = :protocol,
+                    cancelamento_protocolo = :protocol, cancelamento_status = \'confirmado\',
                     cancelamento_xml_path = :path, cancelamento_xml_sha256 = :hash
               WHERE id = :id AND processamento_status = \'autorizado\''
         );
@@ -696,6 +757,57 @@ final class FiscalDocumentRepository
             throw new InvalidArgumentException('O documento fiscal não está autorizado para cancelamento.');
         }
     }
+
+    /** @param array{reference:string,sha256:string}|null $artifact */
+    public function markCancellationPending(int $id, string $reason, ?array $artifact = null): void
+    {
+        $statement = $this->connection->prepare(
+            'UPDATE documentos_fiscais
+                SET cancelamento_status = \'pendente\', xmotivo = :reason,
+                    cancelamento_xml_path = COALESCE(:path, cancelamento_xml_path),
+                    cancelamento_xml_sha256 = COALESCE(:hash, cancelamento_xml_sha256)
+              WHERE id = :id AND processamento_status = \'autorizado\''
+        );
+        $statement->execute([
+            'id' => $id,
+            'reason' => substr($reason, 0, 255),
+            'path' => $artifact['reference'] ?? null,
+            'hash' => $artifact['sha256'] ?? null,
+        ]);
+    }
+
+    public function claimCancellation(int $id): bool
+    {
+        $statement = $this->connection->prepare(
+            'UPDATE documentos_fiscais
+                SET cancelamento_status = \'pendente\',
+                    xmotivo = \'Cancelamento em processamento; não repetir o evento.\'
+              WHERE id = :id AND processamento_status = \'autorizado\'
+                AND cancelamento_status = \'nenhum\''
+        );
+        $statement->execute(['id' => $id]);
+        return $statement->rowCount() === 1;
+    }
+
+    /** @param array{reference:string,sha256:string}|null $artifact */
+    public function releaseCancellationClaim(int $id, string $reason, ?array $artifact = null): void
+    {
+        $statement = $this->connection->prepare(
+            'UPDATE documentos_fiscais
+                SET cancelamento_status = \'nenhum\', xmotivo = :reason,
+                    cancelamento_xml_path = COALESCE(:path, cancelamento_xml_path),
+                    cancelamento_xml_sha256 = COALESCE(:hash, cancelamento_xml_sha256)
+              WHERE id = :id AND processamento_status = \'autorizado\'
+                AND cancelamento_status = \'pendente\''
+        );
+        $statement->execute([
+            'id' => $id,
+            'reason' => substr($reason, 0, 255),
+            'path' => $artifact['reference'] ?? null,
+            'hash' => $artifact['sha256'] ?? null,
+        ]);
+    }
+
     public function markRejected(int $id, string $status, string $cstat, string $reason): void
     {
         if (!in_array($status, ['rejeitado', 'denegado', 'erro_tecnico'], true)) {
@@ -756,7 +868,7 @@ final class FiscalDocumentRepository
                  xml_gerado_path,xml_gerado_sha256,xml_assinado_path,xml_assinado_sha256,
                  chave,lote_id,status,criado_por)
              VALUES (:document_id,:number,:snapshot,:generated_path,:generated_hash,
-                     :signed_path,:signed_hash,:access_key,:batch_id,\'enviado\',:user_id)'
+                     :signed_path,:signed_hash,:access_key,:batch_id,\'assinado\',:user_id)'
         );
         $statement->execute([
             'document_id'=>$documentId,

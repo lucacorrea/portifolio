@@ -328,6 +328,7 @@ final class FiscalCertificateStorage
     private function certificateCnpj(string $certificate, array $subject): ?string
     {
         if (class_exists(PublicKey::class)) {
+            set_error_handler(static fn(): bool => true);
             try {
                 $oidCnpj = (new PublicKey($certificate))->cnpj();
                 if (is_scalar($oidCnpj) && trim((string) $oidCnpj) !== '') {
@@ -335,6 +336,8 @@ final class FiscalCertificateStorage
                 }
             } catch (Throwable) {
                 // Mantém compatibilidade com certificados antigos sem o OID ICP-Brasil.
+            } finally {
+                restore_error_handler();
             }
         }
 

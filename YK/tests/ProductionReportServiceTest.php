@@ -70,7 +70,11 @@ report_assert(str_contains((string) $pageSource, "can('relatorio.financeiro')"),
 report_assert(str_contains((string) $pageSource, "can('produto.visualizar_preco_custo')"), 'Custo do estoque deve exigir permissão específica.');
 report_assert(str_contains((string) $pageSource, 'data-report-panel="empresa"'), 'A visão da empresa deve possuir painel independente.');
 report_assert(str_contains((string) $pageSource, 'data-report-panel="funcionarios"'), 'A visão por funcionário deve possuir painel independente.');
-report_assert(str_contains((string) $pageSource, " ? '' : ' hidden'"), 'O painel inativo deve usar o atributo hidden.');
+$compactPageSource = preg_replace('/\s+/', '', (string) $pageSource);
+report_assert(
+    is_string($compactPageSource) && str_contains($compactPageSource, "\$activeView==='empresa'?'':'hidden'"),
+    'O painel inativo deve usar o atributo hidden.'
+);
 report_assert(str_contains((string) $entrySource, 'assets/js/relatorios.js'), 'A página deve carregar o controlador das visões.');
 report_assert(str_contains((string) $scriptSource, 'panel.hidden ='), 'O controlador deve alternar a visibilidade real dos painéis.');
 echo "Production report service tests passed.\n";

@@ -30,12 +30,17 @@ foreach ([
     $sources[$key] = $source;
 }
 
+$compactSources = array_map(
+    static fn(string $source): string => (string) preg_replace('/\s+/', '', $source),
+    $sources
+);
+
 foreach ([
     ['clientPage', 'cliente.excluir', 'actions/cliente-excluir.php'],
     ['budgetPage', 'orcamento.excluir', 'actions/orcamento-excluir.php'],
     ['servicePage', 'servico.excluir', 'actions/servico-excluir.php'],
 ] as [$page, $permission, $action]) {
-    masterDataDeletionAssert(str_contains($sources[$page], "can('" . $permission . "')"), 'Interface deve respeitar ' . $permission . '.');
+    masterDataDeletionAssert(str_contains($compactSources[$page], "can('" . $permission . "')"), 'Interface deve respeitar ' . $permission . '.');
     masterDataDeletionAssert(str_contains($sources[$page], $action), 'Interface deve enviar exclusão para ' . $action . '.');
     masterDataDeletionAssert(str_contains($sources[$page], 'table-action-dropdown'), 'Exclusão deve permanecer no menu global de ações da tabela.');
 }
@@ -45,23 +50,28 @@ foreach ([
     ['budgetAction', "budget_action_context('orcamento.excluir')", 'budget_require_post_request()'],
     ['serviceAction', "service_action_context('servico.excluir')", 'service_require_post_request()'],
 ] as [$action, $permissionCheck, $postCheck]) {
-    masterDataDeletionAssert(str_contains($sources[$action], $permissionCheck), 'Servidor deve exigir a permissão específica de exclusão.');
+    masterDataDeletionAssert(str_contains($compactSources[$action], $permissionCheck), 'Servidor deve exigir a permissão específica de exclusão.');
     masterDataDeletionAssert(str_contains($sources[$action], $postCheck), 'Exclusão deve aceitar somente POST.');
 }
 
 masterDataDeletionAssert(str_contains($sources['clientRepository'], 'excluido_em IS NULL'), 'Clientes excluídos não devem aparecer em consultas operacionais.');
 masterDataDeletionAssert(str_contains($sources['clientRepository'], 'hasActiveDocuments'), 'Cliente com documentos ativos deve ser protegido.');
 masterDataDeletionAssert(str_contains($sources['budgetRepository'], 'o.excluido_em IS NULL'), 'Orçamentos excluídos não devem aparecer em consultas operacionais.');
-masterDataDeletionAssert(str_contains($sources['budgetRepository'], "\$budget['status'] === 'aprovado'"), 'Orçamento aprovado deve ser protegido.');
+masterDataDeletionAssert(
+    str_contains($sources['budgetRepository'], 'FROM ordens_servico')
+        && str_contains($sources['budgetRepository'], 'FOR UPDATE')
+        && str_contains($sources['budgetRepository'], 'vinculado à '),
+    'Orçamento com OS operacional vinculada deve ser protegido sob bloqueio transacional.'
+);
 masterDataDeletionAssert(str_contains($sources['serviceRepository'], 'excluido_em IS NULL'), 'Serviços excluídos não devem aparecer em consultas operacionais.');
 
-masterDataDeletionAssert(!str_contains($sources['orderPage'], 'os-delete-reason'), 'Exclusão de OS não deve exibir campo de motivo.');
-masterDataDeletionAssert(!str_contains($sources['orderAction'], "\$_POST['motivo']"), 'A ação de exclusão da OS não deve receber motivo.');
+masterDataDeletionAssert(str_contains($sources['orderPage'], 'name="motivo"'), 'Exclusão de OS deve exigir motivo auditável.');
+masterDataDeletionAssert(str_contains($sources['orderAction'], "\$_POST['motivo']"), 'A ação de exclusão da OS deve receber motivo auditável.');
 $softDeleteStart = strpos($sources['orderLifecycle'], 'public function softDelete(');
 $lockOrderStart = strpos($sources['orderLifecycle'], 'private function lockOrder(');
 masterDataDeletionAssert($softDeleteStart !== false && $lockOrderStart !== false, 'Fluxo de exclusão lógica da OS deve ser localizável.');
 $orderSoftDelete = substr($sources['orderLifecycle'], $softDeleteStart, $lockOrderStart - $softDeleteStart);
-masterDataDeletionAssert(!str_contains($orderSoftDelete, 'requiredReason'), 'Exclusão de OS não deve validar motivo.');
-masterDataDeletionAssert(str_contains($orderSoftDelete, 'motivo_exclusao = NULL'), 'Exclusão de OS deve manter compatibilidade gravando motivo nulo.');
+masterDataDeletionAssert(str_contains($orderSoftDelete, 'requiredReason'), 'Exclusão de OS deve validar o motivo no servidor.');
+masterDataDeletionAssert(str_contains($orderSoftDelete, 'motivo_exclusao = :reason'), 'Exclusão de OS deve persistir o motivo auditável.');
 
 echo "MasterDataDeletionTest: OK\n";

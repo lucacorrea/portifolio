@@ -17,11 +17,16 @@ function fiscalSecurityAssert(bool $condition, string $message): void
 
 function fiscalSecurityThrows(callable $callback, string $message): void
 {
+    set_error_handler(static function (int $severity, string $warning): never {
+        throw new ErrorException($warning, 0, $severity);
+    });
     try {
         $callback();
     } catch (Throwable) {
+        restore_error_handler();
         return;
     }
+    restore_error_handler();
     throw new RuntimeException($message);
 }
 

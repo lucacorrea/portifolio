@@ -16,11 +16,21 @@ final class IbsCbsCalculation
             throw new InvalidArgumentException('Esta classificação IBS/CBS ainda exige regra tributária não implementada.');
         }
         $productBase = Decimal::moneyToCents((string) ($item['subtotal'] ?? ''));
-        $icms = (string) ($item['cst_icms'] ?? '') === '00'
+        $cstIcms = (string) ($item['cst_icms'] ?? '');
+        if (preg_match('/^\d{3}$/', $cstIcms) === 1
+            && $cstIcms[0] === (string) ($item['origem_mercadoria'] ?? '')
+        ) {
+            $cstIcms = substr($cstIcms, 1);
+        }
+        $icms = $cstIcms === '00'
             ? Decimal::taxCents($productBase, Decimal::rateToUnits((string) ($item['aliquota_icms'] ?? '0')))
             : 0;
-        $pis = Decimal::taxCents($productBase, Decimal::rateToUnits((string) ($item['aliquota_pis'] ?? '0')));
-        $cofins = Decimal::taxCents($productBase, Decimal::rateToUnits((string) ($item['aliquota_cofins'] ?? '0')));
+        $pis = in_array((string) ($item['cst_pis'] ?? ''), ['01', '02'], true)
+            ? Decimal::taxCents($productBase, Decimal::rateToUnits((string) ($item['aliquota_pis'] ?? '0')))
+            : 0;
+        $cofins = in_array((string) ($item['cst_cofins'] ?? ''), ['01', '02'], true)
+            ? Decimal::taxCents($productBase, Decimal::rateToUnits((string) ($item['aliquota_cofins'] ?? '0')))
+            : 0;
         $base = $productBase - $icms - $pis - $cofins;
         if ($base < 0) {
             throw new InvalidArgumentException('A base IBS/CBS calculada para o item ficou negativa.');

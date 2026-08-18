@@ -52,13 +52,11 @@ final class FiscalToolsFactory
             $certificate = Certificate::readPfx($pfx, $password);
             $tools = new Tools($this->configJson($profile, $csc), $certificate);
             $tools->model((int) $model);
-            if ($model === '65' && !empty($profile['qr_code_versao'])) {
-                $qrVersion = (string) $profile['qr_code_versao'];
-                $tools->forceQRCodeVersion(match ($qrVersion) {
-                    '2', '200' => '200',
-                    '3', '300' => '300',
-                    default => throw new InvalidArgumentException('Versão do QR Code NFC-e não suportada.'),
-                });
+            if ($model === '65') {
+                if (!in_array((string) ($profile['qr_code_versao'] ?? ''), ['3', '300'], true)) {
+                    throw new InvalidArgumentException('NFC-e exige QR Code versão 3.');
+                }
+                $tools->forceQRCodeVersion('300');
             }
             return $tools;
         } finally {

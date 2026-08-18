@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Fiscal\Service;
 
+use Composer\InstalledVersions;
+
 final class FiscalRuntimeReadiness
 {
     /** @param array<string,bool> $capabilities */
@@ -20,6 +22,10 @@ final class FiscalRuntimeReadiness
         $encodedKey = getenv('FISCAL_MASTER_KEY');
         $key = is_string($encodedKey) ? base64_decode(trim($encodedKey), true) : false;
 
+        $nfephpVersion = class_exists(InstalledVersions::class)
+            ? InstalledVersions::getPrettyVersion('nfephp-org/sped-nfe')
+            : null;
+
         return new self([
             'openssl' => function_exists('openssl_pkcs12_read'),
             'curl' => extension_loaded('curl'),
@@ -30,6 +36,8 @@ final class FiscalRuntimeReadiness
             'zlib' => function_exists('gzencode'),
             'gd' => extension_loaded('gd'),
             'nfephp' => class_exists('NFePHP\\NFe\\Tools'),
+            'nfephp_release' => is_string($nfephpVersion)
+                && version_compare(ltrim($nfephpVersion, 'v'), '5.2.8', '>='),
             'sped_da' => class_exists('NFePHP\\DA\\NFe\\Danfe') && class_exists('NFePHP\\DA\\NFe\\Danfce'),
         ], $integrationEnabled, $productionEnabled, is_string($key) && strlen($key) === 32);
     }
@@ -47,6 +55,7 @@ final class FiscalRuntimeReadiness
             'zlib' => 'Zlib para compactação dos lotes fiscais',
             'gd' => 'GD para códigos de barras e documentos auxiliares',
             'nfephp' => 'Biblioteca fiscal NFePHP/SPED-NFe',
+            'nfephp_release' => 'NFePHP/SPED-NFe revisado para as NTs vigentes (mínimo 5.2.8)',
             'sped_da' => 'Biblioteca oficial NFePHP/SPED-DA para DANFE e DANFCE',
         ];
         $checks = [];

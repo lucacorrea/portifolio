@@ -27,19 +27,29 @@ final class FiscalSefazConnectionService
     /** @return array{code:string,message:string,application_version:string,received_at:string} */
     public function testHomologation(int $configurationId, int $userId): array
     {
+        return $this->test($configurationId, $userId, false);
+    }
+
+    /** @return array{code:string,message:string,application_version:string,received_at:string} */
+    public function test(int $configurationId, int $userId, bool $allowProduction = false): array
+    {
         if ($configurationId <= 0 || $userId <= 0) {
             throw new InvalidArgumentException('Configuração ou usuário fiscal inválido.');
         }
-        if (!$this->runtimeReadiness->inspect()['homologation_ready']) {
+        $runtime = $this->runtimeReadiness->inspect();
+        if (!$runtime['homologation_ready']) {
             throw new InvalidArgumentException('Conclua os requisitos técnicos do servidor antes do teste SEFAZ.');
         }
 
         $profile = $this->repository->connectionProfile($configurationId);
-        if ($profile === null || $profile['ambiente'] !== 'homologacao') {
-            throw new InvalidArgumentException('O teste está disponível somente para configuração de homologação.');
+        if ($profile === null) {
+            throw new InvalidArgumentException('Configuração fiscal não encontrada para o teste SEFAZ.');
         }
 
         $environment = (string) $profile['ambiente'];
+        if ($environment === 'producao' && (!$allowProduction || !$runtime['production_allowed'])) {
+            throw new InvalidArgumentException('O teste em produção exige permissão específica e o gate técnico liberado.');
+        }
         $model = (string) $profile['modelo'];
         try {
             $this->assertCertificateUsable($profile);
@@ -54,7 +64,8 @@ final class FiscalSefazConnectionService
             $certificate = Certificate::readPfx($pfx, $password);
             $tools = new Tools($this->configJson($profile, $csc), $certificate);
             $tools->model((int) $model);
-            $response = $tools->sefazStatus((string) $profile['uf'], 2, true);
+            $tpAmb = $environment === 'producao' ? 1 : 2;
+            $response = $tools->sefazStatus((string) $profile['uf'], $tpAmb, true);
         } catch (Throwable $exception) {
             $this->repository->recordIntegrationTest(
                 $configurationId,
@@ -66,7 +77,9 @@ final class FiscalSefazConnectionService
                 'Não foi possível completar a comunicação segura com a SEFAZ.'
             );
             error_log('Fiscal SEFAZ homologation test failed [' . get_class($exception) . '].');
-            throw new InvalidArgumentException('Não foi possível comunicar com a SEFAZ em homologação. Verifique o certificado e tente novamente.');
+            throw new InvalidArgumentException(
+                'Não foi possível comunicar com a SEFAZ em ' . $environment . '. Verifique o certificado e tente novamente.'
+            );
         } finally {
             if (isset($password) && function_exists('sodium_memzero')) {
                 sodium_memzero($password);
@@ -77,7 +90,7 @@ final class FiscalSefazConnectionService
         }
 
         try {
-            $status = $this->parseStatus($response);
+            $status = $this->parseStatus($response, $environment === 'producao' ? '1' : '2');
         } catch (InvalidArgumentException $exception) {
             $this->repository->recordIntegrationTest(
                 $configurationId,
@@ -151,11 +164,11 @@ final class FiscalSefazConnectionService
     {
         return json_encode([
             'atualizacao' => date(DATE_ATOM),
-            'tpAmb' => 2,
+            'tpAmb' => ($profile['ambiente'] ?? 'homologacao') === 'producao' ? 1 : 2,
             'razaosocial' => (string) $profile['razao_social'],
             'cnpj' => (string) $profile['titular_cnpj'],
             'siglaUF' => (string) $profile['uf'],
-            'schemes' => '',
+            'schemes' => 'PL_010_V1.30',
             'versao' => (string) $profile['schema_versao'],
             'tokenIBPT' => null,
             'CSC' => $csc === '' ? null : $csc,
@@ -165,7 +178,7 @@ final class FiscalSefazConnectionService
     }
 
     /** @return array{code:string,message:string,application_version:string,received_at:string} */
-    private function parseStatus(string $xml): array
+    private function parseStatus(string $xml, string $expectedEnvironment = '2'): array
     {
         $dom = new DOMDocument();
         if ($xml === '' || !@$dom->loadXML($xml, LIBXML_NONET | LIBXML_NOBLANKS)) {
@@ -174,8 +187,8 @@ final class FiscalSefazConnectionService
         $environment = $this->nodeValue($dom, 'tpAmb');
         $code = $this->nodeValue($dom, 'cStat');
         $message = $this->safeText($this->nodeValue($dom, 'xMotivo'));
-        if ($environment !== '2' || preg_match('/^\d{3}$/', $code) !== 1 || $message === '') {
-            throw new InvalidArgumentException('A SEFAZ retornou uma resposta incompleta para homologação.');
+        if ($environment !== $expectedEnvironment || preg_match('/^\d{3}$/', $code) !== 1 || $message === '') {
+            throw new InvalidArgumentException('A SEFAZ retornou uma resposta incompleta ou de outro ambiente.');
         }
 
         return [

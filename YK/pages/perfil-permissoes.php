@@ -58,7 +58,7 @@ foreach ($groups as $permissions) {
         <input type="hidden" name="id" value="<?= h((string) $profileId) ?>">
         <div class="permission-counter"><strong data-permission-selected><?= h((string) count($selectedIds)) ?></strong> de <strong data-permission-total><?= h((string) $totalPermissions) ?></strong> permissões selecionadas</div>
         <?php if ($isProtected): ?>
-          <div class="alert alert-warning mb-0">O perfil Administrador é protegido e sempre possui todas as permissões ativas.</div>
+          <div class="alert alert-warning mb-0">O perfil Administrador é protegido e possui as permissões operacionais ativas, exceto a ativação fiscal de produção.</div>
         <?php endif; ?>
         <div class="permission-actions">
           <button class="btn-filter btn-filter-ghost" type="button" data-permission-select-all<?= $isProtected ? ' disabled' : '' ?>>Marcar todas</button>
@@ -89,7 +89,7 @@ foreach ($groups as $permissions) {
                 <div class="permission-grid">
                   <?php foreach ($permissions as $permission): ?>
                     <?php $permissionId = $permission->id(); if ($permissionId === null) continue; ?>
-                    <?php $checked = $isProtected || isset($selectedIds[$permissionId]); ?>
+                    <?php $checked = isset($selectedIds[$permissionId]); ?>
                     <label class="permission-option">
                       <input
                         type="checkbox"

@@ -78,6 +78,17 @@ $canReprintReceipt = $authorization->can('recibo.reimprimir');
 $canViewFiscal = $authorization->can('nota_fiscal.visualizar');
 $canIssueFiscal = $authorization->can('nota_fiscal.emitir');
 $canIssueNfse = $authorization->can('nfse.emitir');
+$fiscalProductionReady = ['55' => false, '65' => false];
+if ($canIssueFiscal) {
+    foreach (['55', '65'] as $model) {
+        try {
+            $fiscalProductionReady[$model] = $application->fiscalConfiguration()
+                ->readiness('producao', $model)['ready'];
+        } catch (Throwable) {
+            $fiscalProductionReady[$model] = false;
+        }
+    }
+}
 $fiscalDocumentsByOrder = [];
 if ($canViewFiscal || $canIssueFiscal) {
     try {
@@ -446,9 +457,13 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                                                 <?php endif; ?>
                                             <?php endforeach; ?>
                                             <?php if ($canIssueFiscal && $order->status() === 'finalizada'): ?>
+                                                <?php $documentEnvironments = array_map(static fn(array $item): string => (string) ($item['ambiente'] ?? ''), $orderFiscalDocuments); ?>
                                                 <?php foreach (['55' => 'NF-e de peças', '65' => 'NFC-e de peças'] as $fiscalModel => $fiscalLabel): ?>
-                                                    <?php if ($orderFiscalDocuments === []): ?><li>
+                                                    <?php if (!in_array('homologacao', $documentEnvironments, true)): ?><li>
                                                             <form method="post" action="actions/nota-fiscal-preparar.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="ordem_servico_id" value="<?= h((string) $order->id()) ?>"><input type="hidden" name="modelo" value="<?= h($fiscalModel) ?>"><input type="hidden" name="ambiente" value="homologacao"><input type="hidden" name="idempotency_key" value="<?= h(bin2hex(random_bytes(32))) ?>"><button class="dropdown-item" type="submit"><i class="bi bi-file-earmark-check"></i> Emitir <?= h($fiscalLabel) ?> em homologação</button></form>
+                                                        </li><?php endif; ?>
+                                                    <?php if ($fiscalProductionReady[$fiscalModel] && !in_array('producao', $documentEnvironments, true)): ?><li>
+                                                            <form method="post" action="actions/nota-fiscal-preparar.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="ordem_servico_id" value="<?= h((string) $order->id()) ?>"><input type="hidden" name="modelo" value="<?= h($fiscalModel) ?>"><input type="hidden" name="ambiente" value="producao"><input type="hidden" name="idempotency_key" value="<?= h(bin2hex(random_bytes(32))) ?>"><button class="dropdown-item text-danger" type="submit"><i class="bi bi-cloud-check"></i> Emitir <?= h($fiscalLabel) ?> em produção</button></form>
                                                         </li><?php endif; ?>
                                                 <?php endforeach; ?>
                                             <?php endif; ?>

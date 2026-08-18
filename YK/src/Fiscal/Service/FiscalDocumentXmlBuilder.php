@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Fiscal\Service;
 
 use App\Fiscal\Tax\Decimal;
+use App\Fiscal\Tax\GtinValidator;
 use App\Fiscal\Tax\IbsCbsCalculation;
 use InvalidArgumentException;
 use NFePHP\NFe\Make;
@@ -63,6 +64,7 @@ final class FiscalDocumentXmlBuilder
         $customer = $snapshot['customer'] ?? [];
         $items = $snapshot['items'] ?? [];
         $fiscal = $snapshot['fiscal'] ?? [];
+        $operation = $snapshot['operation'] ?? [];
         if (!is_array($company) || !is_array($customer) || !is_array($items) || $items === []) {
             throw new InvalidArgumentException('O documento fiscal não possui dados suficientes para gerar o XML.');
         }
@@ -75,44 +77,29 @@ final class FiscalDocumentXmlBuilder
             throw new InvalidArgumentException('UF do emitente inválida para emissão fiscal.');
         }
 
-<<<<<<< HEAD
         $make = new Make('PL_010_V1.30');
         $ibsCbsTotals = null;
-        $std = $this->std(['Id'=>null,'versao'=>'4.00']);
-        $make->taginfNFe($std);
-        $make->tagide($this->std([
-            'cUF'=>$cUf, 'cNF'=>(string) ($document['cnf'] ?? $fiscal['cnf'] ?? ''),
-            'natOp'=>'VENDA DE MERCADORIA', 'mod'=>$model, 'serie'=>(int) $document['serie'],
-            'nNF'=>(int) $document['numero'],
-            'dhEmi'=>$this->dateTime((string)($fiscal['issued_at'] ?? $snapshot['captured_at'] ?? '')),
-            'tpNF'=>1, 'idDest'=>$uf === strtoupper((string) ($customer['uf'] ?? $uf)) ? 1 : 2,
-            'cMunFG'=>(string) $company['codigo_municipio_ibge'], 'tpImp'=>$model === '65' ? 4 : 1,
-            'tpEmis'=>1, 'tpAmb'=>$environment === 'producao' ? 1 : 2, 'finNFe'=>1,
-            'indFinal'=>1, 'indPres'=>$model === '65' ? 1 : 9, 'procEmi'=>0, 'verProc'=>'OSMais 1.0',
-=======
-        $make = new Make();
         $std = $this->std(['Id' => null, 'versao' => '4.00']);
         $make->taginfNFe($std);
         $make->tagide($this->std([
             'cUF' => $cUf,
             'cNF' => (string) ($document['cnf'] ?? $fiscal['cnf'] ?? ''),
-            'natOp' => 'VENDA DE MERCADORIA',
+            'natOp' => (string) ($operation['nature'] ?? 'VENDA DE MERCADORIA'),
             'mod' => $model,
             'serie' => (int) $document['serie'],
             'nNF' => (int) $document['numero'],
-            'dhEmi' => date('Y-m-d\TH:i:sP'),
+            'dhEmi' => $this->dateTime((string) ($fiscal['issued_at'] ?? $snapshot['captured_at'] ?? '')),
             'tpNF' => 1,
-            'idDest' => $uf === strtoupper((string) ($customer['uf'] ?? $uf)) ? 1 : 2,
+            'idDest' => (int) ($operation['destination'] ?? 1),
             'cMunFG' => (string) $company['codigo_municipio_ibge'],
             'tpImp' => $model === '65' ? 4 : 1,
             'tpEmis' => 1,
             'tpAmb' => $environment === 'producao' ? 1 : 2,
             'finNFe' => 1,
-            'indFinal' => 1,
-            'indPres' => $model === '65' ? 1 : 9,
+            'indFinal' => (int) ($operation['final_consumer'] ?? 1),
+            'indPres' => (int) ($operation['presence'] ?? ($model === '65' ? 1 : 9)),
             'procEmi' => 0,
             'verProc' => 'OSMais 1.0',
->>>>>>> 0b7938a81790f66a01299660e26e9c3cb1962549
         ]));
         $make->tagEmit($this->std([
             'CNPJ' => $this->digits((string) $company['documento']),
@@ -124,13 +111,6 @@ final class FiscalDocumentXmlBuilder
             'CRT' => (int) $company['crt'],
         ]));
         $make->tagenderEmit($this->std([
-<<<<<<< HEAD
-            'xLgr'=>$company['endereco_logradouro'], 'nro'=>$company['endereco_numero'],
-            'xCpl'=>$company['endereco_complemento'] ?? null, 'xBairro'=>$company['endereco_bairro'],
-            'cMun'=>$company['codigo_municipio_ibge'], 'xMun'=>$company['endereco_cidade'],
-            'UF'=>$uf, 'CEP'=>$company['endereco_cep'], 'cPais'=>'1058', 'xPais'=>'BRASIL',
-            'fone'=>$this->digits((string) ($company['telefone'] ?? '')) ?: null,
-=======
             'xLgr' => $company['endereco_logradouro'],
             'nro' => $company['endereco_numero'],
             'xCpl' => $company['endereco_complemento'] ?? null,
@@ -138,13 +118,10 @@ final class FiscalDocumentXmlBuilder
             'cMun' => $company['codigo_municipio_ibge'],
             'xMun' => $company['endereco_cidade'],
             'UF' => $uf,
-            'CEP' => $company['endereco_cep'],
+            'CEP' => $this->digits((string) $company['endereco_cep']),
             'cPais' => '1058',
             'xPais' => 'BRASIL',
-            'fone' => trim((string) ($company['telefone'] ?? '')) !== ''
-                ? $this->digits((string) $company['telefone'])
-                : null,
->>>>>>> 0b7938a81790f66a01299660e26e9c3cb1962549
+            'fone' => $this->digits((string) ($company['telefone'] ?? '')) ?: null,
         ]));
         $this->addCustomer($make, $customer, $model);
 
@@ -161,25 +138,26 @@ final class FiscalDocumentXmlBuilder
             }
         }
         $make->tagICMSTot(new stdClass());
-<<<<<<< HEAD
         if ($ibsCbsTotals !== null) {
             $make->tagIBSCBSTot($this->std([
-            'vBCIBSCBS'=>Decimal::formatCents($ibsCbsTotals['base']),
-            'gIBS_vIBS'=>Decimal::formatCents($ibsCbsTotals['ibs']),
-            'gIBSUF_vDif'=>'0.00', 'gIBSUF_vDevTrib'=>'0.00',
-            'gIBSUF_vIBSUF'=>Decimal::formatCents($ibsCbsTotals['uf']),
-            'gIBSMun_vDif'=>'0.00', 'gIBSMun_vDevTrib'=>'0.00',
-            'gIBSMun_vIBSMun'=>Decimal::formatCents($ibsCbsTotals['city']),
-            'gCBS_vDif'=>'0.00', 'gCBS_vDevTrib'=>'0.00',
-            'gCBS_vCBS'=>Decimal::formatCents($ibsCbsTotals['cbs']),
-            'gIBS_vCredPres'=>'0.00', 'gIBS_vCredPresCondSus'=>'0.00',
-            'gCBS_vCredPres'=>'0.00', 'gCBS_vCredPresCondSus'=>'0.00',
+                'vBCIBSCBS' => Decimal::formatCents($ibsCbsTotals['base']),
+                'gIBS_vIBS' => Decimal::formatCents($ibsCbsTotals['ibs']),
+                'gIBSUF_vDif' => '0.00',
+                'gIBSUF_vDevTrib' => '0.00',
+                'gIBSUF_vIBSUF' => Decimal::formatCents($ibsCbsTotals['uf']),
+                'gIBSMun_vDif' => '0.00',
+                'gIBSMun_vDevTrib' => '0.00',
+                'gIBSMun_vIBSMun' => Decimal::formatCents($ibsCbsTotals['city']),
+                'gCBS_vDif' => '0.00',
+                'gCBS_vDevTrib' => '0.00',
+                'gCBS_vCBS' => Decimal::formatCents($ibsCbsTotals['cbs']),
+                'gIBS_vCredPres' => '0.00',
+                'gIBS_vCredPresCondSus' => '0.00',
+                'gCBS_vCredPres' => '0.00',
+                'gCBS_vCredPresCondSus' => '0.00',
             ]));
         }
-        $make->tagtransp($this->std(['modFrete'=>9]));
-=======
         $make->tagtransp($this->std(['modFrete' => 9]));
->>>>>>> 0b7938a81790f66a01299660e26e9c3cb1962549
         $this->addPayments($make, is_array($snapshot['payments'] ?? null) ? $snapshot['payments'] : [], (string) $snapshot['totals']['invoice']);
         $services = is_array($snapshot['services'] ?? null) ? $snapshot['services'] : [];
         $note = 'Documento referente à ' . (string) ($snapshot['service_order']['number'] ?? 'OS');
@@ -217,12 +195,6 @@ final class FiscalDocumentXmlBuilder
         ]));
         if ($model === '55' || trim((string) ($customer['endereco'] ?? '')) !== '') {
             $make->tagenderDest($this->std([
-<<<<<<< HEAD
-                'xLgr'=>$customer['endereco'] ?? '', 'nro'=>$customer['cliente_numero'] ?? 'SN',
-                'xCpl'=>$customer['complemento'] ?? null, 'xBairro'=>$customer['bairro'] ?? '',
-                'cMun'=>$customer['cliente_codigo_municipio'] ?? '', 'xMun'=>$customer['cidade'] ?? '',
-                'UF'=>$customer['uf'] ?? '', 'CEP'=>$this->digits((string) ($customer['cep'] ?? '')), 'cPais'=>'1058', 'xPais'=>'BRASIL',
-=======
                 'xLgr' => $customer['endereco'] ?? '',
                 'nro' => $customer['cliente_numero'] ?? 'SN',
                 'xCpl' => $customer['complemento'] ?? null,
@@ -230,10 +202,9 @@ final class FiscalDocumentXmlBuilder
                 'cMun' => $customer['cliente_codigo_municipio'] ?? '',
                 'xMun' => $customer['cidade'] ?? '',
                 'UF' => $customer['uf'] ?? '',
-                'CEP' => $customer['cep'] ?? '',
+                'CEP' => $this->digits((string) ($customer['cep'] ?? '')),
                 'cPais' => '1058',
                 'xPais' => 'BRASIL',
->>>>>>> 0b7938a81790f66a01299660e26e9c3cb1962549
             ]));
         }
     }
@@ -248,16 +219,8 @@ final class FiscalDocumentXmlBuilder
         $gross = Decimal::formatCents($subtotalCents + $discountCents);
         $quantity = Decimal::normalizeUnsigned((string) $item['quantidade'], 4, 'quantidade');
         $unit = Decimal::normalizeUnsigned((string) $item['valor_unitario'], 10, 'valor unitário');
-        $gtin = trim((string) ($item['gtin_tributavel'] ?? $item['codigo_barras'] ?? '')) ?: 'SEM GTIN';
+        $gtin = GtinValidator::normalize((string) ($item['gtin_tributavel'] ?? ''));
         $make->tagprod($this->std([
-<<<<<<< HEAD
-            'item'=>$number, 'cProd'=>(string) ($item['codigo'] ?? $item['produto_id']),
-            'cEAN'=>$gtin, 'xProd'=>(string) $item['descricao'], 'NCM'=>(string) $item['ncm'],
-            'CEST'=>$item['cest'] ?: null, 'CFOP'=>(string) $item['cfop_padrao'],
-            'uCom'=>(string) $item['unidade'], 'qCom'=>$quantity, 'vUnCom'=>$unit, 'vProd'=>$gross,
-            'cEANTrib'=>$gtin, 'uTrib'=>(string) $item['unidade_tributavel'],
-            'qTrib'=>$quantity, 'vUnTrib'=>$unit, 'vDesc'=>$discountCents > 0 ? $discount : null, 'indTot'=>1,
-=======
             'item' => $number,
             'cProd' => (string) ($item['codigo'] ?? $item['produto_id']),
             'cEAN' => $gtin,
@@ -273,9 +236,8 @@ final class FiscalDocumentXmlBuilder
             'uTrib' => (string) $item['unidade_tributavel'],
             'qTrib' => $quantity,
             'vUnTrib' => $unit,
-            'vDesc' => (float) $discount > 0 ? $discount : null,
+            'vDesc' => $discountCents > 0 ? $discount : null,
             'indTot' => 1,
->>>>>>> 0b7938a81790f66a01299660e26e9c3cb1962549
         ]));
         $make->tagimposto($this->std(['item' => $number, 'vTotTrib' => null]));
         if (in_array($crt, [1, 2, 4], true)) {
@@ -285,7 +247,7 @@ final class FiscalDocumentXmlBuilder
             }
             $make->tagICMSSN($this->std(['item' => $number, 'orig' => $item['origem_mercadoria'], 'CSOSN' => $csosn]));
         } else {
-            $cst = (string) ($item['cst_icms'] ?? '');
+            $cst = $this->normalIcmsCst($item);
             if (!in_array($cst, ['00', '40', '41', '50'], true)) {
                 throw new InvalidArgumentException('O CST ICMS ' . $cst . ' exige uma regra tributária específica antes da emissão.');
             }
@@ -293,19 +255,13 @@ final class FiscalDocumentXmlBuilder
             $base = $cst === '00' ? $subtotal : '0.00';
             $baseCents = $cst === '00' ? $subtotalCents : 0;
             $make->tagICMS($this->std([
-<<<<<<< HEAD
-                'item'=>$number,'orig'=>$item['origem_mercadoria'],'CST'=>$cst,'modBC'=>3,
-                'vBC'=>$base,'pICMS'=>Decimal::formatRate($rate),
-                'vICMS'=>Decimal::formatCents(Decimal::taxCents($baseCents, $rate)),
-=======
                 'item' => $number,
                 'orig' => $item['origem_mercadoria'],
                 'CST' => $cst,
                 'modBC' => 3,
                 'vBC' => $base,
-                'pICMS' => number_format($rate, 4, '.', ''),
-                'vICMS' => number_format(((float) $base * $rate) / 100, 2, '.', ''),
->>>>>>> 0b7938a81790f66a01299660e26e9c3cb1962549
+                'pICMS' => Decimal::formatRate($rate),
+                'vICMS' => Decimal::formatCents(Decimal::taxCents($baseCents, $rate)),
             ]));
         }
         $this->addPisCofins($make, $item, $number, $subtotal);
@@ -336,31 +292,29 @@ final class FiscalDocumentXmlBuilder
     private function addPisCofins(Make $make, array $item, int $number, string $base): void
     {
         $baseCents = Decimal::moneyToCents($base);
-        $pisRate = Decimal::rateToUnits((string) ($item['aliquota_pis'] ?? '0'));
-        $cofinsRate = Decimal::rateToUnits((string) ($item['aliquota_cofins'] ?? '0'));
-        $make->tagPIS($this->std([
-<<<<<<< HEAD
-            'item'=>$number,'CST'=>(string) $item['cst_pis'],'vBC'=>$base,
-            'pPIS'=>Decimal::formatRate($pisRate),'vPIS'=>Decimal::formatCents(Decimal::taxCents($baseCents, $pisRate)),
-        ]));
-        $make->tagCOFINS($this->std([
-            'item'=>$number,'CST'=>(string) $item['cst_cofins'],'vBC'=>$base,
-            'pCOFINS'=>Decimal::formatRate($cofinsRate),'vCOFINS'=>Decimal::formatCents(Decimal::taxCents($baseCents, $cofinsRate)),
-=======
-            'item' => $number,
-            'CST' => (string) $item['cst_pis'],
-            'vBC' => $base,
-            'pPIS' => number_format($pisRate, 4, '.', ''),
-            'vPIS' => number_format(((float)$base * $pisRate) / 100, 2, '.', ''),
-        ]));
-        $make->tagCOFINS($this->std([
-            'item' => $number,
-            'CST' => (string) $item['cst_cofins'],
-            'vBC' => $base,
-            'pCOFINS' => number_format($cofinsRate, 4, '.', ''),
-            'vCOFINS' => number_format(((float)$base * $cofinsRate) / 100, 2, '.', ''),
->>>>>>> 0b7938a81790f66a01299660e26e9c3cb1962549
-        ]));
+        $pisCst = (string) $item['cst_pis'];
+        $cofinsCst = (string) $item['cst_cofins'];
+        $pis = ['item' => $number, 'CST' => $pisCst];
+        if (in_array($pisCst, ['01', '02'], true)) {
+            $pisRate = Decimal::rateToUnits((string) ($item['aliquota_pis'] ?? '0'));
+            $pis += [
+                'vBC' => $base,
+                'pPIS' => Decimal::formatRate($pisRate),
+                'vPIS' => Decimal::formatCents(Decimal::taxCents($baseCents, $pisRate)),
+            ];
+        }
+        $make->tagPIS($this->std($pis));
+
+        $cofins = ['item' => $number, 'CST' => $cofinsCst];
+        if (in_array($cofinsCst, ['01', '02'], true)) {
+            $cofinsRate = Decimal::rateToUnits((string) ($item['aliquota_cofins'] ?? '0'));
+            $cofins += [
+                'vBC' => $base,
+                'pCOFINS' => Decimal::formatRate($cofinsRate),
+                'vCOFINS' => Decimal::formatCents(Decimal::taxCents($baseCents, $cofinsRate)),
+            ];
+        }
+        $make->tagCOFINS($this->std($cofins));
     }
 
     /** @param array<int,mixed> $payments */
@@ -368,19 +322,6 @@ final class FiscalDocumentXmlBuilder
     {
         $make->tagpag($this->std(['vTroco' => null]));
         $remaining = $this->cents($invoiceTotal);
-        $paid = 0;
-        foreach ($payments as $payment) {
-            if (is_array($payment)) {
-                $paid += $this->cents((string) ($payment['valor'] ?? '0'));
-            }
-        }
-<<<<<<< HEAD
-=======
-        if ($paid < $remaining) {
-            $make->tagdetPag($this->std(['indPag' => 1, 'tPag' => '90', 'vPag' => '0.00']));
-            return;
-        }
->>>>>>> 0b7938a81790f66a01299660e26e9c3cb1962549
         foreach ($payments as $payment) {
             if (!is_array($payment) || $remaining <= 0) {
                 break;
@@ -403,18 +344,15 @@ final class FiscalDocumentXmlBuilder
             $remaining -= $allocated;
         }
         if ($remaining > 0) {
-            $make->tagdetPag($this->std(['indPag' => 1, 'tPag' => '90', 'vPag' => '0.00']));
+            $make->tagdetPag($this->std([
+                'indPag' => 1,
+                'tPag' => '91',
+                'vPag' => $this->formatCents($remaining),
+            ]));
         }
     }
 
     /** @param array<string,mixed> $data */
-<<<<<<< HEAD
-    private function std(array $data): stdClass { return (object) $data; }
-    private function digits(string $value): string { return preg_replace('/\D+/', '', $value) ?? ''; }
-    private function cents(string $value): int { return Decimal::moneyToCents($value); }
-    private function formatCents(int $value): string { return Decimal::formatCents($value); }
-    private function dateTime(string $value): string
-=======
     private function std(array $data): stdClass
     {
         return (object) $data;
@@ -423,23 +361,33 @@ final class FiscalDocumentXmlBuilder
     {
         return preg_replace('/\D+/', '', $value) ?? '';
     }
-    private function money(string $value): string
->>>>>>> 0b7938a81790f66a01299660e26e9c3cb1962549
+
+    private function cents(string $value): int
+    {
+        return Decimal::moneyToCents($value);
+    }
+
+    private function formatCents(int $value): string
+    {
+        return Decimal::formatCents($value);
+    }
+
+    /** @param array<string,mixed> $item */
+    private function normalIcmsCst(array $item): string
+    {
+        $cst = trim((string) ($item['cst_icms'] ?? ''));
+        $origin = (string) ($item['origem_mercadoria'] ?? '');
+        if (preg_match('/^\d{3}$/', $cst) === 1 && $cst[0] === $origin) {
+            return substr($cst, 1);
+        }
+        return $cst;
+    }
+
+    private function dateTime(string $value): string
     {
         if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/', $value) !== 1) {
             throw new InvalidArgumentException('Data de emissão inválida no snapshot fiscal.');
         }
         return $value;
     }
-<<<<<<< HEAD
-=======
-    private function cents(string $value): int
-    {
-        return (int) round((float) $this->money($value) * 100);
-    }
-    private function formatCents(int $value): string
-    {
-        return sprintf('%d.%02d', intdiv($value, 100), $value % 100);
-    }
->>>>>>> 0b7938a81790f66a01299660e26e9c3cb1962549
 }

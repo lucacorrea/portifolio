@@ -20,12 +20,17 @@ final class FiscalConfigurationService
         'MT' => '51', 'GO' => '52', 'DF' => '53',
     ];
 
+    private readonly ?FiscalProductionGate $productionGate;
+
     public function __construct(
         private readonly FiscalConfigurationRepository $repository,
         private readonly ?FiscalSecretVault $vault = null,
         private readonly ?FiscalCertificateStorage $certificateStorage = null,
-        private readonly ?FiscalRuntimeReadiness $runtimeReadiness = null
+        private readonly ?FiscalRuntimeReadiness $runtimeReadiness = null,
+        ?FiscalProductionGate $productionGate = null
     ) {
+        $this->productionGate = $productionGate
+            ?? ($runtimeReadiness === null ? null : new FiscalProductionGate($repository, $runtimeReadiness));
     }
 
     /** @return array<string,mixed> */
@@ -40,7 +45,11 @@ final class FiscalConfigurationService
             'configuration' => $configuration,
             'certificates' => $this->repository->activeCertificates(),
             'series' => $this->repository->activeSeries($environment, $model),
-            'readiness' => $this->readiness($environment, $model),
+            'readiness' => $this->readiness(
+                $environment,
+                $model,
+                $configuration === null ? null : (int) $configuration['id']
+            ),
             'integration_test' => $configuration === null
                 ? null
                 : $this->repository->latestIntegrationTest((int) $configuration['id']),
@@ -81,21 +90,15 @@ final class FiscalConfigurationService
     {
         $this->assertUser($userId);
         $environment = self::environment(isset($data['ambiente']) ? (string) $data['ambiente'] : null);
-        if ($environment === 'producao') {
-            throw new InvalidArgumentException('Configuração de produção permanece bloqueada nesta etapa.');
-        }
         $model = self::model((string) ($data['modelo'] ?? '65'));
         $state = self::state((string) ($data['uf'] ?? 'AM'));
         $schemaVersion = self::schemaVersion((string) ($data['schema_versao'] ?? '4.00'));
         $certificateId = self::positiveInt($data['certificado_id'] ?? null, 'Certificado fiscal inválido.');
         $qrVersion = $model === '65'
-            ? self::boundedInt($data['qr_code_versao'] ?? 3, 1, 9, 'Versão do QR Code inválida.')
+            ? self::boundedInt($data['qr_code_versao'] ?? 3, 3, 3, 'NFC-e exige QR Code versão 3.')
             : null;
         $cscId = $model === '65' ? self::shortText($data['csc_id'] ?? null, 40, 'ID do CSC inválido.') : null;
         $cscPlaintext = $model === '65' ? trim((string) ($data['csc'] ?? '')) : '';
-        if ($model === '65' && $qrVersion === 2 && ($cscId === null || $cscPlaintext === '')) {
-            throw new InvalidArgumentException('QR Code v2 exige o ID e o CSC da NFC-e.');
-        }
         if (strlen($cscPlaintext) > 120 || str_contains($cscPlaintext, "\0")) {
             throw new InvalidArgumentException('CSC inválido.');
         }
@@ -113,9 +116,6 @@ final class FiscalConfigurationService
     {
         $this->assertUser($userId);
         $environment = self::environment(isset($data['ambiente']) ? (string) $data['ambiente'] : null);
-        if ($environment === 'producao') {
-            throw new InvalidArgumentException('Séries de produção permanecem bloqueadas nesta etapa.');
-        }
         $this->repository->saveSeries([
             'environment' => $environment,
             'model' => self::model((string) ($data['modelo'] ?? '65')),
@@ -130,7 +130,7 @@ final class FiscalConfigurationService
         $environment = self::environment($environment);
         $model = self::model($model);
         $configuration = $configurationId === null
-            ? $this->repository->latestConfiguration($environment, $model)
+            ? $this->repository->activeConfiguration($environment, $model)
             : $this->repository->configurationById($configurationId);
         if ($configuration !== null
             && ($configuration['ambiente'] !== $environment || $configuration['modelo'] !== $model)
@@ -159,7 +159,7 @@ final class FiscalConfigurationService
         }
 
         if ($configuration === null) {
-            $errors[] = 'Crie uma configuração fiscal para o ambiente e modelo.';
+            $errors[] = 'Crie e ative uma configuração fiscal para o ambiente e modelo.';
         } else {
             if (($configuration['certificado_status'] ?? '') !== 'ativo'
                 || strtotime((string) ($configuration['valido_ate'] ?? '')) <= time()
@@ -170,15 +170,14 @@ final class FiscalConfigurationService
             if ($state !== '' && ($configuration['uf'] ?? '') !== $state) {
                 $errors[] = 'A UF da configuração difere do endereço fiscal da empresa.';
             }
-            if ($model === '65' && (int)($configuration['qr_code_versao'] ?? 0) === 2
-                && (empty($configuration['has_csc']) || trim((string) ($configuration['csc_id'] ?? '')) === '')
-            ) {
-                $errors[] = 'QR Code v2 exige ID do CSC e CSC protegido.';
+            if ($model === '65' && (int) ($configuration['qr_code_versao'] ?? 0) !== 3) {
+                $errors[] = 'NFC-e exige QR Code versão 3.';
             }
         }
 
         $series = $this->repository->activeSeries($environment, $model);
         if ($series === []) $errors[] = 'Cadastre ao menos uma série ativa para o ambiente e modelo.';
+        if (count($series) > 1) $errors[] = 'Mantenha exatamente uma série ativa para evitar consumo da sequência errada.';
         $productChecks = $this->repository->productReadiness($crt);
         $productLabels = [
             'missing_ncm' => 'NCM',
@@ -221,36 +220,48 @@ final class FiscalConfigurationService
                 $clientsWithInvalidCityCode
             );
         }
-        $blocked = $environment === 'producao';
-        if ($blocked) $errors[] = 'Emissão em produção está bloqueada nesta etapa de fundação fiscal.';
+        $productionChecks = null;
+        if ($environment === 'producao') {
+            $productionChecks = $this->productionGate?->inspect($model, $configuration);
+            if (!is_array($productionChecks)) {
+                $errors[] = 'O gate técnico de produção não está disponível.';
+            } else {
+                $errors = array_merge($errors, $productionChecks['errors']);
+            }
+        }
+        $blocked = $environment === 'producao' && $errors !== [];
 
         return [
             'ready' => !$blocked && $errors === [], 'blocked' => $blocked,
             'errors' => array_values(array_unique($errors)),
             'warnings' => array_values(array_unique($warnings)),
             'checks' => ['company' => $company, 'configuration' => $configuration,
-                'series' => $series, 'products' => $productChecks, 'clients' => $clientChecks],
+                'series' => $series, 'products' => $productChecks, 'clients' => $clientChecks,
+                'production_gate' => $productionChecks],
         ];
     }
 
-    public function activate(int $configurationId, int $userId): void
+    public function activate(int $configurationId, int $userId, bool $allowProduction = false): void
     {
         $this->assertUser($userId);
         $configuration = $this->repository->configurationById($configurationId);
         if ($configuration === null) throw new InvalidArgumentException('Configuração fiscal não encontrada.');
-        if ($configuration['ambiente'] !== 'homologacao') {
-            throw new InvalidArgumentException('Ativação de produção está bloqueada nesta etapa.');
+        $environment = (string) $configuration['ambiente'];
+        if ($environment === 'producao' && !$allowProduction) {
+            throw new InvalidArgumentException('A ativação de produção exige permissão específica.');
         }
-        $readiness = $this->readiness('homologacao', (string) $configuration['modelo'], $configurationId);
+        $readiness = $this->readiness($environment, (string) $configuration['modelo'], $configurationId);
         if (!$readiness['ready']) throw new InvalidArgumentException('A configuração fiscal possui pendências e não pode ser ativada.');
         $runtime = $this->runtimeReadiness?->inspect();
-        if (!is_array($runtime) || !$runtime['homologation_ready']) {
+        if (!is_array($runtime) || !$runtime['homologation_ready']
+            || ($environment === 'producao' && !$runtime['production_allowed'])
+        ) {
             throw new InvalidArgumentException('Conclua os requisitos técnicos do servidor antes de ativar a configuração.');
         }
         if (!$this->repository->hasSuccessfulIntegrationTest($configurationId)) {
             throw new InvalidArgumentException('Teste a comunicação com a SEFAZ antes de ativar a configuração.');
         }
-        $this->repository->activateConfiguration($configurationId, 'homologacao', (string) $configuration['modelo'], $userId);
+        $this->repository->activateConfiguration($configurationId, $environment, (string) $configuration['modelo'], $userId);
     }
 
     public static function environment(?string $value): string

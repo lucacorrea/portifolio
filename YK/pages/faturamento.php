@@ -14,10 +14,16 @@ $canViewReceipts = $authorization->can('recibo.visualizar');
 $canIssueReceipt = $authorization->can('recibo.emitir');
 $canReprintReceipt = $authorization->can('recibo.reimprimir');
 $runtime = $application->fiscalRuntimeReadiness()->inspect();
+$overviewEnvironment = in_array((string) ($_GET['fiscal_environment'] ?? ''), ['homologacao', 'producao'], true)
+  ? (string) $_GET['fiscal_environment']
+  : 'homologacao';
+$overviewModel = in_array((string) ($_GET['fiscal_model'] ?? ''), ['55', '65'], true)
+  ? (string) $_GET['fiscal_model']
+  : '65';
 $fiscalOverview = null;
 if ($canViewFiscal) {
     try {
-        $fiscalOverview = $application->fiscalConfiguration()->overview('homologacao', '65');
+        $fiscalOverview = $application->fiscalConfiguration()->overview($overviewEnvironment, $overviewModel);
     } catch (Throwable $exception) {
         error_log('Fiscal billing overview unavailable [' . get_class($exception) . '].');
     }
@@ -81,9 +87,9 @@ function billing_receipt_type(array $receipt): string
       <div class="panel-header"><div class="panel-title"><i class="bi bi-receipt-cutoff"></i>Emissão fiscal</div><?php if ($authorization->can('nota_fiscal.configurar')): ?><a class="btn-filter btn-filter-primary" href="configuracoes-fiscais.php"><i class="bi bi-gear"></i> Configurar</a><?php endif; ?></div>
       <div class="p-3">
         <div class="row g-3">
-          <div class="col-12 col-md-4"><div class="border rounded-3 p-3 h-100"><span class="text-muted d-block">Ambiente</span><strong>Homologação</strong></div></div>
-          <div class="col-12 col-md-4"><div class="border rounded-3 p-3 h-100"><span class="text-muted d-block">Configuração NFC-e</span><strong><?= $configuration === null ? 'Não configurada' : h((string) $configuration['status']) ?></strong></div></div>
-          <div class="col-12 col-md-4"><div class="border rounded-3 p-3 h-100"><span class="text-muted d-block">Comunicação SEFAZ</span><strong><?= $runtime['homologation_ready'] && $readiness !== null && $readiness['ready'] ? 'Pronta para teste técnico' : 'Bloqueada por pendências' ?></strong></div></div>
+          <div class="col-12 col-md-4"><div class="border rounded-3 p-3 h-100"><span class="text-muted d-block">Ambiente</span><strong><?= h(ucfirst($overviewEnvironment)) ?></strong></div></div>
+          <div class="col-12 col-md-4"><div class="border rounded-3 p-3 h-100"><span class="text-muted d-block">Configuração <?= $overviewModel === '55' ? 'NF-e' : 'NFC-e' ?></span><strong><?= $configuration === null ? 'Não configurada' : h((string) $configuration['status']) ?></strong></div></div>
+          <div class="col-12 col-md-4"><div class="border rounded-3 p-3 h-100"><span class="text-muted d-block">Comunicação SEFAZ</span><strong><?= ($overviewEnvironment === 'producao' ? $runtime['production_allowed'] : $runtime['homologation_ready']) && $readiness !== null && $readiness['ready'] ? 'Pronta para teste técnico' : 'Bloqueada por pendências' ?></strong></div></div>
         </div>
         <?php if ($readiness !== null && $readiness['errors'] !== []): ?><div class="alert alert-warning mt-3 mb-0">Existem <?= count($readiness['errors']) ?> pendência(s) cadastral(is) ou técnica(s). Consulte a Configuração Fiscal.</div><?php endif; ?>
         <?php if ($fiscalOverview === null): ?><div class="alert alert-warning mt-3 mb-0">A fundação fiscal ainda não está disponível no banco.</div><?php endif; ?>
@@ -95,6 +101,7 @@ function billing_receipt_type(array $receipt): string
       <form class="filter-bar" method="get" action="faturamento.php" data-live-filter="fiscal-documents" data-live-regions="fiscal-results">
         <div class="search-wrap"><i class="bi bi-search"></i><input class="search-input" name="fiscal_search" value="<?= h($fiscalFilters['search']) ?>" placeholder="Chave, cliente ou OS"></div>
         <select class="filter-select" name="fiscal_model" aria-label="Modelo fiscal"><option value="">NF-e e NFC-e</option><option value="55" <?= $fiscalFilters['modelo'] === '55' ? 'selected' : '' ?>>NF-e (55)</option><option value="65" <?= $fiscalFilters['modelo'] === '65' ? 'selected' : '' ?>>NFC-e (65)</option></select>
+        <select class="filter-select" name="fiscal_environment" aria-label="Ambiente fiscal"><option value="">Todos os ambientes</option><option value="homologacao" <?= $fiscalFilters['ambiente'] === 'homologacao' ? 'selected' : '' ?>>Homologação</option><option value="producao" <?= $fiscalFilters['ambiente'] === 'producao' ? 'selected' : '' ?>>Produção</option></select>
         <select class="filter-select" name="fiscal_status" aria-label="Status fiscal"><option value="">Todos os status</option><?php foreach (['preparado','processando','pendente_reconsulta','autorizado','rejeitado','denegado','cancelado','erro_tecnico'] as $status): ?><option value="<?= h($status) ?>" <?= $fiscalFilters['status'] === $status ? 'selected' : '' ?>><?= h(ucfirst(str_replace('_', ' ', $status))) ?></option><?php endforeach; ?></select>
         <button class="btn-filter btn-filter-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
         <a class="btn-filter btn-filter-ghost" href="faturamento.php#documentos-fiscais" data-live-filter-clear><i class="bi bi-x-lg"></i> Limpar</a>
@@ -114,11 +121,12 @@ function billing_receipt_type(array $receipt): string
               <td><?php if (!empty($document['chave'])): ?><small><?= h((string) $document['chave']) ?></small><?php else: ?><?= h((string) ($document['xmotivo'] ?? 'Aguardando transmissão/autorização')) ?><?php endif; ?></td>
               <td class="table-actions-cell">
                 <?php $documentStatus = (string) ($document['processamento_status'] ?? ''); ?>
-                <?php if ($documentStatus === 'autorizado' || ($canIssueFiscal && in_array($documentStatus, ['preparado', 'processando', 'pendente_reconsulta'], true))): ?>
+                <?php if ($documentStatus === 'autorizado' || ($canIssueFiscal && in_array($documentStatus, ['preparado', 'processando', 'pendente_reconsulta', 'rejeitado'], true))): ?>
                   <div class="dropdown table-action-dropdown"><button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ações do documento fiscal"><i class="bi bi-three-dots-vertical"></i></button><ul class="dropdown-menu dropdown-menu-end">
                     <?php if ($documentStatus === 'autorizado'): ?><li><a class="dropdown-item" href="nota-fiscal-imprimir.php?id=<?= h((string) $document['id']) ?>" target="_blank" rel="noopener"><i class="bi bi-printer"></i> Imprimir <?= ($document['modelo'] ?? '') === '55' ? 'DANFE' : 'DANFCE' ?></a></li><?php if ($authorization->can('nota_fiscal.baixar_xml')): ?><li><a class="dropdown-item" href="nota-fiscal-xml.php?id=<?= h((string) $document['id']) ?>"><i class="bi bi-filetype-xml"></i> Baixar XML autorizado</a></li><?php endif; ?><?php if ($canCancelFiscal): ?><li><hr class="dropdown-divider"></li><li><button class="dropdown-item text-danger js-fiscal-cancel" type="button" data-document-id="<?= h((string) $document['id']) ?>" data-bs-toggle="modal" data-bs-target="#modal-fiscal-cancel"><i class="bi bi-x-octagon"></i> Cancelar na SEFAZ</button></li><?php endif; ?>
                     <?php elseif ($documentStatus === 'preparado'): ?><li><form method="post" action="actions/nota-fiscal-transmitir.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="documento_fiscal_id" value="<?= h((string) $document['id']) ?>"><button class="dropdown-item" type="submit"><i class="bi bi-cloud-arrow-up"></i> Transmitir à SEFAZ</button></form></li>
-                    <?php else: ?><li><form method="post" action="actions/nota-fiscal-reconsultar.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="documento_fiscal_id" value="<?= h((string) $document['id']) ?>"><button class="dropdown-item" type="submit"><i class="bi bi-arrow-repeat"></i> Reconsultar na SEFAZ</button></form></li><?php endif; ?>
+                    <?php elseif (in_array($documentStatus, ['processando', 'pendente_reconsulta'], true)): ?><li><form method="post" action="actions/nota-fiscal-reconsultar.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="documento_fiscal_id" value="<?= h((string) $document['id']) ?>"><button class="dropdown-item" type="submit"><i class="bi bi-arrow-repeat"></i> Reconsultar na SEFAZ</button></form></li>
+                    <?php else: ?><li><form method="post" action="actions/nota-fiscal-preparar.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="ordem_servico_id" value="<?= h((string) $document['ordem_servico_id']) ?>"><input type="hidden" name="modelo" value="<?= h((string) $document['modelo']) ?>"><input type="hidden" name="ambiente" value="<?= h((string) $document['ambiente']) ?>"><input type="hidden" name="idempotency_key" value="<?= h(bin2hex(random_bytes(32))) ?>"><button class="dropdown-item" type="submit"><i class="bi bi-arrow-clockwise"></i> Repreparar após corrigir cadastro</button></form></li><?php endif; ?>
                   </ul></div>
                 <?php else: ?>—<?php endif; ?>
               </td>
