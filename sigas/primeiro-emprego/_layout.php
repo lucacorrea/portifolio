@@ -6,14 +6,14 @@ use App\Config\ModuleRegistry;
 use App\Core\PageContext;
 
 require_once dirname(__DIR__) . '/bootstrap.php';
-require_once dirname(__DIR__) . '/frontend/modules/primeiro-emprego2/data/demo-data.php';
+require_once dirname(__DIR__) . '/frontend/modules/primeiro-emprego/data/demo-data.php';
 $frontendContext = PageContext::requireAuthenticatedFrontendContext();
 
 if (!isset($pageKey) || !is_string($pageKey)) {
     throw new RuntimeException('A página do módulo não foi informada.');
 }
 
-$environmentKey = 'primeiro-emprego2';
+$environmentKey = 'primeiro-emprego';
 $baseHref = '../';
 $environment = ModuleRegistry::find($environmentKey);
 $page = ModuleRegistry::findPage($environmentKey, $pageKey);
@@ -28,7 +28,7 @@ if ($environment === null || $page === null) {
 
 $pageDefinition = [];
 $pageCustomContent = '';
-$view = dirname(__DIR__) . '/frontend/modules/primeiro-emprego2/pages/' . $pageKey . '.php';
+$view = dirname(__DIR__) . '/frontend/modules/primeiro-emprego/pages/' . $pageKey . '.php';
 
 if (!is_file($view)) {
     http_response_code(404);
@@ -39,6 +39,6 @@ if (!is_file($view)) {
 }
 
 require $view;
-$extraStyles = ['frontend/modules/primeiro-emprego2/module.css'];
-$extraScripts = ['frontend/modules/primeiro-emprego2/module.js'];
+$extraStyles = ['frontend/modules/primeiro-emprego/module.css'];
+$extraScripts = ['frontend/modules/primeiro-emprego/module.js'];
 require dirname(__DIR__) . '/frontend/layouts/module-layout.php';
