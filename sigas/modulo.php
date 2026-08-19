@@ -49,6 +49,7 @@ try {
     <link href="assets/css/style.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/style.css')) ?>" rel="stylesheet">
     <link href="assets/css/module-navigation.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/module-navigation.css')) ?>" rel="stylesheet">
     <link href="assets/css/anexo-detail-modal.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/anexo-detail-modal.css')) ?>" rel="stylesheet">
+    <link href="assets/css/sigas-operational-ui.css?v=<?= e(is_file(__DIR__ . '/assets/css/sigas-operational-ui.css') ? (string) filemtime(__DIR__ . '/assets/css/sigas-operational-ui.css') : '1') ?>" rel="stylesheet">
 </head>
 <body data-page="modulo">
     <main class="container py-5">
@@ -455,7 +456,7 @@ function render_registration_form_fields(array $poles, array $programStatuses, s
                                 <div><label class="form-label" for="competenceFilter">Competência</label><div class="input-group"><select class="form-select" id="competenceFilter" name="competencia_id"><option value="">Padrão</option><?php foreach ($competences as $item): ?><option value="<?= e($item['id']) ?>"<?= selected($currentCompetenceId, $item['id']) ?>><?= e($service->formatCompetence((int) $item['mes'], (int) $item['ano'])) ?></option><?php endforeach; ?></select><button class="btn btn-light" type="button"<?= ($canManageCompetences && $currentCompetenceId !== null) ? ' data-open-edit-competence' : ' disabled title="Selecione uma competência"' ?> aria-label="Editar competência"><i class="bi bi-gear"></i></button></div></div>
                                 <div><label class="form-label" for="programStatusFilter">Situação no programa</label><select class="form-select" id="programStatusFilter" name="program_status"><option value="">Todas</option><?php foreach ($programStatuses as $value => $label): ?><option value="<?= e($value) ?>"<?= selected($filter->programStatus, $value) ?>><?= e($label) ?></option><?php endforeach; ?></select></div>
                                 <div class="delivery-filter"><label class="form-label" for="deliveryStatusFilter">Situação da entrega</label><select class="form-select" id="deliveryStatusFilter" name="delivery_status"><option value="">Todas</option><?php foreach ($deliveryStatuses as $value => $label): ?><option value="<?= e($value) ?>"<?= selected($filter->deliveryStatus, $value) ?>><?= e($label) ?></option><?php endforeach; ?></select></div>
-                                <div class="filter-actions"><button class="btn btn-light" type="button" data-toggle-advanced aria-expanded="<?= $hasAdvanced ? 'true' : 'false' ?>"><i class="bi bi-sliders"></i>Avançados</button><button class="btn btn-primary" type="submit"><i class="bi bi-funnel"></i>Aplicar</button></div>
+                                <div class="filter-actions"><button class="btn btn-light" type="button" data-toggle-advanced aria-expanded="<?= $hasAdvanced ? 'true' : 'false' ?>"><i class="bi bi-sliders"></i>Avançados</button><button class="btn btn-primary" type="submit"><i class="bi bi-funnel"></i>Aplicar</button><a class="btn btn-light btn-icon" href="modulo.php" aria-label="Limpar filtros" title="Limpar filtros"><i class="bi bi-x-lg"></i></a></div>
                             </div>
                             <div class="advanced-filters<?= $hasAdvanced ? ' show' : '' ?>" id="advancedFilters">
                                 <div><label class="form-label" for="zoneFilter">Zona</label><input class="form-control" id="zoneFilter" name="zone" value="<?= e($filter->zone) ?>"></div>
@@ -469,12 +470,12 @@ function render_registration_form_fields(array $poles, array $programStatuses, s
                         <section class="content-card table-card" aria-labelledby="beneficiaryListTitle">
                             <div class="table-toolbar">
                                 <div><h2 class="fs-6 mb-1" id="beneficiaryListTitle">Famílias beneficiárias</h2><div class="table-toolbar-info">Exibindo <?= e(count($items)) ?> de <?= e(number_format($total, 0, ',', '.')) ?> registros - <?= e($competenceLabel) ?></div></div>
-                                <div class="d-flex gap-2"><button class="btn btn-light btn-sm" type="button"<?= $canManageCompetences ? ' data-open-new-competence' : ' disabled title="Sem permissão"' ?>><i class="bi bi-calendar-plus"></i>Nova</button><button class="btn btn-light btn-sm" type="button"<?= ($canManageCompetences && $currentCompetenceId !== null) ? ' data-open-edit-competence' : ' disabled title="Selecione uma competência"' ?>><i class="bi bi-pencil"></i>Editar</button></div>
+                                <span class="sigas-row-hint"><i class="bi bi-cursor"></i>Clique em uma linha para abrir as ações</span>
                             </div>
 
                             <div class="table-responsive">
                                 <table class="data-table" id="beneficiaryTable">
-                                    <thead><tr><th><input class="form-check-input" type="checkbox" disabled aria-label="Selecionar todos"></th><th>Código</th><th>Responsável familiar</th><th>Localidade</th><th>Polo</th><th>Situação no programa</th><th>Entrega</th><th>Atualização</th><th class="text-end">Ações</th></tr></thead>
+                                    <thead><tr><th>Código</th><th>Responsável familiar</th><th>Localidade</th><th>Polo</th><th>Situação no programa</th><th>Entrega</th><th>Atualização</th></tr></thead>
                                     <tbody>
                                         <?php foreach ($items as $row): ?>
                                             <?php
@@ -498,8 +499,26 @@ function render_registration_form_fields(array $poles, array $programStatuses, s
                                             $deliveryDateLabel = $delivery['delivered_at'] ? date_br($delivery['delivered_at']) : 'Não informado';
                                             $deliveryOperatorLabel = $row['entrega_operador_nome'] ?: 'Não informado';
                                             ?>
-                                            <tr>
-                                                <td><input class="form-check-input" type="checkbox" disabled aria-label="Selecionar <?= e($row['responsavel_nome']) ?>"></td>
+                                            <tr class="sigas-action-row"
+                                                data-cm-action-row
+                                                data-registration-id="<?= e($row['inscricao_id']) ?>"
+                                                data-registration-name="<?= e($row['responsavel_nome']) ?>"
+                                                data-family-code="<?= e($row['familia_codigo']) ?>"
+                                                data-pole-name="<?= e($row['polo_nome'] ?: 'Sem polo') ?>"
+                                                data-program-status="<?= e($service->programStatusLabel((string) $row['inscricao_status'])) ?>"
+                                                data-delivery-label="<?= e($delivery['label']) ?>"
+                                                data-delivery-action="<?= e($deliveryAction) ?>"
+                                                data-delivery-date="<?= e($deliveryDateLabel) ?>"
+                                                data-delivery-operator="<?= e($deliveryOperatorLabel) ?>"
+                                                data-can-edit="<?= $canEdit ? '1' : '0' ?>"
+                                                data-can-deliver="<?= $canDeliverRow ? '1' : '0' ?>"
+                                                data-can-cancel="<?= $canCancelRow ? '1' : '0' ?>"
+                                                data-can-document="<?= $canSendDocuments ? '1' : '0' ?>"
+                                                data-can-history="<?= $canViewHistory ? '1' : '0' ?>"
+                                                data-delivery-title="<?= e((string) $deliveryTitle) ?>"
+                                                tabindex="0"
+                                                role="button"
+                                                aria-label="Abrir ações de <?= e($row['responsavel_nome']) ?>">
                                                 <td><strong><?= e($row['familia_codigo']) ?></strong></td>
                                                 <td><div class="record-person"><span class="mini-avatar"><?= e(sigas_initials((string) $row['responsavel_nome'])) ?></span><div><strong><?= e($row['responsavel_nome']) ?></strong><span>CPF: <?= e($service->formatCpf((string) $row['cpf'])) ?> · NIS <?= e($row['nis'] ?: 'Não informado') ?></span></div></div></td>
                                                 <td><?= e(location_label($row)) ?></td>
@@ -507,7 +526,7 @@ function render_registration_form_fields(array $poles, array $programStatuses, s
                                                 <td><span class="status-badge <?= e($programClass) ?>"><i class="bi bi-<?= e($programIcon) ?>"></i><?= e($service->programStatusLabel((string) $row['inscricao_status'])) ?></span></td>
                                                 <td><span class="status-badge <?= e($delivery['class']) ?>"><i class="bi bi-<?= e($delivery['icon']) ?>"></i><?= e($delivery['label']) ?></span><?= $delivery['delivered_at'] ? '<br><small class="text-secondary">' . e(date_br($delivery['delivered_at'])) . '</small>' : '' ?></td>
                                                 <td><?= e(date_br($row['atualizado_em'] ?: $row['data_inscricao'])) ?></td>
-                                                <td><div class="table-actions justify-content-end"><button class="btn btn-light btn-sm" type="button" data-open-detail data-registration-id="<?= e($row['inscricao_id']) ?>"><i class="bi bi-eye"></i>Visualizar</button><div class="dropdown"><button class="btn btn-light btn-icon btn-sm" type="button" data-bs-toggle="dropdown" aria-label="Ações de <?= e($row['responsavel_nome']) ?>"><i class="bi bi-three-dots"></i></button><ul class="dropdown-menu dropdown-menu-end"><li><button class="dropdown-item" type="button"<?= $canEdit ? ' data-open-edit data-registration-id="' . e($row['inscricao_id']) . '"' : ' disabled title="Sem permissão"' ?>><i class="bi bi-pencil me-2"></i>Editar cadastro</button></li><li><button class="dropdown-item" type="button"<?= $canDeliverRow ? ' data-open-delivery data-registration-id="' . e($row['inscricao_id']) . '" data-registration-name="' . e($row['responsavel_nome']) . '" data-family-code="' . e($row['familia_codigo']) . '" data-pole-name="' . e($row['polo_nome'] ?: 'Sem polo') . '" data-delivery-action="' . e($deliveryAction) . '"' : ' disabled title="' . e($deliveryTitle) . '"' ?>><i class="bi bi-basket2 me-2"></i><?= e($deliveryButtonLabel) ?></button></li><li><button class="dropdown-item" type="button"<?= $canCancelRow ? ' data-open-cancel data-registration-id="' . e($row['inscricao_id']) . '" data-registration-name="' . e($row['responsavel_nome']) . '" data-family-code="' . e($row['familia_codigo']) . '" data-pole-name="' . e($row['polo_nome'] ?: 'Sem polo') . '" data-delivery-date="' . e($deliveryDateLabel) . '" data-delivery-operator="' . e($deliveryOperatorLabel) . '"' : ' disabled title="Cancelamento indisponível"' ?>><i class="bi bi-x-circle me-2"></i>Cancelar entrega</button></li><li><button class="dropdown-item" type="button"<?= $canSendDocuments ? ' data-open-document data-registration-id="' . e($row['inscricao_id']) . '"' : ' disabled title="Sem permissão"' ?>><i class="bi bi-paperclip me-2"></i>Enviar documento</button></li><?php if ($canViewHistory): ?><li><button class="dropdown-item" type="button" data-open-detail data-registration-id="<?= e($row['inscricao_id']) ?>" data-detail-section="history"><i class="bi bi-clock-history me-2"></i>Abrir histórico</button></li><?php endif; ?></ul></div></div></td>
+                                                
                                             </tr>
                                         <?php endforeach; ?>
                                     </tbody>
@@ -622,6 +641,39 @@ function render_registration_form_fields(array $poles, array $programStatuses, s
                     <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
                 <div class="modal-body" data-anexo-detail-content></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade sigas-action-modal" id="beneficiaryActionModal" tabindex="-1" aria-labelledby="beneficiaryActionTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <div class="eyebrow mb-1"><i class="bi bi-grid"></i>Ações do beneficiário</div>
+                        <h2 class="modal-title fs-5" id="beneficiaryActionTitle" data-cm-action-name>Família beneficiária</h2>
+                        <p class="modal-subtitle mb-0"><span data-cm-action-code>Sem código</span> · <span data-cm-action-pole>Sem polo</span></p>
+                    </div>
+                    <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="sigas-action-summary">
+                        <div><span>Situação no programa</span><strong data-cm-action-program>Não informado</strong></div>
+                        <div><span>Situação da entrega</span><strong data-cm-action-delivery>Não informado</strong></div>
+                    </div>
+                    <div class="sigas-action-grid mt-3">
+                        <button class="sigas-action-button" type="button" data-cm-action-command="view"><i class="bi bi-eye"></i><span><strong>Visualizar</strong><small>Abrir dados completos da família</small></span></button>
+                        <button class="sigas-action-button" type="button" data-cm-action-command="edit"><i class="bi bi-pencil-square"></i><span><strong>Editar cadastro</strong><small>Atualizar dados da inscrição</small></span></button>
+                        <button class="sigas-action-button" type="button" data-cm-action-command="delivery"><i class="bi bi-basket2"></i><span><strong data-cm-action-delivery-text>Registrar entrega</strong><small>Operação da competência atual</small></span></button>
+                        <button class="sigas-action-button" type="button" data-cm-action-command="document"><i class="bi bi-paperclip"></i><span><strong>Enviar documento</strong><small>Anexar documento ao cadastro</small></span></button>
+                        <button class="sigas-action-button" type="button" data-cm-action-command="history"><i class="bi bi-clock-history"></i><span><strong>Histórico</strong><small>Consultar movimentações e entregas</small></span></button>
+                        <button class="sigas-action-button sigas-action-button--danger" type="button" data-cm-action-command="cancel"><i class="bi bi-x-circle"></i><span><strong>Cancelar entrega</strong><small>Exige justificativa e permissão</small></span></button>
+                    </div>
+                    <div class="small text-secondary mt-3" data-cm-action-note>As ações disponíveis respeitam as permissões do usuário e a situação atual do benefício.</div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-light" type="button" data-bs-dismiss="modal">Fechar</button>
+                </div>
             </div>
         </div>
     </div>

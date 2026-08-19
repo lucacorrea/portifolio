@@ -620,6 +620,137 @@
         form.addEventListener("submit", async (event) => { event.preventDefault(); if (await submitJson(form)) reloadPreservingFilters(); });
     })();
 
+
+    const beneficiaryActionHub = (() => {
+        const root = qs("#beneficiaryActionModal");
+        if (!root) return null;
+
+        const hub = modal("#beneficiaryActionModal");
+        const name = qs("[data-cm-action-name]", root);
+        const code = qs("[data-cm-action-code]", root);
+        const pole = qs("[data-cm-action-pole]", root);
+        const program = qs("[data-cm-action-program]", root);
+        const delivery = qs("[data-cm-action-delivery]", root);
+        const deliveryText = qs("[data-cm-action-delivery-text]", root);
+        const note = qs("[data-cm-action-note]", root);
+        const buttons = new Map(qsa("[data-cm-action-command]", root).map((button) => [button.dataset.cmActionCommand, button]));
+        let current = null;
+
+        const yes = (value) => String(value || "") === "1";
+        const setButtonState = (command, enabled, reason = "") => {
+            const button = buttons.get(command);
+            if (!button) return;
+            button.disabled = !enabled;
+            button.classList.toggle("is-disabled", !enabled);
+            if (!enabled && reason) button.title = reason;
+            else button.removeAttribute("title");
+        };
+
+        const open = (row) => {
+            if (!row) return;
+            current = { ...row.dataset };
+
+            if (name) name.textContent = current.registrationName || "Família beneficiária";
+            if (code) code.textContent = current.familyCode || "Sem código";
+            if (pole) pole.textContent = current.poleName || "Sem polo";
+            if (program) program.textContent = current.programStatus || "Não informado";
+            if (delivery) delivery.textContent = current.deliveryLabel || "Não informado";
+            if (deliveryText) deliveryText.textContent = current.deliveryAction === "reactivate" ? "Reativar entrega" : "Registrar entrega";
+
+            setButtonState("view", true);
+            setButtonState("edit", yes(current.canEdit), "Seu usuário não possui permissão para editar este cadastro.");
+            setButtonState("delivery", yes(current.canDeliver), current.deliveryTitle || "Entrega indisponível nesta situação.");
+            setButtonState("cancel", yes(current.canCancel), "Cancelamento indisponível nesta situação.");
+            setButtonState("document", yes(current.canDocument), "Seu usuário não possui permissão para enviar documentos.");
+            setButtonState("history", yes(current.canHistory), "Seu usuário não possui permissão para consultar o histórico.");
+
+            if (note) {
+                note.textContent = current.deliveryTitle && !yes(current.canDeliver) && !yes(current.canCancel)
+                    ? current.deliveryTitle
+                    : "As ações disponíveis respeitam as permissões do usuário e a situação atual do benefício.";
+            }
+
+            hub?.show();
+        };
+
+        const dispatch = (command) => {
+            if (!current) return;
+
+            const attributes = {
+                view: {
+                    "data-open-detail": "",
+                    "data-registration-id": current.registrationId || "",
+                },
+                edit: {
+                    "data-open-edit": "",
+                    "data-registration-id": current.registrationId || "",
+                },
+                delivery: {
+                    "data-open-delivery": "",
+                    "data-registration-id": current.registrationId || "",
+                    "data-registration-name": current.registrationName || "",
+                    "data-family-code": current.familyCode || "",
+                    "data-pole-name": current.poleName || "",
+                    "data-delivery-action": current.deliveryAction || "register",
+                },
+                cancel: {
+                    "data-open-cancel": "",
+                    "data-registration-id": current.registrationId || "",
+                    "data-registration-name": current.registrationName || "",
+                    "data-family-code": current.familyCode || "",
+                    "data-pole-name": current.poleName || "",
+                    "data-delivery-date": current.deliveryDate || "",
+                    "data-delivery-operator": current.deliveryOperator || "",
+                },
+                document: {
+                    "data-open-document": "",
+                    "data-registration-id": current.registrationId || "",
+                },
+                history: {
+                    "data-open-detail": "",
+                    "data-registration-id": current.registrationId || "",
+                    "data-detail-section": "history",
+                },
+            }[command];
+
+            if (!attributes) return;
+
+            hub?.hide();
+
+            window.setTimeout(() => {
+                const dispatcher = document.createElement("button");
+                dispatcher.type = "button";
+                dispatcher.hidden = true;
+                Object.entries(attributes).forEach(([attribute, value]) => dispatcher.setAttribute(attribute, value));
+                document.body.appendChild(dispatcher);
+                dispatcher.click();
+                dispatcher.remove();
+            }, 180);
+        };
+
+        document.addEventListener("click", (event) => {
+            const commandButton = event.target.closest("[data-cm-action-command]");
+            if (commandButton && root.contains(commandButton)) {
+                if (!commandButton.disabled) dispatch(commandButton.dataset.cmActionCommand || "");
+                return;
+            }
+
+            const row = event.target.closest("[data-cm-action-row]");
+            if (!row) return;
+            if (event.target.closest("a, button, input, select, textarea, label, .dropdown-menu")) return;
+            open(row);
+        });
+
+        document.addEventListener("keydown", (event) => {
+            const row = event.target.closest?.("[data-cm-action-row]");
+            if (!row || !["Enter", " "].includes(event.key)) return;
+            event.preventDefault();
+            open(row);
+        });
+
+        return { open };
+    })();
+
     qsa("[data-toggle-advanced]").forEach((button) => {
         button.addEventListener("click", () => {
             const advanced = qs("#advancedFilters");

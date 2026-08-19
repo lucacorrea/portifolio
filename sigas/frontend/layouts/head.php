@@ -75,10 +75,10 @@ $moduleStyles = sigas_frontend_module_styles(
         <link href="<?= sigas_frontend_asset($moduleStyle) ?>" rel="stylesheet" data-sigas-module-style="<?= sigas_frontend_escape($environmentKey ?? '') ?>">
     <?php endforeach; ?>
 
-    <?php if (($environmentKey ?? '') === 'primeiro-emprego'): ?>
+    <?php if (in_array(($environmentKey ?? ''), ['primeiro-emprego', 'comida-mesa'], true)): ?>
         <?php $operationalUiPath = 'assets/css/sigas-operational-ui.css'; ?>
         <?php if (is_file(dirname(__DIR__, 2) . '/' . $operationalUiPath)): ?>
-            <link href="<?= sigas_frontend_asset($operationalUiPath) ?>" rel="stylesheet" data-sigas-operational-ui="v2-pilot">
+            <link href="<?= sigas_frontend_asset($operationalUiPath) ?>" rel="stylesheet" data-sigas-operational-ui="v2">
         <?php endif; ?>
     <?php endif; ?>
 </head>

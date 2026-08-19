@@ -673,3 +673,511 @@ body[data-module="primeiro-emprego"] .btn-light {
         border-radius: 13px;
     }
 }
+
+/* ==================================================================
+   SIGAS Operational UI v2 — Comida na Mesa
+   Mesmo padrão estrutural do Primeiro Emprego, identidade verde.
+   ================================================================== */
+
+body[data-module="comida-mesa"] {
+    --sigas-accent: #176b3a;
+    --sigas-accent-strong: #0f4f2b;
+    --sigas-accent-soft: #eef8f2;
+    --sigas-accent-soft-2: #f6fbf8;
+    --sigas-accent-border: #cfe6d7;
+
+    --sigas-ink: #17342d;
+    --sigas-text: #344b44;
+    --sigas-muted: #74877f;
+    --sigas-border: #dfe8e4;
+    --sigas-border-strong: #ccd9d4;
+    --sigas-surface: #ffffff;
+    --sigas-surface-soft: #f7faf9;
+    --sigas-surface-table-head: #f2f6f4;
+    --sigas-shadow: 0 10px 28px rgba(28, 61, 50, .06);
+    --sigas-shadow-sm: 0 4px 14px rgba(28, 61, 50, .045);
+
+    --sigas-success: #147a4b;
+    --sigas-success-soft: #eef8f2;
+    --sigas-warning: #b06c00;
+    --sigas-warning-soft: #fff8e9;
+    --sigas-danger: #c52d3c;
+    --sigas-danger-soft: #fff3f4;
+    --sigas-info: #246c98;
+    --sigas-info-soft: #eef7fc;
+}
+
+body[data-module="comida-mesa"] .app-content {
+    color: var(--sigas-text);
+}
+
+/* Cabeçalho do módulo: mesma geometria dos demais módulos, muda a cor */
+body[data-module="comida-mesa"] .module-hero {
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 16px;
+    padding: 18px 20px;
+    border: 1px solid var(--sigas-accent-border);
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--sigas-accent-soft-2) 0%, #fff 58%, var(--sigas-accent-soft) 100%);
+    color: var(--sigas-text);
+    box-shadow: var(--sigas-shadow-sm);
+}
+
+body[data-module="comida-mesa"] .module-hero::after {
+    right: -54px;
+    top: -78px;
+    width: 190px;
+    height: 190px;
+    border: 28px solid rgba(23, 107, 58, .055);
+    background: transparent;
+}
+
+body[data-module="comida-mesa"] .module-hero h1 {
+    margin: 3px 0 5px;
+    color: var(--sigas-accent-strong);
+    font-size: clamp(1.45rem, 2vw, 1.8rem);
+}
+
+body[data-module="comida-mesa"] .module-hero p {
+    max-width: 760px;
+    color: var(--sigas-muted);
+    font-size: .8rem;
+}
+
+body[data-module="comida-mesa"] .module-hero .eyebrow {
+    color: var(--sigas-accent) !important;
+}
+
+body[data-module="comida-mesa"] .module-hero .btn-light,
+body[data-module="comida-mesa"] .module-hero .btn-warning {
+    min-height: 42px;
+    border-radius: 11px;
+    font-size: .78rem;
+    font-weight: 750;
+}
+
+body[data-module="comida-mesa"] .module-hero .btn-warning {
+    border-color: var(--sigas-accent);
+    background: var(--sigas-accent);
+    color: #fff;
+}
+
+body[data-module="comida-mesa"] .module-hero .btn-warning:hover {
+    border-color: var(--sigas-accent-strong);
+    background: var(--sigas-accent-strong);
+    color: #fff;
+}
+
+/* KPIs compactos e neutros; cor serve como destaque, não como fundo inteiro */
+body[data-module="comida-mesa"] .module-tabs {
+    border: 1px solid var(--sigas-border);
+    border-bottom: 0;
+    border-radius: 15px 15px 0 0;
+    background: #fff;
+    box-shadow: var(--sigas-shadow-sm);
+}
+
+body[data-module="comida-mesa"] .module-tab {
+    color: var(--sigas-text);
+}
+
+body[data-module="comida-mesa"] .module-tab.active {
+    color: var(--sigas-accent-strong);
+}
+
+body[data-module="comida-mesa"] .module-tab.active::after {
+    background: var(--sigas-accent);
+}
+
+body[data-module="comida-mesa"] .compact-stats {
+    gap: 10px;
+    padding: 12px;
+    border-color: var(--sigas-border);
+    border-radius: 0 0 15px 15px;
+    box-shadow: var(--sigas-shadow-sm);
+}
+
+body[data-module="comida-mesa"] .compact-stat {
+    position: relative;
+    min-height: 82px;
+    padding: 12px 13px;
+    overflow: hidden;
+    border: 1px solid var(--sigas-border);
+    border-radius: 12px;
+    background: #fff;
+}
+
+body[data-module="comida-mesa"] .compact-stat::before {
+    content: "";
+    position: absolute;
+    top: 10px;
+    bottom: 10px;
+    left: 0;
+    width: 3px;
+    border-radius: 0 8px 8px 0;
+    background: var(--sigas-accent);
+}
+
+body[data-module="comida-mesa"] .compact-stat span {
+    color: var(--sigas-muted);
+    font-size: .66rem;
+    font-weight: 650;
+}
+
+body[data-module="comida-mesa"] .compact-stat strong {
+    margin-top: 6px;
+    color: var(--sigas-accent-strong);
+    font-size: 1.25rem;
+    letter-spacing: -.03em;
+}
+
+/* Filtros: organização do Primeiro Emprego */
+body[data-module="comida-mesa"] .filter-bar {
+    padding: 14px;
+    border-color: var(--sigas-border);
+    border-radius: 15px;
+    background: #fff;
+    box-shadow: var(--sigas-shadow-sm);
+}
+
+body[data-module="comida-mesa"] .filter-row {
+    display: grid;
+    grid-template-columns: minmax(250px, 1.4fr) minmax(170px, .8fr) minmax(170px, .8fr) minmax(170px, .8fr) auto;
+    gap: 10px;
+    align-items: end;
+}
+
+body[data-module="comida-mesa"] .filter-bar .form-label {
+    margin-bottom: 5px;
+    color: #4a5e57;
+    font-size: .68rem;
+    font-weight: 750;
+}
+
+body[data-module="comida-mesa"] .filter-bar .form-control,
+body[data-module="comida-mesa"] .filter-bar .form-select,
+body[data-module="comida-mesa"] .filter-bar .input-group .btn {
+    min-height: 44px;
+    border-color: var(--sigas-border-strong);
+    border-radius: 11px;
+    background-color: #fff;
+    color: #30463f;
+    font-size: .78rem;
+    box-shadow: none;
+}
+
+body[data-module="comida-mesa"] .filter-bar .input-group > :first-child {
+    border-radius: 11px 0 0 11px;
+}
+
+body[data-module="comida-mesa"] .filter-bar .input-group > :last-child {
+    border-radius: 0 11px 11px 0;
+}
+
+body[data-module="comida-mesa"] .filter-bar .form-control:focus,
+body[data-module="comida-mesa"] .filter-bar .form-select:focus {
+    border-color: var(--sigas-accent);
+    box-shadow: 0 0 0 3px rgba(23, 107, 58, .09);
+}
+
+body[data-module="comida-mesa"] .filter-actions {
+    display: flex;
+    gap: 7px;
+    align-items: center;
+}
+
+body[data-module="comida-mesa"] .filter-actions .btn {
+    min-height: 44px;
+    border-radius: 11px;
+    font-size: .76rem;
+    font-weight: 750;
+}
+
+body[data-module="comida-mesa"] .filter-actions .btn-primary {
+    border-color: var(--sigas-accent);
+    background: var(--sigas-accent);
+}
+
+body[data-module="comida-mesa"] .filter-actions .btn-primary:hover {
+    border-color: var(--sigas-accent-strong);
+    background: var(--sigas-accent-strong);
+}
+
+body[data-module="comida-mesa"] .advanced-filters {
+    margin-top: 10px;
+    padding-top: 12px;
+    border-top: 1px solid var(--sigas-border);
+}
+
+body[data-module="comida-mesa"] .advanced-filters.show {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(150px, .7fr);
+    gap: 10px;
+}
+
+/* Tabela: mantém o melhor do Comida na Mesa e aproxima do padrão global */
+body[data-module="comida-mesa"] .table-card {
+    overflow: hidden;
+    border: 1px solid var(--sigas-border);
+    border-radius: 15px;
+    background: #fff;
+    box-shadow: var(--sigas-shadow-sm);
+}
+
+body[data-module="comida-mesa"] .table-toolbar {
+    min-height: 58px;
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--sigas-border);
+    background: #fff;
+}
+
+body[data-module="comida-mesa"] .table-toolbar h2 {
+    color: var(--sigas-accent-strong);
+    font-weight: 800;
+}
+
+body[data-module="comida-mesa"] .table-toolbar-info,
+body[data-module="comida-mesa"] .sigas-row-hint {
+    color: var(--sigas-muted);
+    font-size: .68rem;
+}
+
+body[data-module="comida-mesa"] .sigas-row-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border: 1px solid var(--sigas-border);
+    border-radius: 999px;
+    background: #fff;
+    white-space: nowrap;
+}
+
+body[data-module="comida-mesa"] .data-table {
+    min-width: 920px;
+}
+
+body[data-module="comida-mesa"] .data-table th {
+    padding: 11px 13px;
+    border-color: var(--sigas-border);
+    background: var(--sigas-surface-table-head);
+    color: #5f716a;
+    font-size: .61rem;
+    letter-spacing: .045em;
+}
+
+body[data-module="comida-mesa"] .data-table td {
+    padding: 12px 13px;
+    border-color: var(--sigas-border);
+    color: #344b44;
+    font-size: .72rem;
+}
+
+body[data-module="comida-mesa"] .data-table tbody tr.sigas-action-row {
+    cursor: pointer;
+    transition: background .15s ease, box-shadow .15s ease;
+}
+
+body[data-module="comida-mesa"] .data-table tbody tr.sigas-action-row:hover,
+body[data-module="comida-mesa"] .data-table tbody tr.sigas-action-row:focus {
+    outline: none;
+    background: var(--sigas-accent-soft-2);
+    box-shadow: inset 3px 0 0 var(--sigas-accent);
+}
+
+body[data-module="comida-mesa"] .record-person strong {
+    color: #1f3f35;
+    font-size: .75rem;
+}
+
+body[data-module="comida-mesa"] .record-person span:not(.mini-avatar) {
+    color: var(--sigas-muted);
+    font-size: .64rem;
+}
+
+body[data-module="comida-mesa"] .mini-avatar {
+    background: var(--sigas-accent-soft);
+    color: var(--sigas-accent-strong);
+    border: 1px solid var(--sigas-accent-border);
+}
+
+body[data-module="comida-mesa"] .pagination-wrap {
+    min-height: 58px;
+    padding: 11px 15px;
+    border-top: 1px solid var(--sigas-border);
+    background: #fff;
+}
+
+body[data-module="comida-mesa"] .pagination .page-link {
+    min-width: 34px;
+    min-height: 34px;
+    display: grid;
+    place-items: center;
+    border-color: var(--sigas-border);
+    color: var(--sigas-text);
+    font-size: .7rem;
+}
+
+body[data-module="comida-mesa"] .pagination .page-item.active .page-link {
+    border-color: var(--sigas-accent);
+    background: var(--sigas-accent);
+    color: #fff;
+}
+
+/* Modal de ações: passa a ser a porta de entrada do CRUD */
+.sigas-action-modal .modal-content {
+    overflow: hidden;
+    border: 1px solid var(--sigas-border, #dfe8e4);
+    border-radius: 18px;
+    box-shadow: 0 24px 80px rgba(23, 52, 45, .18);
+}
+
+.sigas-action-modal .modal-header,
+.sigas-action-modal .modal-footer {
+    border-color: var(--sigas-border, #dfe8e4);
+}
+
+.sigas-action-modal .modal-subtitle {
+    margin-top: 3px;
+    color: var(--sigas-muted, #74877f);
+    font-size: .74rem;
+}
+
+.sigas-action-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.sigas-action-summary > div {
+    padding: 10px 12px;
+    border: 1px solid var(--sigas-border, #dfe8e4);
+    border-radius: 12px;
+    background: var(--sigas-surface-soft, #f7faf9);
+}
+
+.sigas-action-summary span,
+.sigas-action-summary strong {
+    display: block;
+}
+
+.sigas-action-summary span {
+    margin-bottom: 3px;
+    color: var(--sigas-muted, #74877f);
+    font-size: .65rem;
+}
+
+.sigas-action-summary strong {
+    color: var(--sigas-accent-strong, #17342d);
+    font-size: .78rem;
+}
+
+.sigas-action-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.sigas-action-button {
+    display: flex;
+    min-height: 76px;
+    align-items: center;
+    gap: 11px;
+    padding: 12px;
+    text-align: left;
+    border: 1px solid var(--sigas-border, #dfe8e4);
+    border-radius: 13px;
+    background: #fff;
+    color: var(--sigas-text, #344b44);
+    transition: border-color .15s ease, background .15s ease, transform .15s ease;
+}
+
+.sigas-action-button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    border-color: var(--sigas-accent, #176b3a);
+    background: var(--sigas-accent-soft-2, #f6fbf8);
+}
+
+.sigas-action-button > i {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    place-items: center;
+    border-radius: 10px;
+    background: var(--sigas-accent-soft, #eef8f2);
+    color: var(--sigas-accent, #176b3a);
+    font-size: .95rem;
+}
+
+.sigas-action-button span,
+.sigas-action-button strong,
+.sigas-action-button small {
+    display: block;
+}
+
+.sigas-action-button strong {
+    color: var(--sigas-accent-strong, #0f4f2b);
+    font-size: .76rem;
+}
+
+.sigas-action-button small {
+    margin-top: 2px;
+    color: var(--sigas-muted, #74877f);
+    font-size: .63rem;
+    line-height: 1.3;
+}
+
+.sigas-action-button--danger > i {
+    background: var(--sigas-danger-soft, #fff3f4);
+    color: var(--sigas-danger, #c52d3c);
+}
+
+.sigas-action-button--danger:hover:not(:disabled) {
+    border-color: #efc5ca;
+    background: #fff7f8;
+}
+
+.sigas-action-button:disabled,
+.sigas-action-button.is-disabled {
+    cursor: not-allowed;
+    opacity: .48;
+}
+
+/* Responsividade */
+@media (max-width: 1199.98px) {
+    body[data-module="comida-mesa"] .filter-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body[data-module="comida-mesa"] .filter-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-end;
+    }
+
+    body[data-module="comida-mesa"] .advanced-filters.show {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767.98px) {
+    body[data-module="comida-mesa"] .module-hero {
+        padding: 16px;
+    }
+
+    body[data-module="comida-mesa"] .module-hero-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        width: 100%;
+    }
+
+    body[data-module="comida-mesa"] .module-hero-actions .btn:last-child {
+        grid-column: 1 / -1;
+    }
+
+    .sigas-action-grid,
+    .sigas-action-summary {
+        grid-template-columns: 1fr;
+    }
+}
