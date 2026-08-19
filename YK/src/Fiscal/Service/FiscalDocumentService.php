@@ -423,17 +423,87 @@ final class FiscalDocumentService
             } elseif (!in_array($this->normalIcmsCst($item), ['00', '40', '41', '50'], true)) {
                 throw new InvalidArgumentException('O CST ICMS informado exige regra ainda não implementada.');
             }
-            foreach (['cst_pis' => 'PIS', 'cst_cofins' => 'COFINS'] as $field => $label) {
-                if (!in_array((string) $item[$field], ['01', '02', '04', '05', '06', '07', '08', '09'], true)) {
-                    throw new InvalidArgumentException('O CST ' . $label . ' informado exige regra ainda não implementada.');
-                }
-            }
+            $this->assertPisCofinsItem($item, $crt);
             if ($requiresIbsCbs && (
                 preg_match('/^\d{3}$/', (string) ($item['cst_ibs_cbs'] ?? '')) !== 1
                 || preg_match('/^\d{6}$/', (string) ($item['classificacao_tributaria_ibs_cbs'] ?? '')) !== 1
             )) {
                 throw new InvalidArgumentException('Complete CST IBS/CBS e cClassTrib de todas as peças exigidas para este CRT e vigência.');
             }
+        }
+    }
+
+    /**
+     * Validação centralizada de PIS/COFINS.
+     *
+     * Regras efetivamente suportadas por este emissor:
+     * - CST 01/02: tributação por alíquota percentual;
+     * - CST 04..09: grupos não tributados;
+     * - CST 99 no CRT 1: "Outras Operações", cálculo em valor zerado.
+     *
+     * CST 03 continua bloqueado porque exige qBCProd/vAliqProd reais.
+     *
+     * @param array<string,mixed> $item
+     */
+    private function assertPisCofinsItem(array $item, int $crt): void
+    {
+        $description = trim((string) ($item['descricao'] ?? ''));
+
+        if ($description === '') {
+            $description = trim((string) ($item['codigo'] ?? ''));
+        }
+
+        if ($description === '') {
+            $description = 'produto sem descrição';
+        }
+
+        foreach (
+            [
+                ['field' => 'cst_pis', 'rate' => 'aliquota_pis', 'label' => 'PIS'],
+                ['field' => 'cst_cofins', 'rate' => 'aliquota_cofins', 'label' => 'COFINS'],
+            ] as $rule
+        ) {
+            $field = (string) $rule['field'];
+            $rateField = (string) $rule['rate'];
+            $label = (string) $rule['label'];
+
+            $cst = trim((string) ($item[$field] ?? ''));
+            $rateRaw = trim((string) ($item[$rateField] ?? '0'));
+            $rate = is_numeric($rateRaw) ? (float) $rateRaw : 0.0;
+
+            if (in_array($cst, ['01', '02'], true)) {
+                continue;
+            }
+
+            if (in_array($cst, ['04', '05', '06', '07', '08', '09'], true)) {
+                continue;
+            }
+
+            if ($crt === 1 && $cst === '99') {
+                if (abs($rate) > 0.0000001) {
+                    throw new InvalidArgumentException(
+                        'Produto "' . $description . '": CST ' . $label
+                        . ' 99 no Simples Nacional está implementado com cálculo em valor zerado. '
+                        . 'A alíquota cadastrada deve ser 0,0000.'
+                    );
+                }
+
+                continue;
+            }
+
+            if ($cst === '03') {
+                throw new InvalidArgumentException(
+                    'Produto "' . $description . '": CST ' . $label
+                    . ' 03 exige tributação por quantidade (qBCProd/vAliqProd), '
+                    . 'ainda não suportada pelo cadastro atual.'
+                );
+            }
+
+            throw new InvalidArgumentException(
+                'Produto "' . $description . '": CST ' . $label . ' '
+                . ($cst !== '' ? $cst : '(vazio)')
+                . ' não possui regra segura implementada para o CRT ' . $crt . '.'
+            );
         }
     }
 
