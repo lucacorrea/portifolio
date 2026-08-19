@@ -296,6 +296,32 @@ document.addEventListener('DOMContentLoaded', function () {
     setItemNames(row, type, index);
     const select = field(row, 'reference_id');
     const referenceWrap = row.querySelector('.os-reference-wrap');
+    const referenceLabel = row.querySelector('[data-os-reference-label]');
+    const descriptionWrap = row.querySelector('.os-description-wrap');
+    const descriptionLabel = row.querySelector('[data-os-description-label]');
+    const descriptionInput = field(row, 'description');
+    const locationWrap = row.querySelector('.os-execution-location-wrap');
+    const locationInput = field(row, 'execution_location');
+
+    row.classList.add('is-' + type);
+
+    if (type === 'servico') {
+      if (referenceLabel) referenceLabel.textContent = 'Serviço realizado';
+      descriptionWrap?.classList.add('d-none');
+      locationWrap?.classList.remove('d-none');
+      if (locationInput) locationInput.disabled = false;
+      descriptionInput.readOnly = true;
+    } else if (type === 'produto') {
+      if (referenceLabel) referenceLabel.textContent = 'Produto / peça';
+      if (descriptionLabel) descriptionLabel.textContent = 'Descrição';
+      locationWrap?.classList.add('d-none');
+      if (locationInput) locationInput.disabled = true;
+    } else {
+      if (descriptionLabel) descriptionLabel.textContent = 'Descrição do item';
+      locationWrap?.classList.add('d-none');
+      if (locationInput) locationInput.disabled = true;
+    }
+
     if (type === 'outro') {
       referenceWrap.classList.add('d-none');
       select.appendChild(new Option('Personalizado', ''));
@@ -303,6 +329,7 @@ document.addEventListener('DOMContentLoaded', function () {
       select.appendChild(new Option('Selecione', ''));
       optionsFor(type).forEach(function (option) {
         const opt = new Option(option.name, option.id);
+        opt.dataset.itemName = option.name || '';
         opt.dataset.description = option.description || option.name;
         opt.dataset.unit = option.unit || 'un';
         opt.dataset.value = option.value || '0.00';
@@ -320,15 +347,28 @@ document.addEventListener('DOMContentLoaded', function () {
       field(row, 'budget_item_id').value = item.budget_item_id || '';
       select.value = item.reference_id || '';
       field(row, 'description').value = item.description || '';
+      if (locationInput) locationInput.value = item.execution_location || '';
       field(row, 'unit').value = item.unit || 'un';
       field(row, 'quantity').value = item.quantity || '1';
       field(row, 'unit_price').value = item.unit_price || '0,00';
       field(row, 'discount').value = item.discount || '0,00';
     }
+
+    if (type === 'servico' && !field(row, 'description').value && select.selectedOptions[0]?.value) {
+      const selectedOption = select.selectedOptions[0];
+      field(row, 'description').value = selectedOption.dataset.itemName || selectedOption.textContent || '';
+    }
+
     select.addEventListener('change', function () {
       const opt = select.selectedOptions[0];
       if (!opt) return;
-      if (!field(row, 'description').value) field(row, 'description').value = opt.dataset.description || opt.textContent;
+      if (type === 'servico') {
+        field(row, 'description').value = opt.value
+          ? (opt.dataset.itemName || opt.textContent || '')
+          : '';
+      } else if (!field(row, 'description').value) {
+        field(row, 'description').value = opt.dataset.description || opt.textContent;
+      }
       field(row, 'unit').value = opt.dataset.unit || field(row, 'unit').value || 'un';
       field(row, 'unit_price').value = opt.dataset.value || '0,00';
       recalc(form);
@@ -561,7 +601,7 @@ document.addEventListener('DOMContentLoaded', function () {
     tbody.replaceChildren();
     data.items.forEach(function (item) {
       const row = document.createElement('tr');
-      [item.type, item.description, item.quantity, money(parseNumber(item.unit_price)), money(parseNumber(item.subtotal))].forEach(function (value) {
+      [item.type, item.description, item.execution_location || '-', item.quantity, money(parseNumber(item.unit_price)), money(parseNumber(item.subtotal))].forEach(function (value) {
         const cell = document.createElement('td');
         cell.textContent = value;
         row.appendChild(cell);

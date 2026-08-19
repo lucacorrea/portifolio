@@ -117,11 +117,16 @@ final class ServiceOrderRepository
     {
         $this->assertPositiveId($orderId);
         $statement = $this->connection->prepare(
-            'SELECT id, ordem_servico_id, tipo, origem, referencia_id, orcamento_item_id, descricao, unidade, quantidade,
-                    valor_unitario, desconto, subtotal, ordem
-               FROM ordem_servico_itens
-              WHERE ordem_servico_id = :id
-              ORDER BY ordem ASC, id ASC'
+            'SELECT osi.id, osi.ordem_servico_id, osi.tipo, osi.origem, osi.referencia_id, osi.orcamento_item_id,
+                    osi.descricao, osi.local_execucao, osi.unidade, osi.quantidade, osi.valor_unitario, osi.desconto,
+                    osi.subtotal, osi.ordem,
+                    CASE WHEN osi.tipo = "servico" THEN servico.nome ELSE NULL END AS referencia_nome
+               FROM ordem_servico_itens osi
+               LEFT JOIN servicos servico
+                 ON servico.id = osi.referencia_id
+                AND osi.tipo = "servico"
+              WHERE osi.ordem_servico_id = :id
+              ORDER BY osi.ordem ASC, osi.id ASC'
         );
         $statement->execute(['id' => $orderId]);
         return array_map(static fn(array $row): ServiceOrderItem => ServiceOrderItem::fromArray($row), $statement->fetchAll());
@@ -142,11 +147,16 @@ final class ServiceOrderRepository
         }
 
         $statement = $this->connection->prepare(
-            'SELECT id, ordem_servico_id, tipo, origem, referencia_id, orcamento_item_id, descricao, unidade, quantidade,
-                    valor_unitario, desconto, subtotal, ordem
-               FROM ordem_servico_itens
-              WHERE ordem_servico_id IN (' . implode(', ', $placeholders) . ')
-              ORDER BY ordem_servico_id ASC, ordem ASC, id ASC'
+            'SELECT osi.id, osi.ordem_servico_id, osi.tipo, osi.origem, osi.referencia_id, osi.orcamento_item_id,
+                    osi.descricao, osi.local_execucao, osi.unidade, osi.quantidade, osi.valor_unitario, osi.desconto,
+                    osi.subtotal, osi.ordem,
+                    CASE WHEN osi.tipo = "servico" THEN servico.nome ELSE NULL END AS referencia_nome
+               FROM ordem_servico_itens osi
+               LEFT JOIN servicos servico
+                 ON servico.id = osi.referencia_id
+                AND osi.tipo = "servico"
+              WHERE osi.ordem_servico_id IN (' . implode(', ', $placeholders) . ')
+              ORDER BY osi.ordem_servico_id ASC, osi.ordem ASC, osi.id ASC'
         );
         $statement->execute($params);
 
@@ -244,9 +254,9 @@ final class ServiceOrderRepository
         $this->connection->prepare('DELETE FROM ordem_servico_itens WHERE ordem_servico_id = :id')->execute(['id' => $orderId]);
         $statement = $this->connection->prepare(
             'INSERT INTO ordem_servico_itens
-                (ordem_servico_id, tipo, origem, referencia_id, orcamento_item_id, descricao, unidade, quantidade, valor_unitario, desconto, subtotal, ordem)
+                (ordem_servico_id, tipo, origem, referencia_id, orcamento_item_id, descricao, local_execucao, unidade, quantidade, valor_unitario, desconto, subtotal, ordem)
              VALUES
-                (:order_id, :type, :origin, :reference_id, :budget_item_id, :description, :unit, :quantity, :unit_price, :discount, :subtotal, :order_index)'
+                (:order_id, :type, :origin, :reference_id, :budget_item_id, :description, :execution_location, :unit, :quantity, :unit_price, :discount, :subtotal, :order_index)'
         );
         foreach ($items as $item) {
             $statement->execute([
@@ -256,6 +266,7 @@ final class ServiceOrderRepository
                 'reference_id' => $item->referenceId(),
                 'budget_item_id' => $item->budgetItemId(),
                 'description' => $item->description(),
+                'execution_location' => $item->executionLocation(),
                 'unit' => $item->unit(),
                 'quantity' => $item->quantity(),
                 'unit_price' => $item->unitPrice(),

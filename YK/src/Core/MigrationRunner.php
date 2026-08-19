@@ -164,7 +164,7 @@ final class MigrationRunner
 
     public static function supportsVersion(int $version): bool
     {
-        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28], true);
+        return in_array($version, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29], true);
     }
 
     private function acquireLock(string $name, int $waitSeconds): bool
@@ -490,6 +490,7 @@ final class MigrationRunner
                     'fk_servico_semanal_ordem', 'fk_servico_semanal_criado_usuario',
                     'fk_servico_semanal_confirmado_usuario', 'fk_servico_semanal_cancelado_usuario',
                 ]),
+            29 => $this->allColumns('ordem_servico_itens', ['local_execucao']),
             default => null,
         };
     }

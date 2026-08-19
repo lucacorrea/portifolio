@@ -14,6 +14,7 @@ final class ServiceOrderItemData
         private readonly ?int $referenceId,
         private readonly ?int $budgetItemId,
         private readonly string $description,
+        private readonly ?string $executionLocation,
         private readonly string $unit,
         private readonly string $quantity,
         private readonly string $unitPrice,
@@ -44,6 +45,9 @@ final class ServiceOrderItemData
         }
 
         $description = self::simpleText($data['description'] ?? $data['descricao'] ?? '', 'descrição', 255);
+        $executionLocation = $type === 'servico'
+            ? self::optionalSimpleText($data['execution_location'] ?? $data['local_execucao'] ?? null, 150)
+            : null;
         $unit = self::simpleText($data['unit'] ?? $data['unidade'] ?? 'un', 'unidade', 20);
         $quantity = self::decimal($data['quantity'] ?? $data['quantidade'] ?? '1', 'quantidade', false);
         $unitPrice = self::decimal($data['unit_price'] ?? $data['valor_unitario'] ?? '0', 'valor unitário', true);
@@ -59,6 +63,7 @@ final class ServiceOrderItemData
             referenceId: $referenceId,
             budgetItemId: self::optionalPositiveInt($data['budget_item_id'] ?? $data['orcamento_item_id'] ?? null),
             description: $description,
+            executionLocation: $executionLocation,
             unit: $unit,
             quantity: number_format((float) $quantity, 3, '.', ''),
             unitPrice: $unitPrice,
@@ -73,6 +78,7 @@ final class ServiceOrderItemData
     public function referenceId(): ?int { return $this->referenceId; }
     public function budgetItemId(): ?int { return $this->budgetItemId; }
     public function description(): string { return $this->description; }
+    public function executionLocation(): ?string { return $this->executionLocation; }
     public function unit(): string { return $this->unit; }
     public function quantity(): string { return $this->quantity; }
     public function unitPrice(): string { return $this->unitPrice; }
@@ -97,6 +103,18 @@ final class ServiceOrderItemData
         }
         if (str_contains($text, "\0") || $text !== strip_tags($text) || mb_strlen($text) > $maxLength) {
             throw new InvalidArgumentException('Informe ' . $field . ' válida.');
+        }
+        return $text;
+    }
+
+    private static function optionalSimpleText(mixed $value, int $maxLength): ?string
+    {
+        $text = trim((string) ($value ?? ''));
+        if ($text === '') {
+            return null;
+        }
+        if (str_contains($text, "\0") || $text !== strip_tags($text) || mb_strlen($text) > $maxLength) {
+            throw new InvalidArgumentException('Informe um local de execução válido.');
         }
         return $text;
     }

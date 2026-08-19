@@ -705,8 +705,9 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
 
 <template id="os-item-template">
     <div class="form-row os-item-row"><input type="hidden" data-field="id"><input type="hidden" data-field="type"><input type="hidden" data-field="origin" value="manual"><input type="hidden" data-field="budget_item_id">
-        <div class="form-group os-reference-wrap"><label class="form-label">Referencia</label><select class="form-control-os" data-field="reference_id"></select></div>
-        <div class="form-group"><label class="form-label">Descricao</label><input class="form-control-os" data-field="description" required></div>
+        <div class="form-group os-reference-wrap"><label class="form-label" data-os-reference-label>Referência</label><select class="form-control-os" data-field="reference_id"></select></div>
+        <div class="form-group os-description-wrap"><label class="form-label" data-os-description-label>Descrição</label><input class="form-control-os" data-field="description" maxlength="255" required></div>
+        <div class="form-group os-execution-location-wrap d-none"><label class="form-label">Local / ambiente</label><input class="form-control-os" data-field="execution_location" maxlength="150" placeholder="Ex.: Recepção 2, Sala 03, Administração"></div>
         <div class="form-group"><label class="form-label">Unidade</label><input class="form-control-os" data-field="unit" value="un" required></div>
         <div class="form-group"><label class="form-label">Qtd.</label><input class="form-control-os" data-field="quantity" value="1" required></div>
         <div class="form-group"><label class="form-label">Valor unit.</label><input class="form-control-os" data-field="unit_price" value="0,00" required></div>
@@ -758,7 +759,8 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                             <thead>
                                 <tr>
                                     <th>Tipo</th>
-                                    <th>Descricao</th>
+                                    <th>Descrição</th>
+                                    <th>Local / ambiente</th>
                                     <th>Qtd.</th>
                                     <th>Valor</th>
                                     <th>Subtotal</th>

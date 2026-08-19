@@ -29,7 +29,7 @@ migrationAssertSame(true, str_contains($sampleStatements[0], "valor;interno"), '
 
 $migrationPaths = glob(dirname(__DIR__) . '/database/migrations/*.sql') ?: [];
 sort($migrationPaths, SORT_NATURAL | SORT_FLAG_CASE);
-migrationAssertSame(28, count($migrationPaths), 'A sequência atual deve conter 28 migrations.');
+migrationAssertSame(29, count($migrationPaths), 'A sequência atual deve conter 29 migrations.');
 
 $expectedVersion = 1;
 foreach ($migrationPaths as $path) {
@@ -148,4 +148,8 @@ migrationAssertSame(true, is_string($fiscalAuthorizationMigration), 'A migration
 foreach (['uq_documento_fiscal_origem_normal', 'uq_documento_fiscal_chave', 'reconsulta_apos'] as $requirement) {
     migrationAssertSame(true, str_contains((string) $fiscalAuthorizationMigration, $requirement), 'A migration fiscal deve conter ' . $requirement . '.');
 }
+
+$serviceItemLocationMigration = file_get_contents(dirname(__DIR__) . '/database/migrations/029_service_order_item_execution_location.sql');
+migrationAssertSame(true, is_string($serviceItemLocationMigration), 'A migration de local por serviço deve ser legível.');
+migrationAssertSame(true, str_contains((string) $serviceItemLocationMigration, 'local_execucao'), 'O item da OS deve possuir local de execução próprio.');
 echo "MigrationRunnerTest: OK\n";
