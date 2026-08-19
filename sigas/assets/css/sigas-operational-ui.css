@@ -1181,3 +1181,572 @@ body[data-module="comida-mesa"] .pagination .page-item.active .page-link {
         grid-template-columns: 1fr;
     }
 }
+
+/* ==================================================================
+   SIGAS Operational UI v3 — Comida na Mesa
+   Correção completa de carregamento + padronização de modais,
+   páginas genéricas, filtros e tabelas do módulo.
+   ================================================================== */
+
+body[data-module="comida-mesa"] {
+    --sigas-accent: #176b3a;
+    --sigas-accent-strong: #0f4f2b;
+    --sigas-accent-soft: #eef8f2;
+    --sigas-accent-soft-2: #f7fcf8;
+    --sigas-accent-border: #cfe6d7;
+    --sigas-text: #2f463d;
+    --sigas-muted: #71847b;
+    --sigas-border: #dde7e1;
+    --sigas-border-strong: #cbd9d1;
+    --sigas-table-head: #f2f6f4;
+    --sigas-card-radius: 16px;
+    --sigas-input-radius: 11px;
+    --sigas-shadow-sm: 0 5px 18px rgba(28, 61, 50, .05);
+    --sigas-shadow-md: 0 16px 42px rgba(28, 61, 50, .10);
+}
+
+/* ----------------------------
+   Páginas genéricas do módulo
+   ---------------------------- */
+body[data-module="comida-mesa"].frontend-module-page .frontend-module-content {
+    gap: 14px;
+}
+
+body[data-module="comida-mesa"] .frontend-page-header {
+    padding: 0;
+}
+
+body[data-module="comida-mesa"] .frontend-page-header h1 {
+    color: var(--sigas-accent-strong);
+    letter-spacing: -.035em;
+}
+
+body[data-module="comida-mesa"] .frontend-page-header p {
+    color: var(--sigas-muted);
+}
+
+body[data-module="comida-mesa"] .frontend-stat-grid {
+    gap: 10px;
+}
+
+body[data-module="comida-mesa"] .frontend-stat-card {
+    position: relative;
+    min-height: 92px;
+    padding: 13px 14px;
+    overflow: hidden;
+    border-color: var(--sigas-border);
+    border-radius: 13px;
+    box-shadow: none;
+}
+
+body[data-module="comida-mesa"] .frontend-stat-card::before {
+    content: "";
+    position: absolute;
+    top: 10px;
+    bottom: 10px;
+    left: 0;
+    width: 3px;
+    border-radius: 0 8px 8px 0;
+    background: var(--sigas-accent);
+}
+
+body[data-module="comida-mesa"] .frontend-stat-card > i {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: var(--sigas-accent-soft);
+    color: var(--sigas-accent);
+    font-size: 15px;
+}
+
+body[data-module="comida-mesa"] .frontend-stat-card span,
+body[data-module="comida-mesa"] .frontend-stat-card small {
+    color: var(--sigas-muted);
+    font-size: .68rem;
+}
+
+body[data-module="comida-mesa"] .frontend-stat-card strong {
+    margin: 4px 0;
+    color: var(--sigas-accent-strong);
+    font-size: 1.3rem;
+}
+
+body[data-module="comida-mesa"] .frontend-filter-bar {
+    grid-template-columns: minmax(240px, 1.35fr) repeat(3, minmax(150px, .75fr)) auto;
+    gap: 10px;
+    padding: 14px;
+    border-color: var(--sigas-border);
+    border-radius: 15px;
+    box-shadow: var(--sigas-shadow-sm);
+}
+
+body[data-module="comida-mesa"] .frontend-filter-bar .form-control,
+body[data-module="comida-mesa"] .frontend-filter-bar .form-select,
+body[data-module="comida-mesa"] .frontend-filter-bar .btn {
+    min-height: 44px;
+    border-color: var(--sigas-border-strong);
+    border-radius: var(--sigas-input-radius);
+    font-size: .78rem;
+    box-shadow: none;
+}
+
+body[data-module="comida-mesa"] .frontend-filter-bar .form-control:focus,
+body[data-module="comida-mesa"] .frontend-filter-bar .form-select:focus {
+    border-color: var(--sigas-accent);
+    box-shadow: 0 0 0 3px rgba(23, 107, 58, .09);
+}
+
+body[data-module="comida-mesa"] .frontend-data-card {
+    overflow: hidden;
+    border-color: var(--sigas-border);
+    border-radius: 15px;
+    box-shadow: var(--sigas-shadow-sm);
+}
+
+body[data-module="comida-mesa"] .frontend-data-card .card-heading {
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--sigas-border);
+}
+
+body[data-module="comida-mesa"] .frontend-desktop-table {
+    margin: 12px -16px -16px;
+}
+
+body[data-module="comida-mesa"] .frontend-desktop-table .table {
+    margin-bottom: 0;
+}
+
+body[data-module="comida-mesa"] .frontend-desktop-table thead th {
+    padding: 11px 13px;
+    border-color: var(--sigas-border);
+    background: var(--sigas-table-head);
+    color: #5d7067;
+    font-size: .64rem;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+body[data-module="comida-mesa"] .frontend-desktop-table tbody td {
+    padding: 12px 13px;
+    border-color: var(--sigas-border);
+    color: var(--sigas-text);
+    font-size: .74rem;
+}
+
+body[data-module="comida-mesa"] .frontend-desktop-table tbody tr {
+    transition: background .15s ease, box-shadow .15s ease;
+}
+
+body[data-module="comida-mesa"] .frontend-desktop-table tbody tr:hover {
+    background: var(--sigas-accent-soft-2);
+    box-shadow: inset 3px 0 0 var(--sigas-accent);
+}
+
+body[data-module="comida-mesa"] .frontend-pagination {
+    margin: 0 -16px -16px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--sigas-border);
+    background: #fff;
+}
+
+/* ----------------------------
+   Filtro funcional Beneficiários
+   ---------------------------- */
+body[data-module="comida-mesa"] .filter-bar {
+    margin-bottom: 14px;
+}
+
+body[data-module="comida-mesa"] .filter-bar::before {
+    content: "Filtros e consulta";
+    display: block;
+    margin-bottom: 10px;
+    color: var(--sigas-accent-strong);
+    font-size: .73rem;
+    font-weight: 800;
+    letter-spacing: .015em;
+}
+
+body[data-module="comida-mesa"] .search-field {
+    position: relative;
+}
+
+body[data-module="comida-mesa"] .search-field > i {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    left: 13px;
+    color: #7b9186;
+    transform: translateY(-50%);
+}
+
+body[data-module="comida-mesa"] .search-field .form-control {
+    padding-left: 38px;
+}
+
+body[data-module="comida-mesa"] .advanced-filters:not(.show) {
+    display: none;
+}
+
+/* ----------------------------
+   Tabela funcional Beneficiários
+   ---------------------------- */
+body[data-module="comida-mesa"] .table-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+body[data-module="comida-mesa"] .table-toolbar h2 {
+    margin: 0;
+    font-size: 1rem !important;
+}
+
+body[data-module="comida-mesa"] .data-table tbody tr.sigas-action-row td:first-child {
+    border-left: 3px solid transparent;
+}
+
+body[data-module="comida-mesa"] .data-table tbody tr.sigas-action-row:hover td:first-child,
+body[data-module="comida-mesa"] .data-table tbody tr.sigas-action-row:focus td:first-child {
+    border-left-color: var(--sigas-accent);
+}
+
+body[data-module="comida-mesa"] .status-badge,
+body[data-module="comida-mesa"] .badge-soft {
+    white-space: nowrap;
+}
+
+/* ----------------------------
+   TODAS AS MODAIS DO COMIDA NA MESA
+   ---------------------------- */
+body[data-module="comida-mesa"] .modal-content {
+    overflow: hidden;
+    border: 1px solid var(--sigas-border);
+    border-radius: 18px;
+    box-shadow: var(--sigas-shadow-md);
+}
+
+body[data-module="comida-mesa"] .modal-header {
+    align-items: flex-start;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--sigas-border);
+    background: #fff;
+}
+
+body[data-module="comida-mesa"] .modal-header .eyebrow {
+    color: var(--sigas-accent) !important;
+    font-size: .66rem;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+body[data-module="comida-mesa"] .modal-header .modal-title {
+    margin-top: 3px;
+    color: #1c2e28;
+    font-weight: 700;
+}
+
+body[data-module="comida-mesa"] .modal-subtitle {
+    margin: 4px 0 0;
+    color: var(--sigas-muted);
+    font-size: .75rem;
+}
+
+body[data-module="comida-mesa"] .modal-body {
+    padding: 18px;
+    background: #fff;
+}
+
+body[data-module="comida-mesa"] .modal-footer {
+    gap: 8px;
+    padding: 13px 18px;
+    border-top: 1px solid var(--sigas-border);
+    background: #fbfdfc;
+}
+
+body[data-module="comida-mesa"] .modal-footer .btn {
+    min-height: 40px;
+    padding-inline: 15px;
+    border-radius: 10px;
+    font-size: .76rem;
+    font-weight: 750;
+}
+
+body[data-module="comida-mesa"] .modal-footer .btn-primary {
+    border-color: var(--sigas-accent);
+    background: var(--sigas-accent);
+}
+
+body[data-module="comida-mesa"] .modal-footer .btn-primary:hover {
+    border-color: var(--sigas-accent-strong);
+    background: var(--sigas-accent-strong);
+}
+
+body[data-module="comida-mesa"] .modal-body .form-label {
+    margin-bottom: 5px;
+    color: #40584e;
+    font-size: .7rem;
+    font-weight: 750;
+}
+
+body[data-module="comida-mesa"] .modal-body .form-control,
+body[data-module="comida-mesa"] .modal-body .form-select {
+    min-height: 43px;
+    border-color: var(--sigas-border-strong);
+    border-radius: 10px;
+    font-size: .78rem;
+    box-shadow: none;
+}
+
+body[data-module="comida-mesa"] .modal-body textarea.form-control {
+    min-height: 88px;
+}
+
+body[data-module="comida-mesa"] .modal-body .form-control:focus,
+body[data-module="comida-mesa"] .modal-body .form-select:focus {
+    border-color: var(--sigas-accent);
+    box-shadow: 0 0 0 3px rgba(23, 107, 58, .09);
+}
+
+/* ----------------------------
+   Modal Hub de ações — CRUD
+   ---------------------------- */
+body[data-module="comida-mesa"] .sigas-action-modal .modal-dialog {
+    max-width: 690px;
+}
+
+body[data-module="comida-mesa"] .sigas-action-modal .modal-body {
+    padding: 16px 18px 18px;
+}
+
+body[data-module="comida-mesa"] .sigas-action-summary {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+body[data-module="comida-mesa"] .sigas-action-summary > div {
+    min-width: 0;
+    padding: 11px 12px;
+    border: 1px solid var(--sigas-border);
+    border-radius: 12px;
+    background: var(--sigas-accent-soft-2);
+}
+
+body[data-module="comida-mesa"] .sigas-action-summary span,
+body[data-module="comida-mesa"] .sigas-action-summary strong {
+    display: block !important;
+}
+
+body[data-module="comida-mesa"] .sigas-action-summary span {
+    margin-bottom: 3px;
+    color: var(--sigas-muted);
+    font-size: .66rem;
+}
+
+body[data-module="comida-mesa"] .sigas-action-summary strong {
+    overflow: hidden;
+    color: var(--sigas-accent-strong);
+    font-size: .79rem;
+    text-overflow: ellipsis;
+}
+
+body[data-module="comida-mesa"] .sigas-action-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+body[data-module="comida-mesa"] .sigas-action-button {
+    display: flex !important;
+    width: 100%;
+    min-height: 82px;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 13px;
+    appearance: none;
+    text-align: left;
+    border: 1px solid var(--sigas-border);
+    border-radius: 13px;
+    background: #fff;
+    color: var(--sigas-text);
+    box-shadow: none;
+    cursor: pointer;
+    transition: transform .15s ease, border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+
+body[data-module="comida-mesa"] .sigas-action-button:hover:not(:disabled),
+body[data-module="comida-mesa"] .sigas-action-button:focus-visible:not(:disabled) {
+    transform: translateY(-1px);
+    outline: none;
+    border-color: var(--sigas-accent);
+    background: var(--sigas-accent-soft-2);
+    box-shadow: 0 7px 20px rgba(23, 107, 58, .07);
+}
+
+body[data-module="comida-mesa"] .sigas-action-button > i {
+    display: grid !important;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    place-items: center;
+    border-radius: 11px;
+    background: var(--sigas-accent-soft);
+    color: var(--sigas-accent);
+    font-size: 1rem;
+}
+
+body[data-module="comida-mesa"] .sigas-action-button > span,
+body[data-module="comida-mesa"] .sigas-action-button strong,
+body[data-module="comida-mesa"] .sigas-action-button small {
+    display: block !important;
+    min-width: 0;
+}
+
+body[data-module="comida-mesa"] .sigas-action-button strong {
+    color: #20362d;
+    font-size: .79rem;
+    font-weight: 800;
+}
+
+body[data-module="comida-mesa"] .sigas-action-button small {
+    margin-top: 3px;
+    color: var(--sigas-muted);
+    font-size: .66rem;
+    line-height: 1.35;
+}
+
+body[data-module="comida-mesa"] .sigas-action-button--danger > i {
+    background: #fff1f2;
+    color: #b42334;
+}
+
+body[data-module="comida-mesa"] .sigas-action-button--danger:hover:not(:disabled) {
+    border-color: #edc3c8;
+    background: #fff8f8;
+}
+
+body[data-module="comida-mesa"] .sigas-action-button:disabled,
+body[data-module="comida-mesa"] .sigas-action-button.is-disabled {
+    cursor: not-allowed;
+    opacity: .45;
+    filter: grayscale(.12);
+}
+
+body[data-module="comida-mesa"] [data-cm-action-note] {
+    padding: 9px 11px;
+    border-radius: 10px;
+    background: #f7faf8;
+    color: var(--sigas-muted) !important;
+    font-size: .69rem !important;
+}
+
+/* ----------------------------
+   Consulta por CPF / Entrega
+   ---------------------------- */
+body[data-module="comida-mesa"] .scan-page-header,
+body[data-module="comida-mesa"] .page-header {
+    border-radius: 15px;
+}
+
+body[data-module="comida-mesa"] .scanner-capture-card,
+body[data-module="comida-mesa"] .manual-cpf-card,
+body[data-module="comida-mesa"] .consulta-result-card {
+    border-color: var(--sigas-border);
+    box-shadow: var(--sigas-shadow-sm);
+}
+
+/* ----------------------------
+   Responsividade
+   ---------------------------- */
+@media (max-width: 1199.98px) {
+    body[data-module="comida-mesa"] .frontend-filter-bar {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body[data-module="comida-mesa"] .frontend-search-field {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 991.98px) {
+    body[data-module="comida-mesa"] .filter-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body[data-module="comida-mesa"] .filter-row > :first-child {
+        grid-column: 1 / -1;
+    }
+
+    body[data-module="comida-mesa"] .filter-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-end;
+    }
+
+    body[data-module="comida-mesa"] .advanced-filters.show {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767.98px) {
+    body[data-module="comida-mesa"] .module-hero {
+        padding: 15px;
+    }
+
+    body[data-module="comida-mesa"] .module-hero-content,
+    body[data-module="comida-mesa"] .table-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    body[data-module="comida-mesa"] .module-hero-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        width: 100%;
+    }
+
+    body[data-module="comida-mesa"] .module-hero-actions .btn:last-child {
+        grid-column: 1 / -1;
+    }
+
+    body[data-module="comida-mesa"] .filter-row,
+    body[data-module="comida-mesa"] .advanced-filters.show,
+    body[data-module="comida-mesa"] .frontend-filter-bar,
+    body[data-module="comida-mesa"] .sigas-action-grid,
+    body[data-module="comida-mesa"] .sigas-action-summary {
+        grid-template-columns: 1fr;
+    }
+
+    body[data-module="comida-mesa"] .filter-row > :first-child,
+    body[data-module="comida-mesa"] .filter-actions,
+    body[data-module="comida-mesa"] .frontend-search-field {
+        grid-column: auto;
+    }
+
+    body[data-module="comida-mesa"] .filter-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+    }
+
+    body[data-module="comida-mesa"] .filter-actions .btn {
+        width: 100%;
+    }
+
+    body[data-module="comida-mesa"] .sigas-row-hint {
+        align-self: flex-start;
+    }
+
+    body[data-module="comida-mesa"] .sigas-action-modal .modal-dialog {
+        max-width: none;
+        margin: .75rem;
+        min-height: auto;
+    }
+
+    body[data-module="comida-mesa"] .sigas-action-modal .modal-content {
+        min-height: 0;
+        border: 1px solid var(--sigas-border);
+        border-radius: 16px;
+    }
+}

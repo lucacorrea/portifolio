@@ -1,0 +1,61 @@
+SIGAS — COARI COMIDA NA MESA
+PADRÃO HÍBRIDO V3 — CORREÇÃO COMPLETA DE CSS, FILTROS, TABELAS E MODAIS
+
+CAUSA DO PROBLEMA DA MODAL SEM ESTILO
+-------------------------------------
+O modulo.php possui <head> próprio e não utilizava frontend/layouts/head.php.
+Por isso o JavaScript do novo hub de ações era carregado, mas o arquivo
+assets/css/sigas-operational-ui.css não era carregado na tela funcional.
+Resultado: modal abria, porém botões e resumo apareciam como HTML quase cru.
+
+CORREÇÃO
+--------
+1. modulo.php passa a carregar sigas-operational-ui.css diretamente.
+2. consulta-documento.php também carrega o mesmo Design System.
+3. frontend/layouts/head.php mantém o carregamento nas páginas genéricas.
+4. Todos os carregamentos usam filemtime()/sigas_frontend_asset para evitar cache antigo.
+5. CSS recebeu seletores específicos para o Comida na Mesa e para todas as modais.
+
+PADRÃO VISUAL
+-------------
+- Verde continua sendo a identidade do módulo.
+- KPIs compactos e neutros.
+- Filtros organizados e responsivos.
+- Filtros avançados preservados: zona, bairro, comunidade e polo.
+- Tabela compacta, cabeçalho cinza, linhas brancas e hover discreto.
+- Clique na linha abre o Hub de Ações.
+- CRUD permanece em modais.
+- Visualizar, editar, entrega, documento, histórico e cancelamento respeitam permissões existentes.
+- Modais de formulário recebem o mesmo acabamento visual.
+- Consulta CPF e Registrar entrega recebem o mesmo padrão visual.
+
+ARQUIVOS DO PACOTE
+------------------
+modulo.php
+consulta-documento.php
+assets/css/sigas-operational-ui.css
+assets/js/comida-mesa.js
+frontend/layouts/head.php
+
+NÃO ALTERA
+----------
+- Banco de dados
+- APIs
+- Repositórios
+- Services
+- Permissões
+- CSRF
+- Regras de elegibilidade
+- Regras de entrega/cancelamento
+
+INSTALAÇÃO
+----------
+Extraia o ZIP dentro da raiz /sigas/, mantendo os caminhos.
+Depois use Ctrl+F5 no navegador.
+Não é necessário executar SQL.
+
+VALIDAÇÃO
+---------
+PHP lint: OK
+JavaScript node --check: OK
+CSS: chaves e comentários balanceados

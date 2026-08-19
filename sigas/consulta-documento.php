@@ -63,6 +63,7 @@ if (!$authorization->can($user, 'comida_mesa.consultar_cpf')) {
     <link href="assets/css/module-navigation.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/module-navigation.css') ?>" rel="stylesheet">
     <link href="assets/css/consulta-documento-ocr.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/consulta-documento-ocr.css')) ?>" rel="stylesheet">
     <link href="assets/css/consulta-result-modal.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/consulta-result-modal.css')) ?>" rel="stylesheet">
+    <link href="assets/css/sigas-operational-ui.css?v=<?= e(is_file(__DIR__ . '/assets/css/sigas-operational-ui.css') ? (string) filemtime(__DIR__ . '/assets/css/sigas-operational-ui.css') : '1') ?>" rel="stylesheet" data-sigas-operational-ui="v3">
 </head>
 <body data-page="consulta">
     <main class="container py-5">

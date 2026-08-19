@@ -49,7 +49,7 @@ try {
     <link href="assets/css/style.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/style.css')) ?>" rel="stylesheet">
     <link href="assets/css/module-navigation.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/module-navigation.css')) ?>" rel="stylesheet">
     <link href="assets/css/anexo-detail-modal.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/anexo-detail-modal.css')) ?>" rel="stylesheet">
-    <link href="assets/css/sigas-operational-ui.css?v=<?= e(is_file(__DIR__ . '/assets/css/sigas-operational-ui.css') ? (string) filemtime(__DIR__ . '/assets/css/sigas-operational-ui.css') : '1') ?>" rel="stylesheet">
+    <link href="assets/css/sigas-operational-ui.css?v=<?= e(is_file(__DIR__ . '/assets/css/sigas-operational-ui.css') ? (string) filemtime(__DIR__ . '/assets/css/sigas-operational-ui.css') : '1') ?>" rel="stylesheet" data-sigas-operational-ui="v3">
 </head>
 <body data-page="modulo">
     <main class="container py-5">
@@ -368,6 +368,7 @@ function render_registration_form_fields(array $poles, array $programStatuses, s
     <link href="assets/css/style.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/style.css')) ?>" rel="stylesheet">
     <link href="assets/css/module-navigation.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/module-navigation.css')) ?>" rel="stylesheet">
     <link href="assets/css/anexo-detail-modal.css?v=<?= e((string) filemtime(__DIR__ . '/assets/css/anexo-detail-modal.css')) ?>" rel="stylesheet">
+    <link href="assets/css/sigas-operational-ui.css?v=<?= e(is_file(__DIR__ . '/assets/css/sigas-operational-ui.css') ? (string) filemtime(__DIR__ . '/assets/css/sigas-operational-ui.css') : '1') ?>" rel="stylesheet" data-sigas-operational-ui="v3">
 </head>
 <body data-page="modulo" data-module="comida-mesa" data-module-page="<?= e($pageKey) ?>">
     <div class="app-shell module-shell module-shell--food" data-module-shell data-menu-environment="comida-mesa">

@@ -6,8 +6,9 @@ require_once dirname(__DIR__) . '/support/helpers.php';
 
 /**
  * Monta a lista de CSS adicionais sem duplicar arquivos.
- * O Primeiro Emprego recebe carregamento explícito do module.css
- * para não depender apenas de $extraStyles ou do ModuleRegistry.
+ * O Primeiro Emprego recebe carregamento explícito do module2.0.css.
+ * O Design System operacional híbrido é carregado para Primeiro Emprego
+ * e Comida na Mesa no final deste head, com cache busting por filemtime().
  *
  * @return array<int,string>
  */
@@ -78,7 +79,7 @@ $moduleStyles = sigas_frontend_module_styles(
     <?php if (in_array(($environmentKey ?? ''), ['primeiro-emprego', 'comida-mesa'], true)): ?>
         <?php $operationalUiPath = 'assets/css/sigas-operational-ui.css'; ?>
         <?php if (is_file(dirname(__DIR__, 2) . '/' . $operationalUiPath)): ?>
-            <link href="<?= sigas_frontend_asset($operationalUiPath) ?>" rel="stylesheet" data-sigas-operational-ui="v2">
+            <link href="<?= sigas_frontend_asset($operationalUiPath) ?>" rel="stylesheet" data-sigas-operational-ui="v3">
         <?php endif; ?>
     <?php endif; ?>
 </head>
