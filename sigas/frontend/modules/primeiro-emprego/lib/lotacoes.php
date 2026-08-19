@@ -24,10 +24,14 @@ function pe_lotacao_table_ready(PDO $pdo): bool
 
 function pe_lotacao_rows(PDO $pdo): array
 {
+    $partnerSigla = pe_partner_has_sigla($pdo)
+        ? 'p.sigla AS parceiro_sigla,'
+        : 'NULL AS parceiro_sigla,';
+
     $sql = '
         SELECT
             l.id,
-            l.candidato_id,
+            c.id AS candidato_id,
             l.parceiro_id,
             c.nome,
             c.cpf,
@@ -35,7 +39,11 @@ function pe_lotacao_rows(PDO $pdo): array
             c.telefone,
             c.bairro,
             c.status AS candidato_status,
+            c.revisao_status,
+            c.cpf_duplicado,
+            i.setor_informado,
             p.nome AS parceiro_nome,
+            ' . $partnerSigla . '
             l.local_atuacao,
             l.setor,
             l.turno_atuacao,
@@ -46,16 +54,75 @@ function pe_lotacao_rows(PDO $pdo): array
             l.observacao,
             l.registrado_por,
             l.created_at,
-            l.updated_at
-        FROM pe_lotacoes l
-        INNER JOIN pe_candidatos c
-            ON c.id = l.candidato_id
+            l.updated_at,
+            CASE
+                WHEN (
+                    UPPER(TRIM(COALESCE(i.setor_informado, ""))) IN (
+                        "NÃO VEIO DA SARA", "NAO VEIO DA SARA",
+                        "NÃO ESTA NA SARA", "NAO ESTA NA SARA",
+                        "NÃO ESTÁ NA SARA", "NAO ESTÁ NA SARA",
+                        "PRIMEIRA VEZ", "PRIMEIRE VEZ",
+                        "NÃO INFORMADO", "NAO INFORMADO",
+                        "SEM INFORMAÇÃO", "SEM INFORMACAO",
+                        "INÊS DE NAZAERÉ", "INES DE NAZAERE",
+                        "DARQUILANA AMORIM", "BERIANO"
+                    )
+                    OR UPPER(TRIM(COALESCE(i.setor_informado, ""))) LIKE "%PROCURAR%CRACH%"
+                    OR UPPER(TRIM(COALESCE(l.local_atuacao, ""))) IN (
+                        "NÃO VEIO DA SARA", "NAO VEIO DA SARA",
+                        "NÃO ESTA NA SARA", "NAO ESTA NA SARA",
+                        "NÃO ESTÁ NA SARA", "NAO ESTÁ NA SARA",
+                        "PRIMEIRA VEZ", "PRIMEIRE VEZ",
+                        "NÃO INFORMADO", "NAO INFORMADO",
+                        "SEM INFORMAÇÃO", "SEM INFORMACAO",
+                        "INÊS DE NAZAERÉ", "INES DE NAZAERE",
+                        "DARQUILANA AMORIM", "BERIANO"
+                    )
+                    OR UPPER(TRIM(COALESCE(l.local_atuacao, ""))) LIKE "%PROCURAR%CRACH%"
+                ) THEN "Revisar lotação"
+                WHEN l.id IS NOT NULL THEN "Lotado"
+                WHEN i.setor_informado IS NULL OR TRIM(i.setor_informado) = "" THEN "Não lotado"
+                ELSE "Pronto para importar"
+            END AS situacao_lotacao
+        FROM pe_candidatos c
+        LEFT JOIN pe_lotacoes l
+            ON l.candidato_id = c.id
+           AND l.status = "Ativa"
         LEFT JOIN pe_parceiros p
             ON p.id = l.parceiro_id
+        LEFT JOIN (
+            SELECT i1.*
+            FROM pe_importacao_itens i1
+            INNER JOIN (
+                SELECT candidato_id, MAX(id) AS ultimo_id
+                FROM pe_importacao_itens
+                WHERE candidato_id IS NOT NULL
+                GROUP BY candidato_id
+            ) ult
+                ON ult.ultimo_id = i1.id
+        ) i
+            ON i.candidato_id = c.id
         ORDER BY
-            CASE WHEN l.status = "Ativa" THEN 0 ELSE 1 END,
-            l.data_inicio DESC,
-            l.id DESC,
+            CASE
+                WHEN (
+                    UPPER(TRIM(COALESCE(i.setor_informado, ""))) IN (
+                        "NÃO VEIO DA SARA", "NAO VEIO DA SARA",
+                        "NÃO ESTA NA SARA", "NAO ESTA NA SARA",
+                        "NÃO ESTÁ NA SARA", "NAO ESTÁ NA SARA",
+                        "PRIMEIRA VEZ", "PRIMEIRE VEZ",
+                        "NÃO INFORMADO", "NAO INFORMADO",
+                        "SEM INFORMAÇÃO", "SEM INFORMACAO",
+                        "INÊS DE NAZAERÉ", "INES DE NAZAERE",
+                        "DARQUILANA AMORIM", "BERIANO"
+                    )
+                    OR UPPER(TRIM(COALESCE(i.setor_informado, ""))) LIKE "%PROCURAR%CRACH%"
+                    OR UPPER(TRIM(COALESCE(l.local_atuacao, ""))) LIKE "%NÃO VEIO DA SARA%"
+                    OR UPPER(TRIM(COALESCE(l.local_atuacao, ""))) LIKE "%NAO VEIO DA SARA%"
+                ) THEN 1
+                WHEN l.id IS NULL AND i.setor_informado IS NULL THEN 2
+                WHEN l.id IS NULL THEN 3
+                ELSE 4
+            END,
             c.nome ASC
     ';
 
@@ -86,8 +153,9 @@ function pe_lotacao_candidates(PDO $pdo): array
 
 function pe_lotacao_partners(PDO $pdo): array
 {
+    $sigla = pe_partner_has_sigla($pdo) ? 'sigla,' : 'NULL AS sigla,';
     $sql = '
-        SELECT id, nome, tipo, status
+        SELECT id, nome, ' . $sigla . ' tipo, status
         FROM pe_parceiros
         ORDER BY
             CASE WHEN status = "Ativa" THEN 0 ELSE 1 END,

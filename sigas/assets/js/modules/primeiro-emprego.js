@@ -858,3 +858,129 @@
         if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open','');
     });
 })();
+
+/* ======================================================================
+ * PADRÃO OPERACIONAL — INDICADORES, FILTROS E CORES SEM FUNDO
+ * ====================================================================== */
+(() => {
+    const normalize = value => String(value ?? '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLocaleLowerCase('pt-BR');
+
+    const toneForStatus = value => {
+        const status = normalize(value);
+        if (!status) return 'muted';
+
+        const danger = [
+            'indeferido', 'indeferida', 'suspensa', 'suspenso', 'vencido', 'vencida',
+            'cancelada', 'cancelado', 'nao selecionado', 'irregular', 'revisar lotacao',
+            'cpf duplicado', 'bloqueado', 'bloqueada'
+        ];
+        const warning = [
+            'pendente', 'atencao', 'em analise', 'programada', 'em selecao',
+            'entrevista marcada', 'revisar', 'nao lotado', 'previsto', 'prevista',
+            'revisar cadastro', 'revisar cpf', 'revisar telefone', 'revisar nascimento', 'com pendencia', 'sem arquivo'
+        ];
+        const success = [
+            'ativa', 'ativo', 'aberta', 'aberto', 'regular', 'deferido', 'deferida',
+            'aprovado', 'aprovada', 'paga', 'pago', 'concluida', 'concluido',
+            'disponivel', 'contemplado', 'contemplada', 'lotado', 'lotada',
+            'preenchida', 'presente', 'sem pendencia'
+        ];
+        const info = [
+            'em andamento', 'em processamento', 'encaminhado', 'encaminhada',
+            'inscricoes abertas', 'planejada', 'planejado', 'pronto para importar',
+            'inscrito', 'inscrita'
+        ];
+        const muted = ['encerrada', 'encerrado', 'nao se aplica', 'arquivado', 'arquivada'];
+
+        if (danger.includes(status) || status.includes('revisar lotacao') || status.includes('vencid')) return 'danger';
+        if (warning.includes(status) || status.includes('pendente') || status.includes('atencao')) return 'warning';
+        if (success.includes(status) || status.includes('conclu') || status.includes('aprovad') || status.includes('regular')) return 'success';
+        if (info.includes(status)) return 'info';
+        if (muted.includes(status)) return 'muted';
+        return 'neutral';
+    };
+
+    const colorStatuses = () => {
+        document.querySelectorAll('.pe-status-text').forEach(element => {
+            if ([...element.classList].some(name => name.startsWith('is-'))) return;
+            element.classList.add(`is-${toneForStatus(element.textContent)}`);
+        });
+    };
+
+    const bindPanel = panel => {
+        const selector = panel.getAttribute('data-pe-filter-scope');
+        const scope = selector ? document.querySelector(selector) : null;
+        if (!scope) return;
+
+        const rows = () => [...scope.querySelectorAll('[data-pe-list-row]')];
+        const search = panel.querySelector('[data-pe-filter-search]');
+        const selects = [...panel.querySelectorAll('[data-pe-filter-key]')];
+        const clear = panel.querySelector('[data-pe-filter-clear]');
+        const count = panel.querySelector('[data-pe-filter-count]');
+        const empty = scope.parentElement?.querySelector('[data-pe-filter-empty]');
+
+        const apply = () => {
+            const query = normalize(search?.value || '');
+            let visible = 0;
+
+            rows().forEach(row => {
+                let matches = query === '' || normalize(row.textContent).includes(query);
+
+                if (matches) {
+                    selects.forEach(select => {
+                        if (!matches || !select.value) return;
+                        const key = select.getAttribute('data-pe-filter-key');
+                        const attributeKey = String(key || '').replaceAll('_', '-');
+                        const rowValue = normalize(row.getAttribute(`data-pe-filter-${attributeKey}`) || '');
+                        const filterValue = normalize(select.value);
+                        if (rowValue !== filterValue) matches = false;
+                    });
+                }
+
+                row.hidden = !matches;
+                if (matches) visible += 1;
+            });
+
+            if (count) count.textContent = String(visible);
+            if (empty) empty.hidden = visible !== 0;
+        };
+
+        search?.addEventListener('input', apply);
+        selects.forEach(select => select.addEventListener('change', apply));
+        clear?.addEventListener('click', () => {
+            if (search) search.value = '';
+            selects.forEach(select => { select.value = ''; });
+            apply();
+            search?.focus();
+        });
+
+        panel._peApplyFilters = apply;
+        apply();
+    };
+
+    document.querySelectorAll('[data-pe-filter-scope]').forEach(bindPanel);
+
+    document.querySelectorAll('[data-pe-metric-filter-key]').forEach(metric => {
+        metric.addEventListener('click', () => {
+            const grid = metric.closest('[data-pe-metric-panel]');
+            const panelSelector = grid?.getAttribute('data-pe-metric-panel');
+            const panel = panelSelector ? document.querySelector(panelSelector) : null;
+            if (!panel) return;
+
+            const key = metric.getAttribute('data-pe-metric-filter-key');
+            const value = metric.getAttribute('data-pe-metric-filter-value');
+            const select = panel.querySelector(`[data-pe-filter-key="${CSS.escape(key || '')}"]`);
+            if (!select) return;
+
+            select.value = value || '';
+            if (typeof panel._peApplyFilters === 'function') panel._peApplyFilters();
+            panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+    });
+
+    colorStatuses();
+})();

@@ -272,48 +272,50 @@ function pe_save_profile(PDO $pdo, array $input, array $files): int
     return $candidateId;
 }
 
+function pe_active_location_join(PDO $pdo, string $candidateAlias = 'c', string $locationAlias = 'f'): string
+{
+    try {
+        if ($pdo->query("SHOW TABLES LIKE 'pe_lotacoes'")->fetchColumn()) {
+            return ' LEFT JOIN pe_lotacoes ' . $locationAlias
+                . ' ON ' . $locationAlias . '.candidato_id=' . $candidateAlias . '.id'
+                . ' AND ' . $locationAlias . '.status="Ativa"';
+        }
+    } catch (Throwable $e) {
+    }
+
+    return ' LEFT JOIN pe_fichas_cadastrais ' . $locationAlias
+        . ' ON ' . $locationAlias . '.candidato_id=' . $candidateAlias . '.id';
+}
+
 function pe_report_rows(PDO $pdo, array $filters = []): array
 {
     $where = [];
     $params = [];
+    $join = pe_active_location_join($pdo, 'c', 'f');
     $search = trim((string) ($filters['q'] ?? ''));
     if ($search !== '') {
         $like = '%' . $search . '%';
         $where[] = '(c.nome LIKE :q_nome OR c.cpf LIKE :q_cpf OR c.cpf_informado LIKE :q_cpf_informado OR c.telefone LIKE :q_telefone OR c.bairro LIKE :q_bairro OR c.responsavel_familiar LIKE :q_responsavel OR f.local_atuacao LIKE :q_setor)';
-        $params['q_nome'] = $like;
-        $params['q_cpf'] = $like;
-        $params['q_cpf_informado'] = $like;
-        $params['q_telefone'] = $like;
-        $params['q_bairro'] = $like;
-        $params['q_responsavel'] = $like;
-        $params['q_setor'] = $like;
+        foreach (['q_nome','q_cpf','q_cpf_informado','q_telefone','q_bairro','q_responsavel','q_setor'] as $key) $params[$key] = $like;
     }
-    if (!empty($filters['status'])) {
-        $where[] = 'c.status = :status';
-        $params['status'] = $filters['status'];
-    }
-    if (!empty($filters['bairro'])) {
-        $where[] = 'c.bairro = :bairro';
-        $params['bairro'] = $filters['bairro'];
-    }
-    if (!empty($filters['setor'])) {
-        $where[] = 'f.local_atuacao = :setor';
-        $params['setor'] = $filters['setor'];
-    }
+    if (!empty($filters['status'])) { $where[] = 'c.status = :status'; $params['status'] = $filters['status']; }
+    if (!empty($filters['bairro'])) { $where[] = 'c.bairro = :bairro'; $params['bairro'] = $filters['bairro']; }
+    if (!empty($filters['setor'])) { $where[] = 'f.local_atuacao = :setor'; $params['setor'] = $filters['setor']; }
+    $review = trim((string) ($filters['revisao'] ?? ''));
+    if ($review === 'pendentes') $where[] = 'c.revisao_status IS NOT NULL AND c.revisao_status <> ""';
+    elseif ($review === 'sem_pendencia') $where[] = '(c.revisao_status IS NULL OR c.revisao_status = "")';
+    $lotacao = trim((string) ($filters['lotacao'] ?? ''));
+    if ($lotacao === 'lotado') $where[] = 'f.local_atuacao IS NOT NULL AND TRIM(f.local_atuacao) <> ""';
+    elseif ($lotacao === 'nao_lotado') $where[] = '(f.local_atuacao IS NULL OR TRIM(f.local_atuacao) = "")';
     $sql = 'SELECT c.id, c.nome, c.data_nascimento, c.responsavel_familiar, c.bairro,
                    COALESCE(NULLIF(c.endereco, ""), TRIM(CONCAT(COALESCE(c.rua,""), " ", COALESCE(c.ponto_referencia,"")))) AS endereco,
                    c.telefone, COALESCE(c.cpf, c.cpf_informado) AS cpf, c.status, c.origem,
-                   f.local_atuacao AS setor, f.turno_atuacao,
+                   c.revisao_status, f.local_atuacao AS setor, f.turno_atuacao,
                    (SELECT v.decisao FROM pe_visitas_sociais v WHERE v.candidato_id = c.id ORDER BY v.data_visita DESC, v.id DESC LIMIT 1) AS parecer
-            FROM pe_candidatos c
-            LEFT JOIN pe_fichas_cadastrais f ON f.candidato_id = c.id';
-    if ($where) {
-        $sql .= ' WHERE ' . implode(' AND ', $where);
-    }
+            FROM pe_candidatos c' . $join;
+    if ($where) $sql .= ' WHERE ' . implode(' AND ', $where);
     $sql .= ' ORDER BY c.nome ASC';
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    return $stmt->fetchAll();
+    $stmt = $pdo->prepare($sql); $stmt->execute($params); return $stmt->fetchAll();
 }
 
 function pe_dashboard_stats(PDO $pdo): array
@@ -334,7 +336,15 @@ function pe_dashboard_stats(PDO $pdo): array
 function pe_candidate_filters(PDO $pdo): array
 {
     $bairros = $pdo->query('SELECT DISTINCT bairro FROM pe_candidatos WHERE bairro IS NOT NULL AND bairro <> "" ORDER BY bairro')->fetchAll(PDO::FETCH_COLUMN);
-    $setores = $pdo->query('SELECT DISTINCT local_atuacao FROM pe_fichas_cadastrais WHERE local_atuacao IS NOT NULL AND local_atuacao <> "" ORDER BY local_atuacao')->fetchAll(PDO::FETCH_COLUMN);
+    try {
+        if ($pdo->query("SHOW TABLES LIKE 'pe_lotacoes'")->fetchColumn()) {
+            $setores = $pdo->query('SELECT DISTINCT local_atuacao FROM pe_lotacoes WHERE status="Ativa" AND local_atuacao IS NOT NULL AND local_atuacao <> "" ORDER BY local_atuacao')->fetchAll(PDO::FETCH_COLUMN);
+        } else {
+            $setores = $pdo->query('SELECT DISTINCT local_atuacao FROM pe_fichas_cadastrais WHERE local_atuacao IS NOT NULL AND local_atuacao <> "" ORDER BY local_atuacao')->fetchAll(PDO::FETCH_COLUMN);
+        }
+    } catch (Throwable $e) {
+        $setores = [];
+    }
     return ['bairros' => $bairros, 'setores' => $setores];
 }
 
@@ -344,6 +354,7 @@ function pe_candidate_page(PDO $pdo, array $filters, int $page = 1, int $perPage
     $perPage = max(10, min($perPage, 100));
     $where = [];
     $params = [];
+    $locationJoin = pe_active_location_join($pdo, 'c', 'f');
 
     $search = trim((string) ($filters['q'] ?? ''));
     if ($search !== '') {
@@ -392,7 +403,7 @@ function pe_candidate_page(PDO $pdo, array $filters, int $page = 1, int $perPage
     }
 
     $whereSql = $where ? ' WHERE ' . implode(' AND ', $where) : '';
-    $countSql = 'SELECT COUNT(*) FROM pe_candidatos c LEFT JOIN pe_fichas_cadastrais f ON f.candidato_id=c.id' . $whereSql;
+    $countSql = 'SELECT COUNT(*) FROM pe_candidatos c' . $locationJoin . $whereSql;
     $countStmt = $pdo->prepare($countSql);
     $countStmt->execute($params);
     $total = (int) $countStmt->fetchColumn();
@@ -410,8 +421,7 @@ function pe_candidate_page(PDO $pdo, array $filters, int $page = 1, int $perPage
                    c.cpf_duplicado_confirmado, c.revisao_motivos, c.revisao_atualizada_em,
                    f.local_atuacao AS setor,
                    (SELECT v.decisao FROM pe_visitas_sociais v WHERE v.candidato_id=c.id ORDER BY v.data_visita DESC, v.id DESC LIMIT 1) AS parecer
-            FROM pe_candidatos c
-            LEFT JOIN pe_fichas_cadastrais f ON f.candidato_id=c.id' . $whereSql . '
+            FROM pe_candidatos c' . $locationJoin . $whereSql . '
             ORDER BY
                 CASE WHEN c.cpf_duplicado = 1 AND c.cpf_duplicado_confirmado = 0 THEN 0 WHEN c.revisao_status = "Revisar Cadastro" THEN 1 WHEN c.revisao_status IS NOT NULL THEN 2 ELSE 3 END,
                 c.nome ASC
@@ -689,31 +699,78 @@ function pe_program_candidates(PDO $pdo, int $limit = 2000): array
     return $pdo->query('SELECT id,nome,cpf,cpf_informado,status FROM pe_candidatos ORDER BY nome LIMIT ' . $limit)->fetchAll();
 }
 
+function pe_partner_has_sigla(PDO $pdo): bool
+{
+    static $cache = [];
+    $key = spl_object_id($pdo);
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
+    try {
+        $stmt = $pdo->query("SHOW COLUMNS FROM pe_parceiros LIKE 'sigla'");
+        return $cache[$key] = (bool) $stmt->fetchColumn();
+    } catch (Throwable $e) {
+        return $cache[$key] = false;
+    }
+}
+
 function pe_partners(PDO $pdo): array
 {
-    return $pdo->query('SELECT p.*, (SELECT COUNT(*) FROM pe_vagas v WHERE v.parceiro_id=p.id) vagas, (SELECT COUNT(*) FROM pe_fichas_cadastrais f WHERE f.local_atuacao=p.nome) lotados FROM pe_parceiros p ORDER BY p.nome')->fetchAll();
+    $lotados = '(SELECT COUNT(*) FROM pe_fichas_cadastrais f WHERE f.local_atuacao=p.nome)';
+    try {
+        if ($pdo->query("SHOW TABLES LIKE 'pe_lotacoes'")->fetchColumn()) {
+            $lotados = '(SELECT COUNT(*) FROM pe_lotacoes l WHERE l.parceiro_id=p.id AND l.status="Ativa")';
+        }
+    } catch (Throwable $e) {
+        // Compatibilidade com instalação anterior à tabela de lotações.
+    }
+
+    $sql = 'SELECT p.*, '
+        . '(SELECT COUNT(*) FROM pe_vagas v WHERE v.parceiro_id=p.id) vagas, '
+        . $lotados . ' lotados '
+        . 'FROM pe_parceiros p ORDER BY p.nome';
+
+    return $pdo->query($sql)->fetchAll();
 }
 
 function pe_save_partner(PDO $pdo, array $input): int
 {
     $name = trim((string) ($input['nome'] ?? ''));
     if (mb_strlen($name) < 3) throw new InvalidArgumentException('Informe o nome da instituição parceira.');
+    $sigla = mb_strtoupper(trim((string) ($input['sigla'] ?? '')), 'UTF-8');
+    if (mb_strlen($sigla) > 30) throw new InvalidArgumentException('A sigla deve possuir no máximo 30 caracteres.');
     $cnpj = pe_digits($input['cnpj'] ?? '');
     if ($cnpj !== '' && strlen($cnpj) !== 14) throw new InvalidArgumentException('CNPJ deve possuir 14 dígitos ou ficar em branco.');
     $email = pe_nullable($input['email'] ?? null);
     if ($email && !filter_var($email, FILTER_VALIDATE_EMAIL)) throw new InvalidArgumentException('E-mail inválido.');
-    $stmt = $pdo->prepare('INSERT INTO pe_parceiros (nome,tipo,cnpj,responsavel,telefone,email,termo_parceria,status,observacao) VALUES (:nome,:tipo,:cnpj,:responsavel,:telefone,:email,:termo,:status,:obs)');
-    $stmt->execute([
-        'nome'=>$name,'tipo'=>pe_nullable($input['tipo'] ?? null),'cnpj'=>$cnpj ?: null,
-        'responsavel'=>pe_nullable($input['responsavel'] ?? null),'telefone'=>pe_nullable(pe_digits($input['telefone'] ?? '')),
-        'email'=>$email,'termo'=>pe_nullable($input['termo_parceria'] ?? null),'status'=>pe_nullable($input['status'] ?? 'Ativa') ?: 'Ativa','obs'=>pe_nullable($input['observacao'] ?? null),
-    ]);
+
+    $params = [
+        'nome'=>$name,
+        'tipo'=>pe_nullable($input['tipo'] ?? null),
+        'cnpj'=>$cnpj ?: null,
+        'responsavel'=>pe_nullable($input['responsavel'] ?? null),
+        'telefone'=>pe_nullable(pe_digits($input['telefone'] ?? '')),
+        'email'=>$email,
+        'termo'=>pe_nullable($input['termo_parceria'] ?? null),
+        'status'=>pe_nullable($input['status'] ?? 'Ativa') ?: 'Ativa',
+        'obs'=>pe_nullable($input['observacao'] ?? null),
+    ];
+
+    if (pe_partner_has_sigla($pdo)) {
+        $stmt = $pdo->prepare('INSERT INTO pe_parceiros (nome,sigla,tipo,cnpj,responsavel,telefone,email,termo_parceria,status,observacao) VALUES (:nome,:sigla,:tipo,:cnpj,:responsavel,:telefone,:email,:termo,:status,:obs)');
+        $params['sigla'] = $sigla !== '' ? $sigla : null;
+    } else {
+        $stmt = $pdo->prepare('INSERT INTO pe_parceiros (nome,tipo,cnpj,responsavel,telefone,email,termo_parceria,status,observacao) VALUES (:nome,:tipo,:cnpj,:responsavel,:telefone,:email,:termo,:status,:obs)');
+    }
+
+    $stmt->execute($params);
     return (int) $pdo->lastInsertId();
 }
 
 function pe_vacancies(PDO $pdo): array
 {
-    return $pdo->query('SELECT v.*, p.nome parceiro FROM pe_vagas v LEFT JOIN pe_parceiros p ON p.id=v.parceiro_id ORDER BY CASE v.status WHEN "Aberta" THEN 0 WHEN "Em seleção" THEN 1 ELSE 2 END, v.id DESC')->fetchAll();
+    $sigla = pe_partner_has_sigla($pdo) ? 'p.sigla parceiro_sigla,' : 'NULL parceiro_sigla,';
+    return $pdo->query('SELECT v.*, p.nome parceiro, ' . $sigla . ' p.tipo parceiro_tipo FROM pe_vagas v LEFT JOIN pe_parceiros p ON p.id=v.parceiro_id ORDER BY CASE v.status WHEN "Aberta" THEN 0 WHEN "Em seleção" THEN 1 ELSE 2 END, v.id DESC')->fetchAll();
 }
 
 function pe_save_vacancy(PDO $pdo, array $input): int
@@ -732,7 +789,8 @@ function pe_save_vacancy(PDO $pdo, array $input): int
 
 function pe_referrals(PDO $pdo): array
 {
-    return $pdo->query('SELECT e.*, c.nome candidato, v.cargo vaga, p.nome parceiro FROM pe_encaminhamentos e JOIN pe_candidatos c ON c.id=e.candidato_id LEFT JOIN pe_vagas v ON v.id=e.vaga_id LEFT JOIN pe_parceiros p ON p.id=e.parceiro_id ORDER BY e.data_encaminhamento DESC,e.id DESC')->fetchAll();
+    $sigla = pe_partner_has_sigla($pdo) ? 'p.sigla parceiro_sigla,' : 'NULL parceiro_sigla,';
+    return $pdo->query('SELECT e.*, c.nome candidato, v.cargo vaga, p.nome parceiro, ' . $sigla . ' p.tipo parceiro_tipo FROM pe_encaminhamentos e JOIN pe_candidatos c ON c.id=e.candidato_id LEFT JOIN pe_vagas v ON v.id=e.vaga_id LEFT JOIN pe_parceiros p ON p.id=e.parceiro_id ORDER BY e.data_encaminhamento DESC,e.id DESC')->fetchAll();
 }
 
 function pe_save_referral(PDO $pdo, array $input, ?string $responsavel): int
@@ -781,7 +839,13 @@ function pe_save_document(PDO $pdo, array $input, array $files, ?string $respons
 
 function pe_attendance_rows(PDO $pdo): array
 {
-    return $pdo->query('SELECT f.*,c.nome candidato,fc.local_atuacao parceiro FROM pe_frequencias f JOIN pe_candidatos c ON c.id=f.candidato_id LEFT JOIN pe_fichas_cadastrais fc ON fc.candidato_id=c.id ORDER BY f.competencia DESC,c.nome')->fetchAll();
+    try {
+        if ($pdo->query("SHOW TABLES LIKE 'pe_lotacoes'")->fetchColumn()) {
+            return $pdo->query('SELECT f.*,c.nome candidato,l.local_atuacao parceiro,l.setor lotacao_setor,p.nome parceiro_nome FROM pe_frequencias f JOIN pe_candidatos c ON c.id=f.candidato_id LEFT JOIN pe_lotacoes l ON l.candidato_id=c.id AND l.status="Ativa" LEFT JOIN pe_parceiros p ON p.id=l.parceiro_id ORDER BY f.competencia DESC,c.nome')->fetchAll();
+        }
+    } catch (Throwable $e) {
+    }
+    return $pdo->query('SELECT f.*,c.nome candidato,fc.local_atuacao parceiro,NULL lotacao_setor,NULL parceiro_nome FROM pe_frequencias f JOIN pe_candidatos c ON c.id=f.candidato_id LEFT JOIN pe_fichas_cadastrais fc ON fc.candidato_id=c.id ORDER BY f.competencia DESC,c.nome')->fetchAll();
 }
 
 function pe_save_attendance(PDO $pdo,array $input,?string $responsavel): int
@@ -828,7 +892,13 @@ function pe_enroll_training(PDO $pdo,array $input): void
 
 function pe_followup_rows(PDO $pdo): array
 {
-    return $pdo->query('SELECT a.*,c.nome candidato,f.local_atuacao parceiro FROM pe_acompanhamentos_programa a JOIN pe_candidatos c ON c.id=a.candidato_id LEFT JOIN pe_fichas_cadastrais f ON f.candidato_id=c.id ORDER BY a.data_acompanhamento DESC,a.id DESC')->fetchAll();
+    try {
+        if ($pdo->query("SHOW TABLES LIKE 'pe_lotacoes'")->fetchColumn()) {
+            return $pdo->query('SELECT a.*,c.nome candidato,l.local_atuacao parceiro,l.setor lotacao_setor,p.nome parceiro_nome FROM pe_acompanhamentos_programa a JOIN pe_candidatos c ON c.id=a.candidato_id LEFT JOIN pe_lotacoes l ON l.candidato_id=c.id AND l.status="Ativa" LEFT JOIN pe_parceiros p ON p.id=l.parceiro_id ORDER BY a.data_acompanhamento DESC,a.id DESC')->fetchAll();
+        }
+    } catch (Throwable $e) {
+    }
+    return $pdo->query('SELECT a.*,c.nome candidato,f.local_atuacao parceiro,NULL lotacao_setor,NULL parceiro_nome FROM pe_acompanhamentos_programa a JOIN pe_candidatos c ON c.id=a.candidato_id LEFT JOIN pe_fichas_cadastrais f ON f.candidato_id=c.id ORDER BY a.data_acompanhamento DESC,a.id DESC')->fetchAll();
 }
 
 function pe_save_followup(PDO $pdo,array $input,?string $responsavel): int
@@ -854,7 +924,18 @@ function pe_save_config(PDO $pdo,string $key,string $value,?string $description=
 
 function pe_partner_by_id(PDO $pdo, int $id): ?array
 {
-    $stmt = $pdo->prepare('SELECT p.*, (SELECT COUNT(*) FROM pe_vagas v WHERE v.parceiro_id=p.id) vagas, (SELECT COUNT(*) FROM pe_fichas_cadastrais f WHERE f.local_atuacao=p.nome) lotados FROM pe_parceiros p WHERE p.id=:id LIMIT 1');
+    $lotados = '(SELECT COUNT(*) FROM pe_fichas_cadastrais f WHERE f.local_atuacao=p.nome)';
+    try {
+        if ($pdo->query("SHOW TABLES LIKE 'pe_lotacoes'")->fetchColumn()) {
+            $lotados = '(SELECT COUNT(*) FROM pe_lotacoes l WHERE l.parceiro_id=p.id AND l.status="Ativa")';
+        }
+    } catch (Throwable $e) {
+    }
+
+    $stmt = $pdo->prepare(
+        'SELECT p.*, (SELECT COUNT(*) FROM pe_vagas v WHERE v.parceiro_id=p.id) vagas, '
+        . $lotados . ' lotados FROM pe_parceiros p WHERE p.id=:id LIMIT 1'
+    );
     $stmt->execute(['id' => $id]);
     return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
 }
@@ -864,16 +945,34 @@ function pe_update_partner(PDO $pdo, int $id, array $input): void
     if ($id <= 0 || !pe_partner_by_id($pdo, $id)) throw new InvalidArgumentException('Instituição parceira não encontrada.');
     $name = trim((string)($input['nome'] ?? ''));
     if (mb_strlen($name) < 3) throw new InvalidArgumentException('Informe o nome da instituição parceira.');
+    $sigla = mb_strtoupper(trim((string) ($input['sigla'] ?? '')), 'UTF-8');
+    if (mb_strlen($sigla) > 30) throw new InvalidArgumentException('A sigla deve possuir no máximo 30 caracteres.');
     $cnpj = pe_digits($input['cnpj'] ?? '');
     if ($cnpj !== '' && strlen($cnpj) !== 14) throw new InvalidArgumentException('CNPJ deve possuir 14 dígitos ou ficar em branco.');
     $email = pe_nullable($input['email'] ?? null);
     if ($email && !filter_var($email, FILTER_VALIDATE_EMAIL)) throw new InvalidArgumentException('E-mail inválido.');
-    $stmt = $pdo->prepare('UPDATE pe_parceiros SET nome=:nome,tipo=:tipo,cnpj=:cnpj,responsavel=:responsavel,telefone=:telefone,email=:email,termo_parceria=:termo,status=:status,observacao=:obs,updated_at=CURRENT_TIMESTAMP WHERE id=:id');
-    $stmt->execute([
-        'id'=>$id,'nome'=>$name,'tipo'=>pe_nullable($input['tipo'] ?? null),'cnpj'=>$cnpj ?: null,
-        'responsavel'=>pe_nullable($input['responsavel'] ?? null),'telefone'=>pe_nullable(pe_digits($input['telefone'] ?? '')),
-        'email'=>$email,'termo'=>pe_nullable($input['termo_parceria'] ?? null),'status'=>pe_nullable($input['status'] ?? 'Ativa') ?: 'Ativa','obs'=>pe_nullable($input['observacao'] ?? null),
-    ]);
+
+    $params = [
+        'id'=>$id,
+        'nome'=>$name,
+        'tipo'=>pe_nullable($input['tipo'] ?? null),
+        'cnpj'=>$cnpj ?: null,
+        'responsavel'=>pe_nullable($input['responsavel'] ?? null),
+        'telefone'=>pe_nullable(pe_digits($input['telefone'] ?? '')),
+        'email'=>$email,
+        'termo'=>pe_nullable($input['termo_parceria'] ?? null),
+        'status'=>pe_nullable($input['status'] ?? 'Ativa') ?: 'Ativa',
+        'obs'=>pe_nullable($input['observacao'] ?? null),
+    ];
+
+    if (pe_partner_has_sigla($pdo)) {
+        $stmt = $pdo->prepare('UPDATE pe_parceiros SET nome=:nome,sigla=:sigla,tipo=:tipo,cnpj=:cnpj,responsavel=:responsavel,telefone=:telefone,email=:email,termo_parceria=:termo,status=:status,observacao=:obs,updated_at=CURRENT_TIMESTAMP WHERE id=:id');
+        $params['sigla'] = $sigla !== '' ? $sigla : null;
+    } else {
+        $stmt = $pdo->prepare('UPDATE pe_parceiros SET nome=:nome,tipo=:tipo,cnpj=:cnpj,responsavel=:responsavel,telefone=:telefone,email=:email,termo_parceria=:termo,status=:status,observacao=:obs,updated_at=CURRENT_TIMESTAMP WHERE id=:id');
+    }
+
+    $stmt->execute($params);
 }
 
 function pe_delete_partner(PDO $pdo, int $id): void

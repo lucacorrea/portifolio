@@ -3,14 +3,12 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/lib/repository.php';
+require_once dirname(__DIR__) . '/lib/list-ui.php';
 
 $pageDefinition = [
     'title' => 'Relatórios',
-    'description' => 'Relatório consolidado no mesmo padrão da planilha utilizada pelo Meu Primeiro Emprego.',
-    'actions' => [['label' => 'Exportar CSV', 'icon' => 'download', 'href' => 'primeiro-emprego/relatorios.php?pe_export=csv']],
-    'demo' => false,
-    'show_states' => false,
-    'modal' => ['title' => 'Relatório'],
+    'description' => 'Relatório consolidado do Meu Primeiro Emprego com filtros operacionais e exportação.',
+    'actions' => [], 'demo' => false, 'show_states' => false, 'modal' => ['title' => 'Relatório'],
 ];
 
 $dbReady = pe_db_ready() && pe_schema_ready();
@@ -20,9 +18,11 @@ $filters = [
     'status' => trim((string)($_GET['status'] ?? '')),
     'bairro' => trim((string)($_GET['bairro'] ?? '')),
     'setor' => trim((string)($_GET['setor'] ?? '')),
+    'revisao' => trim((string)($_GET['revisao'] ?? '')),
+    'lotacao' => trim((string)($_GET['lotacao'] ?? '')),
 ];
 $rows = $dbReady ? pe_report_rows($pdo, $filters) : [];
-$stats = $dbReady ? pe_dashboard_stats($pdo) : ['total'=>0,'contemplados'=>0,'visitas'=>0,'deferidos'=>0,'indeferidos'=>0,'importados'=>0];
+$stats = $dbReady ? pe_dashboard_stats($pdo) : ['total'=>0,'contemplados'=>0,'visitas'=>0,'deferidos'=>0,'indeferidos'=>0,'importados'=>0,'revisao_pendente'=>0];
 
 if ($dbReady && ($_GET['pe_export'] ?? '') === 'csv') {
     if (!headers_sent()) {
@@ -31,46 +31,53 @@ if ($dbReady && ($_GET['pe_export'] ?? '') === 'csv') {
     }
     echo "\xEF\xBB\xBF";
     $out = fopen('php://output', 'wb');
-    fputcsv($out, ['#','NOME','DATA NASC.','RESPONSAVEL','BAIRRO','ENDEREÇO','TELEFONE','CPF','IDADE','SETOR','PARECER','STATUS'], ';');
+    fputcsv($out, ['#','NOME','DATA NASC.','RESPONSAVEL','BAIRRO','ENDEREÇO','TELEFONE','CPF','IDADE','LOTAÇÃO','PARECER','STATUS','REVISÃO'], ';');
     $i = 0;
     foreach ($rows as $row) {
         $i++;
-        fputcsv($out, [$i, $row['nome'], $row['data_nascimento'] ? date('d/m/Y', strtotime($row['data_nascimento'])) : '', $row['responsavel_familiar'], $row['bairro'], $row['endereco'], $row['telefone'], $row['cpf'], pe_age($row['data_nascimento']), $row['setor'], $row['parecer'], $row['status']], ';');
+        fputcsv($out, [$i,$row['nome'],$row['data_nascimento']?date('d/m/Y',strtotime($row['data_nascimento'])):'',$row['responsavel_familiar'],$row['bairro'],$row['endereco'],$row['telefone'],$row['cpf'],pe_age($row['data_nascimento']),$row['setor'],$row['parecer'],$row['status'],$row['revisao_status']], ';');
     }
-    fclose($out);
-    exit;
+    fclose($out); exit;
 }
 
-$bairros = [];
-$setores = [];
+$bairros = []; $setores = [];
 if ($dbReady) {
     $bairros = $pdo->query('SELECT DISTINCT bairro FROM pe_candidatos WHERE bairro IS NOT NULL AND bairro <> "" ORDER BY bairro')->fetchAll(PDO::FETCH_COLUMN);
-    $setores = $pdo->query('SELECT DISTINCT local_atuacao FROM pe_fichas_cadastrais WHERE local_atuacao IS NOT NULL AND local_atuacao <> "" ORDER BY local_atuacao')->fetchAll(PDO::FETCH_COLUMN);
+    try {
+        if ($pdo->query("SHOW TABLES LIKE 'pe_lotacoes'")->fetchColumn()) {
+            $setores = $pdo->query('SELECT DISTINCT local_atuacao FROM pe_lotacoes WHERE status="Ativa" AND local_atuacao IS NOT NULL AND local_atuacao<>"" ORDER BY local_atuacao')->fetchAll(PDO::FETCH_COLUMN);
+        } else {
+            $setores = $pdo->query('SELECT DISTINCT local_atuacao FROM pe_fichas_cadastrais WHERE local_atuacao IS NOT NULL AND local_atuacao<>"" ORDER BY local_atuacao')->fetchAll(PDO::FETCH_COLUMN);
+        }
+    } catch (Throwable $e) { $setores = []; }
 }
-$query = $_GET;
-$query['pe_export'] = 'csv';
-$exportUrl = 'primeiro-emprego/relatorios.php?' . http_build_query($query);
+$query = $_GET; $query['pe_export'] = 'csv'; $exportUrl = 'primeiro-emprego/relatorios.php?' . http_build_query($query);
 
-ob_start();
-?>
-<section class="content-card pe-form-card">
-    <?php if (!$dbReady): ?><?= pe_db_notice() ?><?php endif; ?>
-    <div class="pe-form-header"><div><div class="card-kicker">Relatório operacional</div><h2>Contemplados e candidatos</h2><p>A tabela segue as colunas da planilha original e acrescenta parecer e status para gestão.</p></div><div class="d-flex gap-2 pe-no-print"><a class="btn btn-outline-primary" href="<?= pe_h($exportUrl) ?>"><i class="bi bi-file-earmark-spreadsheet"></i> Exportar CSV</a><button class="btn btn-outline-secondary" type="button" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir</button></div></div>
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-xl-2"><div class="pe-kpi"><span>Total</span><strong><?= (int)$stats['total'] ?></strong></div></div>
-        <div class="col-6 col-xl-2"><div class="pe-kpi"><span>Contemplados</span><strong><?= (int)$stats['contemplados'] ?></strong></div></div>
-        <div class="col-6 col-xl-2"><div class="pe-kpi"><span>Visitas</span><strong><?= (int)$stats['visitas'] ?></strong></div></div>
-        <div class="col-6 col-xl-2"><div class="pe-kpi"><span>Deferidos</span><strong><?= (int)$stats['deferidos'] ?></strong></div></div>
-        <div class="col-6 col-xl-2"><div class="pe-kpi"><span>Indeferidos</span><strong><?= (int)$stats['indeferidos'] ?></strong></div></div>
-        <div class="col-6 col-xl-2"><div class="pe-kpi"><span>Importados</span><strong><?= (int)$stats['importados'] ?></strong></div></div>
-    </div>
-    <form method="get" class="row g-2 mb-4 pe-no-print">
-        <div class="col-lg-4"><input class="form-control" name="q" value="<?= pe_h($filters['q']) ?>" placeholder="Nome, CPF, bairro ou setor"></div>
-        <div class="col-lg-2"><select class="form-select" name="status"><option value="">Status</option><?php foreach(['Em triagem','Em análise','Deferido','Indeferido','Importado','Contemplado'] as $v): ?><option<?= $filters['status']===$v?' selected':'' ?>><?= pe_h($v) ?></option><?php endforeach; ?></select></div>
-        <div class="col-lg-2"><select class="form-select" name="bairro"><option value="">Bairro</option><?php foreach($bairros as $v): ?><option<?= $filters['bairro']===$v?' selected':'' ?>><?= pe_h($v) ?></option><?php endforeach; ?></select></div>
-        <div class="col-lg-2"><select class="form-select" name="setor"><option value="">Setor</option><?php foreach($setores as $v): ?><option<?= $filters['setor']===$v?' selected':'' ?>><?= pe_h($v) ?></option><?php endforeach; ?></select></div>
-        <div class="col-lg-2"><button class="btn btn-primary w-100">Filtrar</button></div>
-    </form>
-    <div class="table-responsive"><table class="table table-sm align-middle pe-data-table pe-report-table"><thead><tr><th>#</th><th>NOME</th><th>DATA NASC.</th><th>RESPONSÁVEL</th><th>BAIRRO</th><th>ENDEREÇO</th><th>TELEFONE</th><th>CPF</th><th>IDADE</th><th>SETOR</th><th>PARECER</th></tr></thead><tbody><?php if(!$rows): ?><tr><td colspan="11" class="text-center text-muted py-4">Nenhum registro.</td></tr><?php endif; $i=0; foreach($rows as $row): $i++; ?><tr><td><?= $i ?></td><td><?= pe_h($row['nome']) ?></td><td><?= $row['data_nascimento'] ? pe_h(date('d/m/Y',strtotime($row['data_nascimento']))) : '' ?></td><td><?= pe_h($row['responsavel_familiar']) ?></td><td><?= pe_h($row['bairro']) ?></td><td><?= pe_h($row['endereco']) ?></td><td><?= pe_h($row['telefone']) ?></td><td><?= pe_h($row['cpf']) ?></td><td><?= pe_h(pe_age($row['data_nascimento'])) ?></td><td><?= pe_h($row['setor']) ?></td><td><?= pe_h($row['parecer']) ?></td></tr><?php endforeach; ?></tbody></table></div>
+ob_start(); ?>
+<section class="content-card pe-form-card pe-page pe-list-page">
+<?php if (!$dbReady): ?><?= pe_db_notice() ?><?php endif; ?>
+<div class="pe-page-hero pe-list-hero"><div><div class="card-kicker">Relatório operacional</div><h2>Contemplados e candidatos</h2><p>Consulta consolidada com a mesma linguagem visual das páginas operacionais.</p></div><div class="pe-page-actions pe-no-print"><a class="btn btn-primary" href="<?= pe_h($exportUrl) ?>"><i class="bi bi-file-earmark-spreadsheet"></i> Exportar CSV</a><button class="btn btn-light" type="button" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir</button></div></div>
+
+<?php pe_list_metrics([
+    ['label'=>'Candidatos','value'=>(int)$stats['total'],'tone'=>'neutral'],
+    ['label'=>'Contemplados','value'=>(int)$stats['contemplados'],'tone'=>'success'],
+    ['label'=>'Revisão pendente','value'=>(int)($stats['revisao_pendente']??0),'tone'=>'warning'],
+    ['label'=>'Visitas','value'=>(int)$stats['visitas'],'tone'=>'info'],
+    ['label'=>'Deferidos','value'=>(int)$stats['deferidos'],'tone'=>'success'],
+    ['label'=>'Indeferidos','value'=>(int)$stats['indeferidos'],'tone'=>'danger'],
+]); ?>
+
+<form method="get" class="pe-filter-panel pe-operational-filters pe-no-print">
+    <label class="pe-filter-search pe-operational-search"><i class="bi bi-search"></i><input class="form-control" name="q" value="<?= pe_h($filters['q']) ?>" placeholder="Nome, CPF, bairro ou lotação"></label>
+    <label class="pe-operational-filter-field"><span>Status</span><select class="form-select" name="status"><option value="">Todos</option><?php foreach(['Em triagem','Em análise','Deferido','Indeferido','Importado','Contemplado'] as $v): ?><option value="<?= pe_h($v) ?>"<?= $filters['status']===$v?' selected':'' ?>><?= pe_h($v) ?></option><?php endforeach; ?></select></label>
+    <label class="pe-operational-filter-field"><span>Cadastro</span><select class="form-select" name="revisao"><option value="">Todos</option><option value="sem_pendencia"<?= $filters['revisao']==='sem_pendencia'?' selected':'' ?>>Sem pendência</option><option value="pendentes"<?= $filters['revisao']==='pendentes'?' selected':'' ?>>Com pendência</option></select></label>
+    <label class="pe-operational-filter-field"><span>Lotação</span><select class="form-select" name="lotacao"><option value="">Todas</option><option value="lotado"<?= $filters['lotacao']==='lotado'?' selected':'' ?>>Lotados</option><option value="nao_lotado"<?= $filters['lotacao']==='nao_lotado'?' selected':'' ?>>Não lotados</option></select></label>
+    <label class="pe-operational-filter-field"><span>Bairro</span><select class="form-select" name="bairro"><option value="">Todos</option><?php foreach($bairros as $v): ?><option value="<?= pe_h($v) ?>"<?= $filters['bairro']===$v?' selected':'' ?>><?= pe_h($v) ?></option><?php endforeach; ?></select></label>
+    <label class="pe-operational-filter-field"><span>Local / setor</span><select class="form-select" name="setor"><option value="">Todos</option><?php foreach($setores as $v): ?><option value="<?= pe_h($v) ?>"<?= $filters['setor']===$v?' selected':'' ?>><?= pe_h($v) ?></option><?php endforeach; ?></select></label>
+    <div class="pe-operational-filter-actions"><span class="pe-list-count"><strong><?= count($rows) ?></strong><span>resultado(s)</span></span><a class="btn btn-light" href="primeiro-emprego/relatorios.php"><i class="bi bi-x-lg"></i> Limpar</a><button class="btn btn-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button></div>
+</form>
+
+<div class="pe-table-wrap"><div class="table-responsive"><table class="table table-sm align-middle pe-data-table pe-report-table"><thead><tr><th>#</th><th>Nome</th><th>Nascimento</th><th>Responsável</th><th>Bairro</th><th>Telefone</th><th>CPF</th><th>Idade</th><th>Lotação</th><th>Parecer</th><th>Status</th><th>Cadastro</th></tr></thead><tbody>
+<?php if(!$rows): ?><tr><td colspan="12" class="text-center text-muted py-4">Nenhum registro.</td></tr><?php endif; $i=0; foreach($rows as $row): $i++; ?><tr><td><?= $i ?></td><td><strong><?= pe_h($row['nome']) ?></strong></td><td><?= $row['data_nascimento'] ? pe_h(date('d/m/Y',strtotime($row['data_nascimento']))) : '—' ?></td><td><?= pe_h($row['responsavel_familiar'] ?: '—') ?></td><td><?= pe_h($row['bairro'] ?: '—') ?></td><td><?= pe_h(pe_format_phone($row['telefone'] ?: '')) ?></td><td><?= pe_h(pe_format_cpf($row['cpf'] ?: '')) ?></td><td><?= pe_h((string)pe_age($row['data_nascimento'])) ?></td><td><?= pe_h($row['setor'] ?: 'Não lotado') ?></td><td><?= pe_status_label($row['parecer'] ?: 'Pendente') ?></td><td><?= pe_status_label($row['status']) ?></td><td><?= pe_status_label($row['revisao_status'] ?: 'Regular') ?></td></tr><?php endforeach; ?></tbody></table></div></div>
 </section>
 <?php $pageCustomContent = (string)ob_get_clean();

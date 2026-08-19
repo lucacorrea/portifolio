@@ -1818,3 +1818,185 @@ body[data-module="primeiro-emprego"] .pe-record-download { margin-top: 1rem; }
     body[data-module="primeiro-emprego"] .pe-field-span-2,
     body[data-module="primeiro-emprego"] .pe-field-span-3 { grid-column: 1 / -1; }
 }
+
+/* ======================================================================
+   PADRÃO OPERACIONAL 2026 — TODAS AS LISTAGENS DO PRIMEIRO EMPREGO
+   ====================================================================== */
+body[data-module="primeiro-emprego"] .pe-operational-kpis .pe-kpi {
+    border-color: #e1e9e6;
+    background: #fff !important;
+    box-shadow: none;
+}
+body[data-module="primeiro-emprego"] .pe-operational-kpis .pe-kpi::before {
+    background: #ccd8d4;
+}
+body[data-module="primeiro-emprego"] .pe-operational-kpis .pe-kpi strong {
+    color: #29483e;
+}
+body[data-module="primeiro-emprego"] .pe-operational-kpis .pe-kpi--success::before { background: #198754; }
+body[data-module="primeiro-emprego"] .pe-operational-kpis .pe-kpi--success strong { color: #147a4b; }
+body[data-module="primeiro-emprego"] .pe-operational-kpis .pe-kpi--warning::before,
+body[data-module="primeiro-emprego"] .pe-operational-kpis .pe-kpi--orange::before { background: #d88a10; }
+body[data-module="primeiro-emprego"] .pe-operational-kpis .pe-kpi--warning strong,
+body[data-module="primeiro-emprego"] .pe-operational-kpis .pe-kpi--orange strong { color: #b56d00; }
+body[data-module="primeiro-emprego"] .pe-operational-kpis .pe-kpi--danger::before { background: #d43a48; }
+body[data-module="primeiro-emprego"] .pe-operational-kpis .pe-kpi--danger strong { color: #c52d3c; }
+body[data-module="primeiro-emprego"] .pe-operational-kpis .pe-kpi--info::before { background: #2878a8; }
+body[data-module="primeiro-emprego"] .pe-operational-kpis .pe-kpi--info strong { color: #246c98; }
+body[data-module="primeiro-emprego"] .pe-operational-kpis .pe-kpi--muted::before { background: #87958f; }
+body[data-module="primeiro-emprego"] .pe-operational-kpis .pe-kpi--muted strong { color: #697973; }
+body[data-module="primeiro-emprego"] .pe-kpi--interactive {
+    width: 100%;
+    text-align: left;
+    appearance: none;
+    cursor: pointer;
+}
+body[data-module="primeiro-emprego"] .pe-kpi--interactive:hover,
+body[data-module="primeiro-emprego"] .pe-kpi--interactive:focus-visible {
+    border-color: #c5d5cf;
+    background: #fbfdfc !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-operational-filters {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    align-items: end;
+    background: #fff;
+    border-color: #e0e8e5;
+}
+body[data-module="primeiro-emprego"] .pe-operational-search {
+    grid-column: span 5;
+}
+body[data-module="primeiro-emprego"] .pe-operational-filter-field {
+    grid-column: span 2;
+    min-width: 0;
+    margin: 0;
+}
+body[data-module="primeiro-emprego"] .pe-operational-filter-field > span {
+    display: block;
+    margin: 0 0 5px;
+    color: #687b74;
+    font-size: .66rem;
+    font-weight: 750;
+}
+body[data-module="primeiro-emprego"] .pe-operational-filter-actions {
+    grid-column: span 3;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    min-height: 42px;
+}
+body[data-module="primeiro-emprego"] .pe-operational-filter-actions .pe-filter-clear {
+    width: auto;
+    min-width: 84px;
+    gap: 6px;
+    padding: 0 12px;
+}
+body[data-module="primeiro-emprego"] .pe-filter-empty {
+    padding: 28px 16px;
+    color: #75857f;
+    text-align: center;
+    font-size: .8rem;
+}
+
+/* Cor sem fundo: este é o padrão oficial para status e pendências. */
+body[data-module="primeiro-emprego"] .pe-status-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0;
+    border: 0;
+    background: transparent !important;
+    font-weight: 800;
+    line-height: 1.25;
+}
+body[data-module="primeiro-emprego"] .pe-status-text.is-success { color: #147a4b !important; }
+body[data-module="primeiro-emprego"] .pe-status-text.is-warning { color: #b06c00 !important; }
+body[data-module="primeiro-emprego"] .pe-status-text.is-danger { color: #c52d3c !important; }
+body[data-module="primeiro-emprego"] .pe-status-text.is-info { color: #246c98 !important; }
+body[data-module="primeiro-emprego"] .pe-status-text.is-muted { color: #73827d !important; }
+body[data-module="primeiro-emprego"] .pe-status-text.is-neutral { color: #345b4d !important; }
+body[data-module="primeiro-emprego"] .pe-status-text::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    flex: 0 0 6px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+body[data-module="primeiro-emprego"] .pe-list-row > td {
+    background: #fff !important;
+}
+body[data-module="primeiro-emprego"] .pe-list-row:hover > td,
+body[data-module="primeiro-emprego"] .pe-list-row:focus > td {
+    background: #f8fbfa !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-inline-detail {
+    display: block;
+    margin-top: 3px;
+    color: #788983;
+    font-size: .67rem;
+}
+body[data-module="primeiro-emprego"] .pe-inline-detail.is-danger { color: #c52d3c; font-weight: 700; }
+body[data-module="primeiro-emprego"] .pe-inline-detail.is-warning { color: #a76f00; font-weight: 700; }
+
+@media (max-width: 1180px) {
+    body[data-module="primeiro-emprego"] .pe-operational-search { grid-column: span 12; }
+    body[data-module="primeiro-emprego"] .pe-operational-filter-field { grid-column: span 4; }
+    body[data-module="primeiro-emprego"] .pe-operational-filter-actions { grid-column: span 12; justify-content: space-between; }
+}
+@media (max-width: 767.98px) {
+    body[data-module="primeiro-emprego"] .pe-operational-filter-field { grid-column: span 12; }
+    body[data-module="primeiro-emprego"] .pe-operational-filter-actions { flex-direction: row; }
+    body[data-module="primeiro-emprego"] .pe-operational-filter-actions .pe-filter-clear { flex: 0 0 auto; }
+}
+
+/* Candidatos: pendências apenas por cor de fonte/indicador; nunca por fundo da linha. */
+body[data-module="primeiro-emprego"] .pe-candidate-review-table tr.pe-review-warning > td,
+body[data-module="primeiro-emprego"] .pe-candidate-review-table tr.pe-review-multiple > td,
+body[data-module="primeiro-emprego"] .pe-candidate-review-table tr.pe-review-critical > td {
+    background: #fff !important;
+}
+body[data-module="primeiro-emprego"] .pe-candidate-review-table tr.pe-review-warning:hover > td,
+body[data-module="primeiro-emprego"] .pe-candidate-review-table tr.pe-review-multiple:hover > td,
+body[data-module="primeiro-emprego"] .pe-candidate-review-table tr.pe-review-critical:hover > td {
+    background: #f8faf9 !important;
+    filter: none !important;
+}
+body[data-module="primeiro-emprego"] .pe-review-cell .badge {
+    background: transparent !important;
+    border-color: transparent !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    font-weight: 800 !important;
+}
+body[data-module="primeiro-emprego"] .pe-review-warning .pe-review-cell .badge { color: #b06c00 !important; }
+body[data-module="primeiro-emprego"] .pe-review-multiple .pe-review-cell .badge { color: #c25b00 !important; }
+body[data-module="primeiro-emprego"] .pe-review-critical .pe-review-cell .badge { color: #c73342 !important; }
+body[data-module="primeiro-emprego"] .pe-review-cell .pe-badge-ok { color: #147a48 !important; }
+body[data-module="primeiro-emprego"] .pe-candidate-review-table tr.pe-review-warning .badge,
+body[data-module="primeiro-emprego"] .pe-candidate-review-table tr.pe-review-multiple .badge,
+body[data-module="primeiro-emprego"] .pe-candidate-review-table tr.pe-review-critical .badge {
+    background: transparent !important;
+    border-color: transparent !important;
+    border-radius: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    font-weight: 800 !important;
+}
+body[data-module="primeiro-emprego"] .pe-candidate-review-table tr.pe-review-warning .badge { color: #b06c00 !important; }
+body[data-module="primeiro-emprego"] .pe-candidate-review-table tr.pe-review-multiple .badge { color: #c25b00 !important; }
+body[data-module="primeiro-emprego"] .pe-candidate-review-table tr.pe-review-critical .badge { color: #c73342 !important; }
+/* Prévia de importação e revisão: badges também usam somente cor de texto. */
+body[data-module="primeiro-emprego"] .pe-candidate-review-table .badge {
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+body[data-module="primeiro-emprego"] .pe-candidate-review-table .text-bg-success,
+body[data-module="primeiro-emprego"] .pe-candidate-review-table .pe-badge-ok { color: #147a48 !important; }
+body[data-module="primeiro-emprego"] .pe-candidate-review-table .text-bg-danger { color: #c73342 !important; }
+body[data-module="primeiro-emprego"] .pe-candidate-review-table .text-bg-warning,
+body[data-module="primeiro-emprego"] .pe-candidate-review-table .text-warning-emphasis { color: #b06c00 !important; }
