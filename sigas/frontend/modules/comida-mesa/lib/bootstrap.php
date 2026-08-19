@@ -218,6 +218,7 @@ function cm_frontend_context(array $base): array
         'permissions' => [
             'consultCpf' => cm_can('comida_mesa.consultar_cpf'),
             'create' => cm_can('comida_mesa.cadastrar'),
+            'import' => cm_can('comida_mesa.importar'),
             'edit' => cm_can('comida_mesa.editar'),
             'deliver' => cm_can('comida_mesa.entregar'),
             'cancelDelivery' => cm_can('comida_mesa.cancelar_entrega'),
@@ -231,6 +232,7 @@ function cm_frontend_context(array $base): array
             'painel' => 'comida-mesa/index.php',
             'beneficiarios' => 'comida-mesa/beneficiarios.php',
             'novaInscricao' => 'comida-mesa/nova-inscricao.php',
+            'importarBeneficiarios' => 'comida-mesa/importar-beneficiarios.php',
             'consultaCpf' => 'comida-mesa/consulta-cpf.php',
             'registrarEntrega' => 'comida-mesa/registrar-entrega.php',
             'competencias' => 'comida-mesa/competencias.php',

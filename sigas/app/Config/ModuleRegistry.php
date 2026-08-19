@@ -113,6 +113,7 @@ final class ModuleRegistry
                     'painel' => ['Painel', 'speedometer2', 'comida-mesa/index.php'],
                     'beneficiarios' => ['Beneficiários', 'people', 'comida-mesa/beneficiarios.php'],
                     'nova-inscricao' => ['Nova inscrição', 'person-plus', 'comida-mesa/nova-inscricao.php'],
+                    'importar-beneficiarios' => ['Importar beneficiários', 'file-earmark-spreadsheet', 'comida-mesa/importar-beneficiarios.php'],
                     'consulta-cpf' => ['Consultar CPF', 'person-bounding-box', 'comida-mesa/consulta-cpf.php'],
                     'registrar-entrega' => ['Registrar entrega', 'box-seam', 'comida-mesa/registrar-entrega.php'],
                     'competencias' => ['Competências', 'calendar3', 'comida-mesa/competencias.php'],

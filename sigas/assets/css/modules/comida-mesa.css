@@ -1075,3 +1075,28 @@ body[data-module="comida-mesa"] .beneficiary-detail-table-card .data-table thead
         grid-template-columns: 1fr;
     }
 }
+
+/* ===== Importação de beneficiários ===== */
+.cm-import-page { display: grid; gap: 1rem; }
+.cm-import-steps { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: .75rem; margin-top: .25rem; }
+.cm-import-steps article { display:flex; gap:.75rem; align-items:flex-start; padding:.9rem 1rem; border:1px solid var(--cm-border,#dfe7e2); border-radius:14px; background:#fff; }
+.cm-import-steps article>span { display:grid; place-items:center; min-width:32px; height:32px; border-radius:50%; background:#e8f5ed; color:#0f6b3a; font-weight:800; }
+.cm-import-steps strong,.cm-import-steps small { display:block; }
+.cm-import-steps small { margin-top:.15rem; color:#718078; line-height:1.35; }
+.cm-import-form { display:grid; gap:1rem; padding:1rem; border:1px solid var(--cm-border,#dfe7e2); border-radius:16px; background:#fbfdfc; }
+.cm-import-form label>span { display:block; margin-bottom:.35rem; font-size:.84rem; font-weight:800; color:#274a38; }
+.cm-import-form label small { display:block; margin-top:.35rem; color:#74847b; line-height:1.35; }
+.cm-import-upload { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.8rem; align-items:end; }
+.cm-import-defaults { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.8rem; }
+.cm-import-check { display:flex; gap:.7rem; align-items:flex-start; padding:.85rem 1rem; border:1px solid #dfe7e2; border-radius:12px; background:#fff; }
+.cm-import-check>span { margin:0 !important; }
+.cm-import-check strong,.cm-import-check small { display:block; }
+.cm-import-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:.65rem; }
+.cm-import-note { display:flex; gap:.8rem; align-items:flex-start; padding:.9rem 1rem; border:1px solid #cfe5d8; border-radius:14px; background:#f2faf5; color:#315443; }
+.cm-import-note>i { font-size:1.25rem; color:#0f6b3a; }
+.cm-import-note strong,.cm-import-note span { display:block; }
+.cm-import-note span { margin-top:.2rem; font-size:.88rem; line-height:1.45; }
+.cm-import-table .cm-import-reason { min-width:260px; max-width:420px; white-space:normal; color:#6b7670; font-size:.82rem; line-height:1.35; }
+.cm-status--muted { color:#67756d; background:#f1f4f2; border-color:#dde4df; }
+@media (max-width:1199.98px){ .cm-import-steps,.cm-import-defaults{grid-template-columns:repeat(2,minmax(0,1fr));} }
+@media (max-width:767.98px){ .cm-import-steps,.cm-import-defaults,.cm-import-upload{grid-template-columns:1fr;} .cm-import-actions{justify-content:stretch;} .cm-import-actions .btn{width:100%;} }
