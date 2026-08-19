@@ -6,31 +6,34 @@ require_once dirname(__DIR__) . '/support/helpers.php';
 
 /**
  * Monta a lista de CSS adicionais sem duplicar arquivos.
- * Os assets oficiais de cada módulo vêm do ModuleRegistry.
+ * O Primeiro Emprego recebe carregamento explícito do module.css
+ * para não depender apenas de $extraStyles ou do ModuleRegistry.
  *
  * @return array<int,string>
  */
-if (!function_exists('sigas_frontend_module_styles')) {
-    function sigas_frontend_module_styles(
-        ?array $environment,
-        ?string $environmentKey,
-        array $extraStyles
-    ): array {
-        $styles = [];
+function sigas_frontend_module_styles(
+    ?array $environment,
+    ?string $environmentKey,
+    array $extraStyles
+): array {
+    $styles = [];
 
-        $environmentCss = $environment['assets']['css'] ?? null;
-        if (is_string($environmentCss) && trim($environmentCss) !== '') {
-            $styles[] = trim($environmentCss);
-        }
-
-        foreach ($extraStyles as $extraStyle) {
-            if (is_string($extraStyle) && trim($extraStyle) !== '') {
-                $styles[] = trim($extraStyle);
-            }
-        }
-
-        return array_values(array_unique($styles));
+    $environmentCss = $environment['assets']['css'] ?? null;
+    if (is_string($environmentCss) && trim($environmentCss) !== '') {
+        $styles[] = trim($environmentCss);
     }
+
+    if ($environmentKey === 'primeiro-emprego') {
+        $styles[] = 'frontend/modules/primeiro-emprego/module2.0.css';
+    }
+
+    foreach ($extraStyles as $extraStyle) {
+        if (is_string($extraStyle) && trim($extraStyle) !== '') {
+            $styles[] = trim($extraStyle);
+        }
+    }
+
+    return array_values(array_unique($styles));
 }
 
 $moduleStyles = sigas_frontend_module_styles(
@@ -71,4 +74,11 @@ $moduleStyles = sigas_frontend_module_styles(
         ?>
         <link href="<?= sigas_frontend_asset($moduleStyle) ?>" rel="stylesheet" data-sigas-module-style="<?= sigas_frontend_escape($environmentKey ?? '') ?>">
     <?php endforeach; ?>
+
+    <?php if (($environmentKey ?? '') === 'primeiro-emprego'): ?>
+        <?php $operationalUiPath = 'assets/css/sigas-operational-ui.css'; ?>
+        <?php if (is_file(dirname(__DIR__, 2) . '/' . $operationalUiPath)): ?>
+            <link href="<?= sigas_frontend_asset($operationalUiPath) ?>" rel="stylesheet" data-sigas-operational-ui="v2-pilot">
+        <?php endif; ?>
+    <?php endif; ?>
 </head>
