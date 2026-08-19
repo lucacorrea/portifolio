@@ -40,5 +40,5 @@ if (!is_file($view)) {
 
 require $view;
 $extraStyles = ['frontend/modules/primeiro-emprego/module2.0.css'];
-$extraScripts = ['frontend/modules/primeiro-emprego/module.js'];
+$extraScripts = ['frontend/modules/primeiro-emprego/module2.0.js'];
 require dirname(__DIR__) . '/frontend/layouts/module-layout.php';
