@@ -278,8 +278,15 @@ function pe_report_rows(PDO $pdo, array $filters = []): array
     $params = [];
     $search = trim((string) ($filters['q'] ?? ''));
     if ($search !== '') {
-        $where[] = '(c.nome LIKE :q OR c.cpf LIKE :q OR c.cpf_informado LIKE :q OR c.telefone LIKE :q OR c.bairro LIKE :q OR c.responsavel_familiar LIKE :q OR f.local_atuacao LIKE :q)';
-        $params['q'] = '%' . $search . '%';
+        $like = '%' . $search . '%';
+        $where[] = '(c.nome LIKE :q_nome OR c.cpf LIKE :q_cpf OR c.cpf_informado LIKE :q_cpf_informado OR c.telefone LIKE :q_telefone OR c.bairro LIKE :q_bairro OR c.responsavel_familiar LIKE :q_responsavel OR f.local_atuacao LIKE :q_setor)';
+        $params['q_nome'] = $like;
+        $params['q_cpf'] = $like;
+        $params['q_cpf_informado'] = $like;
+        $params['q_telefone'] = $like;
+        $params['q_bairro'] = $like;
+        $params['q_responsavel'] = $like;
+        $params['q_setor'] = $like;
     }
     if (!empty($filters['status'])) {
         $where[] = 'c.status = :status';
@@ -340,8 +347,15 @@ function pe_candidate_page(PDO $pdo, array $filters, int $page = 1, int $perPage
 
     $search = trim((string) ($filters['q'] ?? ''));
     if ($search !== '') {
-        $where[] = '(c.nome LIKE :q OR c.cpf LIKE :q OR c.cpf_informado LIKE :q OR c.telefone LIKE :q OR c.bairro LIKE :q OR c.responsavel_familiar LIKE :q OR f.local_atuacao LIKE :q)';
-        $params['q'] = '%' . $search . '%';
+        $like = '%' . $search . '%';
+        $where[] = '(c.nome LIKE :q_nome OR c.cpf LIKE :q_cpf OR c.cpf_informado LIKE :q_cpf_informado OR c.telefone LIKE :q_telefone OR c.bairro LIKE :q_bairro OR c.responsavel_familiar LIKE :q_responsavel OR f.local_atuacao LIKE :q_setor)';
+        $params['q_nome'] = $like;
+        $params['q_cpf'] = $like;
+        $params['q_cpf_informado'] = $like;
+        $params['q_telefone'] = $like;
+        $params['q_bairro'] = $like;
+        $params['q_responsavel'] = $like;
+        $params['q_setor'] = $like;
     }
     if (!empty($filters['status'])) {
         $where[] = 'c.status = :status';
