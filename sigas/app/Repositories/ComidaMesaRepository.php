@@ -500,6 +500,96 @@ final class ComidaMesaRepository
         );
     }
 
+    /** @return list<array<string,mixed>> */
+    public function listPoles(bool $includeInactive = true): array
+    {
+        $where = $includeInactive ? '1 = 1' : 'p.ativo = 1';
+
+        return $this->fetchAll(
+            "SELECT
+                p.id,
+                p.nome,
+                p.slug,
+                p.endereco,
+                p.ativo,
+                p.criado_em,
+                p.atualizado_em,
+                COUNT(i.id) AS familias_vinculadas,
+                SUM(CASE WHEN i.status = 'ativa' THEN 1 ELSE 0 END) AS beneficiarias_ativas
+             FROM comida_mesa_polos p
+             LEFT JOIN comida_mesa_inscricoes i ON i.polo_id = p.id
+             WHERE {$where}
+             GROUP BY p.id, p.nome, p.slug, p.endereco, p.ativo, p.criado_em, p.atualizado_em
+             ORDER BY p.ativo DESC, p.nome ASC"
+        );
+    }
+
+    /** @return array<string,mixed>|null */
+    public function findPoleById(int $id): ?array
+    {
+        return $this->fetchOne(
+            'SELECT id, nome, slug, endereco, ativo, criado_em, atualizado_em
+             FROM comida_mesa_polos
+             WHERE id = :id
+             LIMIT 1',
+            ['id' => $id]
+        );
+    }
+
+    /** @return array<string,mixed>|null */
+    public function findPoleBySlug(string $slug, ?int $exceptId = null): ?array
+    {
+        $sql = 'SELECT id, nome, slug, endereco, ativo FROM comida_mesa_polos WHERE slug = :slug';
+        $params = ['slug' => $slug];
+        if ($exceptId !== null) {
+            $sql .= ' AND id <> :except_id';
+            $params['except_id'] = $exceptId;
+        }
+        $sql .= ' LIMIT 1';
+
+        return $this->fetchOne($sql, $params);
+    }
+
+    /** @param array<string,mixed> $data */
+    public function savePole(array $data): int
+    {
+        $id = isset($data['id']) && is_numeric($data['id']) ? (int) $data['id'] : 0;
+
+        if ($id > 0) {
+            $this->execute(
+                'UPDATE comida_mesa_polos
+                 SET nome = :nome,
+                     slug = :slug,
+                     endereco = :endereco,
+                     ativo = :ativo,
+                     atualizado_em = CURRENT_TIMESTAMP
+                 WHERE id = :id',
+                [
+                    'id' => $id,
+                    'nome' => $data['nome'],
+                    'slug' => $data['slug'],
+                    'endereco' => $data['endereco'],
+                    'ativo' => $data['ativo'],
+                ]
+            );
+
+            return $id;
+        }
+
+        $this->execute(
+            'INSERT INTO comida_mesa_polos (nome, slug, endereco, ativo)
+             VALUES (:nome, :slug, :endereco, :ativo)',
+            [
+                'nome' => $data['nome'],
+                'slug' => $data['slug'],
+                'endereco' => $data['endereco'],
+                'ativo' => $data['ativo'],
+            ]
+        );
+
+        return (int) $this->pdo->lastInsertId();
+    }
+
     public function addHistory(int $registrationId, ?int $userId, string $action, ?string $description, ?array $before, ?array $after): int
     {
         $this->execute(

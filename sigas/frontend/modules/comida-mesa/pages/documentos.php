@@ -1,20 +1,27 @@
 <?php
+
 declare(strict_types=1);
-$data = require dirname(__DIR__) . '/data/demo-data.php';
-return sigas_frontend_page([
-    'title' => 'Documentos',
-    'description' => 'Visão de acompanhamento documental, sem realizar uploads ou alterar cadastros.',
-    'actions' => [['label' => 'Orientações documentais', 'icon' => 'book']],
-    'stats' => [
-        ['label' => 'Cadastros completos', 'value' => '4.812', 'detail' => '96,2% da base', 'icon' => 'file-earmark-check'],
-        ['label' => 'Pendências', 'value' => '188', 'detail' => 'Revisão demonstrativa', 'icon' => 'file-earmark-excel'],
-        ['label' => 'Termos coletados', 'value' => '4.736', 'detail' => 'Competência atual', 'icon' => 'file-earmark-text'],
-        ['label' => 'Categorias', 'value' => '3', 'detail' => 'Tipos acompanhados', 'icon' => 'folder2-open'],
-    ],
-    'filters' => [['label' => 'Categoria', 'options' => ['Inscrição', 'Elegibilidade', 'Entrega']], ['label' => 'Situação', 'options' => ['Monitorado', 'Em coleta']]],
-    'blocks' => [[
-        'type' => 'table', 'title' => 'Controle documental',
-        'columns' => [['key' => 'documento', 'label' => 'Documento'], ['key' => 'categoria', 'label' => 'Categoria'], ['key' => 'familias', 'label' => 'Famílias'], ['key' => 'pendencias', 'label' => 'Pendências'], ['key' => 'validade', 'label' => 'Validade'], ['key' => 'situacao', 'label' => 'Situação']],
-        'rows' => $data['documentos'], 'primary' => 'documento',
-    ]],
-]);
+
+require_once dirname(__DIR__) . '/lib/forms.php';
+
+cm_require('comida_mesa.documentos_visualizar');
+$pageDefinition=[
+    'title'=>'Documentos','description'=>'Central de documentos vinculados às famílias beneficiárias, com pesquisa e envio controlado.',
+    'actions'=>cm_can('comida_mesa.documentos_enviar')?[['label'=>'Enviar documento','icon'=>'upload','primary'=>true,'href'=>'comida-mesa/documentos.php?modal=enviar']]:[],
+    'demo'=>false,'show_states'=>false,
+];
+$filters=['q'=>trim((string)($_GET['q']??'')),'tipo'=>trim((string)($_GET['tipo']??'')),'polo_id'=>trim((string)($_GET['polo_id']??''))];
+$rows=$moduleRepository->documents($filters,300); $types=$moduleRepository->documentTypes(); $poles=cm_app()['repository']->listActivePoles(); $registrations=$moduleRepository->registrationsForSelect();
+$total=count($rows); $pdf=count(array_filter($rows,static fn($r)=>str_contains((string)$r['mime_type'],'pdf'))); $images=$total-$pdf; $today=count(array_filter($rows,static fn($r)=>substr((string)$r['criado_em'],0,10)===date('Y-m-d')));
+ob_start();
+?>
+<section class="content-card cm-list-card">
+<?php cm_list_header('Gestão documental','Documentos das famílias','Pesquise arquivos, visualize o documento original e envie novos anexos em modal.',cm_can('comida_mesa.documentos_enviar')?'Enviar documento':'',cm_can('comida_mesa.documentos_enviar')?'#documentModal':'','upload'); ?>
+<?php cm_metrics([['label'=>'Documentos encontrados','value'=>$total,'hint'=>'Resultado dos filtros','tone'=>'neutral'],['label'=>'Tipos cadastrados','value'=>count($types),'hint'=>'Categorias documentais','tone'=>'info'],['label'=>'PDFs','value'=>$pdf,'hint'=>'Arquivos PDF','tone'=>'neutral'],['label'=>'Imagens','value'=>$images,'hint'=>'JPG, PNG ou WebP','tone'=>'neutral'],['label'=>'Enviados hoje','value'=>$today,'hint'=>'Movimentação diária','tone'=>'success']]); ?>
+<form class="cm-filter-panel cm-filter-panel--documents" method="get" action="comida-mesa/documentos.php"><label class="cm-filter-search"><span>Pesquisa</span><div class="cm-input-icon"><i class="bi bi-search"></i><input class="form-control" name="q" value="<?= cm_h($filters['q']) ?>" placeholder="Família, responsável, tipo ou arquivo"></div></label><label><span>Tipo</span><select class="form-select" name="tipo"><option value="">Todos</option><?php foreach($types as $type): ?><option value="<?= cm_h($type) ?>"<?= cm_selected($filters['tipo'],$type) ?>><?= cm_h($type) ?></option><?php endforeach; ?></select></label><label><span>Polo</span><select class="form-select" name="polo_id"><option value="">Todos</option><?php foreach($poles as $pole): ?><option value="<?= (int)$pole['id'] ?>"<?= cm_selected($filters['polo_id'],$pole['id']) ?>><?= cm_h($pole['nome']) ?></option><?php endforeach; ?></select></label><button class="btn btn-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button><a class="btn btn-light" href="comida-mesa/documentos.php"><i class="bi bi-x-lg"></i> Limpar</a></form>
+<div class="cm-table-shell"><div class="cm-table-toolbar"><div><h3>Arquivos vinculados</h3><p><?= $total ?> documento(s)</p></div><span><i class="bi bi-cursor"></i> Clique na linha para ver as ações</span></div><?php if($rows): ?><div class="table-responsive"><table class="cm-data-table"><thead><tr><th>Família</th><th>Responsável</th><th>Tipo</th><th>Arquivo</th><th>Polo</th><th>Enviado por</th><th>Data</th></tr></thead><tbody><?php foreach($rows as $row): ?><tr tabindex="0" data-cm-document-row data-document-id="<?= (int)$row['id'] ?>" data-registration-id="<?= (int)$row['inscricao_id'] ?>" data-family-code="<?= cm_h($row['familia_codigo']) ?>" data-name="<?= cm_h($row['responsavel_nome']) ?>" data-type="<?= cm_h($row['tipo']) ?>" data-file="<?= cm_h($row['nome_original']) ?>"><td><strong><?= cm_h($row['familia_codigo']) ?></strong></td><td><?= cm_h($row['responsavel_nome']) ?><small class="d-block text-muted">CPF <?= cm_h(cm_format_cpf($row['cpf'])) ?></small></td><td><?= cm_status((string)$row['tipo']) ?></td><td><strong><?= cm_h($row['nome_original']) ?></strong><small class="d-block text-muted"><?= cm_h($row['descricao'] ?: $row['mime_type']) ?></small></td><td><?= cm_h($row['polo_nome'] ?: 'Sem polo') ?></td><td><?= cm_h($row['enviado_por_nome'] ?: 'Não informado') ?></td><td><?= cm_h(cm_date($row['criado_em'],true)) ?></td></tr><?php endforeach; ?></tbody></table></div><?php else: ?><?php cm_empty('Nenhum documento encontrado','Envie um documento ou ajuste os filtros.','folder2-open'); ?><?php endif; ?></div>
+</section>
+<div class="modal fade" id="documentActionModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><div><div class="eyebrow"><i class="bi bi-folder2-open"></i> Documento</div><h2 class="modal-title" data-cm-doc-title>Documento selecionado</h2><p class="cm-modal-subtitle" data-cm-doc-subtitle></p></div><button class="btn-close" type="button" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="cm-action-grid"><a class="cm-action-card" data-cm-doc-open target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i><span><strong>Abrir arquivo</strong><small>Visualizar em nova guia</small></span><i class="bi bi-chevron-right"></i></a><button class="cm-action-card" type="button" data-cm-doc-family><i class="bi bi-person-vcard"></i><span><strong>Visualizar família</strong><small>Abrir cadastro completo</small></span><i class="bi bi-chevron-right"></i></button><?php if(cm_can('comida_mesa.documentos_enviar')): ?><button class="cm-action-card" type="button" data-cm-doc-new><i class="bi bi-upload"></i><span><strong>Enviar outro documento</strong><small>Manter o vínculo com a família</small></span><i class="bi bi-chevron-right"></i></button><?php endif; ?></div></div><div class="modal-footer"><button class="btn btn-light" data-bs-dismiss="modal">Fechar</button></div></div></div></div>
+<?php cm_document_modal($registrations); ?><?php cm_detail_modal(); ?>
+<?php if(($_GET['modal']??'')==='enviar' && cm_can('comida_mesa.documentos_enviar')): ?><script>document.addEventListener('DOMContentLoaded',()=>bootstrap.Modal.getOrCreateInstance(document.getElementById('documentModal')).show());</script><?php endif; ?>
+<?php $pageCustomContent=(string)ob_get_clean(); ?>

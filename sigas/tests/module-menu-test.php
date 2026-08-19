@@ -58,7 +58,7 @@ foreach (ModuleRegistry::all() as $environmentKey => $environment) {
 
         $path = parse_url((string) $page['href'], PHP_URL_PATH);
 
-        if (!is_string($path) || str_starts_with($path, 'primeiro-emprego/')) {
+        if (!is_string($path) || str_starts_with($path, 'primeiro-emprego/') || str_starts_with($path, 'comida-mesa/')) {
             continue;
         }
 
@@ -73,6 +73,14 @@ foreach ($publicFiles as $path => $environmentKey) {
     $assert(!str_contains($source, 'id="appSidebar"'), "{$path}: placeholder antigo de sidebar presente");
     $assert(!str_contains($source, 'id="appTopbar"'), "{$path}: placeholder antigo de topbar presente");
     $assert(!str_contains($source, 'id="bottomNavigation"'), "{$path}: placeholder antigo de navegação móvel presente");
+}
+
+foreach (['primeiro-emprego', 'comida-mesa'] as $modularEnvironment) {
+    $layoutPath = $root . '/' . $modularEnvironment . '/_layout.php';
+    $source = is_file($layoutPath) ? (file_get_contents($layoutPath) ?: '') : '';
+    $assert($source !== '', "{$modularEnvironment}: layout modular ausente");
+    $assert(str_contains($source, 'frontend/layouts/module-layout.php'), "{$modularEnvironment}: layout padrão ausente");
+    $assert(str_contains($source, 'ModuleRegistry::findPage'), "{$modularEnvironment}: registry de páginas ausente");
 }
 
 foreach (['registro.php', 'cadastro-anexo.php'] as $detailPath) {

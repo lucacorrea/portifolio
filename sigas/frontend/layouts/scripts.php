@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 /**
  * Monta a lista de JavaScript adicionais sem duplicar arquivos.
- * Os assets oficiais de cada módulo vêm do ModuleRegistry.
+ * O Primeiro Emprego recebe carregamento explícito do module.js.
  *
  * @return array<int,string>
  */
@@ -21,6 +21,10 @@ if (!function_exists('sigas_frontend_module_scripts')) {
             $scripts[] = trim($environmentJs);
         }
 
+        if ($environmentKey === 'primeiro-emprego') {
+            $scripts[] = 'frontend/modules/primeiro-emprego/module.js';
+        }
+
         foreach ($extraScripts as $extraScript) {
             if (is_string($extraScript) && trim($extraScript) !== '') {
                 $scripts[] = trim($extraScript);
@@ -30,6 +34,7 @@ if (!function_exists('sigas_frontend_module_scripts')) {
         return array_values(array_unique($scripts));
     }
 }
+
 
 $moduleScripts = sigas_frontend_module_scripts(
     isset($environment) && is_array($environment) ? $environment : null,

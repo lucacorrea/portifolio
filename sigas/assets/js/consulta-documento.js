@@ -4,6 +4,9 @@
     if (!root) return;
     const CPF_ROI = Object.freeze({ x: 0.06, y: 0.39, width: 0.88, height: 0.22 });
     const ctx = window.SIGAS_CONTEXT?.consultaDocumento || {};
+    const cmUrls = window.SIGAS_CONTEXT?.comidaMesa?.urls || {};
+    const beneficiariesUrl = cmUrls.beneficiarios || "comida-mesa/beneficiarios.php";
+    const competencesUrl = cmUrls.competencias || "comida-mesa/competencias.php";
     const permissions = ctx.permissions || {};
     const cpfOcr = window.SIGAS_CPF_OCR;
     const qs = (selector, base = document) => base.querySelector(selector);
@@ -35,7 +38,7 @@
     const setLoading = () => { result.hidden = false; resetResultCardClass(); result.innerHTML = `<div class="state-panel show"><i class="bi bi-hourglass-split"></i><h2>Consultando</h2><p>Buscando CPF no SIGAS.</p></div>`; };
     const renderNotFound = (data) => {
         resetResultCardClass();
-        const action = permissions.create ? `<a class="btn btn-primary" href="modulo.php?action=new&cpf=${encodeURIComponent(currentCpf)}"><i class="bi bi-plus-lg"></i>Iniciar cadastro no Comida na Mesa</a>` : "";
+        const action = permissions.create ? `<a class="btn btn-primary" href="${beneficiariesUrl}?action=new&cpf=${encodeURIComponent(currentCpf)}"><i class="bi bi-plus-lg"></i>Iniciar cadastro no Comida na Mesa</a>` : "";
         if (data?.anexo?.found) {
             result.innerHTML = `${panel("person-check", "Pessoa localizada no ANEXO, mas ainda não inscrita no Comida na Mesa.", data.anexo.person?.name || "CPF localizado no ANEXO.", "info")}<div class="result-actions mt-3">${action}${button("data-reset-consulta", "arrow-repeat", "Consultar outra pessoa", "btn btn-light")}</div>`;
             return;
@@ -44,7 +47,7 @@
     };
     const renderPersonWithoutRegistration = (data) => {
         resetResultCardClass();
-        const action = permissions.create ? `<a class="btn btn-primary" href="modulo.php?action=new&cpf=${encodeURIComponent(currentCpf)}"><i class="bi bi-plus-lg"></i>Criar inscrição</a>` : "";
+        const action = permissions.create ? `<a class="btn btn-primary" href="${beneficiariesUrl}?action=new&cpf=${encodeURIComponent(currentCpf)}"><i class="bi bi-plus-lg"></i>Criar inscrição</a>` : "";
         result.innerHTML = `<div class="result-status-header"><span class="result-avatar">${escapeHTML((data.person?.name || "P").slice(0, 2).toUpperCase())}</span><div><span class="result-overline">Pessoa localizada sem inscrição</span><h2>${escapeHTML(data.person?.name)}</h2><p>CPF: ${escapeHTML(fullCpf(data.person || data))}</p></div><span class="status-badge status-warning"><i class="bi bi-hourglass"></i>Sem inscrição</span></div><div class="verification-grid"><div><span>Vínculo familiar</span><strong>${escapeHTML(data.person?.vinculo_familiar || "sem_familia")}</strong></div><div><span>Família</span><strong>${escapeHTML(data.family?.code || "Sem família")}</strong></div></div><div class="result-actions">${action}${button("data-reset-consulta", "arrow-repeat", "Consultar outra pessoa", "btn btn-light")}</div>`;
     };
     const initials = (name) => {
@@ -106,13 +109,13 @@
     };
     const registeredActions = (viewModel) => {
         const editAction = permissions.edit && viewModel.registrationId
-            ? `<a class="btn btn-light" href="modulo.php?action=edit&id=${encodeURIComponent(viewModel.registrationId)}"><i class="bi bi-pencil"></i>Editar</a>`
+            ? `<a class="btn btn-light" href="${beneficiariesUrl}?action=edit&id=${encodeURIComponent(viewModel.registrationId)}"><i class="bi bi-pencil"></i>Editar</a>`
             : "";
         const detailAction = viewModel.registrationId
             ? button(`data-open-detail data-registration-id="${escapeHTML(viewModel.registrationId)}"`, "eye", "Visualizar dados completos", "btn btn-light")
             : "";
         const competenceAction = !viewModel.data.competence && permissions.manageCompetences
-            ? '<a class="btn btn-light" href="modulo.php?action=competence"><i class="bi bi-calendar-plus"></i>Gerenciar competência</a>'
+            ? `<a class="btn btn-light" href="${competencesUrl}"><i class="bi bi-calendar-plus"></i>Gerenciar competência</a>`
             : "";
         const deliveryAction = viewModel.canDelivery ? button("data-open-delivery", "basket2", viewModel.primaryText, "btn btn-primary") : "";
         const cancelAction = viewModel.canCancel ? button("data-open-cancel", "x-circle", "Cancelar entrega", "btn btn-danger") : "";

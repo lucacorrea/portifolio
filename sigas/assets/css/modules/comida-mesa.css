@@ -1,1 +1,11 @@
-.module-shell--food .frontend-stat-card > i { background: #edf7f0; color: #287848; }
+.module-shell--food {
+    --module-accent: #176b3a;
+    --module-ink: #173e29;
+}
+.module-shell--food .frontend-stat-card > i {
+    background: #edf8f1;
+    color: #176b3a;
+}
+.module-shell--food .frontend-stat-card strong {
+    color: #173e29;
+}

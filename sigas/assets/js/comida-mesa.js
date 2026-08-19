@@ -182,7 +182,7 @@
             const result = await submitJson(form);
             if (!result) return;
             if (pageMode && !qs('[name="inscricao_id"]', form)?.value) {
-                window.location.assign("modulo.php");
+                window.location.assign(context.urls?.beneficiarios || "comida-mesa/beneficiarios.php");
                 return;
             }
             reloadPreservingFilters();
@@ -499,7 +499,7 @@
                 } catch (error) {
                     // Session storage is optional; the CPF in the URL is enough to continue.
                 }
-                window.location.assign(`modulo.php?action=new&cpf=${encodeURIComponent(digits(seed.cpf))}`);
+                window.location.assign(`${context.urls?.beneficiarios || "comida-mesa/beneficiarios.php"}?action=new&cpf=${encodeURIComponent(digits(seed.cpf))}`);
             }
         });
         form.addEventListener("submit", async (event) => {
@@ -599,7 +599,7 @@
             if (!result) return;
             const id = result.data?.id || result.id || qs('[name="competencia_id"]', form).value;
             if (qs('[name="competencia_id"]', form).value === "" && id) {
-                window.location.assign(`modulo.php?competencia_id=${encodeURIComponent(id)}`);
+                window.location.assign(`comida-mesa/competencias.php?competencia_id=${encodeURIComponent(id)}`);
                 return;
             }
             reloadPreservingFilters();
