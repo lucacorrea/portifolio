@@ -47,30 +47,57 @@ final class ReadableDanfce extends Danfce
          * Nova proporção da tabela:
          * mais espaço para o código do produto.
          */
-        $this->descPercent = 0.35;
+        $this->descPercent = 0.34;
 
         /*
-         * Margem menor para aproveitar melhor a largura,
-         * sem encostar o conteúdo na borda.
+         * Margem de segurança para impressoras com área não imprimível.
+         *
+         * 5 mm evita que o DANFC-e fique colado principalmente
+         * na borda superior e esquerda, reduzindo risco de corte
+         * em impressoras como Epson L5590.
          */
-        $this->setMargins(1);
+        $this->setMargins(5);
 
         /*
          * Ajustes de altura para acomodar as fontes maiores.
          */
-        $this->bloco1H = 21.0;
-        $this->bloco2H = 14.0;
+        $this->bloco1H = 24.0;
+        $this->bloco2H = 15.0;
         $this->bloco4H = 17.0;
         $this->bloco6H = 12.0;
         $this->bloco7H = 29.0;
 
         /*
-         * QR 34 mm + respiro.
+         * QR 30 mm + respiro.
          * O original usa bloco de 50 mm.
          */
         $this->bloco8H = 32.0;
 
         $this->bloco10H = 7.0;
+    }
+
+    /**
+     * Sobrescreve a limitação do Danfce original.
+     *
+     * A biblioteca NFePHP limita setMargins() a no máximo 4 mm.
+     * Para impressoras jato de tinta/laser com área física não imprimível
+     * precisamos de 5 mm para evitar corte no topo e na esquerda.
+     *
+     * Não altera vendor/. A propriedade $margem é protected na classe pai.
+     *
+     * @param int|float $width
+     */
+    public function setMargins($width = 2)
+    {
+        $width = (float) $width;
+
+        if ($width < 0 || $width > 8) {
+            throw new \InvalidArgumentException(
+                'As margens do DANFC-e devem estar entre 0 e 8 mm.'
+            );
+        }
+
+        $this->margem = $width;
     }
 
     /**
@@ -410,8 +437,8 @@ final class ReadableDanfce extends Danfce
         }
 
         $matrix = [
-            0.15,
-            0.35,
+            0.16,
+            0.34,
             0.08,
             0.09,
             0.165,
