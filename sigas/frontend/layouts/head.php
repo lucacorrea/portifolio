@@ -24,7 +24,7 @@ function sigas_frontend_module_styles(
     }
 
     if ($environmentKey === 'primeiro-emprego') {
-        $styles[] = 'frontend/modules/primeiro-emprego/module.css';
+        $styles[] = 'frontend/modules/primeiro-emprego/module2.0.css';
     }
 
     foreach ($extraStyles as $extraStyle) {
