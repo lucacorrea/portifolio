@@ -13,6 +13,16 @@ use stdClass;
 
 final class FiscalDocumentXmlBuilder
 {
+    private readonly FiscalTechnicalResponsible $technicalResponsible;
+
+    public function __construct(
+        ?FiscalTechnicalResponsible $technicalResponsible = null
+    ) {
+        $this->technicalResponsible =
+            $technicalResponsible
+            ?? FiscalTechnicalResponsible::fromEnvironment();
+    }
+
     private const UF_CODES = [
         'RO' => 11,
         'AC' => 12,
@@ -134,6 +144,20 @@ final class FiscalDocumentXmlBuilder
             'xPais' => 'BRASIL',
             'fone' => $this->digits((string) ($company['telefone'] ?? '')) ?: null,
         ]));
+
+        $technicalResponsible =
+            $this->technicalResponsible
+                ->toNfePhpData();
+
+        $make->taginfRespTec($this->std([
+            'CNPJ' => $technicalResponsible['CNPJ'],
+            'xContato' => $technicalResponsible['xContato'],
+            'email' => $technicalResponsible['email'],
+            'fone' => $technicalResponsible['fone'],
+            'idCSRT' => $technicalResponsible['idCSRT'],
+            'CSRT' => $technicalResponsible['CSRT'],
+        ]));
+
         $this->addCustomer($make, $customer, $model);
 
         foreach (array_values($items) as $offset => $item) {
