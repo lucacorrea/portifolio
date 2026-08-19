@@ -455,13 +455,99 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                                             <?php if ($canPrint): ?><li><a class="dropdown-item" href="ordem-servico-imprimir.php?id=<?= h((string) $order->id()) ?>&valores=<?= $canViewValues ? '1' : '0' ?>" target="_blank" rel="noopener"><i class="bi bi-printer"></i> Imprimir / reimprimir OS</a></li><?php endif; ?>
                                             <?php if ($canProof && $order->status() === 'finalizada'): ?><li><a class="dropdown-item" href="ordem-servico-comprovante.php?id=<?= h((string) $order->id()) ?>&valores=0" target="_blank" rel="noopener"><i class="bi bi-file-earmark-text"></i> Comprovante não fiscal sem valores</a></li><?php endif; ?>
                                             <?php if ($canProof && $canViewValues && $order->status() === 'finalizada'): ?><li><a class="dropdown-item" href="ordem-servico-comprovante.php?id=<?= h((string) $order->id()) ?>&valores=1" target="_blank" rel="noopener"><i class="bi bi-currency-dollar"></i> Comprovante não fiscal com valores</a></li><?php endif; ?>
-                                            <?php foreach ($orderFiscalDocuments as $fiscalDocument): ?>
-                                                <?php if (($fiscalDocument['processamento_status'] ?? '') === 'autorizado' && $canViewFiscal): ?>
-                                                    <li><a class="dropdown-item" href="nota-fiscal-imprimir.php?id=<?= h((string) $fiscalDocument['id']) ?>" target="_blank" rel="noopener"><i class="bi bi-printer"></i> Imprimir <?= ($fiscalDocument['modelo'] ?? '') === '55' ? 'DANFE' : 'DANFCE' ?> autorizada</a></li>
+                                            <?php
+                                            /*
+                                             * Botões de impressão fiscal separados.
+                                             *
+                                             * DANFE   = NF-e modelo 55 autorizada.
+                                             * DANFC-e = NFC-e modelo 65 autorizada.
+                                             *
+                                             * O endpoint de impressão é o mesmo; quem decide
+                                             * qual layout renderizar é o modelo do documento.
+                                             */
+                                            $authorizedDanfeDocument = null;
+                                            $authorizedDanfceDocument = null;
+
+                                            foreach ($orderFiscalDocuments as $fiscalDocument) {
+                                                if (
+                                                    (string) ($fiscalDocument['processamento_status'] ?? '')
+                                                    !== 'autorizado'
+                                                ) {
+                                                    continue;
+                                                }
+
+                                                $fiscalModel = (string) ($fiscalDocument['modelo'] ?? '');
+
+                                                if ($fiscalModel === '55') {
+                                                    $authorizedDanfeDocument = $fiscalDocument;
+                                                } elseif ($fiscalModel === '65') {
+                                                    $authorizedDanfceDocument = $fiscalDocument;
+                                                }
+                                            }
+                                            ?>
+
+                                            <?php if ($canViewFiscal): ?>
+                                                <?php if (is_array($authorizedDanfeDocument)): ?>
+                                                    <li>
+                                                        <a
+                                                            class="dropdown-item"
+                                                            href="nota-fiscal-imprimir.php?id=<?= h((string) $authorizedDanfeDocument['id']) ?>"
+                                                            target="_blank"
+                                                            rel="noopener"
+                                                            title="Abrir o DANFE padrão da NF-e modelo 55"
+                                                        >
+                                                            <i class="bi bi-file-earmark-pdf"></i>
+                                                            Imprimir DANFE
+                                                        </a>
+                                                    </li>
                                                 <?php else: ?>
-                                                    <li><span class="dropdown-item-text text-muted"><i class="bi bi-file-earmark-lock"></i> Modelo <?= h((string) ($fiscalDocument['modelo'] ?? '')) ?>: <?= h((string) ($fiscalDocument['processamento_status'] ?? 'rascunho')) ?></span></li>
+                                                    <li>
+                                                        <button
+                                                            class="dropdown-item text-muted"
+                                                            type="button"
+                                                            disabled
+                                                            title="Ainda não existe NF-e modelo 55 autorizada nesta OS"
+                                                        >
+                                                            <i class="bi bi-file-earmark-pdf"></i>
+                                                            Imprimir DANFE
+                                                            <small class="ms-1">(NF-e 55 não autorizada)</small>
+                                                        </button>
+                                                    </li>
                                                 <?php endif; ?>
-                                            <?php endforeach; ?>
+
+                                                <?php if (is_array($authorizedDanfceDocument)): ?>
+                                                    <li>
+                                                        <a
+                                                            class="dropdown-item"
+                                                            href="nota-fiscal-imprimir.php?id=<?= h((string) $authorizedDanfceDocument['id']) ?>"
+                                                            target="_blank"
+                                                            rel="noopener"
+                                                            title="Abrir o DANFC-e da NFC-e modelo 65"
+                                                        >
+                                                            <i class="bi bi-printer"></i>
+                                                            Imprimir DANFC-e autorizada
+                                                        </a>
+                                                    </li>
+                                                <?php endif; ?>
+
+                                                <?php foreach ($orderFiscalDocuments as $fiscalDocument): ?>
+                                                    <?php
+                                                    $fiscalStatus = (string) ($fiscalDocument['processamento_status'] ?? 'rascunho');
+                                                    $fiscalModel = (string) ($fiscalDocument['modelo'] ?? '');
+
+                                                    if ($fiscalStatus === 'autorizado') {
+                                                        continue;
+                                                    }
+                                                    ?>
+                                                    <li>
+                                                        <span class="dropdown-item-text text-muted">
+                                                            <i class="bi bi-file-earmark-lock"></i>
+                                                            Modelo <?= h($fiscalModel) ?>:
+                                                            <?= h($fiscalStatus) ?>
+                                                        </span>
+                                                    </li>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
                                             <?php if ($order->status() === 'finalizada'): ?>
 
                                                 <?php if ($canIssueFiscal && $orderHasProducts): ?>
