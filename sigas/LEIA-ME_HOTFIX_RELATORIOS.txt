@@ -1,0 +1,14 @@
+HOTFIX — RELATÓRIOS EM BRANCO
+
+Causa:
+O arquivo frontend/modules/primeiro-emprego/pages/relatorios.php usava a variável global $page para controlar a paginação.
+O layout do SIGAS também usa $page como array de configuração da página (ícone, rota, etc.).
+Ao carregar Relatórios, $page era sobrescrita por um inteiro e o layout parava logo após o breadcrumb.
+
+Correção:
+A variável de paginação foi renomeada para $currentPage em todo o arquivo.
+
+Para corrigir rapidamente, substitua apenas:
+frontend/modules/primeiro-emprego/pages/relatorios.php
+
+Não precisa alterar banco nem executar SQL.

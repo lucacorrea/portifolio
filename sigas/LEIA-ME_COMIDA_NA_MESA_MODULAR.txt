@@ -1,0 +1,103 @@
+SIGAS COARI — COARI COMIDA NA MESA
+REFATORAÇÃO MODULAR COMPLETA — 2026-08-19
+
+OBJETIVO
+Separar o Comida na Mesa do antigo modulo.php monolítico e organizar o programa
+no mesmo padrão arquitetural do Meu Primeiro Emprego.
+
+NOVA URL PRINCIPAL
+/sigas/comida-mesa/index.php
+
+ROTAS DO MÓDULO
+/sigas/comida-mesa/index.php               Painel
+/sigas/comida-mesa/beneficiarios.php       Beneficiários
+/sigas/comida-mesa/nova-inscricao.php      Nova inscrição (abre fluxo em modal)
+/sigas/comida-mesa/consulta-cpf.php         Consulta CPF + OCR
+/sigas/comida-mesa/registrar-entrega.php    Consulta + registro de entrega
+/sigas/comida-mesa/competencias.php         Competências reais
+/sigas/comida-mesa/polos.php                Polos reais
+/sigas/comida-mesa/documentos.php           Documentos reais
+/sigas/comida-mesa/historico.php            Histórico real
+/sigas/comida-mesa/relatorios.php           Relatórios reais
+
+ARQUITETURA
+/comida-mesa/                       Entradas públicas do módulo
+/frontend/modules/comida-mesa/lib/  Bootstrap/repositório/UI/forms
+/frontend/modules/comida-mesa/pages/Views das páginas
+/frontend/modules/comida-mesa/module.css
+/frontend/modules/comida-mesa/module.js
+/api/comida-mesa/                   APIs de gravação/consulta
+/app/Repositories/ComidaMesaRepository.php
+/app/Services/ComidaMesaService.php
+
+CRUD E MODAIS
+- Beneficiários: criar, visualizar, editar e ações operacionais em modal.
+- Entregas: registrar/reativar/cancelar em modal, respeitando competência e permissão.
+- Competências: criar/editar em modal.
+- Polos: criar/editar/desativar em modal; não há exclusão física para preservar histórico.
+- Documentos: enviar e visualizar usando modal/central de ações.
+- Histórico: somente leitura, com abertura do cadastro relacionado.
+- A linha das tabelas é o principal gatilho de ações onde faz sentido.
+
+DADOS REAIS
+As páginas Competências, Polos, Documentos, Histórico e Relatórios não dependem
+mais de frontend/modules/comida-mesa/data/demo-data.php.
+O arquivo antigo pode ser removido da hospedagem depois de validar o pacote.
+
+COMPATIBILIDADE
+/modulo.php e /consulta-documento.php permanecem como redirecionadores para não
+quebrar favoritos ou links antigos. Eles não são mais as telas oficiais.
+
+BANCO DE DADOS
+Não há migração estrutural obrigatória neste pacote. Ele usa as tabelas já existentes:
+- pessoas
+- familias
+- familia_membros
+- comida_mesa_inscricoes
+- comida_mesa_competencias
+- comida_mesa_entregas
+- comida_mesa_polos
+- comida_mesa_documentos
+- comida_mesa_historico
+- arquivos
+
+A permissão comida_mesa.polos_gerenciar já existe na migration original do módulo.
+
+COMO INSTALAR
+1. Faça backup dos arquivos atuais.
+2. Extraia este ZIP dentro da raiz /sigas/ preservando os caminhos.
+3. Limpe cache do navegador com Ctrl+F5.
+4. Abra /sigas/comida-mesa/index.php.
+5. Teste, nesta ordem:
+   - Painel
+   - Beneficiários
+   - Nova inscrição
+   - Consulta CPF
+   - Registrar entrega
+   - Competências
+   - Polos
+   - Documentos
+   - Histórico
+   - Relatórios
+6. Depois de validar, o antigo demo-data.php pode ser excluído manualmente.
+
+SEGURANÇA PRESERVADA
+- autenticação existente
+- permissões por ação
+- CSRF nas gravações
+- prepared statements no acesso a dados
+- APIs JSON existentes
+- auditoria/histórico
+- cancelamento em vez de remoção de operações sensíveis
+- exclusão física de polos não foi implementada para não quebrar histórico/FKs
+
+TESTES EXECUTADOS
+- comida-mesa-repository-test.php: PASS
+- comida-mesa-service-test.php: PASS
+- comida-mesa-operational-test.php: PASS
+- module-menu-test.php: PASS
+- navigation-links-test.php: PASS
+- frontend-render-test.php: PASS
+- consulta-documento-ocr-test.mjs: PASS
+- PHP lint nos arquivos do módulo: PASS
+- node --check nos JS alterados: PASS

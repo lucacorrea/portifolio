@@ -1,0 +1,51 @@
+SIGAS — COARI COMIDA NA MESA
+IMPORTAÇÃO DE BENEFICIÁRIOS POR EXCEL/CSV
+
+1. Antes de usar a importação, execute no banco:
+   database/migrations/20260819_004_comida_mesa_importacao.sql
+
+2. Depois envie os arquivos do pacote para a raiz /sigas/.
+
+3. A nova página será:
+   /sigas/comida-mesa/importar-beneficiarios.php
+
+4. A tela Beneficiários também passa a mostrar o botão "Importar Excel".
+
+REGRAS IMPORTANTES
+- XLSX e CSV, até 10 MB e 20.000 linhas por carga.
+- CPF válido e único continua sendo obrigatório no cadastro oficial de pessoas.
+- Linhas sem CPF válido, telefone válido ou localização mínima NÃO são descartadas.
+  Elas ficam gravadas em comida_mesa_importacao_itens com classificação de revisão.
+- CPF duplicado na mesma planilha é classificado para revisão.
+- CPF já existente pode ser ignorado ou atualizado, conforme opção da tela.
+- Para atualização, campos que não existem na planilha são preservados do cadastro atual.
+- Inscrição ativa exige polo ativo.
+- O importador reutiliza ComidaMesaService::saveRegistration para manter validações,
+  histórico, auditoria e regras de negócio já existentes.
+
+COLUNAS RECONHECIDAS
+NOME / RESPONSAVEL FAMILIAR
+CPF
+NIS
+RG
+DATA NASCIMENTO
+TELEFONE / CELULAR / CONTATO
+EMAIL
+ZONA
+ENDERECO / LOGRADOURO
+NUMERO
+COMPLEMENTO
+BAIRRO
+COMUNIDADE
+PONTO DE REFERENCIA
+CEP
+QUANTIDADE MEMBROS
+RENDA FAMILIAR
+POLO
+STATUS / SITUACAO NO PROGRAMA
+PRIORIDADE
+DATA INSCRICAO
+OBSERVACAO
+MOTIVO SUSPENSAO
+
+O botão "Baixar modelo Excel" gera um XLSX padrão diretamente pelo sistema.

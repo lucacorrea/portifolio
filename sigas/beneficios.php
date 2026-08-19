@@ -36,7 +36,7 @@ $pageKey = 'beneficios-eventuais';
                 </section>
                 <section class="program-directory" aria-label="Acesso aos programas e benefícios">
                     <a class="program-directory-card active" href="beneficios.php"><i class="bi bi-gift"></i><span><strong>Benefícios Eventuais</strong><small>Solicitações e concessões temporárias</small></span></a>
-                    <a class="program-directory-card" href="modulo.php"><i class="bi bi-basket2"></i><span><strong>Comida na Mesa</strong><small>Entregas e acompanhamento</small></span></a>
+                    <a class="program-directory-card" href="comida-mesa/index.php"><i class="bi bi-basket2"></i><span><strong>Comida na Mesa</strong><small>Entregas e acompanhamento</small></span></a>
                     <a class="program-directory-card" href="cidadania.php"><i class="bi bi-person-vcard"></i><span><strong>Direito à Cidadania</strong><small>Documentação e orientação</small></span></a>
                     <a class="program-directory-card" href="crianca.php"><i class="bi bi-balloon-heart"></i><span><strong>Criança Feliz</strong><small>Primeira infância e visitas</small></span></a>
                     <a class="program-directory-card" href="natalidade.php"><i class="bi bi-heart-pulse"></i><span><strong>Auxílio-Natalidade</strong><small>Solicitação e concessão</small></span></a>

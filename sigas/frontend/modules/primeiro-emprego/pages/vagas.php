@@ -2,29 +2,154 @@
 
 declare(strict_types=1);
 
+require_once dirname(__DIR__) . '/lib/repository.php';
+require_once dirname(__DIR__) . '/lib/list-ui.php';
+
 $pageDefinition = [
     'title' => 'Vagas e oportunidades',
-    'description' => 'Oportunidades demonstrativas e compatibilidade de perfis por instituição.',
-    'actions' => [['label' => 'Nova oportunidade', 'icon' => 'briefcase-plus', 'primary' => true]],
-    'stats' => pe_demo_stats('vagas'),
-    'search_placeholder' => 'Pesquisar cargo, instituição ou requisito',
-    'filters' => [
-        ['label' => 'Situação', 'options' => ['Aberta', 'Em seleção']],
-        ['label' => 'Escolaridade', 'options' => ['Ensino médio', 'Cursando médio']],
-        ['label' => 'Carga horária', 'options' => ['20h', '30h']],
-    ],
-    'blocks' => [[
-        'type' => 'table',
-        'kicker' => 'Oportunidades',
-        'title' => 'Vagas disponíveis',
-        'primary' => 'cargo',
-        'columns' => [
-            ['key' => 'cargo', 'label' => 'Cargo'], ['key' => 'instituicao', 'label' => 'Órgão ou instituição'], ['key' => 'setor', 'label' => 'Setor'],
-            ['key' => 'quantidade', 'label' => 'Quantidade'], ['key' => 'requisitos', 'label' => 'Requisitos'], ['key' => 'escolaridade', 'label' => 'Escolaridade'],
-            ['key' => 'carga_horaria', 'label' => 'Carga horária'], ['key' => 'remuneracao', 'label' => 'Bolsa ou remuneração'],
-            ['key' => 'prazo', 'label' => 'Prazo'], ['key' => 'situacao', 'label' => 'Situação'], ['key' => 'compativeis', 'label' => 'Candidatos compatíveis'],
-        ],
-        'rows' => pe_demo_jobs(),
-    ]],
-    'modal' => ['title' => 'Detalhes da oportunidade'],
+    'description' => 'Cadastro das oportunidades disponibilizadas pelos órgãos e instituições parceiras.',
+    'demo' => false,
+    'show_states' => false,
+    'actions' => [],
+    'modal' => ['title' => 'Vaga'],
 ];
+
+$dbReady = pe_db_ready() && pe_program_schema_ready();
+$message = null;
+$rows = [];
+$partners = [];
+
+if ($dbReady) {
+    $pdo = pe_db();
+    $partners = pe_partners($pdo);
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        try {
+            pe_verify_csrf();
+            $action = (string) ($_POST['pe_action'] ?? '');
+            $id = (int) ($_POST['id'] ?? 0);
+            if ($action === 'save_vacancy') {
+                if ($id > 0) {
+                    pe_update_vacancy($pdo, $id, $_POST);
+                    $message = ['type' => 'success', 'text' => 'Oportunidade atualizada com sucesso.'];
+                } else {
+                    pe_save_vacancy($pdo, $_POST);
+                    $message = ['type' => 'success', 'text' => 'Oportunidade cadastrada com sucesso.'];
+                }
+            } elseif ($action === 'delete_vacancy') {
+                pe_delete_vacancy($pdo, $id);
+                $message = ['type' => 'success', 'text' => 'Oportunidade excluída com sucesso.'];
+            }
+        } catch (Throwable $e) {
+            $message = ['type' => 'danger', 'text' => $e->getMessage()];
+        }
+    }
+    $rows = pe_vacancies($pdo);
+}
+
+$totalPlaces = array_sum(array_map(static fn($r) => (int) ($r['quantidade'] ?? 0), $rows));
+$metrics = [
+    ['label' => 'Oportunidades', 'value' => count($rows), 'hint' => $totalPlaces . ' vaga(s) ofertada(s)', 'tone' => 'neutral'],
+    ['label' => 'Abertas', 'value' => pe_count_rows($rows, fn($r) => ($r['status'] ?? '') === 'Aberta'), 'hint' => 'recebendo candidatos', 'tone' => 'success', 'filter_key' => 'status', 'filter_value' => 'Aberta'],
+    ['label' => 'Em seleção', 'value' => pe_count_rows($rows, fn($r) => ($r['status'] ?? '') === 'Em seleção'), 'hint' => 'processo em andamento', 'tone' => 'info', 'filter_key' => 'status', 'filter_value' => 'Em seleção'],
+    ['label' => 'Preenchidas', 'value' => pe_count_rows($rows, fn($r) => ($r['status'] ?? '') === 'Preenchida'), 'hint' => 'vagas ocupadas', 'tone' => 'success', 'filter_key' => 'status', 'filter_value' => 'Preenchida'],
+    ['label' => 'Encerradas', 'value' => pe_count_rows($rows, fn($r) => ($r['status'] ?? '') === 'Encerrada'), 'hint' => 'histórico', 'tone' => 'muted', 'filter_key' => 'status', 'filter_value' => 'Encerrada'],
+    ['label' => 'Sem instituição', 'value' => pe_count_rows($rows, fn($r) => empty($r['parceiro'])), 'hint' => 'revisar vínculo', 'tone' => 'warning', 'filter_key' => 'instituicao', 'filter_value' => 'Sem instituição'],
+];
+
+$partnerOptions = ['' => 'Todas as instituições'];
+foreach ($rows as $row) {
+    $name = trim((string) ($row['parceiro'] ?? ''));
+    if ($name !== '') $partnerOptions[$name] = $name;
+}
+$partnerOptions['Sem instituição'] = 'Sem instituição';
+
+ob_start();
+?>
+<section class="content-card pe-form-card pe-page pe-list-page">
+    <?php if (!$dbReady): ?><div class="alert alert-warning">Execute <code>database/primeiroEmprego/0003-primeiroEmprego-programa.sql</code>.</div><?php endif; ?>
+    <?php if ($message): ?><div class="alert alert-<?= pe_h($message['type']) ?>"><?= pe_h($message['text']) ?></div><?php endif; ?>
+
+    <?php pe_list_header('Oportunidades', 'Vagas cadastradas', 'A tela principal exibe somente a listagem. Use as modais para cadastrar, visualizar, editar ou excluir.', 'Nova oportunidade', '#peVacancyForm', 'briefcase-plus'); ?>
+    <?php pe_list_metrics($metrics, '#peVacancyFilters'); ?>
+    <?php pe_list_filter_panel(
+            'peVacancyTable',
+            'Buscar cargo, instituição, setor, escolaridade ou requisito...',
+            [
+                ['key' => 'status', 'label' => 'Status', 'options' => ['' => 'Todos os status', 'Aberta' => 'Aberta', 'Em seleção' => 'Em seleção', 'Preenchida' => 'Preenchida', 'Encerrada' => 'Encerrada']],
+                ['key' => 'instituicao', 'label' => 'Instituição', 'options' => $partnerOptions],
+                ['key' => 'setor', 'label' => 'Setor', 'options' => pe_filter_options($rows, 'setor', 'Todos os setores')],
+            ],
+            count($rows),
+            'oportunidade(s)'
+        ); ?>
+
+    <div class="pe-table-wrap">
+        <div class="table-responsive">
+            <table id="peVacancyTable" class="table align-middle pe-data-table pe-list-table" data-pe-list-table>
+                <thead><tr><th>Cargo</th><th>Instituição</th><th>Setor</th><th>Qtd.</th><th>Escolaridade</th><th>Carga</th><th>Remuneração</th><th>Prazo</th><th>Status</th></tr></thead>
+                <tbody>
+                <?php if (!$rows): ?><tr class="pe-empty-row"><td colspan="9" class="text-center text-muted py-5">Nenhuma oportunidade cadastrada.</td></tr><?php endif; ?>
+                <?php foreach ($rows as $r): ?>
+                    <?php
+                    $record = $r;
+                    $record['__title'] = $r['cargo'];
+                    $partnerDisplay = trim((string)($r['parceiro_sigla'] ?? '')) !== '' ? $r['parceiro_sigla'] . ' — ' . ($r['parceiro'] ?: 'Sem instituição') : ($r['parceiro'] ?: 'Sem instituição');
+                    $record['parceiro_exibicao'] = $partnerDisplay;
+                    $record['__subtitle'] = $partnerDisplay . ' · ' . ($r['status'] ?: 'Sem status');
+                    $record['remuneracao_formatada'] = $r['remuneracao'] !== null ? 'R$ ' . number_format((float) $r['remuneracao'], 2, ',', '.') : '—';
+                    $record['prazo_formatado'] = $r['prazo'] ? date('d/m/Y', strtotime((string) $r['prazo'])) : '—';
+                    $institutionFilter = $r['parceiro'] ?: 'Sem instituição';
+                    ?>
+                    <tr
+                        class="pe-list-row"
+                        tabindex="0"
+                        role="button"
+                        data-pe-list-row
+                        data-pe-actions-target="#peVacancyActions"
+                        data-pe-record="<?= pe_record_attr($record) ?>"
+                        data-pe-filter-status="<?= pe_h((string) $r['status']) ?>"
+                        data-pe-filter-instituicao="<?= pe_h($institutionFilter) ?>"
+                        data-pe-filter-setor="<?= pe_h((string) ($r['setor'] ?? '')) ?>"
+                    >
+                        <td data-label="Cargo"><strong><?= pe_h($r['cargo']) ?></strong><small class="pe-inline-detail"><?= pe_h(mb_strimwidth((string) ($r['requisitos'] ?? ''), 0, 70, '…')) ?></small></td>
+                        <td data-label="Instituição"><?= pe_h($partnerDisplay) ?></td>
+                        <td data-label="Setor"><?= pe_h($r['setor'] ?: '—') ?></td>
+                        <td data-label="Qtd."><?= (int) $r['quantidade'] ?></td>
+                        <td data-label="Escolaridade"><?= pe_h($r['escolaridade'] ?: '—') ?></td>
+                        <td data-label="Carga"><?= pe_h($r['carga_horaria'] ?: '—') ?></td>
+                        <td data-label="Remuneração"><?= pe_h($record['remuneracao_formatada']) ?></td>
+                        <td data-label="Prazo"><?= pe_h($record['prazo_formatado']) ?></td>
+                        <td data-label="Status"><?= pe_status_label($r['status']) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <div class="pe-filter-empty" data-pe-filter-empty hidden>Nenhuma oportunidade corresponde aos filtros selecionados.</div>
+    </div>
+
+    <?php pe_crud_actions_dialog('peVacancyActions', 'Oportunidade', '#peVacancyView', '#peVacancyForm', '#peVacancyDelete'); ?>
+
+    <dialog class="pe-modal pe-modal--form" id="peVacancyForm" data-pe-create-title="Nova oportunidade" data-pe-edit-title="Editar oportunidade">
+        <div class="pe-modal__shell"><header class="pe-modal__header"><div><div class="card-kicker">Vaga</div><h2 data-pe-form-title>Nova oportunidade</h2><p>Cadastre ou atualize a oportunidade.</p></div><button type="button" class="pe-modal__close" data-pe-dialog-close><i class="bi bi-x-lg"></i></button></header>
+            <div class="pe-modal__body"><form method="post" class="pe-action-form" data-pe-record-form><?= pe_csrf_field() ?><input type="hidden" name="pe_action" value="save_vacancy"><input type="hidden" name="id" data-pe-field="id"><div class="pe-action-form-grid pe-action-form-grid--3">
+                <div><label class="form-label required">Cargo / oportunidade</label><input class="form-control" name="cargo" data-pe-field="cargo" required maxlength="160"></div>
+                <div><label class="form-label">Instituição</label><select class="form-select" name="parceiro_id" data-pe-field="parceiro_id"><option value="">Selecione...</option><?php foreach ($partners as $p): ?><option value="<?= (int) $p['id'] ?>"><?= pe_h(($p['sigla'] ?? '') ? $p['sigla'] . ' — ' . $p['nome'] : $p['nome']) ?></option><?php endforeach; ?></select></div>
+                <div><label class="form-label">Setor</label><input class="form-control" name="setor" data-pe-field="setor" maxlength="160"></div>
+                <div><label class="form-label">Quantidade</label><input class="form-control" type="number" min="1" name="quantidade" data-pe-field="quantidade" value="1"></div>
+                <div><label class="form-label">Escolaridade</label><input class="form-control" name="escolaridade" data-pe-field="escolaridade" maxlength="100"></div>
+                <div><label class="form-label">Carga horária</label><input class="form-control" name="carga_horaria" data-pe-field="carga_horaria" maxlength="40" placeholder="20h"></div>
+                <div><label class="form-label">Remuneração</label><input class="form-control" name="remuneracao" data-pe-field="remuneracao" inputmode="decimal"></div>
+                <div><label class="form-label">Prazo</label><input class="form-control" type="date" name="prazo" data-pe-field="prazo"></div>
+                <div><label class="form-label">Status</label><select class="form-select" name="status" data-pe-field="status"><?php foreach (['Aberta','Em seleção','Preenchida','Encerrada'] as $v): ?><option><?= pe_h($v) ?></option><?php endforeach; ?></select></div>
+                <div class="pe-field-span-3"><label class="form-label">Requisitos</label><textarea class="form-control" name="requisitos" data-pe-field="requisitos" rows="4"></textarea></div>
+                <div class="pe-field-span-3"><label class="form-label">Observação</label><textarea class="form-control" name="observacao" data-pe-field="observacao" rows="2"></textarea></div>
+            </div><footer class="pe-action-modal-footer"><button type="button" class="btn btn-light" data-pe-dialog-close>Cancelar</button><button class="btn btn-primary" type="submit"><i class="bi bi-floppy"></i> Salvar oportunidade</button></footer></form></div>
+        </div>
+    </dialog>
+
+    <dialog class="pe-modal pe-modal--view" id="peVacancyView"><div class="pe-modal__shell"><header class="pe-modal__header"><div><div class="card-kicker">Oportunidade</div><h2 data-pe-current-title>Detalhes</h2><p data-pe-current-subtitle></p></div><button type="button" class="pe-modal__close" data-pe-dialog-close><i class="bi bi-x-lg"></i></button></header><div class="pe-modal__body"><dl class="pe-modal-details pe-modal-details--3"><div><dt>Instituição</dt><dd data-pe-text="parceiro">—</dd></div><div><dt>Setor</dt><dd data-pe-text="setor">—</dd></div><div><dt>Quantidade</dt><dd data-pe-text="quantidade">—</dd></div><div><dt>Escolaridade</dt><dd data-pe-text="escolaridade">—</dd></div><div><dt>Carga horária</dt><dd data-pe-text="carga_horaria">—</dd></div><div><dt>Remuneração</dt><dd data-pe-text="remuneracao_formatada">—</dd></div><div><dt>Prazo</dt><dd data-pe-text="prazo_formatado">—</dd></div><div><dt>Status</dt><dd data-pe-text="status">—</dd></div></dl><div class="pe-view-note"><strong>Requisitos</strong><p data-pe-text="requisitos">—</p></div><div class="pe-view-note"><strong>Observação</strong><p data-pe-text="observacao">—</p></div></div></div></dialog>
+    <?php pe_delete_dialog('peVacancyDelete', 'oportunidade', 'delete_vacancy'); ?>
+</section>
+<?php $pageCustomContent = (string) ob_get_clean();

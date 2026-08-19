@@ -29,6 +29,146 @@ document.addEventListener('DOMContentLoaded', function () {
     return row.querySelector('[data-field="' + name + '"]');
   }
 
+  function parseLocalDateTime(value) {
+    const normalized = String(value || '').trim().replace(' ', 'T').slice(0, 16);
+    const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+    if (!match) return null;
+    const date = new Date(
+      Number(match[1]),
+      Number(match[2]) - 1,
+      Number(match[3]),
+      Number(match[4]),
+      Number(match[5]),
+      0,
+      0
+    );
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  function localInputFromDate(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+    const pad = function (value) { return String(value).padStart(2, '0'); };
+    return date.getFullYear()
+      + '-' + pad(date.getMonth() + 1)
+      + '-' + pad(date.getDate())
+      + 'T' + pad(date.getHours())
+      + ':' + pad(date.getMinutes());
+  }
+
+  function durationBetween(startValue, endValue) {
+    const start = parseLocalDateTime(startValue);
+    const end = parseLocalDateTime(endValue);
+    if (!start || !end || end <= start) return 0;
+    return Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
+  }
+
+  function scheduleFields(form) {
+    if (!form) return {};
+    return {
+      start: form.querySelector('[data-os-schedule-start]'),
+      duration: form.querySelector('[data-os-schedule-duration]'),
+      end: form.querySelector('[data-os-schedule-end]'),
+      summary: form.querySelector('[data-os-schedule-summary]'),
+    };
+  }
+
+  function suggestedServiceDuration(form) {
+    if (!form) return 60;
+    let total = 0;
+    form.querySelectorAll('.os-item-row').forEach(function (row) {
+      const typeInput = field(row, 'type');
+      if (!typeInput || typeInput.value !== 'servico') return;
+      const select = field(row, 'reference_id');
+      const option = select?.selectedOptions?.[0];
+      const duration = Number.parseInt(option?.dataset.durationMinutes || '0', 10);
+      if (!Number.isFinite(duration) || duration <= 0) return;
+      const quantity = Math.max(1, parseNumber(field(row, 'quantity')?.value || '1'));
+      total += duration * quantity;
+    });
+    if (!Number.isFinite(total) || total <= 0) return 60;
+    return Math.min(1440, Math.max(5, Math.round(total)));
+  }
+
+  function syncScheduleEnd(form) {
+    const controls = scheduleFields(form);
+    if (!controls.start || !controls.duration || !controls.end) return;
+
+    const startDate = parseLocalDateTime(controls.start.value);
+    const duration = Number.parseInt(String(controls.duration.value || ''), 10);
+
+    if (!startDate || !Number.isFinite(duration) || duration < 5 || duration > 1440) {
+      controls.end.value = '';
+      if (controls.summary) {
+        controls.summary.textContent = 'Informe o horário e uma duração entre 5 minutos e 24 horas.';
+      }
+      return;
+    }
+
+    const endDate = new Date(startDate.getTime() + duration * 60000);
+    controls.end.value = localInputFromDate(endDate);
+
+    if (controls.summary) {
+      const dateLabel = startDate.toLocaleDateString('pt-BR');
+      const startLabel = startDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const endLabel = endDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      controls.summary.textContent = 'Agenda protegida em ' + dateLabel + ', das ' + startLabel + ' às ' + endLabel + '. Outras OS fora desse intervalo não bloqueiam o funcionário.';
+    }
+  }
+
+  function refreshScheduleSuggestion(form, force) {
+    const controls = scheduleFields(form);
+    if (!controls.duration) return;
+    const canSuggest = force === true
+      || controls.duration.value === ''
+      || controls.duration.dataset.userEdited !== 'true';
+    if (canSuggest) {
+      controls.duration.value = String(suggestedServiceDuration(form));
+      controls.duration.dataset.userEdited = 'false';
+    }
+    syncScheduleEnd(form);
+  }
+
+  function restoreSchedule(form, startValue, endValue, durationValue) {
+    const controls = scheduleFields(form);
+    if (!controls.start || !controls.duration || !controls.end) return;
+
+    controls.start.value = toLocalInput(startValue);
+    const explicitDuration = Number.parseInt(String(durationValue || ''), 10);
+    const storedDuration = durationBetween(startValue, endValue);
+    const duration = Number.isFinite(explicitDuration) && explicitDuration >= 5
+      ? explicitDuration
+      : storedDuration >= 5
+        ? storedDuration
+        : suggestedServiceDuration(form);
+
+    controls.duration.value = String(Math.min(1440, Math.max(5, duration || 60)));
+    controls.duration.dataset.userEdited = storedDuration >= 5 || explicitDuration >= 5 ? 'true' : 'false';
+    syncScheduleEnd(form);
+  }
+
+  function bindScheduleControls(form) {
+    const controls = scheduleFields(form);
+    if (!controls.start || !controls.duration || !controls.end) return;
+
+    if (controls.duration.value === '') {
+      controls.duration.value = String(suggestedServiceDuration(form));
+      controls.duration.dataset.userEdited = 'false';
+    }
+
+    controls.start.addEventListener('input', function () {
+      syncScheduleEnd(form);
+    });
+
+    controls.duration.addEventListener('input', function () {
+      controls.duration.dataset.userEdited = 'true';
+      syncScheduleEnd(form);
+    });
+
+    form.addEventListener('submit', function () {
+      syncScheduleEnd(form);
+    });
+  }
+
   function setItemNames(row, type, index) {
     const group = type === 'servico' ? 'services' : type === 'produto' ? 'products' : 'others';
     row.querySelectorAll('[data-field]').forEach(function (input) {
@@ -128,6 +268,16 @@ document.addEventListener('DOMContentLoaded', function () {
     return type === 'servico' ? serviceOptions : type === 'produto' ? productOptions : [];
   }
 
+  function updateItemCounters(form) {
+    ['servico', 'produto', 'outro'].forEach(function (type) {
+      const container = form.querySelector('[data-os-items="' + type + '"]');
+      const counter = form.querySelector('[data-item-counter="' + type + '"]');
+      if (!container || !counter) return;
+      const count = container.children.length;
+      counter.textContent = count + (count === 1 ? ' item' : ' itens');
+    });
+  }
+
   function recalc(form) {
     const sums = { servico: 0, produto: 0, outro: 0 };
     form.querySelectorAll('.os-item-row').forEach(function (row) {
@@ -143,6 +293,8 @@ document.addEventListener('DOMContentLoaded', function () {
       const target = form.querySelector('[data-summary="' + key + '"]');
       if (target) target.textContent = money(value);
     });
+    updateItemCounters(form);
+    refreshScheduleSuggestion(form, false);
   }
 
   function addRow(form, type, item) {
@@ -155,6 +307,32 @@ document.addEventListener('DOMContentLoaded', function () {
     setItemNames(row, type, index);
     const select = field(row, 'reference_id');
     const referenceWrap = row.querySelector('.os-reference-wrap');
+    const referenceLabel = row.querySelector('[data-os-reference-label]');
+    const descriptionWrap = row.querySelector('.os-description-wrap');
+    const descriptionLabel = row.querySelector('[data-os-description-label]');
+    const descriptionInput = field(row, 'description');
+    const locationWrap = row.querySelector('.os-execution-location-wrap');
+    const locationInput = field(row, 'execution_location');
+
+    row.classList.add('is-' + type);
+
+    if (type === 'servico') {
+      if (referenceLabel) referenceLabel.textContent = 'Serviço realizado';
+      descriptionWrap?.classList.add('d-none');
+      locationWrap?.classList.remove('d-none');
+      if (locationInput) locationInput.disabled = false;
+      descriptionInput.readOnly = true;
+    } else if (type === 'produto') {
+      if (referenceLabel) referenceLabel.textContent = 'Produto / peça';
+      if (descriptionLabel) descriptionLabel.textContent = 'Descrição';
+      locationWrap?.classList.add('d-none');
+      if (locationInput) locationInput.disabled = true;
+    } else {
+      if (descriptionLabel) descriptionLabel.textContent = 'Descrição do item';
+      locationWrap?.classList.add('d-none');
+      if (locationInput) locationInput.disabled = true;
+    }
+
     if (type === 'outro') {
       referenceWrap.classList.add('d-none');
       select.appendChild(new Option('Personalizado', ''));
@@ -162,9 +340,11 @@ document.addEventListener('DOMContentLoaded', function () {
       select.appendChild(new Option('Selecione', ''));
       optionsFor(type).forEach(function (option) {
         const opt = new Option(option.name, option.id);
+        opt.dataset.itemName = option.name || '';
         opt.dataset.description = option.description || option.name;
         opt.dataset.unit = option.unit || 'un';
         opt.dataset.value = option.value || '0.00';
+        opt.dataset.durationMinutes = String(option.duration_minutes || 0);
         select.appendChild(opt);
       });
     }
@@ -178,15 +358,28 @@ document.addEventListener('DOMContentLoaded', function () {
       field(row, 'budget_item_id').value = item.budget_item_id || '';
       select.value = item.reference_id || '';
       field(row, 'description').value = item.description || '';
+      if (locationInput) locationInput.value = item.execution_location || '';
       field(row, 'unit').value = item.unit || 'un';
       field(row, 'quantity').value = item.quantity || '1';
       field(row, 'unit_price').value = item.unit_price || '0,00';
       field(row, 'discount').value = item.discount || '0,00';
     }
+
+    if (type === 'servico' && !field(row, 'description').value && select.selectedOptions[0]?.value) {
+      const selectedOption = select.selectedOptions[0];
+      field(row, 'description').value = selectedOption.dataset.itemName || selectedOption.textContent || '';
+    }
+
     select.addEventListener('change', function () {
       const opt = select.selectedOptions[0];
       if (!opt) return;
-      if (!field(row, 'description').value) field(row, 'description').value = opt.dataset.description || opt.textContent;
+      if (type === 'servico') {
+        field(row, 'description').value = opt.value
+          ? (opt.dataset.itemName || opt.textContent || '')
+          : '';
+      } else if (!field(row, 'description').value) {
+        field(row, 'description').value = opt.dataset.description || opt.textContent;
+      }
       field(row, 'unit').value = opt.dataset.unit || field(row, 'unit').value || 'un';
       field(row, 'unit_price').value = opt.dataset.value || '0,00';
       recalc(form);
@@ -237,23 +430,22 @@ document.addEventListener('DOMContentLoaded', function () {
       ['os-notes', 'notes'],
       ['os-discount', 'discount'],
       ['os-increase', 'increase'],
-      ['os-scheduled-start', 'agendado_inicio'],
-      ['os-scheduled-end', 'agendado_fim'],
     ].forEach(function (pair) {
       setValue(pair[0], data[pair[1]]);
     });
     setValue('os-creation-mode', data.creation_mode || 'manual');
     if (hasRecoveredItems(data)) restoreItems(form, data);
     restoreTeamMembers(form, data.team_members || data.equipe || legacyTeamFromData(data));
+    restoreSchedule(form, data.agendado_inicio, data.agendado_fim, data.agendamento_duracao_minutos);
     updateBudgetMode(form);
     recalc(form);
   }
 
   function restoreTeamForm(data) {
     setValue('os-team-id', data.id);
-    setValue('os-team-start', toLocalInput(data.agendado_inicio));
-    setValue('os-team-end', toLocalInput(data.agendado_fim));
+    const form = document.querySelector('#modal-os-team form');
     restoreTeamMembers(document.getElementById('modal-os-team'), data.team_members || data.equipe || legacyTeamFromData(data));
+    restoreSchedule(form, data.agendado_inicio, data.agendado_fim, data.agendamento_duracao_minutos);
   }
 
   function restoreFinalizeForm(data) {
@@ -316,6 +508,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   document.querySelectorAll('.js-os-form').forEach(function (form) {
+    bindScheduleControls(form);
     form.querySelectorAll('.js-os-add-item').forEach(function (button) {
       button.addEventListener('click', function () { addRow(form, button.dataset.type); });
     });
@@ -337,6 +530,9 @@ document.addEventListener('DOMContentLoaded', function () {
       if (form) addTeamMember(form);
     });
   });
+
+  const teamScheduleForm = document.querySelector('#modal-os-team form');
+  if (teamScheduleForm) bindScheduleControls(teamScheduleForm);
 
   async function loadOrder(id) {
     const response = await fetch('actions/os-detalhes.php?id=' + encodeURIComponent(id), { headers: { Accept: 'application/json' } });
@@ -416,7 +612,7 @@ document.addEventListener('DOMContentLoaded', function () {
     tbody.replaceChildren();
     data.items.forEach(function (item) {
       const row = document.createElement('tr');
-      [item.type, item.description, item.quantity, money(parseNumber(item.unit_price)), money(parseNumber(item.subtotal))].forEach(function (value) {
+      [item.type, item.description, item.execution_location || '-', item.quantity, money(parseNumber(item.unit_price)), money(parseNumber(item.subtotal))].forEach(function (value) {
         const cell = document.createElement('td');
         cell.textContent = value;
         row.appendChild(cell);
@@ -466,13 +662,12 @@ document.addEventListener('DOMContentLoaded', function () {
       setValue('os-notes', order.notes);
       setValue('os-discount', order.discount);
       setValue('os-increase', order.increase);
-      setValue('os-scheduled-start', toLocalInput(order.scheduled_start));
-      setValue('os-scheduled-end', toLocalInput(order.scheduled_end));
       setValue('os-status', order.status);
       const status = document.getElementById('os-status');
       if (status) status.disabled = true;
       data.items.forEach(function (item) { addRow(form, item.type, item); });
       restoreTeamMembers(form, data.team || legacyTeamFromData(order));
+      restoreSchedule(form, order.scheduled_start, order.scheduled_end, null);
       updateBudgetMode(form);
       recalc(form);
     } catch (error) {
@@ -500,11 +695,11 @@ document.addEventListener('DOMContentLoaded', function () {
       void prepareOrderEdit(button);
     } else if (button.classList.contains('js-os-team')) {
       setValue('os-team-id', button.dataset.orderId);
-      setValue('os-team-start', toLocalInput(button.dataset.start));
-      setValue('os-team-end', toLocalInput(button.dataset.end));
       let team = [];
       try { team = JSON.parse(button.dataset.team || '[]'); } catch (error) { team = []; }
+      const teamForm = document.querySelector('#modal-os-team form');
       restoreTeamMembers(document.getElementById('modal-os-team'), team);
+      restoreSchedule(teamForm, button.dataset.start, button.dataset.end, null);
     } else if (button.classList.contains('js-os-status')) {
       setValue('os-status-id', button.dataset.orderId);
       setValue('os-status-operation', button.dataset.operation);

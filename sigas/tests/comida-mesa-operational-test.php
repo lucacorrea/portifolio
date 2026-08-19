@@ -235,10 +235,10 @@ assert_true(str_contains((string) $comidaMesaJs, '{ label: "CPF", value: fullCpf
 assert_true(str_contains((string) $comidaMesaJs, 'VII. Solicitações'), 'modal ANEXO exibe solicitacoes no mesmo estilo de secoes');
 assert_true(!preg_match('/data-[^=]*cpf=["\'][^"\']*(cpf|\\$\\{)/i', (string) $comidaMesaJs), 'JS do Comida na Mesa nao coloca valor de CPF em data-*');
 
-$moduloPhp = file_get_contents(dirname(__DIR__) . '/modulo.php');
-assert_true($moduloPhp !== false, 'teste consegue ler modulo.php');
-assert_true(str_contains((string) $moduloPhp, '$service->formatCpf((string) $row[\'cpf\'])'), 'modulo.php usa formatCpf na listagem');
-assert_true(!str_contains((string) $moduloPhp, '$service->maskCpf((string) $row[\'cpf\'])'), 'modulo.php nao usa maskCpf na listagem');
+$beneficiariosPhp = file_get_contents(dirname(__DIR__) . '/frontend/modules/comida-mesa/pages/beneficiarios.php');
+assert_true($beneficiariosPhp !== false, 'teste consegue ler a página modular de beneficiários');
+assert_true(str_contains((string) $beneficiariosPhp, "cm_format_cpf(\$row['cpf'])"), 'página modular usa formatação de CPF na listagem');
+assert_true(!str_contains((string) $beneficiariosPhp, 'maskCpf'), 'página modular não usa maskCpf na listagem');
 
 @unlink($logDir . DIRECTORY_SEPARATOR . 'application.log');
 @rmdir($logDir);

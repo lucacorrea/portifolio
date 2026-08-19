@@ -1,30 +1,39 @@
 <?php
 
 declare(strict_types=1);
-
-$pageDefinition = [
-    'title' => 'Bolsas',
-    'description' => 'Visão demonstrativa da conferência de bolsas, sem processamento financeiro real.',
-    'actions' => [['label' => 'Conferir competência', 'icon' => 'wallet2', 'primary' => true]],
-    'stats' => pe_demo_stats('bolsas'),
-    'search_placeholder' => 'Pesquisar participante, instituição ou status',
-    'filters' => [
-        ['label' => 'Competência', 'options' => ['Jul/2026']],
-        ['label' => 'Pagamento', 'options' => ['Em processamento', 'Em análise', 'Programado']],
-        ['label' => 'Documentação', 'options' => ['Regular', 'Pendente']],
-    ],
-    'blocks' => [[
-        'type' => 'table',
-        'kicker' => 'Conferência de bolsas',
-        'title' => 'Registros da competência',
-        'description' => 'Nenhum pagamento é realizado por esta interface.',
-        'primary' => 'participante',
-        'columns' => [
-            ['key' => 'competencia', 'label' => 'Competência'], ['key' => 'participante', 'label' => 'Participante'], ['key' => 'instituicao', 'label' => 'Instituição'],
-            ['key' => 'valor', 'label' => 'Valor'], ['key' => 'frequencia', 'label' => 'Frequência'], ['key' => 'documentacao', 'label' => 'Situação documental'],
-            ['key' => 'pagamento', 'label' => 'Status do pagamento'], ['key' => 'data', 'label' => 'Data'],
-        ],
-        'rows' => pe_demo_grants(),
-    ]],
-    'modal' => ['title' => 'Detalhes da bolsa'],
+require_once dirname(__DIR__) . '/lib/repository.php';
+require_once dirname(__DIR__) . '/lib/list-ui.php';
+$pageDefinition=['title'=>'Bolsas','description'=>'Conferência e controle das bolsas por participante e competência.','demo'=>false,'show_states'=>false,'actions'=>[],'modal'=>['title'=>'Bolsa']];
+$dbReady=pe_db_ready()&&pe_program_schema_ready();$message=null;$rows=[];$candidates=[];$defaultValue='800.00';
+if($dbReady){$pdo=pe_db();$candidates=pe_program_candidates($pdo);$defaultValue=pe_config_value($pdo,'bolsa_valor_padrao','800.00');if($_SERVER['REQUEST_METHOD']==='POST'){try{pe_verify_csrf();$action=(string)($_POST['pe_action']??'');$id=(int)($_POST['id']??0);if($action==='save_grant'){if($id>0){pe_update_grant($pdo,$id,$_POST,pe_current_user_label());$message=['type'=>'success','text'=>'Bolsa atualizada com sucesso.'];}else{pe_save_grant($pdo,$_POST,pe_current_user_label());$message=['type'=>'success','text'=>'Bolsa registrada com sucesso.'];}}elseif($action==='delete_grant'){pe_delete_grant($pdo,$id);$message=['type'=>'success','text'=>'Bolsa excluída com sucesso.'];}}catch(Throwable $e){$message=['type'=>'danger','text'=>$e->getMessage()];}}$rows=pe_grant_rows($pdo);}
+$totalValue=array_sum(array_map(static fn($r)=>(float)($r['valor']??0),$rows));
+$metrics=[
+ ['label'=>'Registros','value'=>count($rows),'hint'=>'bolsas por competência','tone'=>'neutral'],
+ ['label'=>'Valor lançado','value'=>'R$ '.number_format($totalValue,2,',','.'),'hint'=>'soma dos registros','tone'=>'info'],
+ ['label'=>'Pagas','value'=>pe_count_rows($rows,fn($r)=>(string)($r['status']??'')==='Paga'),'hint'=>'pagamento concluído','tone'=>'success','filter_key'=>'status','filter_value'=>'Paga'],
+ ['label'=>'Em análise','value'=>pe_count_rows($rows,fn($r)=>(string)($r['status']??'')==='Em análise'),'hint'=>'aguardando conferência','tone'=>'warning','filter_key'=>'status','filter_value'=>'Em análise'],
+ ['label'=>'Processamento','value'=>pe_count_rows($rows,fn($r)=>(string)($r['status']??'')==='Em processamento'),'hint'=>'fluxo financeiro','tone'=>'info','filter_key'=>'status','filter_value'=>'Em processamento'],
+ ['label'=>'Suspensas','value'=>pe_count_rows($rows,fn($r)=>(string)($r['status']??'')==='Suspensa'),'hint'=>'exigem atenção','tone'=>'danger','filter_key'=>'status','filter_value'=>'Suspensa'],
 ];
+$competenceOptions=pe_filter_options($rows,'competencia','Todas as competências');
+ob_start();?>
+<section class="content-card pe-form-card pe-page pe-list-page">
+<?php if(!$dbReady):?><div class="alert alert-warning">Execute <code>database/primeiroEmprego/0003-primeiroEmprego-programa.sql</code>.</div><?php endif;?><?php if($message):?><div class="alert alert-<?=pe_h($message['type'])?>"><?=pe_h($message['text'])?></div><?php endif;?>
+<?php pe_list_header('Competências','Bolsas registradas','Acompanhe os pagamentos por competência. Cadastros e alterações abrem em modal.','Registrar bolsa','#peGrantForm','wallet2'); ?>
+<?php pe_list_metrics($metrics,'#peGrantFilters'); ?>
+    <?php pe_list_filter_panel('peGrantTable','Buscar participante, competência, responsável ou observação...',[
+ ['key'=>'competencia','label'=>'Competência','options'=>$competenceOptions],
+ ['key'=>'status','label'=>'Status','options'=>[''=>'Todos os status','Em análise'=>'Em análise','Programada'=>'Programada','Em processamento'=>'Em processamento','Paga'=>'Paga','Suspensa'=>'Suspensa']],
+ ['key'=>'frequencia','label'=>'Frequência','options'=>[''=>'Todas','Regular'=>'75% ou mais','Atenção'=>'Abaixo de 75%','Sem frequência'=>'Sem frequência']],
+],count($rows),'bolsa(s)'); ?>
+<div class="pe-table-wrap"><div class="table-responsive"><table id="peGrantTable" class="table align-middle pe-data-table pe-list-table" data-pe-list-table><thead><tr><th>Competência</th><th>Participante</th><th>Valor</th><th>Frequência</th><th>Status</th><th>Pagamento</th><th>Responsável</th></tr></thead><tbody>
+<?php if(!$rows):?><tr class="pe-empty-row"><td colspan="7" class="text-center text-muted py-5">Nenhuma bolsa registrada.</td></tr><?php endif;?>
+<?php foreach($rows as $r):$record=$r;$record['__title']=$r['candidato'];$record['__subtitle']=$r['competencia'].' · '.$r['status'];$record['valor_formatado']='R$ '.number_format((float)$r['valor'],2,',','.');$record['frequencia_formatada']=$r['frequencia']!==null?number_format((float)$r['frequencia'],1,',','.').'%':'—';$record['data_pagamento_formatada']=$r['data_pagamento']?date('d/m/Y',strtotime((string)$r['data_pagamento'])):'—';$freqClass=$r['frequencia']===null?'Sem frequência':((float)$r['frequencia']>=75?'Regular':'Atenção');?>
+<tr class="pe-list-row" tabindex="0" role="button" data-pe-list-row data-pe-actions-target="#peGrantActions" data-pe-record="<?=pe_record_attr($record)?>" data-pe-filter-competencia="<?=pe_h((string)$r['competencia'])?>" data-pe-filter-status="<?=pe_h((string)$r['status'])?>" data-pe-filter-frequencia="<?=pe_h($freqClass)?>"><td data-label="Competência"><?=pe_h($r['competencia'])?></td><td data-label="Participante"><strong><?=pe_h($r['candidato'])?></strong></td><td data-label="Valor"><?=pe_h($record['valor_formatado'])?></td><td data-label="Frequência"><span class="<?=pe_h(pe_status_class($freqClass))?>"><?=pe_h($record['frequencia_formatada'])?></span></td><td data-label="Status"><?=pe_status_label($r['status'])?></td><td data-label="Pagamento"><?=pe_h($record['data_pagamento_formatada'])?></td><td data-label="Responsável"><?=pe_h($r['registrado_por']?:'—')?></td></tr>
+<?php endforeach;?></tbody></table></div><div class="pe-filter-empty" data-pe-filter-empty hidden>Nenhuma bolsa corresponde aos filtros selecionados.</div></div>
+<?php pe_crud_actions_dialog('peGrantActions','Bolsa','#peGrantView','#peGrantForm','#peGrantDelete'); ?>
+<dialog class="pe-modal pe-modal--form" id="peGrantForm" data-pe-create-title="Registrar bolsa" data-pe-edit-title="Editar bolsa"><div class="pe-modal__shell"><header class="pe-modal__header"><div><div class="card-kicker">Bolsa</div><h2 data-pe-form-title>Registrar bolsa</h2><p>Informe a competência e a situação do pagamento.</p></div><button type="button" class="pe-modal__close" data-pe-dialog-close><i class="bi bi-x-lg"></i></button></header><div class="pe-modal__body"><form method="post" class="pe-action-form" data-pe-record-form><?=pe_csrf_field()?><input type="hidden" name="pe_action" value="save_grant"><input type="hidden" name="id" data-pe-field="id"><div class="pe-action-form-grid pe-action-form-grid--3"><div class="pe-field-span-2"><label class="form-label required">Participante</label><select class="form-select" name="candidato_id" data-pe-field="candidato_id" required><option value="">Selecione...</option><?php foreach($candidates as $c):?><option value="<?=(int)$c['id']?>"><?=pe_h($c['nome'])?></option><?php endforeach;?></select></div><div><label class="form-label required">Competência</label><input class="form-control" type="month" name="competencia" data-pe-field="competencia" value="<?=date('Y-m')?>" required></div><div><label class="form-label">Valor (R$)</label><input class="form-control" name="valor" data-pe-field="valor" inputmode="decimal" value="<?=pe_h(number_format((float)$defaultValue,2,',','.'))?>"></div><div><label class="form-label">Status</label><select class="form-select" name="status" data-pe-field="status"><?php foreach(['Em análise','Programada','Em processamento','Paga','Suspensa'] as $v):?><option><?=pe_h($v)?></option><?php endforeach;?></select></div><div><label class="form-label">Data de pagamento</label><input class="form-control" type="date" name="data_pagamento" data-pe-field="data_pagamento"></div><div class="pe-field-span-3"><label class="form-label">Observação</label><textarea class="form-control" name="observacao" data-pe-field="observacao" rows="3" maxlength="500"></textarea></div></div><footer class="pe-action-modal-footer"><button type="button" class="btn btn-light" data-pe-dialog-close>Cancelar</button><button class="btn btn-primary" type="submit"><i class="bi bi-floppy"></i> Salvar bolsa</button></footer></form></div></div></dialog>
+<dialog class="pe-modal pe-modal--view" id="peGrantView"><div class="pe-modal__shell"><header class="pe-modal__header"><div><div class="card-kicker">Bolsa</div><h2 data-pe-current-title>Detalhes</h2><p data-pe-current-subtitle></p></div><button type="button" class="pe-modal__close" data-pe-dialog-close><i class="bi bi-x-lg"></i></button></header><div class="pe-modal__body"><dl class="pe-modal-details pe-modal-details--3"><div><dt>Competência</dt><dd data-pe-text="competencia">—</dd></div><div><dt>Valor</dt><dd data-pe-text="valor_formatado">—</dd></div><div><dt>Status</dt><dd data-pe-text="status">—</dd></div><div><dt>Frequência</dt><dd data-pe-text="frequencia_formatada">—</dd></div><div><dt>Pagamento</dt><dd data-pe-text="data_pagamento_formatada">—</dd></div><div><dt>Responsável</dt><dd data-pe-text="registrado_por">—</dd></div></dl><div class="pe-view-note"><strong>Observação</strong><p data-pe-text="observacao">—</p></div></div></div></dialog>
+<?php pe_delete_dialog('peGrantDelete','bolsa','delete_grant'); ?>
+</section>
+<?php $pageCustomContent=(string)ob_get_clean();

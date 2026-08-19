@@ -50,11 +50,15 @@ function receipt_print_items(array $items, string $type, string $title, bool $wi
     echo '<section class="receipt-section"><h2>' . receipt_h($title) . '</h2><div class="item-list">';
     foreach ($filtered as $item) {
         echo '<div class="item">';
-        echo '<div class="item-heading"><strong>' . receipt_h($item->description()) . '</strong>';
+        echo '<div class="item-heading"><strong>' . receipt_h($item->displayDescription()) . '</strong>';
         if ($withValues) {
             echo '<strong class="item-subtotal">' . receipt_h(receipt_money($item->subtotal())) . '</strong>';
         }
-        echo '</div><div class="item-detail"><span>Qtd. ' . receipt_h(receipt_quantity($item->quantity())) . ' ' . receipt_h($item->unit()) . '</span>';
+        echo '</div>';
+        if ($item->type() === 'servico' && $item->executionLocation() !== null) {
+            echo '<div class="item-location">Local: ' . receipt_h($item->executionLocation()) . '</div>';
+        }
+        echo '<div class="item-detail"><span>Qtd. ' . receipt_h(receipt_quantity($item->quantity())) . ' ' . receipt_h($item->unit()) . '</span>';
         if ($withValues) {
             echo '<span>' . receipt_h(receipt_money($item->unitPrice())) . ' cada</span>';
         }
@@ -98,6 +102,7 @@ body { background: #eef2f4; color: #111; font-family: Arial, Helvetica, sans-ser
 .item-heading, .item-detail, .total-row { display: flex; justify-content: space-between; gap: 2mm; }
 .item-heading strong:first-child { min-width: 0; overflow-wrap: anywhere; }
 .item-subtotal { flex: 0 0 auto; white-space: nowrap; }
+.item-location { margin-top: .5mm; color: #222; font-size: 9px; font-weight: 700; }
 .item-detail { margin-top: .5mm; color: #444; font-size: 9px; }
 .totals { display: grid; gap: .8mm; }
 .total-row strong { white-space: nowrap; }

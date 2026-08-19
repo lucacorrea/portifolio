@@ -110,29 +110,29 @@ $frontendContext = [
                         <span><strong><?= htmlspecialchars($anexoStatusLabel, ENT_QUOTES, 'UTF-8') ?></strong></span>
                         <span><strong>SELECT</strong> usuário somente leitura</span>
                     </div>
-                    <a class="btn btn-light btn-sm" href="consulta-documento.php"><i class="bi bi-arrow-up-right-square"></i>Consultar CPF / Entrega</a>
+                    <a class="btn btn-light btn-sm" href="comida-mesa/consulta-cpf.php"><i class="bi bi-arrow-up-right-square"></i>Consultar CPF / Entrega</a>
                 </section>
 
                 <section class="dashboard-grid" aria-label="Indicadores principais">
                     <article class="stat-card stat-card-featured col-span-3">
                         <div class="stat-card-head"><span class="stat-card-title">Pessoas no ANEXO</span><span class="stat-icon"><i class="bi bi-people"></i></span></div>
                         <strong class="stat-value"><?= htmlspecialchars($anexoCountCardLabel, ENT_QUOTES, 'UTF-8') ?></strong>
-                        <div class="stat-footer"><span class="stat-trend <?= ($anexoSummary['available'] ?? false) ? 'positive' : 'warning' ?>"><i class="bi bi-database-lock"></i><?= htmlspecialchars($anexoStatusLabel, ENT_QUOTES, 'UTF-8') ?></span><a href="consulta-documento.php">Consultar <i class="bi bi-arrow-right"></i></a></div>
+                        <div class="stat-footer"><span class="stat-trend <?= ($anexoSummary['available'] ?? false) ? 'positive' : 'warning' ?>"><i class="bi bi-database-lock"></i><?= htmlspecialchars($anexoStatusLabel, ENT_QUOTES, 'UTF-8') ?></span><a href="comida-mesa/consulta-cpf.php">Consultar <i class="bi bi-arrow-right"></i></a></div>
                     </article>
                     <article class="stat-card col-span-3">
                         <div class="stat-card-head"><span class="stat-card-title">Famílias cadastradas</span><span class="stat-icon"><i class="bi bi-house-heart"></i></span></div>
                         <strong class="stat-value">7.830</strong>
-                        <div class="stat-footer"><span class="stat-trend positive"><i class="bi bi-plus-circle"></i>+184 neste mês</span><a href="modulo.php">Abrir <i class="bi bi-arrow-right"></i></a></div>
+                        <div class="stat-footer"><span class="stat-trend positive"><i class="bi bi-plus-circle"></i>+184 neste mês</span><a href="comida-mesa/beneficiarios.php">Abrir <i class="bi bi-arrow-right"></i></a></div>
                     </article>
                     <article class="stat-card col-span-3">
                         <div class="stat-card-head"><span class="stat-card-title">Solicitações abertas</span><span class="stat-icon"><i class="bi bi-inboxes"></i></span></div>
                         <strong class="stat-value">328</strong>
-                        <div class="stat-footer"><span class="stat-trend warning"><i class="bi bi-clock"></i>74 aguardando análise</span><a href="modulo.php">Abrir <i class="bi bi-arrow-right"></i></a></div>
+                        <div class="stat-footer"><span class="stat-trend warning"><i class="bi bi-clock"></i>74 aguardando análise</span><a href="comida-mesa/beneficiarios.php">Abrir <i class="bi bi-arrow-right"></i></a></div>
                     </article>
                     <article class="stat-card col-span-3">
                         <div class="stat-card-head"><span class="stat-card-title">Atendimentos hoje</span><span class="stat-icon"><i class="bi bi-clipboard2-pulse"></i></span></div>
                         <strong class="stat-value">146</strong>
-                        <div class="stat-footer"><span class="stat-trend warning"><i class="bi bi-exclamation-circle"></i>18 prioritários</span><a href="consulta-documento.php">Abrir <i class="bi bi-arrow-right"></i></a></div>
+                        <div class="stat-footer"><span class="stat-trend warning"><i class="bi bi-exclamation-circle"></i>18 prioritários</span><a href="comida-mesa/consulta-cpf.php">Abrir <i class="bi bi-arrow-right"></i></a></div>
                     </article>
 
                     <article class="program-card col-span-6">
@@ -149,11 +149,11 @@ $frontendContext = [
                                 <div class="program-metric"><strong>4</strong><span>Polos ativos</span></div>
                             </div>
                         </div>
-                        <div class="program-actions"><a class="btn btn-program-light" href="modulo.php"><i class="bi bi-arrow-up-right-square"></i>Abrir programa</a><a class="btn btn-program-outline" href="consulta-documento.php"><i class="bi bi-check2-square"></i>Consultar e registrar entrega</a></div>
+                        <div class="program-actions"><a class="btn btn-program-light" href="comida-mesa/index.php"><i class="bi bi-arrow-up-right-square"></i>Abrir programa</a><a class="btn btn-program-outline" href="comida-mesa/registrar-entrega.php"><i class="bi bi-check2-square"></i>Consultar e registrar entrega</a></div>
                     </article>
 
                     <article class="content-card col-span-3">
-                        <div class="card-heading"><div><div class="card-kicker">Fila de análise</div><h2>Solicitações prioritárias</h2></div><a class="card-link" href="modulo.php">Ver beneficiários</a></div>
+                        <div class="card-heading"><div><div class="card-kicker">Fila de análise</div><h2>Solicitações prioritárias</h2></div><a class="card-link" href="comida-mesa/beneficiarios.php">Ver beneficiários</a></div>
                         <div class="priority-list">
                             <div class="priority-item"><span class="mini-avatar">MS</span><div class="item-main"><strong>Mariana Souza</strong><span>Auxílio-Natalidade</span></div><div class="item-side"><span class="item-priority"><i class="bi bi-flag-fill"></i>Alta</span><br>2h 18min</div></div>
                             <div class="priority-item"><span class="mini-avatar">JP</span><div class="item-main"><strong>José Pereira</strong><span>Benefício eventual</span></div><div class="item-side"><span class="item-priority"><i class="bi bi-flag-fill"></i>Alta</span><br>3h 06min</div></div>
@@ -165,10 +165,10 @@ $frontendContext = [
                     <article class="content-card col-span-3">
                         <div class="card-heading"><div><div class="card-kicker">Operações</div><h2>Atalhos rápidos</h2></div></div>
                         <div class="quick-actions">
-                            <a class="quick-action" href="modulo.php?action=new"><i class="bi bi-person-plus"></i><span>Nova inscrição</span></a>
-                            <a class="quick-action" href="consulta-documento.php"><i class="bi bi-person-bounding-box"></i><span>Consultar CPF / Entrega</span></a>
+                            <a class="quick-action" href="comida-mesa/nova-inscricao.php"><i class="bi bi-person-plus"></i><span>Nova inscrição</span></a>
+                            <a class="quick-action" href="comida-mesa/consulta-cpf.php"><i class="bi bi-person-bounding-box"></i><span>Consultar CPF / Entrega</span></a>
                             <button class="quick-action" type="button" data-demo-action="nova solicitação"><i class="bi bi-file-earmark-plus"></i><span>Nova solicitação</span></button>
-                            <a class="quick-action" href="consulta-documento.php"><i class="bi bi-basket2"></i><span>Registrar entrega</span></a>
+                            <a class="quick-action" href="comida-mesa/registrar-entrega.php"><i class="bi bi-basket2"></i><span>Registrar entrega</span></a>
                             <button class="quick-action" type="button" data-demo-action="agendar visita"><i class="bi bi-calendar2-plus"></i><span>Agendar visita</span></button>
                             <button class="quick-action wide" type="button" data-demo-action="gerar relatório"><i class="bi bi-file-earmark-bar-graph"></i><span>Gerar relatório consolidado</span></button>
                         </div>
@@ -195,7 +195,7 @@ $frontendContext = [
                     </article>
 
                     <article class="content-card col-span-5">
-                        <div class="card-heading"><div><div class="card-kicker">Movimentações recentes</div><h2>Últimos atendimentos</h2></div><a class="card-link" href="modulo.php">Abrir histórico</a></div>
+                        <div class="card-heading"><div><div class="card-kicker">Movimentações recentes</div><h2>Últimos atendimentos</h2></div><a class="card-link" href="comida-mesa/historico.php">Abrir histórico</a></div>
                         <div class="activity-list">
                             <div class="activity-item"><span class="mini-avatar">FS</span><div class="item-main"><strong>Francisca Santos</strong><span>Atualização cadastral concluída</span></div><div class="item-side">14:32<br><span class="status-badge status-success">Concluído</span></div></div>
                             <div class="activity-item"><span class="mini-avatar">JL</span><div class="item-main"><strong>João Lima</strong><span>Solicitação de benefício eventual</span></div><div class="item-side">13:48<br><span class="status-badge status-info">Em análise</span></div></div>

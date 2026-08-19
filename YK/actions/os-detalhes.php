@@ -54,7 +54,7 @@ try {
             'updated_at' => $order->updatedAt(),
         ],
         'items' => array_map(static fn($item): array => [
-            'id' => $item->id(), 'type' => $item->type(), 'origin' => $item->origin(), 'reference_id' => $item->referenceId(), 'budget_item_id' => $item->budgetItemId(), 'description' => $item->description(),
+            'id' => $item->id(), 'type' => $item->type(), 'origin' => $item->origin(), 'reference_id' => $item->referenceId(), 'budget_item_id' => $item->budgetItemId(), 'description' => $item->displayDescription(), 'execution_location' => $item->executionLocation(),
             'unit' => $item->unit(), 'quantity' => $item->quantity(), 'unit_price' => $item->unitPrice(), 'discount' => $item->discount(), 'subtotal' => $item->subtotal(),
         ], $items),
         'team' => array_map(static fn($member): array => [

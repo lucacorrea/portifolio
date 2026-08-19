@@ -83,7 +83,9 @@ try {
     $appDebug = filter_var($environment->require('APP_DEBUG'), FILTER_VALIDATE_BOOLEAN);
     $timezone = $environment->require('APP_TIMEZONE');
 
-    date_default_timezone_set($timezone);
+    if (!date_default_timezone_set($timezone)) {
+        throw new RuntimeException('Fuso horario da aplicacao invalido.');
+    }
 
     ini_set('display_errors', $appEnv === 'production' || !$appDebug ? '0' : '1');
     ini_set('display_startup_errors', $appEnv === 'production' || !$appDebug ? '0' : '1');
@@ -120,6 +122,7 @@ try {
     $settings = [
         'app_env' => $appEnv,
         'app_debug' => $appDebug,
+        'app_timezone' => $timezone,
         'project_root' => __DIR__,
         'fiscal_integration_enabled' => $fiscalIntegrationEnabled,
         'fiscal_production_enabled' => $fiscalProductionEnabled,
@@ -138,7 +141,8 @@ try {
         database: $environment->require('DB_DATABASE'),
         username: $environment->require('DB_USERNAME'),
         password: $environment->require('DB_PASSWORD'),
-        charset: $environment->require('DB_CHARSET')
+        charset: $environment->require('DB_CHARSET'),
+        timezone: $timezone
     );
 
     if (PHP_SAPI === 'cli') {

@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 $activePage = 'painel-semanal';
 
-$pageTitle = 'Serviços da Semana';
+$pageTitle = 'Painel Semanal de Serviços';
 
 $pageSubtitle =
-    'Planeje os serviços e gere a OS somente após confirmação';
+    'Agenda operacional por funcionário, equipe, dia e horário';
 
-$primaryActionLabel = 'Planejar serviço';
+// O painel semanal abre com a navegação lateral recolhida para priorizar a agenda.
+$pageBodyClass = 'sidebar-collapsed weekly-panel-shell';
+
+$primaryActionLabel = 'Novo serviço';
 $primaryActionIcon = 'bi-calendar-plus';
 $primaryActionTarget = '#modal-week-create';
 

@@ -248,7 +248,7 @@ function os_select_options(array $items, string $selected = '', bool $onlyActive
 
 $clientOptions = array_map(static fn(Client $client): array => ['id' => $client->id(), 'name' => $client->name(), 'active' => $client->status() === 'ativo'], $clients);
 $employeeOptions = array_map(static fn(Employee $employee): array => ['id' => $employee->id(), 'name' => $employee->displayCode() . ' - ' . $employee->name()], $employees);
-$serviceOptions = array_map(static fn(ServiceDefinition $service): array => ['id' => $service->id(), 'name' => $service->name(), 'description' => $service->description() ?? $service->name(), 'unit' => 'un', 'value' => $service->value()], $services);
+$serviceOptions = array_map(static fn(ServiceDefinition $service): array => ['id' => $service->id(), 'name' => $service->name(), 'description' => $service->description() ?? $service->name(), 'unit' => 'un', 'value' => $service->value(), 'duration_minutes' => $service->durationMinutes()], $services);
 $productOptions = array_map(static fn(Product $product): array => ['id' => $product->id(), 'name' => $product->name(), 'description' => $product->description() ?? $product->name(), 'unit' => $product->unit(), 'value' => $product->salePrice()], $products);
 ?>
 <style>
@@ -650,23 +650,78 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                         </section>
                     </div>
                     <div class="tab-pane fade" id="os-tab-items">
-                        <section class="form-section">
-                            <h3 class="form-section-title">Servicos</h3>
-                            <div class="os-items" data-os-items="servico"></div><button class="btn-filter btn-filter-ghost js-os-add-item" type="button" data-type="servico"><i class="bi bi-plus-lg"></i> Adicionar servico</button>
+                        <section class="form-section item-category-card item-category-card--service">
+                            <div class="item-category-header">
+                                <div class="item-category-heading">
+                                    <span class="item-category-icon"><i class="bi bi-tools"></i></span>
+                                    <div>
+                                        <h3 class="form-section-title">Serviços</h3>
+                                        <p>Serviços executados e o local específico de cada atendimento.</p>
+                                    </div>
+                                </div>
+                                <span class="item-category-count" data-item-counter="servico">0 itens</span>
+                            </div>
+                            <div class="item-category-body">
+                                <div class="os-items item-category-items" data-os-items="servico" data-empty-label="Nenhum serviço adicionado."></div>
+                            </div>
+                            <div class="item-category-footer">
+                                <button class="btn-filter btn-filter-ghost js-os-add-item" type="button" data-type="servico"><i class="bi bi-plus-lg"></i> Adicionar serviço</button>
+                            </div>
                         </section>
-                        <section class="form-section">
-                            <h3 class="form-section-title">Produtos</h3>
-                            <div class="os-items" data-os-items="produto"></div><button class="btn-filter btn-filter-ghost js-os-add-item" type="button" data-type="produto"><i class="bi bi-plus-lg"></i> Adicionar produto</button>
+                        <section class="form-section item-category-card item-category-card--product">
+                            <div class="item-category-header">
+                                <div class="item-category-heading">
+                                    <span class="item-category-icon"><i class="bi bi-box-seam"></i></span>
+                                    <div>
+                                        <h3 class="form-section-title">Produtos / peças</h3>
+                                        <p>Materiais e peças utilizados nesta Ordem de Serviço.</p>
+                                    </div>
+                                </div>
+                                <span class="item-category-count" data-item-counter="produto">0 itens</span>
+                            </div>
+                            <div class="item-category-body">
+                                <div class="os-items item-category-items" data-os-items="produto" data-empty-label="Nenhum produto ou peça adicionado."></div>
+                            </div>
+                            <div class="item-category-footer">
+                                <button class="btn-filter btn-filter-ghost js-os-add-item" type="button" data-type="produto"><i class="bi bi-plus-lg"></i> Adicionar produto / peça</button>
+                            </div>
                         </section>
-                        <section class="form-section">
-                            <h3 class="form-section-title">Outros</h3>
-                            <div class="os-items" data-os-items="outro"></div><button class="btn-filter btn-filter-ghost js-os-add-item" type="button" data-type="outro"><i class="bi bi-plus-lg"></i> Adicionar outro item</button>
+                        <section class="form-section item-category-card item-category-card--other">
+                            <div class="item-category-header">
+                                <div class="item-category-heading">
+                                    <span class="item-category-icon"><i class="bi bi-plus-square"></i></span>
+                                    <div>
+                                        <h3 class="form-section-title">Outros itens</h3>
+                                        <p>Itens adicionais que não pertencem ao catálogo de serviços ou produtos.</p>
+                                    </div>
+                                </div>
+                                <span class="item-category-count" data-item-counter="outro">0 itens</span>
+                            </div>
+                            <div class="item-category-body">
+                                <div class="os-items item-category-items" data-os-items="outro" data-empty-label="Nenhum outro item adicionado."></div>
+                            </div>
+                            <div class="item-category-footer">
+                                <button class="btn-filter btn-filter-ghost js-os-add-item" type="button" data-type="outro"><i class="bi bi-plus-lg"></i> Adicionar outro item</button>
+                            </div>
                         </section>
                     </div>
                     <?php if ($canTeam || $canSchedule): ?><div class="tab-pane fade" id="os-tab-team">
                             <section class="form-section"><?php if ($canTeam): ?><input type="hidden" name="team_submitted" value="1"><?php endif; ?><div class="os-team-members" data-team-members data-team-editable="<?= $canTeam ? '1' : '0' ?>"></div><?php if ($canTeam): ?><button class="btn-filter btn-filter-ghost js-os-add-team-member" type="button"><i class="bi bi-plus-lg"></i> Adicionar funcionário</button><?php endif; ?><div class="form-row mt-3">
-                                    <div class="form-group"><label class="form-label">Início</label><input class="form-control-os" type="datetime-local" name="agendado_inicio" id="os-scheduled-start" <?= $canSchedule ? '' : 'disabled' ?>></div>
-                                    <div class="form-group"><label class="form-label">Fim</label><input class="form-control-os" type="datetime-local" name="agendado_fim" id="os-scheduled-end" <?= $canSchedule ? '' : 'disabled' ?>></div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="os-scheduled-start">Data e hora do serviço</label>
+                                        <input class="form-control-os" type="datetime-local" name="agendado_inicio" id="os-scheduled-start" data-os-schedule-start <?= $canSchedule ? '' : 'disabled' ?>>
+                                        <small class="text-muted">Este é o horário que realmente reserva o funcionário na agenda.</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="os-scheduled-duration">Duração prevista (minutos)</label>
+                                        <input class="form-control-os" type="number" name="agendamento_duracao_minutos" id="os-scheduled-duration" data-os-schedule-duration min="5" max="1440" step="5" inputmode="numeric" <?= $canSchedule ? '' : 'disabled' ?>>
+                                        <small class="text-muted">O sistema sugere a duração pelos serviços cadastrados; ajuste quando necessário.</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="os-scheduled-end">Término previsto</label>
+                                        <input class="form-control-os" type="datetime-local" name="agendado_fim" id="os-scheduled-end" data-os-schedule-end readonly <?= $canSchedule ? '' : 'disabled' ?>>
+                                        <small class="text-muted" data-os-schedule-summary>Somente este intervalo será protegido contra sobreposição.</small>
+                                    </div>
                                 </div>
                             </section>
                         </div><?php endif; ?>
@@ -692,8 +747,9 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
 
 <template id="os-item-template">
     <div class="form-row os-item-row"><input type="hidden" data-field="id"><input type="hidden" data-field="type"><input type="hidden" data-field="origin" value="manual"><input type="hidden" data-field="budget_item_id">
-        <div class="form-group os-reference-wrap"><label class="form-label">Referencia</label><select class="form-control-os" data-field="reference_id"></select></div>
-        <div class="form-group"><label class="form-label">Descricao</label><input class="form-control-os" data-field="description" required></div>
+        <div class="form-group os-reference-wrap"><label class="form-label" data-os-reference-label>Referência</label><select class="form-control-os" data-field="reference_id"></select></div>
+        <div class="form-group os-description-wrap"><label class="form-label" data-os-description-label>Descrição</label><input class="form-control-os" data-field="description" maxlength="255" required></div>
+        <div class="form-group os-execution-location-wrap d-none"><label class="form-label">Local / ambiente</label><input class="form-control-os" data-field="execution_location" maxlength="150" placeholder="Ex.: Recepção 2, Sala 03, Administração"></div>
         <div class="form-group"><label class="form-label">Unidade</label><input class="form-control-os" data-field="unit" value="un" required></div>
         <div class="form-group"><label class="form-label">Qtd.</label><input class="form-control-os" data-field="quantity" value="1" required></div>
         <div class="form-group"><label class="form-label">Valor unit.</label><input class="form-control-os" data-field="unit_price" value="0,00" required></div>
@@ -745,7 +801,8 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                             <thead>
                                 <tr>
                                     <th>Tipo</th>
-                                    <th>Descricao</th>
+                                    <th>Descrição</th>
+                                    <th>Local / ambiente</th>
                                     <th>Qtd.</th>
                                     <th>Valor</th>
                                     <th>Subtotal</th>
@@ -767,8 +824,19 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                 <h2 class="modal-title fs-5">Equipe e agendamento</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="id" id="os-team-id"><?php if ($canTeam): ?><input type="hidden" name="team_submitted" value="1"><?php endif; ?><div class="os-team-members" data-team-members data-team-editable="<?= $canTeam ? '1' : '0' ?>"></div><?php if ($canTeam): ?><button class="btn-filter btn-filter-ghost js-os-add-team-member" type="button"><i class="bi bi-plus-lg"></i> Adicionar funcionário</button><?php endif; ?><div class="form-row mt-3">
-                    <div class="form-group"><label class="form-label">Início</label><input class="form-control-os" type="datetime-local" name="agendado_inicio" id="os-team-start" <?= $canSchedule ? '' : 'disabled' ?>></div>
-                    <div class="form-group"><label class="form-label">Fim</label><input class="form-control-os" type="datetime-local" name="agendado_fim" id="os-team-end" <?= $canSchedule ? '' : 'disabled' ?>></div>
+                    <div class="form-group">
+                        <label class="form-label" for="os-team-start">Data e hora do serviço</label>
+                        <input class="form-control-os" type="datetime-local" name="agendado_inicio" id="os-team-start" data-os-schedule-start <?= $canSchedule ? '' : 'disabled' ?>>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="os-team-duration">Duração prevista (minutos)</label>
+                        <input class="form-control-os" type="number" name="agendamento_duracao_minutos" id="os-team-duration" data-os-schedule-duration min="5" max="1440" step="5" inputmode="numeric" <?= $canSchedule ? '' : 'disabled' ?>>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="os-team-end">Término previsto</label>
+                        <input class="form-control-os" type="datetime-local" name="agendado_fim" id="os-team-end" data-os-schedule-end readonly <?= $canSchedule ? '' : 'disabled' ?>>
+                        <small class="text-muted" data-os-schedule-summary>Somente este intervalo será protegido contra sobreposição.</small>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Salvar</button></div>

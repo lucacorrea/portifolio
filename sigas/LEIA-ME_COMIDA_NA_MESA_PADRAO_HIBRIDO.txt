@@ -1,0 +1,45 @@
+SIGAS — COMIDA NA MESA — PADRÃO HÍBRIDO v2
+
+OBJETIVO
+Unificar a experiência visual do SIGAS usando o melhor dos módulos Primeiro Emprego e Comida na Mesa.
+
+PADRÃO ADOTADO
+- Mesma geometria de cards, filtros, tabelas e modais.
+- Cada módulo preserva apenas a sua cor institucional.
+- Cores semânticas (sucesso, atenção, erro, informação) continuam independentes da cor do módulo.
+- Tela principal prioriza listagem e consulta.
+- CRUD e ações continuam em modais.
+
+ALTERAÇÕES NO COMIDA NA MESA
+1. Cabeçalho/hero mais compacto e alinhado ao padrão global.
+2. KPIs compactos, neutros e legíveis.
+3. Filtros reorganizados e com botão de limpar sempre disponível.
+4. Filtros avançados preservados: zona, bairro, comunidade e polo.
+5. Tabela principal mantém o visual compacto do Comida na Mesa.
+6. A coluna de ações foi removida da tabela principal.
+7. Clique na linha abre uma nova modal de ações.
+8. A nova modal encaminha para as modais existentes de:
+   - Visualizar
+   - Editar cadastro
+   - Registrar/Reativar entrega
+   - Cancelar entrega
+   - Enviar documento
+   - Histórico
+9. Permissões e regras de elegibilidade continuam sendo respeitadas.
+10. Nenhum SQL é necessário.
+
+ARQUIVOS
+- modulo.php
+- assets/js/comida-mesa.js
+- assets/css/sigas-operational-ui.css
+- frontend/layouts/head.php
+
+INSTALAÇÃO
+Extraia o ZIP na raiz do SIGAS preservando as pastas e substitua os arquivos.
+Depois atualize com Ctrl + F5.
+
+VALIDAÇÃO REALIZADA
+- php -l modulo.php: OK
+- php -l frontend/layouts/head.php: OK
+- node --check assets/js/comida-mesa.js: OK
+- CSS: quantidade de chaves de abertura/fechamento conferida.

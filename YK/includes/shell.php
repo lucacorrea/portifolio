@@ -67,7 +67,8 @@ if (strcasecmp((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''), 'XMLHttpReque
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/dashboard.css?v=<?= (int) filemtime(dirname(__DIR__) . '/assets/css/dashboard.css') ?>">
 </head>
-<body>
+<?php $resolvedBodyClass = isset($pageBodyClass) && is_string($pageBodyClass) ? trim($pageBodyClass) : ''; ?>
+<body<?= $resolvedBodyClass !== '' ? ' class="' . htmlspecialchars($resolvedBodyClass, ENT_QUOTES, 'UTF-8') . '"' : '' ?>>
   <div class="os-wrapper">
     <?php require __DIR__ . '/menu.php'; ?>
 

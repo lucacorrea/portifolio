@@ -1,0 +1,58 @@
+SIGAS COARI — COMIDA NA MESA
+EXPORTAÇÃO EXCEL XLSX
+
+NOVO RECURSO
+===========
+O módulo passa a exportar arquivos .xlsx reais.
+
+PÁGINAS COM EXPORTAÇÃO
+======================
+1. Beneficiários
+   - respeita todos os filtros ativos;
+   - exporta todos os registros filtrados, não somente a página atual;
+   - inclui CPF, NIS, RG, contato, endereço, membros, renda, polo,
+     situação no programa, prioridade e situação da entrega.
+
+2. Competências
+   - respeita ano e situação;
+   - inclui períodos, entregas, cancelamentos e polos atendidos.
+
+3. Polos
+   - respeita pesquisa e situação;
+   - inclui famílias e beneficiárias ativas.
+
+4. Documentos
+   - respeita pesquisa, tipo e polo;
+   - inclui dados do arquivo, família, responsável e operador.
+
+5. Histórico
+   - respeita pesquisa, ação e período;
+   - inclui movimentação e operador.
+
+6. Relatórios
+   - gera workbook com múltiplas abas:
+     Resumo, Polos, Situação Programa, Entregas, Evolução, Bairros e Zonas.
+
+ARQUITETURA
+===========
+Endpoint central:
+/comida-mesa/exportar-excel.php
+
+Exportador:
+/frontend/modules/comida-mesa/lib/excel.php
+
+O XLSX é gerado em PHP puro, sem PhpSpreadsheet e sem exigir ext-zip.
+CPF, NIS e demais identificadores são exportados como texto para preservar
+zeros à esquerda e impedir interpretação indevida pelo Excel.
+
+SEGURANÇA
+=========
+- exige usuário autenticado e permissão comida_mesa.visualizar;
+- Documentos e Histórico continuam exigindo suas permissões específicas;
+- tipos de exportação são validados por lista permitida;
+- consultas usam prepared statements já existentes no módulo;
+- valores de texto não são gravados como fórmulas do Excel.
+
+BANCO DE DADOS
+==============
+Nenhum SQL é necessário.
