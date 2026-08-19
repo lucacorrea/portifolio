@@ -82,7 +82,7 @@ if (is_array($result)) {
     $pageDefinition = $result;
 }
 
-$extraStyles = $environmentKey === 'primeiro-emprego' ? ['frontend/modules/primeiro-emprego/primeiro-emprego-ui-20260819.css'] : [];
-$extraScripts = $environmentKey === 'primeiro-emprego' ? ['frontend/modules/primeiro-emprego/primeiro-emprego-ui-20260819.js'] : [];
+$extraStyles = [];
+$extraScripts = [];
 
 require dirname(__DIR__) . '/frontend/layouts/module-layout.php';

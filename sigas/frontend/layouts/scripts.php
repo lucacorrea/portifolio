@@ -4,35 +4,31 @@ declare(strict_types=1);
 
 /**
  * Monta a lista de JavaScript adicionais sem duplicar arquivos.
- * O Primeiro Emprego recebe carregamento explícito do asset JavaScript versionado.
+ * Os assets oficiais de cada módulo vêm do ModuleRegistry.
  *
  * @return array<int,string>
  */
 if (!function_exists('sigas_frontend_module_scripts')) {
-function sigas_frontend_module_scripts(
-    ?array $environment,
-    ?string $environmentKey,
-    array $extraScripts
-): array {
-    $scripts = [];
+    function sigas_frontend_module_scripts(
+        ?array $environment,
+        ?string $environmentKey,
+        array $extraScripts
+    ): array {
+        $scripts = [];
 
-    $environmentJs = $environment['assets']['js'] ?? null;
-    if (is_string($environmentJs) && trim($environmentJs) !== '') {
-        $scripts[] = trim($environmentJs);
-    }
-
-    if ($environmentKey === 'primeiro-emprego') {
-        $scripts[] = 'frontend/modules/primeiro-emprego/primeiro-emprego-ui-20260819.js';
-    }
-
-    foreach ($extraScripts as $extraScript) {
-        if (is_string($extraScript) && trim($extraScript) !== '') {
-            $scripts[] = trim($extraScript);
+        $environmentJs = $environment['assets']['js'] ?? null;
+        if (is_string($environmentJs) && trim($environmentJs) !== '') {
+            $scripts[] = trim($environmentJs);
         }
-    }
 
-    return array_values(array_unique($scripts));
-}
+        foreach ($extraScripts as $extraScript) {
+            if (is_string($extraScript) && trim($extraScript) !== '') {
+                $scripts[] = trim($extraScript);
+            }
+        }
+
+        return array_values(array_unique($scripts));
+    }
 }
 
 $moduleScripts = sigas_frontend_module_scripts(

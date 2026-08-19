@@ -39,6 +39,6 @@ if (!is_file($view)) {
 }
 
 require $view;
-$extraStyles = ['frontend/modules/primeiro-emprego/primeiro-emprego-ui-20260819.css'];
-$extraScripts = ['frontend/modules/primeiro-emprego/primeiro-emprego-ui-20260819.js'];
+$extraStyles = [];
+$extraScripts = [];
 require dirname(__DIR__) . '/frontend/layouts/module-layout.php';

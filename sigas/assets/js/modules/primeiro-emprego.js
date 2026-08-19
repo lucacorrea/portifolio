@@ -1,1 +1,708 @@
 'use strict';
+
+/* ======================================================================
+ * MEU PRIMEIRO EMPREGO — COMPORTAMENTOS GLOBAIS DO MÓDULO
+ * ====================================================================== */
+(() => {
+    const dialogSelector = 'dialog.pe-modal, dialog.pe-candidate-modal';
+
+    const openDialog = dialog => {
+        if (!(dialog instanceof HTMLElement)) return;
+
+        if (typeof dialog.showModal === 'function') {
+            if (!dialog.open) dialog.showModal();
+            return;
+        }
+
+        dialog.setAttribute('open', '');
+    };
+
+    const closeDialog = dialog => {
+        if (!(dialog instanceof HTMLElement)) return;
+
+        if (typeof dialog.close === 'function' && dialog.open) {
+            dialog.close();
+            return;
+        }
+
+        dialog.removeAttribute('open');
+    };
+
+    const cleanActionParam = param => {
+        if (!param || !window.history?.replaceState) return;
+
+        const url = new URL(window.location.href);
+        url.searchParams.delete(param);
+        url.hash = '';
+        window.history.replaceState({}, '', url.href);
+    };
+
+    const buildActionUrl = (param, itemId) => {
+        const url = new URL(window.location.href);
+
+        ['revisar', 'visita', 'ficha'].forEach(key => {
+            url.searchParams.delete(key);
+        });
+
+        url.searchParams.set(param, String(itemId));
+        url.hash = '';
+
+        return url.href;
+    };
+
+    const bindCandidateActionDialog = () => {
+        const rows = Array.from(
+            document.querySelectorAll('[data-pe-candidate-row]')
+        );
+
+        const dialog = document.getElementById('peCandidateDialog');
+
+        if (!rows.length || !dialog) {
+            return;
+        }
+
+        const field = selector => dialog.querySelector(selector);
+
+        const fields = {
+            name: field('[data-pe-modal-name]'),
+            meta: field('[data-pe-modal-meta]'),
+            cpf: field('[data-pe-modal-cpf]'),
+            phone: field('[data-pe-modal-phone]'),
+            birth: field('[data-pe-modal-birth]'),
+            neighborhood: field('[data-pe-modal-neighborhood]'),
+            sector: field('[data-pe-modal-sector]'),
+            status: field('[data-pe-modal-status]'),
+            review: field('[data-pe-modal-review]'),
+            reviewDetails: field('[data-pe-modal-review-details]'),
+            reviewBox: field('[data-pe-modal-review-box]'),
+            reviewAction: field('[data-pe-modal-action-review]'),
+            visitAction: field('[data-pe-modal-action-visit]'),
+            profileAction: field('[data-pe-modal-action-profile]'),
+        };
+
+        const fillDialog = row => {
+            const data = row.dataset;
+
+            if (fields.name) {
+                fields.name.textContent =
+                    data.name || 'Candidato';
+            }
+
+            if (fields.meta) {
+                fields.meta.textContent =
+                    `#${data.id || '—'} · ${data.origin || 'origem não informada'}`;
+            }
+
+            if (fields.cpf) {
+                fields.cpf.textContent =
+                    data.cpf || '—';
+            }
+
+            if (fields.phone) {
+                fields.phone.textContent =
+                    data.phone || '—';
+            }
+
+            if (fields.birth) {
+                fields.birth.textContent =
+                    data.birth || '—';
+            }
+
+            if (fields.neighborhood) {
+                fields.neighborhood.textContent =
+                    data.neighborhood || '—';
+            }
+
+            if (fields.sector) {
+                fields.sector.textContent =
+                    data.sector || '—';
+            }
+
+            if (fields.status) {
+                fields.status.textContent =
+                    data.status || '—';
+            }
+
+            if (fields.review) {
+                fields.review.textContent =
+                    data.review || 'Sem pendência';
+            }
+
+            if (fields.reviewDetails) {
+                fields.reviewDetails.textContent =
+                    data.reviewDetails || 'Cadastro sem pendências';
+            }
+
+            if (fields.reviewBox) {
+                fields.reviewBox.classList.remove(
+                    'is-warning',
+                    'is-multiple',
+                    'is-critical'
+                );
+
+                if (data.duplicate === '1') {
+                    fields.reviewBox.classList.add(
+                        'is-critical'
+                    );
+                } else if (
+                    (data.review || '')
+                        .toLowerCase()
+                        .includes('cadastro')
+                ) {
+                    fields.reviewBox.classList.add(
+                        'is-multiple'
+                    );
+                } else if (
+                    (data.review || '') &&
+                    data.review !== 'Sem pendência'
+                ) {
+                    fields.reviewBox.classList.add(
+                        'is-warning'
+                    );
+                }
+            }
+
+            if (fields.reviewAction) {
+                fields.reviewAction.href =
+                    buildActionUrl(
+                        'revisar',
+                        data.id
+                    );
+            }
+
+            if (fields.visitAction) {
+                fields.visitAction.href =
+                    buildActionUrl(
+                        'visita',
+                        data.id
+                    );
+            }
+
+            if (fields.profileAction) {
+                fields.profileAction.href =
+                    buildActionUrl(
+                        'ficha',
+                        data.id
+                    );
+            }
+        };
+
+        const showActions = row => {
+            fillDialog(row);
+            openDialog(dialog);
+        };
+
+        rows.forEach(row => {
+            row.addEventListener(
+                'click',
+                event => {
+                    if (
+                        event.target.closest(
+                            'a, button, input, select, textarea, label'
+                        )
+                    ) {
+                        return;
+                    }
+
+                    showActions(row);
+                }
+            );
+
+            row.addEventListener(
+                'keydown',
+                event => {
+                    if (
+                        event.key !== 'Enter' &&
+                        event.key !== ' '
+                    ) {
+                        return;
+                    }
+
+                    event.preventDefault();
+
+                    showActions(row);
+                }
+            );
+        });
+    };
+
+    const bindGenericDialogTriggers = () => {
+        document
+            .querySelectorAll('[data-pe-dialog-target]')
+            .forEach(trigger => {
+                trigger.addEventListener(
+                    'click',
+                    event => {
+                        const selector =
+                            trigger.getAttribute(
+                                'data-pe-dialog-target'
+                            );
+
+                        if (!selector) {
+                            return;
+                        }
+
+                        const dialog =
+                            document.querySelector(
+                                selector
+                            );
+
+                        if (!dialog) {
+                            return;
+                        }
+
+                        event.preventDefault();
+
+                        openDialog(dialog);
+                    }
+                );
+            });
+    };
+
+    const bindDialogClosing = () => {
+        document
+            .querySelectorAll(
+                '[data-pe-dialog-close], [data-pe-modal-close]'
+            )
+            .forEach(button => {
+                button.addEventListener(
+                    'click',
+                    () => {
+                        const dialog =
+                            button.closest('dialog');
+
+                        closeDialog(dialog);
+
+                        cleanActionParam(
+                            button.dataset.cleanParam || ''
+                        );
+                    }
+                );
+            });
+
+        document
+            .querySelectorAll(dialogSelector)
+            .forEach(dialog => {
+                dialog.addEventListener(
+                    'click',
+                    event => {
+                        if (
+                            event.target !== dialog
+                        ) {
+                            return;
+                        }
+
+                        closeDialog(dialog);
+
+                        const closeButton =
+                            dialog.querySelector(
+                                '[data-clean-param]'
+                            );
+
+                        cleanActionParam(
+                            closeButton?.dataset
+                                .cleanParam || ''
+                        );
+                    }
+                );
+
+                dialog.addEventListener(
+                    'cancel',
+                    () => {
+                        const closeButton =
+                            dialog.querySelector(
+                                '[data-clean-param]'
+                            );
+
+                        cleanActionParam(
+                            closeButton?.dataset
+                                .cleanParam || ''
+                        );
+                    }
+                );
+            });
+    };
+
+    bindCandidateActionDialog();
+    bindGenericDialogTriggers();
+    bindDialogClosing();
+
+    document
+        .querySelectorAll(
+            'dialog[data-pe-auto-open]'
+        )
+        .forEach(openDialog);
+})();
+
+
+/* ======================================================================
+ * WIZARD DE CADASTRO — preservado do módulo original
+ * ====================================================================== */
+(() => {
+    const wizard =
+        document.querySelector(
+            '[data-pe-wizard]'
+        );
+
+    if (!wizard) {
+        return;
+    }
+
+    const form =
+        wizard.querySelector(
+            '[data-pe-wizard-form]'
+        );
+
+    const panels = [
+        ...wizard.querySelectorAll(
+            '[data-pe-step]'
+        )
+    ];
+
+    const indicators = [
+        ...wizard.querySelectorAll(
+            '[data-pe-step-indicator]'
+        )
+    ];
+
+    const progress =
+        wizard.querySelector(
+            '[data-pe-progress]'
+        );
+
+    const progressBar =
+        progress?.closest(
+            '[role="progressbar"]'
+        );
+
+    const progressText =
+        wizard.querySelector(
+            '[data-pe-progress-text]'
+        );
+
+    const previous =
+        wizard.querySelector(
+            '[data-pe-prev]'
+        );
+
+    const next =
+        wizard.querySelector(
+            '[data-pe-next]'
+        );
+
+    let current = 0;
+
+    const notify = message =>
+        window.SIGAS_FRONTEND?.showToast(
+            message
+        );
+
+    const escapeHTML = value =>
+        String(value ?? '').replace(
+            /[&<>"']/g,
+            character =>
+                ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;',
+                })[character]
+        );
+
+    const updateReview = () => {
+        const review =
+            wizard.querySelector(
+                '[data-pe-review]'
+            );
+
+        if (!review || !form) {
+            return;
+        }
+
+        const fields = [
+            [
+                'Nome',
+                form.elements
+                    .candidate_name
+                    ?.value
+            ],
+            [
+                'Contato',
+                form.elements
+                    .candidate_phone
+                    ?.value
+            ],
+            [
+                'Bairro',
+                form.elements
+                    .candidate_neighborhood
+                    ?.value
+            ],
+            [
+                'Escolaridade',
+                form.elements
+                    .candidate_education
+                    ?.value
+            ],
+            [
+                'Experiência',
+                form.elements
+                    .candidate_experience
+                    ?.value
+            ],
+            [
+                'Disponibilidade',
+                form.elements
+                    .candidate_availability
+                    ?.value
+            ],
+        ];
+
+        review.innerHTML =
+            fields
+                .map(
+                    ([label, value]) =>
+                        `<div>
+                            <dt>${escapeHTML(label)}</dt>
+                            <dd>${escapeHTML(
+                                value ||
+                                'Não informado'
+                            )}</dd>
+                        </div>`
+                )
+                .join('');
+    };
+
+    const render = focus => {
+        panels.forEach(
+            (panel, index) => {
+                panel.hidden =
+                    index !== current;
+            }
+        );
+
+        indicators.forEach(
+            (indicator, index) => {
+                if (index === current) {
+                    indicator.setAttribute(
+                        'aria-current',
+                        'step'
+                    );
+                } else {
+                    indicator.removeAttribute(
+                        'aria-current'
+                    );
+                }
+            }
+        );
+
+        const percentage =
+            (
+                (current + 1) /
+                panels.length
+            ) * 100;
+
+        if (progress) {
+            progress.style.width =
+                `${percentage}%`;
+        }
+
+        if (progressBar) {
+            progressBar.setAttribute(
+                'aria-valuenow',
+                String(current + 1)
+            );
+        }
+
+        if (progressText) {
+            progressText.textContent =
+                `Etapa ${current + 1} de ${panels.length}`;
+        }
+
+        if (previous) {
+            previous.disabled =
+                current === 0;
+        }
+
+        if (next) {
+            next.innerHTML =
+                current ===
+                panels.length - 1
+                    ? 'Confirmar visualmente<i class="bi bi-check-lg"></i>'
+                    : 'Próximo<i class="bi bi-arrow-right"></i>';
+        }
+
+        if (
+            current ===
+            panels.length - 1
+        ) {
+            updateReview();
+        }
+
+        if (focus) {
+            panels[current]
+                ?.querySelector('h3')
+                ?.focus();
+        }
+    };
+
+    const currentIsValid = () => {
+        const required = [
+            ...panels[current]
+                .querySelectorAll(
+                    '[required]'
+                )
+        ];
+
+        const areas = [
+            ...panels[current]
+                .querySelectorAll(
+                    '[name="candidate_areas[]"]'
+                )
+        ];
+
+        const areasValid =
+            areas.length === 0 ||
+            areas.some(
+                field => field.checked
+            );
+
+        areas[0]?.setCustomValidity(
+            areasValid
+                ? ''
+                : 'Selecione ao menos uma área de interesse.'
+        );
+
+        const valid =
+            required.every(
+                field =>
+                    field.checkValidity()
+            ) &&
+            areasValid;
+
+        panels[current]
+            .classList.toggle(
+                'was-validated',
+                !valid
+            );
+
+        if (!valid) {
+            [
+                ...required,
+                ...areas
+            ]
+                .find(
+                    field =>
+                        !field.checkValidity()
+                )
+                ?.reportValidity();
+        }
+
+        return valid;
+    };
+
+    previous?.addEventListener(
+        'click',
+        () => {
+            current =
+                Math.max(
+                    0,
+                    current - 1
+                );
+
+            render(true);
+        }
+    );
+
+    next?.addEventListener(
+        'click',
+        () => {
+            if (!currentIsValid()) {
+                return;
+            }
+
+            if (
+                current ===
+                panels.length - 1
+            ) {
+                const title =
+                    document.querySelector(
+                        '#frontendActionTitle'
+                    );
+
+                if (title) {
+                    title.textContent =
+                        'Confirmar cadastro demonstrativo';
+                }
+
+                const actionDialog =
+                    document.querySelector(
+                        '#frontendActionModal'
+                    );
+
+                if (
+                    actionDialog &&
+                    typeof actionDialog
+                        .showModal ===
+                        'function'
+                ) {
+                    actionDialog.showModal();
+                } else if (
+                    window.bootstrap?.Modal
+                ) {
+                    window.bootstrap
+                        .Modal
+                        .getOrCreateInstance(
+                            '#frontendActionModal'
+                        )
+                        .show();
+                } else {
+                    notify?.(
+                        'Cadastro revisado visualmente.'
+                    );
+                }
+
+                return;
+            }
+
+            current += 1;
+
+            render(true);
+        }
+    );
+
+    indicators.forEach(
+        (indicator, index) =>
+            indicator.addEventListener(
+                'click',
+                () => {
+                    if (
+                        index > current &&
+                        !currentIsValid()
+                    ) {
+                        return;
+                    }
+
+                    current = index;
+
+                    render(true);
+                }
+            )
+    );
+
+    wizard
+        .querySelector(
+            '[data-pe-save-draft]'
+        )
+        ?.addEventListener(
+            'click',
+            () => {
+                notify?.(
+                    'Rascunho visual preparado. Nenhum dado foi persistido.'
+                );
+            }
+        );
+
+    render(false);
+})();
