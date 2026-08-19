@@ -47,19 +47,22 @@ final class ReadableDanfce extends Danfce
          * Nova proporção da tabela:
          * mais espaço para o código do produto.
          */
-        $this->descPercent = 0.35;
+        $this->descPercent = 0.34;
 
         /*
-         * Margem menor para aproveitar melhor a largura,
-         * sem encostar o conteúdo na borda.
+         * Margem de segurança para impressoras com área não imprimível.
+         *
+         * 5 mm evita que o DANFC-e fique colado principalmente
+         * na borda superior e esquerda, reduzindo risco de corte
+         * em impressoras como Epson L5590.
          */
-        $this->setMargins(1);
+        $this->setMargins(5);
 
         /*
          * Ajustes de altura para acomodar as fontes maiores.
          */
-        $this->bloco1H = 21.0;
-        $this->bloco2H = 14.0;
+        $this->bloco1H = 24.0;
+        $this->bloco2H = 15.0;
         $this->bloco4H = 17.0;
         $this->bloco6H = 12.0;
         $this->bloco7H = 29.0;
@@ -410,8 +413,8 @@ final class ReadableDanfce extends Danfce
         }
 
         $matrix = [
-            0.15,
-            0.35,
+            0.16,
+            0.34,
             0.08,
             0.09,
             0.165,
