@@ -1,12 +1,56 @@
-<?php declare(strict_types=1); ?>
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Monta a lista de JavaScript adicionais sem duplicar arquivos.
+ * O Primeiro Emprego recebe carregamento explícito do module.js.
+ *
+ * @return array<int,string>
+ */
+function sigas_frontend_module_scripts(
+    ?array $environment,
+    ?string $environmentKey,
+    array $extraScripts
+): array {
+    $scripts = [];
+
+    $environmentJs = $environment['assets']['js'] ?? null;
+    if (is_string($environmentJs) && trim($environmentJs) !== '') {
+        $scripts[] = trim($environmentJs);
+    }
+
+    if ($environmentKey === 'primeiro-emprego') {
+        $scripts[] = 'frontend/modules/primeiro-emprego/module.js';
+    }
+
+    foreach ($extraScripts as $extraScript) {
+        if (is_string($extraScript) && trim($extraScript) !== '') {
+            $scripts[] = trim($extraScript);
+        }
+    }
+
+    return array_values(array_unique($scripts));
+}
+
+$moduleScripts = sigas_frontend_module_scripts(
+    isset($environment) && is_array($environment) ? $environment : null,
+    isset($environmentKey) && is_string($environmentKey) ? $environmentKey : null,
+    isset($extraScripts) && is_array($extraScripts) ? $extraScripts : []
+);
+?>
 <div class="toast-container position-fixed top-0 end-0 p-3" id="frontendToastContainer" aria-live="polite"></div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <?= App\Core\PageContext::script($frontendContext) ?>
 <script src="<?= sigas_frontend_asset('assets/js/frontend-modules.js') ?>"></script>
-<?php if (isset($environment['assets']['js']) && is_file(dirname(__DIR__, 2) . '/' . $environment['assets']['js'])): ?>
-    <script src="<?= sigas_frontend_asset($environment['assets']['js']) ?>"></script>
-<?php endif; ?>
-<?php foreach ($extraScripts ?? [] as $extraScript): ?>
-    <?php if (is_string($extraScript) && is_file(dirname(__DIR__, 2) . '/' . $extraScript)): ?><script src="<?= sigas_frontend_asset($extraScript) ?>"></script><?php endif; ?>
+
+<?php foreach ($moduleScripts as $moduleScript): ?>
+    <?php
+    $absoluteScript = dirname(__DIR__, 2) . '/' . $moduleScript;
+    if (!is_file($absoluteScript)) {
+        continue;
+    }
+    ?>
+    <script src="<?= sigas_frontend_asset($moduleScript) ?>" data-sigas-module-script="<?= sigas_frontend_escape($environmentKey ?? '') ?>"></script>
 <?php endforeach; ?>
