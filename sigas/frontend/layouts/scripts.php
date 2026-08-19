@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 /**
  * Monta a lista de JavaScript adicionais sem duplicar arquivos.
- * O Primeiro Emprego recebe carregamento explícito do module.js.
+ * O Primeiro Emprego recebe carregamento explícito do asset JavaScript versionado.
  *
  * @return array<int,string>
  */
+if (!function_exists('sigas_frontend_module_scripts')) {
 function sigas_frontend_module_scripts(
     ?array $environment,
     ?string $environmentKey,
@@ -21,7 +22,7 @@ function sigas_frontend_module_scripts(
     }
 
     if ($environmentKey === 'primeiro-emprego') {
-        $scripts[] = 'frontend/modules/primeiro-emprego/module.js';
+        $scripts[] = 'frontend/modules/primeiro-emprego/primeiro-emprego-ui-20260819.js';
     }
 
     foreach ($extraScripts as $extraScript) {
@@ -31,6 +32,7 @@ function sigas_frontend_module_scripts(
     }
 
     return array_values(array_unique($scripts));
+}
 }
 
 $moduleScripts = sigas_frontend_module_scripts(

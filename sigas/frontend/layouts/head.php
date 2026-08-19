@@ -6,11 +6,12 @@ require_once dirname(__DIR__) . '/support/helpers.php';
 
 /**
  * Monta a lista de CSS adicionais sem duplicar arquivos.
- * O Primeiro Emprego recebe carregamento explícito do module.css
+ * O Primeiro Emprego recebe carregamento explícito do asset visual versionado
  * para não depender apenas de $extraStyles ou do ModuleRegistry.
  *
  * @return array<int,string>
  */
+if (!function_exists('sigas_frontend_module_styles')) {
 function sigas_frontend_module_styles(
     ?array $environment,
     ?string $environmentKey,
@@ -24,7 +25,7 @@ function sigas_frontend_module_styles(
     }
 
     if ($environmentKey === 'primeiro-emprego') {
-        $styles[] = 'frontend/modules/primeiro-emprego/module2.0.css';
+        $styles[] = 'frontend/modules/primeiro-emprego/primeiro-emprego-ui-20260819.css';
     }
 
     foreach ($extraStyles as $extraStyle) {
@@ -34,6 +35,7 @@ function sigas_frontend_module_styles(
     }
 
     return array_values(array_unique($styles));
+}
 }
 
 $moduleStyles = sigas_frontend_module_styles(
