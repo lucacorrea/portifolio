@@ -20,10 +20,11 @@ use NFePHP\DA\NFe\Danfce;
  */
 final class ReadableDanfce extends Danfce
 {
-    private const QR_SIZE_MM = 34.0;
+    private const QR_SIZE_MM = 30.0;
 
     private const FONT_HEADER = 9;
     private const FONT_NORMAL = 8;
+    private const FONT_PRODUCT_CODE = 9;
     private const FONT_SMALL = 7;
     private const FONT_TOTAL = 10;
 
@@ -41,6 +42,12 @@ final class ReadableDanfce extends Danfce
          * Largura padrão de bobina/PDF NFC-e.
          */
         $this->setPaperWidth(80);
+
+        /*
+         * Nova proporção da tabela:
+         * mais espaço para o código do produto.
+         */
+        $this->descPercent = 0.35;
 
         /*
          * Margem menor para aproveitar melhor a largura,
@@ -61,7 +68,7 @@ final class ReadableDanfce extends Danfce
          * QR 34 mm + respiro.
          * O original usa bloco de 50 mm.
          */
-        $this->bloco8H = 36.0;
+        $this->bloco8H = 32.0;
 
         $this->bloco10H = 7.0;
     }
@@ -403,12 +410,12 @@ final class ReadableDanfce extends Danfce
         }
 
         $matrix = [
-            0.12,
-            $this->descPercent,
+            0.15,
+            0.35,
             0.08,
             0.09,
-            0.156,
-            0.156,
+            0.165,
+            0.165,
         ];
 
         $fontSize =
@@ -420,6 +427,22 @@ final class ReadableDanfce extends Danfce
             'font' => $this->fontePadrao,
             'size' => $fontSize,
             'style' => '',
+        ];
+
+        $headerFont = [
+            'font' => $this->fontePadrao,
+            'size' => self::FONT_NORMAL,
+            'style' => 'B',
+        ];
+
+        /*
+         * Código do produto mais destacado.
+         * Ex.: PRD-000075
+         */
+        $productCodeFont = [
+            'font' => $this->fontePadrao,
+            'size' => self::FONT_PRODUCT_CODE,
+            'style' => 'B',
         ];
 
         $x = $this->margem;
@@ -462,7 +485,7 @@ final class ReadableDanfce extends Danfce
                 $this->wPrint * $header[1],
                 $headerHeight,
                 $header[2],
-                $font,
+                $headerFont,
                 'T',
                 $header[3],
                 false,
@@ -484,7 +507,7 @@ final class ReadableDanfce extends Danfce
                 $this->wPrint * $matrix[0],
                 $it->height,
                 $it->codigo,
-                $font,
+                $productCodeFont,
                 'T',
                 'L',
                 false,

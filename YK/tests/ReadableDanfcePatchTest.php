@@ -19,8 +19,10 @@ if (!is_string($renderer) || !is_string($service)) {
 }
 
 $checks = [
-    'QR_SIZE_MM = 34.0' => $renderer,
+    'QR_SIZE_MM = 30.0' => $renderer,
     'FONT_NORMAL = 8' => $renderer,
+    'FONT_PRODUCT_CODE = 9' => $renderer,
+    "'style' => 'B'" => $renderer,
     'setFont(\'arial\')' => $renderer,
     'protected function blocoVIII' => $renderer,
     'new ReadableDanfce' => $service,
