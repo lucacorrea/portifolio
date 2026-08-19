@@ -92,7 +92,7 @@ ob_start();
 
     <?php if ($reviewCandidate): ?>
         <?php $reviewLabelsCurrent = pe_review_labels($reviewCandidate); ?>
-        <section class="pe-review-editor mb-4 <?= pe_h(pe_review_row_class($reviewCandidate)) ?>">
+        <section id="revisao-candidato" class="pe-review-editor mb-4 <?= pe_h(pe_review_row_class($reviewCandidate)) ?>">
             <div class="pe-form-header mb-3">
                 <div>
                     <div class="card-kicker">Revisão cadastral</div>
@@ -158,136 +158,197 @@ ob_start();
         </section>
     <?php endif; ?>
 
-    <div class="pe-form-header">
+    <div class="pe-candidates-hero">
         <div>
             <div class="card-kicker">Banco de candidatos</div>
             <h2>Candidatos do Meu Primeiro Emprego</h2>
-            <p>O cadastro permanece ativo mesmo quando houver dados incompletos. As pendências são tratadas separadamente pela fila de revisão.</p>
+            <p>Consulte, filtre e acompanhe os candidatos. Clique em qualquer linha para abrir o painel de ações.</p>
+        </div>
+        <div class="pe-candidates-hero__actions pe-no-print">
+            <a class="btn btn-primary" href="primeiro-emprego/cadastro-candidato.php"><i class="bi bi-person-plus"></i> Novo candidato</a>
+            <a class="btn btn-light" href="primeiro-emprego/importar-candidatos.php"><i class="bi bi-file-earmark-spreadsheet"></i> Importar Excel</a>
         </div>
     </div>
 
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-xl-2"><div class="pe-kpi"><span>Total</span><strong><?= (int) $stats['total'] ?></strong></div></div>
-        <div class="col-6 col-xl-2"><div class="pe-kpi"><span>Contemplados</span><strong><?= (int) $stats['contemplados'] ?></strong></div></div>
-        <div class="col-6 col-xl-2"><div class="pe-kpi"><span>Revisão pendente</span><strong><?= (int) $stats['revisao_pendente'] ?></strong></div></div>
-        <div class="col-6 col-xl-2"><div class="pe-kpi"><span>Revisar cadastro</span><strong><?= (int) $stats['revisar_cadastro'] ?></strong></div></div>
-        <div class="col-6 col-xl-2"><div class="pe-kpi"><span>CPF duplicado</span><strong><?= (int) $stats['cpf_duplicado'] ?></strong></div></div>
-        <div class="col-6 col-xl-2"><div class="pe-kpi"><span>Importados</span><strong><?= (int) $stats['importados'] ?></strong></div></div>
+    <div class="pe-kpi-grid mb-4">
+        <div class="pe-kpi pe-kpi--primary"><span>Total de candidatos</span><strong><?= (int) $stats['total'] ?></strong><small>base cadastrada</small></div>
+        <div class="pe-kpi"><span>Contemplados</span><strong><?= (int) $stats['contemplados'] ?></strong><small>no programa</small></div>
+        <div class="pe-kpi pe-kpi--warning"><span>Revisão pendente</span><strong><?= (int) $stats['revisao_pendente'] ?></strong><small>precisam de atenção</small></div>
+        <div class="pe-kpi pe-kpi--orange"><span>Revisar cadastro</span><strong><?= (int) $stats['revisar_cadastro'] ?></strong><small>múltiplas pendências</small></div>
+        <div class="pe-kpi pe-kpi--danger"><span>CPF duplicado</span><strong><?= (int) $stats['cpf_duplicado'] ?></strong><small>conferência necessária</small></div>
+        <div class="pe-kpi"><span>Importados</span><strong><?= (int) $stats['importados'] ?></strong><small>via planilha</small></div>
     </div>
 
-    <div class="pe-review-legend pe-no-print mb-3">
+    <div class="pe-review-legend pe-no-print mb-3" aria-label="Legenda de revisão">
         <span><i class="pe-review-dot pe-review-dot--yellow"></i> uma pendência</span>
         <span><i class="pe-review-dot pe-review-dot--orange"></i> revisar cadastro</span>
         <span><i class="pe-review-dot pe-review-dot--red"></i> CPF duplicado</span>
+        <span class="ms-auto d-none d-lg-inline-flex"><i class="bi bi-cursor"></i> clique na linha para ver ações</span>
     </div>
 
-    <form method="get" class="row g-2 mb-4 pe-no-print">
-        <div class="col-xl-4 col-lg-6">
-            <input class="form-control" name="q" value="<?= pe_h($filters['q']) ?>" placeholder="Nome, CPF, telefone, responsável, bairro ou setor">
+    <form method="get" class="pe-candidate-filters pe-no-print mb-4">
+        <div class="pe-filter-search">
+            <i class="bi bi-search"></i>
+            <input class="form-control" name="q" value="<?= pe_h($filters['q']) ?>" placeholder="Buscar por nome, CPF, telefone, responsável, bairro ou setor" aria-label="Buscar candidatos">
         </div>
-        <div class="col-xl-2 col-lg-3">
-            <select class="form-select" name="revisao">
-                <option value="">Todas as revisões</option>
-                <option value="pendentes"<?= $filters['revisao'] === 'pendentes' ? ' selected' : '' ?>>Todas pendentes</option>
-                <option value="cpf"<?= $filters['revisao'] === 'cpf' ? ' selected' : '' ?>>Revisar CPF</option>
-                <option value="telefone"<?= $filters['revisao'] === 'telefone' ? ' selected' : '' ?>>Revisar Telefone</option>
-                <option value="nascimento"<?= $filters['revisao'] === 'nascimento' ? ' selected' : '' ?>>Revisar Data de Nascimento</option>
-                <option value="cadastro"<?= $filters['revisao'] === 'cadastro' ? ' selected' : '' ?>>Revisar Cadastro</option>
-                <option value="cpf_duplicado"<?= $filters['revisao'] === 'cpf_duplicado' ? ' selected' : '' ?>>CPF Duplicado</option>
-                <option value="sem_pendencia"<?= $filters['revisao'] === 'sem_pendencia' ? ' selected' : '' ?>>Sem pendência</option>
-            </select>
-        </div>
-        <div class="col-xl-2 col-lg-3">
-            <select class="form-select" name="status">
-                <option value="">Todos os status</option>
-                <?php foreach (['Em triagem','Em análise','Deferido','Indeferido','Importado','Contemplado'] as $v): ?>
-                    <option value="<?= pe_h($v) ?>"<?= $filters['status'] === $v ? ' selected' : '' ?>><?= pe_h($v) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <div class="col-xl-2 col-lg-3">
-            <select class="form-select" name="bairro">
-                <option value="">Todos os bairros</option>
-                <?php foreach ($filterOptions['bairros'] as $v): ?><option value="<?= pe_h($v) ?>"<?= $filters['bairro'] === $v ? ' selected' : '' ?>><?= pe_h($v) ?></option><?php endforeach; ?>
-            </select>
-        </div>
-        <div class="col-xl-2 col-lg-3">
-            <select class="form-select" name="setor">
-                <option value="">Todos os setores</option>
-                <?php foreach ($filterOptions['setores'] as $v): ?><option value="<?= pe_h($v) ?>"<?= $filters['setor'] === $v ? ' selected' : '' ?>><?= pe_h($v) ?></option><?php endforeach; ?>
-            </select>
-        </div>
-        <div class="col-xl-2 col-lg-3">
-            <select class="form-select" name="origem">
-                <option value="">Todas as origens</option>
-                <option value="manual"<?= $filters['origem'] === 'manual' ? ' selected' : '' ?>>Manual</option>
-                <option value="importacao"<?= $filters['origem'] === 'importacao' ? ' selected' : '' ?>>Importação</option>
-            </select>
-        </div>
-        <div class="col-xl-2 col-lg-3 d-flex gap-2">
-            <button class="btn btn-primary flex-fill">Filtrar</button>
-            <a class="btn btn-light" href="primeiro-emprego/candidatos.php" title="Limpar filtros"><i class="bi bi-x-lg"></i></a>
-        </div>
+        <select class="form-select" name="revisao" aria-label="Filtrar por revisão">
+            <option value="">Todas as revisões</option>
+            <option value="pendentes"<?= $filters['revisao'] === 'pendentes' ? ' selected' : '' ?>>Todas pendentes</option>
+            <option value="cpf"<?= $filters['revisao'] === 'cpf' ? ' selected' : '' ?>>Revisar CPF</option>
+            <option value="telefone"<?= $filters['revisao'] === 'telefone' ? ' selected' : '' ?>>Revisar Telefone</option>
+            <option value="nascimento"<?= $filters['revisao'] === 'nascimento' ? ' selected' : '' ?>>Revisar Nascimento</option>
+            <option value="cadastro"<?= $filters['revisao'] === 'cadastro' ? ' selected' : '' ?>>Revisar Cadastro</option>
+            <option value="cpf_duplicado"<?= $filters['revisao'] === 'cpf_duplicado' ? ' selected' : '' ?>>CPF Duplicado</option>
+            <option value="sem_pendencia"<?= $filters['revisao'] === 'sem_pendencia' ? ' selected' : '' ?>>Sem pendência</option>
+        </select>
+        <select class="form-select" name="status" aria-label="Filtrar por status">
+            <option value="">Todos os status</option>
+            <?php foreach (['Em triagem','Em análise','Deferido','Indeferido','Importado','Contemplado'] as $v): ?>
+                <option value="<?= pe_h($v) ?>"<?= $filters['status'] === $v ? ' selected' : '' ?>><?= pe_h($v) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <select class="form-select" name="bairro" aria-label="Filtrar por bairro">
+            <option value="">Todos os bairros</option>
+            <?php foreach ($filterOptions['bairros'] as $v): ?><option value="<?= pe_h($v) ?>"<?= $filters['bairro'] === $v ? ' selected' : '' ?>><?= pe_h($v) ?></option><?php endforeach; ?>
+        </select>
+        <select class="form-select" name="setor" aria-label="Filtrar por setor">
+            <option value="">Todos os setores</option>
+            <?php foreach ($filterOptions['setores'] as $v): ?><option value="<?= pe_h($v) ?>"<?= $filters['setor'] === $v ? ' selected' : '' ?>><?= pe_h($v) ?></option><?php endforeach; ?>
+        </select>
+        <select class="form-select" name="origem" aria-label="Filtrar por origem">
+            <option value="">Todas as origens</option>
+            <option value="manual"<?= $filters['origem'] === 'manual' ? ' selected' : '' ?>>Manual</option>
+            <option value="importacao"<?= $filters['origem'] === 'importacao' ? ' selected' : '' ?>>Importação</option>
+        </select>
+        <button class="btn btn-primary pe-filter-submit" type="submit"><i class="bi bi-funnel"></i><span>Filtrar</span></button>
+        <a class="btn btn-light pe-filter-clear" href="primeiro-emprego/candidatos.php" title="Limpar filtros" aria-label="Limpar filtros"><i class="bi bi-x-lg"></i></a>
     </form>
 
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-        <small class="text-muted"><strong><?= (int) $list['total'] ?></strong> candidato(s) encontrado(s). Página <?= (int) $list['page'] ?> de <?= (int) $list['pages'] ?>.</small>
+    <div class="pe-table-toolbar">
+        <div>
+            <strong><?= (int) $list['total'] ?></strong> candidato(s)
+            <span>• Página <?= (int) $list['page'] ?> de <?= (int) $list['pages'] ?></span>
+        </div>
+        <small class="text-muted d-none d-md-inline"><i class="bi bi-hand-index-thumb"></i> Clique em uma linha para abrir detalhes e ações</small>
     </div>
 
-    <div class="table-responsive">
-        <table class="table align-middle pe-data-table pe-candidate-review-table">
-            <thead>
-                <tr>
-                    <th>Candidato</th>
-                    <th>CPF</th>
-                    <th>Nascimento</th>
-                    <th>Telefone</th>
-                    <th>Bairro</th>
-                    <th>Setor</th>
-                    <th>Revisão</th>
-                    <th>Status</th>
-                    <th class="text-end">Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-            <?php if (!$list['rows']): ?>
-                <tr><td colspan="9" class="text-center text-muted py-5">Nenhum candidato encontrado.</td></tr>
-            <?php endif; ?>
-            <?php foreach ($list['rows'] as $row): ?>
-                <?php $reviewLabels = pe_review_labels($row); ?>
-                <tr class="<?= pe_h(pe_review_row_class($row)) ?>">
-                    <td>
-                        <strong><?= pe_h($row['nome']) ?></strong>
-                        <small class="d-block text-muted">#<?= (int) $row['id'] ?> · <?= pe_h($row['origem']) ?></small>
-                    </td>
-                    <td>
-                        <?= pe_h(pe_format_cpf($row['cpf'] ?: $row['cpf_informado'] ?: '—')) ?>
-                        <?php if (!empty($row['cpf_duplicado'])): ?><small class="d-block fw-semibold text-danger"><i class="bi bi-exclamation-triangle-fill"></i> duplicado</small><?php endif; ?>
-                    </td>
-                    <td><?= $row['data_nascimento'] ? pe_h(date('d/m/Y', strtotime((string) $row['data_nascimento']))) : '<span class="text-muted">Não informada</span>' ?></td>
-                    <td><?= pe_h(pe_format_phone($row['telefone'] ?: '—')) ?></td>
-                    <td><?= pe_h($row['bairro'] ?: '—') ?></td>
-                    <td><?= pe_h($row['setor'] ?: '—') ?></td>
-                    <td class="pe-review-cell">
-                        <?php if (!empty($row['revisao_status'])): ?>
-                            <span class="badge <?= pe_h(pe_review_badge_class($row)) ?>"><?= pe_h($row['revisao_status']) ?></span>
-                            <?php if ($reviewLabels): ?>
-                                <small class="d-block mt-1 text-body-secondary"><?= pe_h(implode(' · ', $reviewLabels)) ?></small>
+    <div class="pe-candidate-table-wrap">
+        <div class="table-responsive pe-candidate-table-scroll">
+            <table class="table align-middle pe-data-table pe-candidate-review-table pe-candidate-table">
+                <thead>
+                    <tr>
+                        <th>Candidato</th>
+                        <th>CPF</th>
+                        <th>Nascimento</th>
+                        <th>Telefone</th>
+                        <th>Bairro</th>
+                        <th>Setor</th>
+                        <th>Revisão</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php if (!$list['rows']): ?>
+                    <tr class="pe-empty-row"><td colspan="8" class="text-center text-muted py-5"><i class="bi bi-search d-block fs-3 mb-2"></i>Nenhum candidato encontrado com os filtros atuais.</td></tr>
+                <?php endif; ?>
+                <?php foreach ($list['rows'] as $row): ?>
+                    <?php
+                    $reviewLabels = pe_review_labels($row);
+                    $candidateCpf = pe_format_cpf($row['cpf'] ?: $row['cpf_informado'] ?: '—');
+                    $candidateBirth = $row['data_nascimento'] ? date('d/m/Y', strtotime((string) $row['data_nascimento'])) : 'Não informada';
+                    $candidatePhone = pe_format_phone($row['telefone'] ?: '—');
+                    $candidateReview = !empty($row['revisao_status']) ? (string) $row['revisao_status'] : 'Sem pendência';
+                    $candidateReviewDetails = $reviewLabels ? implode(' · ', $reviewLabels) : 'Cadastro sem pendências';
+                    ?>
+                    <tr
+                        class="pe-candidate-row <?= pe_h(pe_review_row_class($row)) ?>"
+                        tabindex="0"
+                        role="button"
+                        aria-label="Abrir ações de <?= pe_h($row['nome']) ?>"
+                        data-pe-candidate-row
+                        data-id="<?= (int) $row['id'] ?>"
+                        data-name="<?= pe_h($row['nome']) ?>"
+                        data-cpf="<?= pe_h($candidateCpf) ?>"
+                        data-birth="<?= pe_h($candidateBirth) ?>"
+                        data-phone="<?= pe_h($candidatePhone) ?>"
+                        data-neighborhood="<?= pe_h($row['bairro'] ?: 'Não informado') ?>"
+                        data-sector="<?= pe_h($row['setor'] ?: 'Não informado') ?>"
+                        data-review="<?= pe_h($candidateReview) ?>"
+                        data-review-details="<?= pe_h($candidateReviewDetails) ?>"
+                        data-status="<?= pe_h($row['status']) ?>"
+                        data-origin="<?= pe_h($row['origem']) ?>"
+                        data-duplicate="<?= !empty($row['cpf_duplicado']) ? '1' : '0' ?>"
+                    >
+                        <td data-label="Candidato" class="pe-candidate-name-cell">
+                            <div class="pe-candidate-name">
+                                <span class="pe-candidate-avatar" aria-hidden="true"><i class="bi bi-person"></i></span>
+                                <div>
+                                    <strong><?= pe_h($row['nome']) ?></strong>
+                                    <small>#<?= (int) $row['id'] ?> · <?= pe_h($row['origem']) ?></small>
+                                </div>
+                            </div>
+                        </td>
+                        <td data-label="CPF">
+                            <span><?= pe_h($candidateCpf) ?></span>
+                            <?php if (!empty($row['cpf_duplicado'])): ?><small class="pe-inline-alert"><i class="bi bi-exclamation-triangle-fill"></i> duplicado</small><?php endif; ?>
+                        </td>
+                        <td data-label="Nascimento"><?= pe_h($candidateBirth) ?></td>
+                        <td data-label="Telefone"><?= pe_h($candidatePhone) ?></td>
+                        <td data-label="Bairro"><?= pe_h($row['bairro'] ?: '—') ?></td>
+                        <td data-label="Setor"><?= pe_h($row['setor'] ?: '—') ?></td>
+                        <td data-label="Revisão" class="pe-review-cell">
+                            <?php if (!empty($row['revisao_status'])): ?>
+                                <span class="badge <?= pe_h(pe_review_badge_class($row)) ?>"><?= pe_h($row['revisao_status']) ?></span>
+                                <?php if ($reviewLabels): ?><small><?= pe_h(implode(' · ', $reviewLabels)) ?></small><?php endif; ?>
+                            <?php else: ?>
+                                <span class="badge pe-badge-ok"><i class="bi bi-check2"></i> Sem pendência</span>
                             <?php endif; ?>
-                        <?php else: ?>
-                            <span class="badge text-bg-success">Sem pendência</span>
-                        <?php endif; ?>
-                    </td>
-                    <td><span class="badge text-bg-light border"><?= pe_h($row['status']) ?></span></td>
-                    <td class="text-end text-nowrap">
-                        <a class="btn btn-sm btn-outline-primary" href="primeiro-emprego/candidatos.php?revisar=<?= (int) $row['id'] ?>" title="Revisar cadastro"><i class="bi bi-pencil-square"></i></a>
-                        <a class="btn btn-sm btn-light" href="primeiro-emprego/acompanhamentos.php?candidato_id=<?= (int) $row['id'] ?>" title="Visita social"><i class="bi bi-house-check"></i></a>
-                        <a class="btn btn-sm btn-light" href="primeiro-emprego/lotacoes.php?candidato_id=<?= (int) $row['id'] ?>" title="Ficha cadastral"><i class="bi bi-person-vcard"></i></a>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-            </tbody>
-        </table>
+                        </td>
+                        <td data-label="Status"><span class="pe-status-badge"><?= pe_h($row['status']) ?></span></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="offcanvas offcanvas-end pe-candidate-drawer" tabindex="-1" id="peCandidateDrawer" aria-labelledby="peCandidateDrawerTitle">
+        <div class="offcanvas-header">
+            <div>
+                <div class="card-kicker">Candidato</div>
+                <h2 class="offcanvas-title" id="peCandidateDrawerTitle" data-pe-drawer-name>Detalhes do candidato</h2>
+                <small class="text-muted" data-pe-drawer-meta></small>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div class="pe-drawer-review" data-pe-drawer-review-box>
+                <div class="pe-drawer-review__title"><i class="bi bi-shield-check"></i><strong data-pe-drawer-review></strong></div>
+                <span data-pe-drawer-review-details></span>
+            </div>
+
+            <dl class="pe-drawer-details">
+                <div><dt>CPF</dt><dd data-pe-drawer-cpf>—</dd></div>
+                <div><dt>Telefone</dt><dd data-pe-drawer-phone>—</dd></div>
+                <div><dt>Nascimento</dt><dd data-pe-drawer-birth>—</dd></div>
+                <div><dt>Bairro</dt><dd data-pe-drawer-neighborhood>—</dd></div>
+                <div><dt>Setor</dt><dd data-pe-drawer-sector>—</dd></div>
+                <div><dt>Status</dt><dd data-pe-drawer-status>—</dd></div>
+            </dl>
+
+            <div class="pe-drawer-section-title">O que você deseja fazer?</div>
+            <div class="pe-candidate-actions">
+                <a class="pe-action-card pe-action-card--primary" href="#" data-pe-action-review>
+                    <i class="bi bi-pencil-square"></i><span><strong>Revisar / editar cadastro</strong><small>Corrigir ou confirmar pendências cadastrais</small></span><i class="bi bi-chevron-right"></i>
+                </a>
+                <a class="pe-action-card" href="#" data-pe-action-visit>
+                    <i class="bi bi-house-check"></i><span><strong>Visita social</strong><small>Abrir acompanhamento e parecer técnico</small></span><i class="bi bi-chevron-right"></i>
+                </a>
+                <a class="pe-action-card" href="#" data-pe-action-profile>
+                    <i class="bi bi-person-vcard"></i><span><strong>Ficha cadastral</strong><small>Consultar ou preencher a ficha do candidato</small></span><i class="bi bi-chevron-right"></i>
+                </a>
+            </div>
+        </div>
     </div>
 
     <?php if ($list['pages'] > 1): ?>

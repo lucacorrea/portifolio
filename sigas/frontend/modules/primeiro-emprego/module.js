@@ -96,3 +96,86 @@
 
     render(false);
 })();
+
+(() => {
+    const rows = [...document.querySelectorAll('[data-pe-candidate-row]')];
+    const drawerElement = document.getElementById('peCandidateDrawer');
+    if (!rows.length || !drawerElement || typeof bootstrap === 'undefined') return;
+
+    const drawer = bootstrap.Offcanvas.getOrCreateInstance(drawerElement);
+    const get = selector => drawerElement.querySelector(selector);
+
+    const fields = {
+        name: get('[data-pe-drawer-name]'),
+        meta: get('[data-pe-drawer-meta]'),
+        cpf: get('[data-pe-drawer-cpf]'),
+        phone: get('[data-pe-drawer-phone]'),
+        birth: get('[data-pe-drawer-birth]'),
+        neighborhood: get('[data-pe-drawer-neighborhood]'),
+        sector: get('[data-pe-drawer-sector]'),
+        status: get('[data-pe-drawer-status]'),
+        review: get('[data-pe-drawer-review]'),
+        reviewDetails: get('[data-pe-drawer-review-details]'),
+        reviewBox: get('[data-pe-drawer-review-box]'),
+        reviewAction: get('[data-pe-action-review]'),
+        visitAction: get('[data-pe-action-visit]'),
+        profileAction: get('[data-pe-action-profile]'),
+    };
+
+    const candidateUrl = (path, id) => `primeiro-emprego/${path}?candidato_id=${encodeURIComponent(id)}`;
+
+    const reviewUrl = id => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('revisar', id);
+        url.searchParams.delete('p');
+        url.hash = 'revisao-candidato';
+        return url.href;
+    };
+
+    const fillDrawer = row => {
+        const data = row.dataset;
+        fields.name.textContent = data.name || 'Candidato';
+        fields.meta.textContent = `#${data.id || '—'} · ${data.origin || 'origem não informada'}`;
+        fields.cpf.textContent = data.cpf || '—';
+        fields.phone.textContent = data.phone || '—';
+        fields.birth.textContent = data.birth || '—';
+        fields.neighborhood.textContent = data.neighborhood || '—';
+        fields.sector.textContent = data.sector || '—';
+        fields.status.textContent = data.status || '—';
+        fields.review.textContent = data.review || 'Sem pendência';
+        fields.reviewDetails.textContent = data.reviewDetails || 'Cadastro sem pendências';
+
+        fields.reviewBox.classList.remove('is-ok', 'is-warning', 'is-multiple', 'is-critical');
+        if (data.duplicate === '1') {
+            fields.reviewBox.classList.add('is-critical');
+        } else if ((data.review || '').toLowerCase().includes('cadastro')) {
+            fields.reviewBox.classList.add('is-multiple');
+        } else if ((data.review || '') && data.review !== 'Sem pendência') {
+            fields.reviewBox.classList.add('is-warning');
+        } else {
+            fields.reviewBox.classList.add('is-ok');
+        }
+
+        fields.reviewAction.href = reviewUrl(data.id);
+        fields.visitAction.href = candidateUrl('acompanhamentos.php', data.id);
+        fields.profileAction.href = candidateUrl('lotacoes.php', data.id);
+    };
+
+    const openRow = row => {
+        fillDrawer(row);
+        drawer.show();
+    };
+
+    rows.forEach(row => {
+        row.addEventListener('click', event => {
+            if (event.target.closest('a, button, input, select, textarea, label')) return;
+            openRow(row);
+        });
+
+        row.addEventListener('keydown', event => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            openRow(row);
+        });
+    });
+})();
