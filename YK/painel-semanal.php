@@ -9,6 +9,9 @@ $pageTitle = 'Painel Semanal de Serviços';
 $pageSubtitle =
     'Agenda operacional por funcionário, equipe, dia e horário';
 
+// O painel semanal abre com a navegação lateral recolhida para priorizar a agenda.
+$pageBodyClass = 'sidebar-collapsed weekly-panel-shell';
+
 $primaryActionLabel = 'Novo serviço';
 $primaryActionIcon = 'bi-calendar-plus';
 $primaryActionTarget = '#modal-week-create';

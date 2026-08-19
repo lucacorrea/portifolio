@@ -231,9 +231,22 @@ function weekly_employee_name(
     $value
   );
 
-  return is_string($clean)
+  $cleanName = is_string($clean)
     ? trim($clean)
     : $value;
+
+  /*
+   * No quadro semanal o cabeçalho deve ser curto.
+   * Exibe somente primeiro e segundo nome, mantendo o nome
+   * completo disponível nos cadastros e filtros do sistema.
+   */
+  $parts = preg_split('/\s+/u', $cleanName) ?: [];
+  $parts = array_values(array_filter(
+    array_map('trim', $parts),
+    static fn(string $part): bool => $part !== ''
+  ));
+
+  return implode(' ', array_slice($parts, 0, 2));
 }
 
 /**
@@ -895,7 +908,7 @@ uasort(
 
 $visibleTeamCount = count($teamColumns);
 $boardColumnCount = max(1, $visibleTeamCount);
-$boardMinWidth = 154 + ($boardColumnCount * 286);
+$boardMinWidth = 108 + ($boardColumnCount * 232);
 
 /*
  * Indicadores.
@@ -1024,16 +1037,113 @@ $pageData = json_encode(
     --weekly-green: #15803d;
   }
 
+  /* Painel em modo operacional: mais área útil e menos altura desperdiçada. */
+  body.weekly-panel-shell.sidebar-collapsed .os-sidebar {
+    width: 0;
+    min-width: 0;
+    border-right: 0;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  body.weekly-panel-shell .topbar {
+    min-height: 60px;
+    padding: 8px 18px;
+  }
+
+  body.weekly-panel-shell .page-body.weekly-planning-page {
+    padding: 12px 16px 18px;
+  }
+
+  .weekly-planning-page .metrics-grid {
+    gap: 9px;
+    margin-bottom: 10px;
+  }
+
+  .weekly-planning-page .metric-card {
+    min-height: 82px;
+    padding: 10px 12px;
+    border-radius: 10px;
+  }
+
+  .weekly-planning-page .metric-card::before {
+    width: 3px;
+  }
+
+  .weekly-planning-page .metric-label {
+    font-size: 9px;
+  }
+
+  .weekly-planning-page .metric-icon-wrap {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+  }
+
+  .weekly-planning-page .metric-value {
+    margin-top: 6px;
+    font-size: 21px;
+  }
+
+  .weekly-planning-page .metric-footer {
+    margin-top: 4px;
+    gap: 4px;
+    font-size: 10px;
+  }
+
+  .weekly-planning-page .filter-bar {
+    gap: 7px;
+    margin-bottom: 10px;
+    padding: 8px;
+    border-radius: 10px;
+  }
+
+  .weekly-planning-page .search-input,
+  .weekly-planning-page .filter-select {
+    min-height: 34px;
+    border-radius: 9px;
+    font-size: 12px;
+  }
+
+  .weekly-planning-page .btn-filter {
+    min-height: 32px;
+    padding-block: 5px;
+    font-size: 11px;
+  }
+
+  .weekly-planning-page .panel {
+    border-radius: 10px;
+  }
+
+  .weekly-planning-page .panel-header {
+    min-height: 48px;
+    padding: 8px 11px;
+  }
+
+  .weekly-planning-page .panel-title {
+    font-size: 13px;
+  }
+
+  .weekly-panel-subtitle {
+    font-size: .66rem;
+  }
+
+  .weekly-card-badges .badge-soft {
+    padding: 2px 5px;
+    font-size: .55rem;
+  }
+
   .weekly-navigation {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
     flex-wrap: wrap;
   }
 
   .weekly-panel-title-wrap {
     display: grid;
-    gap: 3px;
+    gap: 1px;
   }
 
   .weekly-panel-subtitle {
@@ -1045,9 +1155,9 @@ $pageData = json_encode(
   .weekly-board-meta {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     flex-wrap: wrap;
-    padding: 10px 14px;
+    padding: 6px 10px;
     border-bottom: 1px solid var(--weekly-border);
     background: #fbfdff;
   }
@@ -1056,13 +1166,13 @@ $pageData = json_encode(
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    min-height: 28px;
-    padding: 5px 9px;
+    min-height: 24px;
+    padding: 3px 7px;
     border: 1px solid #dbe5f0;
     border-radius: 999px;
     background: #fff;
     color: #475569;
-    font-size: .69rem;
+    font-size: .63rem;
     font-weight: 800;
   }
 
@@ -1080,7 +1190,7 @@ $pageData = json_encode(
 
   .weekly-resource-grid {
     display: grid;
-    grid-template-columns: 154px repeat(var(--weekly-team-count), minmax(270px, 1fr));
+    grid-template-columns: 108px repeat(var(--weekly-team-count), minmax(220px, 1fr));
     align-items: stretch;
     background: var(--weekly-border);
     gap: 1px;
@@ -1091,7 +1201,7 @@ $pageData = json_encode(
     position: sticky;
     top: 0;
     z-index: 12;
-    min-height: 76px;
+    min-height: 54px;
     background: #f8fbff;
     border-bottom: 1px solid #cfd9e5;
   }
@@ -1101,41 +1211,41 @@ $pageData = json_encode(
     z-index: 14;
     display: grid;
     place-items: center;
-    padding: 12px;
+    padding: 7px;
     color: #475569;
     text-align: center;
   }
 
   .weekly-resource-corner strong {
     color: #0f172a;
-    font-size: .76rem;
+    font-size: .6rem;
     letter-spacing: .06em;
     text-transform: uppercase;
   }
 
   .weekly-resource-corner span {
     color: #94a3b8;
-    font-size: .66rem;
+    font-size: .6rem;
     font-weight: 700;
   }
 
   .weekly-team-column-header {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 11px 13px;
+    gap: 7px;
+    padding: 7px 9px;
   }
 
   .weekly-team-avatar {
     display: grid;
     place-items: center;
-    flex: 0 0 38px;
-    width: 38px;
-    height: 38px;
-    border-radius: 12px;
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
     background: #e8f2ff;
     color: #0b63ce;
-    font-size: .75rem;
+    font-size: .66rem;
     font-weight: 900;
     letter-spacing: .02em;
   }
@@ -1143,22 +1253,22 @@ $pageData = json_encode(
   .weekly-team-header-text {
     min-width: 0;
     display: grid;
-    gap: 3px;
+    gap: 1px;
   }
 
   .weekly-team-header-text strong {
     overflow: hidden;
     color: #10233f;
-    font-size: .8rem;
+    font-size: .69rem;
     font-weight: 900;
-    line-height: 1.22;
+    line-height: 1.16;
     text-overflow: ellipsis;
     text-transform: uppercase;
   }
 
   .weekly-team-header-text span {
     color: #64748b;
-    font-size: .68rem;
+    font-size: .6rem;
     font-weight: 700;
   }
 
@@ -1167,11 +1277,11 @@ $pageData = json_encode(
     left: 0;
     z-index: 9;
     display: flex;
-    min-height: 156px;
+    min-height: 92px;
     align-items: center;
     justify-content: center;
     flex-direction: column;
-    gap: 3px;
+    gap: 1px;
     padding: 14px 10px;
     background: linear-gradient(160deg, #0d65c8, #1678e6);
     color: #fff;
@@ -1184,31 +1294,31 @@ $pageData = json_encode(
   }
 
   .weekly-day-label strong {
-    font-size: .88rem;
+    font-size: .74rem;
     font-weight: 900;
     letter-spacing: .025em;
     text-transform: uppercase;
   }
 
   .weekly-day-label .weekly-day-date {
-    font-size: .8rem;
+    font-size: .68rem;
     font-weight: 800;
   }
 
   .weekly-today-badge {
-    margin-top: 5px;
-    padding: 3px 7px;
+    margin-top: 2px;
+    padding: 2px 6px;
     border-radius: 999px;
     background: #fbbf24;
     color: #713f12;
-    font-size: .58rem;
+    font-size: .52rem;
     font-weight: 900;
     letter-spacing: .04em;
   }
 
   .weekly-team-cell {
     min-width: 0;
-    min-height: 156px;
+    min-height: 92px;
     padding: 8px;
     background: #fff;
   }
@@ -1219,22 +1329,22 @@ $pageData = json_encode(
 
   .weekly-team-cell-content {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-    gap: 8px;
+    grid-template-columns: 1fr;
+    gap: 4px;
     align-items: start;
   }
 
   .weekly-cell-empty {
     display: flex;
-    min-height: 138px;
+    min-height: 80px;
     align-items: center;
     justify-content: center;
-    gap: 7px;
+    gap: 4px;
     border: 1px dashed #d9e2ec;
     border-radius: 10px;
     background: #fafcfe;
     color: #94a3b8;
-    font-size: .7rem;
+    font-size: .62rem;
     font-weight: 700;
   }
 
@@ -1245,12 +1355,12 @@ $pageData = json_encode(
   .weekly-planning-card {
     position: relative;
     display: grid;
-    gap: 6px;
+    gap: 3px;
     min-width: 0;
-    padding: 10px 11px;
+    padding: 7px 8px;
     border: 1px solid #dfe6ee;
-    border-left: 4px solid #2563eb;
-    border-radius: 10px;
+    border-left: 3px solid #2563eb;
+    border-radius: 8px;
     background: #fff;
     box-shadow: 0 3px 10px rgba(15, 23, 42, .055);
     transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
@@ -1289,25 +1399,25 @@ $pageData = json_encode(
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 8px;
+    gap: 4px;
   }
 
   .weekly-card-time-block {
     min-width: 0;
     display: grid;
-    gap: 2px;
+    gap: 1px;
   }
 
   .weekly-card-time {
     color: #0b63ce;
-    font-size: .86rem;
+    font-size: .76rem;
     font-weight: 900;
     line-height: 1.15;
   }
 
   .weekly-card-code {
     color: #64748b;
-    font-size: .64rem;
+    font-size: .57rem;
     font-weight: 800;
     letter-spacing: .025em;
   }
@@ -1316,19 +1426,19 @@ $pageData = json_encode(
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 4px;
+    gap: 3px;
     flex-wrap: wrap;
   }
 
   .weekly-now-badge {
     display: inline-flex;
     align-items: center;
-    min-height: 20px;
-    padding: 3px 6px;
+    min-height: 17px;
+    padding: 2px 5px;
     border-radius: 999px;
     background: #dcfce7;
     color: #166534;
-    font-size: .58rem;
+    font-size: .52rem;
     font-weight: 900;
     letter-spacing: .04em;
   }
@@ -1336,7 +1446,7 @@ $pageData = json_encode(
   .weekly-card-client {
     overflow: hidden;
     color: #0f172a;
-    font-size: .82rem;
+    font-size: .72rem;
     font-weight: 900;
     line-height: 1.3;
     text-overflow: ellipsis;
@@ -1344,22 +1454,22 @@ $pageData = json_encode(
 
   .weekly-card-service {
     color: #334155;
-    font-size: .73rem;
+    font-size: .65rem;
     font-weight: 650;
     line-height: 1.35;
   }
 
   .weekly-card-info {
     display: grid;
-    gap: 3px;
+    gap: 1px;
     color: #64748b;
-    font-size: .66rem;
+    font-size: .6rem;
   }
 
   .weekly-card-info span {
     display: flex;
     align-items: flex-start;
-    gap: 5px;
+    gap: 4px;
     min-width: 0;
   }
 
@@ -1372,15 +1482,15 @@ $pageData = json_encode(
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 7px;
+    gap: 4px;
     flex-wrap: wrap;
-    padding-top: 6px;
+    padding-top: 4px;
     border-top: 1px solid #eef2f7;
   }
 
   .weekly-card-actions {
     display: flex;
-    gap: 5px;
+    gap: 4px;
     flex-wrap: wrap;
   }
 
@@ -1388,12 +1498,12 @@ $pageData = json_encode(
   .weekly-order-link {
     min-height: 30px;
     padding: 5px 8px;
-    font-size: .66rem;
+    font-size: .6rem;
   }
 
   .weekly-priority {
     color: #64748b;
-    font-size: .61rem;
+    font-size: .56rem;
     font-weight: 900;
     text-transform: uppercase;
     letter-spacing: .035em;
@@ -1410,7 +1520,7 @@ $pageData = json_encode(
 
   .weekly-confirm-item {
     display: grid;
-    gap: 3px;
+    gap: 1px;
     padding: 10px 12px;
     border: 1px solid #e5e7eb;
     border-radius: 10px;
@@ -1419,23 +1529,23 @@ $pageData = json_encode(
 
   .weekly-confirm-item span {
     color: #64748b;
-    font-size: .7rem;
+    font-size: .62rem;
     font-weight: 700;
     text-transform: uppercase;
   }
 
   .weekly-confirm-item strong {
     color: #0f172a;
-    font-size: .86rem;
+    font-size: .76rem;
   }
 
   @media (max-width: 991.98px) {
     .weekly-resource-grid {
-      grid-template-columns: 122px repeat(var(--weekly-team-count), minmax(250px, 1fr));
+      grid-template-columns: 96px repeat(var(--weekly-team-count), minmax(214px, 1fr));
     }
 
     .weekly-day-label {
-      min-height: 148px;
+      min-height: 88px;
     }
   }
 
@@ -1450,7 +1560,7 @@ $pageData = json_encode(
     }
 
     .weekly-resource-grid {
-      grid-template-columns: 96px repeat(var(--weekly-team-count), minmax(238px, 1fr));
+      grid-template-columns: 82px repeat(var(--weekly-team-count), minmax(205px, 1fr));
     }
 
     .weekly-resource-corner {
@@ -1462,7 +1572,7 @@ $pageData = json_encode(
     }
 
     .weekly-day-label {
-      min-height: 142px;
+      min-height: 84px;
       padding-inline: 6px;
     }
 
@@ -1471,19 +1581,19 @@ $pageData = json_encode(
     }
 
     .weekly-team-column-header {
-      min-height: 68px;
-      padding: 9px;
+      min-height: 50px;
+      padding: 6px;
     }
 
     .weekly-team-avatar {
-      flex-basis: 32px;
-      width: 32px;
-      height: 32px;
-      border-radius: 10px;
+      flex-basis: 27px;
+      width: 27px;
+      height: 27px;
+      border-radius: 8px;
     }
 
     .weekly-team-cell {
-      min-height: 142px;
+      min-height: 84px;
       padding: 6px;
     }
   }
@@ -1706,12 +1816,12 @@ $pageData = json_encode(
 
       <span class="weekly-board-chip">
         <i class="bi bi-clock-history"></i>
-        Horários organizados por equipe
+        Horários por equipe
       </span>
 
       <span class="weekly-board-chip">
         <i class="bi bi-check-circle"></i>
-        Célula livre = sem atendimento
+        Livre = sem atendimento
       </span>
     </div>
 
@@ -1907,10 +2017,6 @@ $pageData = json_encode(
                               </span>
                             <?php endif; ?>
 
-                            <span>
-                              <i class="bi bi-people"></i>
-                              <?= h($teamName) ?>
-                            </span>
                           </div>
 
                           <div class="weekly-card-footer">
@@ -2023,7 +2129,7 @@ $pageData = json_encode(
                                 class="btn-filter btn-filter-ghost weekly-order-link"
                                 href="ordens-servico.php?search=<?= h(rawurlencode($order->displayNumber())) ?>">
                                 <i class="bi bi-box-arrow-up-right"></i>
-                                Abrir OS
+                                Abrir
                               </a>
                             <?php endif; ?>
                           </div>
