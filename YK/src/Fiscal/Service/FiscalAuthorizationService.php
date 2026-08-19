@@ -72,17 +72,53 @@ final class FiscalAuthorizationService
         try {
             $response = $tools->sefazEnviaLote([$signed], $batchId, 1);
         } catch (Throwable $exception) {
-            $this->documents->transaction(function () use ($documentId, $userId): void {
-                $this->documents->markPendingReconciliation($documentId, 'Comunicação interrompida; reconsulta obrigatória.');
-                $this->documents->updateLatestTransmissionAttempt(
-                    $documentId, 'pendente_reconsulta', null, null, '', 'Comunicação interrompida; reconsulta obrigatória.'
+            $correlationId = FiscalSafeLogger::record(
+                $exception,
+                'authorization_transmit'
+            );
+
+            $reason = $this->boundedReason(
+                'Comunicação com a SEFAZ interrompida; reconsulta obrigatória. '
+                . 'Nenhuma nova nota será gerada. Ref: '
+                . $correlationId
+                . '.'
+            );
+
+            $this->documents->transaction(function () use (
+                $documentId,
+                $userId,
+                $reason,
+                $correlationId
+            ): void {
+                $this->documents->markPendingReconciliation(
+                    $documentId,
+                    $reason
                 );
+
+                $this->documents->updateLatestTransmissionAttempt(
+                    $documentId,
+                    'pendente_reconsulta',
+                    null,
+                    null,
+                    '',
+                    $reason
+                );
+
                 $this->documents->addEvent(
-                    $documentId, 'transmissao_inconclusiva', 'processando', 'pendente_reconsulta', $userId
+                    $documentId,
+                    'transmissao_inconclusiva',
+                    'processando',
+                    'pendente_reconsulta',
+                    $userId,
+                    ['correlation_id' => $correlationId]
                 );
             });
-            error_log('Fiscal transmission inconclusive [' . get_class($exception) . '].');
-            return ['status'=>'pendente_reconsulta','cstat'=>'','reason'=>'A transmissão ficou inconclusiva e será reconsultada sem gerar outra nota.'];
+
+            return [
+                'status' => 'pendente_reconsulta',
+                'cstat' => '',
+                'reason' => $reason,
+            ];
         }
 
         return $this->applyResponse($document, $signed, $response, $userId);
@@ -122,9 +158,28 @@ final class FiscalAuthorizationService
                 throw new RuntimeException('Fiscal document has no receipt or access key.');
             }
         } catch (Throwable $exception) {
-            $this->documents->markPendingReconciliation($documentId, 'SEFAZ indisponível para reconsulta; tente novamente.');
-            error_log('Fiscal reconciliation failed [' . get_class($exception) . '].');
-            return ['status'=>'pendente_reconsulta','cstat'=>'','reason'=>'A SEFAZ ainda não respondeu à reconsulta.'];
+            $correlationId = FiscalSafeLogger::record(
+                $exception,
+                'authorization_reconcile'
+            );
+
+            $reason = $this->boundedReason(
+                'A SEFAZ ainda não respondeu à reconsulta. '
+                . 'O documento continua protegido contra retransmissão. Ref: '
+                . $correlationId
+                . '.'
+            );
+
+            $this->documents->markPendingReconciliation(
+                $documentId,
+                $reason
+            );
+
+            return [
+                'status' => 'pendente_reconsulta',
+                'cstat' => '',
+                'reason' => $reason,
+            ];
         }
         return $this->applyResponse($document, $signed, $response, $userId);
     }
@@ -276,71 +331,318 @@ final class FiscalAuthorizationService
     }
 
     /** @param array<string,mixed> $document @return array{status:string,cstat:string,reason:string} */
-    private function applyResponse(array $document, string $signed, string $response, int $userId): array
-    {
+    private function applyResponse(
+        array $document,
+        string $signed,
+        string $response,
+        int $userId
+    ): array {
         $responseArtifact = $this->storage->store(
-            (string) $document['ambiente'], (string) $document['modelo'], (int) $document['id'], 'resposta', $response
+            (string) $document['ambiente'],
+            (string) $document['modelo'],
+            (int) $document['id'],
+            'resposta',
+            $response
         );
+
         try {
             $result = $this->responseParser->authorization($response);
-        } catch (InvalidArgumentException) {
-            $reason = 'A resposta da SEFAZ foi preservada, mas não pôde ser interpretada; reconsulta obrigatória.';
-            $this->documents->transaction(function () use ($document, $responseArtifact, $reason, $userId): void {
-                $this->documents->markPendingReconciliation((int) $document['id'], $reason);
-                $this->documents->updateLatestTransmissionAttempt(
-                    (int) $document['id'], 'pendente_reconsulta', $responseArtifact, null, '', $reason
+        } catch (InvalidArgumentException $exception) {
+            $correlationId = FiscalSafeLogger::record(
+                $exception,
+                'authorization_response_parse'
+            );
+
+            $parserReason = $this->safeDiagnostic(
+                $exception->getMessage()
+            );
+
+            $reason = $this->boundedReason(
+                'A resposta da SEFAZ foi preservada, mas não pôde ser '
+                . 'interpretada com segurança. '
+                . ($parserReason !== '' ? $parserReason . ' ' : '')
+                . 'Reconsulta obrigatória. Ref: '
+                . $correlationId
+                . '.'
+            );
+
+            $this->documents->transaction(function () use (
+                $document,
+                $responseArtifact,
+                $reason,
+                $userId,
+                $correlationId,
+                $parserReason
+            ): void {
+                $documentId = (int) $document['id'];
+
+                $this->documents->markPendingReconciliation(
+                    $documentId,
+                    $reason
                 );
+
+                $this->documents->updateLatestTransmissionAttempt(
+                    $documentId,
+                    'pendente_reconsulta',
+                    $responseArtifact,
+                    null,
+                    '',
+                    $reason
+                );
+
                 $this->documents->addEvent(
-                    (int) $document['id'], 'resposta_sefaz_invalida',
-                    (string) $document['processamento_status'], 'pendente_reconsulta', $userId,
-                    ['artifact_path' => $responseArtifact['reference'], 'artifact_hash' => $responseArtifact['sha256']]
+                    $documentId,
+                    'resposta_sefaz_invalida',
+                    (string) $document['processamento_status'],
+                    'pendente_reconsulta',
+                    $userId,
+                    [
+                        'artifact_path' => $responseArtifact['reference'],
+                        'artifact_hash' => $responseArtifact['sha256'],
+                        'correlation_id' => $correlationId,
+                        'parser_reason' => $parserReason,
+                    ]
                 );
             });
-            return ['status' => 'pendente_reconsulta', 'cstat' => '', 'reason' => $reason];
+
+            return [
+                'status' => 'pendente_reconsulta',
+                'cstat' => '',
+                'reason' => $reason,
+            ];
         }
-        $this->documents->storeResponse(
-            (int) $document['id'], $responseArtifact, $result['receipt'], $result['cstat'], $result['reason']
+
+        $fiscalResponse = trim(
+            (string) ($result['fiscal_xml'] ?? '')
         );
+
+        if ($fiscalResponse === '') {
+            $fiscalResponse = $response;
+        }
+
+        $this->documents->storeResponse(
+            (int) $document['id'],
+            $responseArtifact,
+            $result['receipt'],
+            $result['cstat'],
+            $result['reason']
+        );
+
         if ($result['authorized']) {
-            $authorized = Complements::toAuthorize($signed, $response);
+            try {
+                $authorized = Complements::toAuthorize(
+                    $signed,
+                    $fiscalResponse
+                );
+            } catch (Throwable $exception) {
+                $correlationId = FiscalSafeLogger::record(
+                    $exception,
+                    'authorization_protocol_join'
+                );
+
+                $reason = $this->boundedReason(
+                    'A SEFAZ informou autorização, mas o protocolo '
+                    . 'ainda não pôde ser consolidado no XML local. '
+                    . 'Reconsulta obrigatória. Ref: '
+                    . $correlationId
+                    . '.'
+                );
+
+                $this->documents->transaction(function () use (
+                    $document,
+                    $result,
+                    $responseArtifact,
+                    $reason,
+                    $userId,
+                    $correlationId
+                ): void {
+                    $documentId = (int) $document['id'];
+
+                    $this->documents->markPendingReconciliation(
+                        $documentId,
+                        $reason
+                    );
+
+                    $this->documents->updateLatestTransmissionAttempt(
+                        $documentId,
+                        'pendente_reconsulta',
+                        $responseArtifact,
+                        $result['receipt'],
+                        $result['cstat'],
+                        $reason
+                    );
+
+                    $this->documents->addEvent(
+                        $documentId,
+                        'protocolo_local_pendente',
+                        (string) $document['processamento_status'],
+                        'pendente_reconsulta',
+                        $userId,
+                        [
+                            'cstat' => $result['cstat'],
+                            'reason' => $result['reason'],
+                            'correlation_id' => $correlationId,
+                            'artifact_path' => $responseArtifact['reference'],
+                            'artifact_hash' => $responseArtifact['sha256'],
+                        ]
+                    );
+                });
+
+                return [
+                    'status' => 'pendente_reconsulta',
+                    'cstat' => $result['cstat'],
+                    'reason' => $reason,
+                ];
+            }
+
             $authorizedArtifact = $this->storage->store(
-                (string) $document['ambiente'], (string) $document['modelo'], (int) $document['id'], 'autorizado', $authorized
+                (string) $document['ambiente'],
+                (string) $document['modelo'],
+                (int) $document['id'],
+                'autorizado',
+                $authorized
             );
-            $this->documents->transaction(function () use ($document, $result, $responseArtifact, $authorizedArtifact, $userId): void {
+
+            $this->documents->transaction(function () use (
+                $document,
+                $result,
+                $responseArtifact,
+                $authorizedArtifact,
+                $userId
+            ): void {
+                $documentId = (int) $document['id'];
+
                 $this->documents->markAuthorized(
-                    (int) $document['id'], $result['protocol'], $result['cstat'], $result['reason'], $authorizedArtifact
+                    $documentId,
+                    $result['protocol'],
+                    $result['cstat'],
+                    $result['reason'],
+                    $authorizedArtifact
                 );
+
                 $this->documents->updateLatestTransmissionAttempt(
-                    (int)$document['id'], 'autorizado', $responseArtifact, $result['receipt'], $result['cstat'], $result['reason']
+                    $documentId,
+                    'autorizado',
+                    $responseArtifact,
+                    $result['receipt'],
+                    $result['cstat'],
+                    $result['reason']
                 );
+
                 $this->documents->addEvent(
-                    (int) $document['id'], 'autorizacao_sefaz', (string) $document['processamento_status'],
-                    'autorizado', $userId,
-                    ['cstat'=>$result['cstat'], 'reason'=>$result['reason'],
-                        'artifact_path'=>$authorizedArtifact['reference'], 'artifact_hash'=>$authorizedArtifact['sha256']]
+                    $documentId,
+                    'autorizacao_sefaz',
+                    (string) $document['processamento_status'],
+                    'autorizado',
+                    $userId,
+                    [
+                        'cstat' => $result['cstat'],
+                        'reason' => $result['reason'],
+                        'artifact_path' => $authorizedArtifact['reference'],
+                        'artifact_hash' => $authorizedArtifact['sha256'],
+                    ]
                 );
             });
-            return ['status'=>'autorizado','cstat'=>$result['cstat'],'reason'=>$result['reason']];
+
+            return [
+                'status' => 'autorizado',
+                'cstat' => $result['cstat'],
+                'reason' => $result['reason'],
+            ];
         }
+
         if ($result['pending']) {
-            $this->documents->markPendingReconciliation((int) $document['id'], $result['reason']);
-            $this->documents->updateLatestTransmissionAttempt(
-                (int)$document['id'], 'pendente_reconsulta', $responseArtifact, $result['receipt'], $result['cstat'], $result['reason']
+            $this->documents->markPendingReconciliation(
+                (int) $document['id'],
+                $result['reason']
             );
-            return ['status'=>'pendente_reconsulta','cstat'=>$result['cstat'],'reason'=>$result['reason']];
+
+            $this->documents->updateLatestTransmissionAttempt(
+                (int) $document['id'],
+                'pendente_reconsulta',
+                $responseArtifact,
+                $result['receipt'],
+                $result['cstat'],
+                $result['reason']
+            );
+
+            return [
+                'status' => 'pendente_reconsulta',
+                'cstat' => $result['cstat'],
+                'reason' => $result['reason'],
+            ];
         }
-        $state = in_array($result['cstat'], ['110','205','301','302'], true) ? 'denegado' : 'rejeitado';
-        $this->documents->transaction(function () use ($document, $result, $state, $responseArtifact, $userId): void {
-            $this->documents->markRejected((int) $document['id'], $state, $result['cstat'], $result['reason']);
-            $this->documents->updateLatestTransmissionAttempt(
-                (int)$document['id'], $state, $responseArtifact, $result['receipt'], $result['cstat'], $result['reason']
+
+        $state = in_array(
+            $result['cstat'],
+            ['110', '205', '301', '302', '303'],
+            true
+        ) ? 'denegado' : 'rejeitado';
+
+        $this->documents->transaction(function () use (
+            $document,
+            $result,
+            $state,
+            $responseArtifact,
+            $userId
+        ): void {
+            $documentId = (int) $document['id'];
+
+            $this->documents->markRejected(
+                $documentId,
+                $state,
+                $result['cstat'],
+                $result['reason']
             );
+
+            $this->documents->updateLatestTransmissionAttempt(
+                $documentId,
+                $state,
+                $responseArtifact,
+                $result['receipt'],
+                $result['cstat'],
+                $result['reason']
+            );
+
             $this->documents->addEvent(
-                (int) $document['id'], 'retorno_sefaz', (string) $document['processamento_status'], $state, $userId,
-                ['cstat'=>$result['cstat'], 'reason'=>$result['reason']]
+                $documentId,
+                'retorno_sefaz',
+                (string) $document['processamento_status'],
+                $state,
+                $userId,
+                [
+                    'cstat' => $result['cstat'],
+                    'reason' => $result['reason'],
+                ]
             );
         });
-        return ['status'=>$state,'cstat'=>$result['cstat'],'reason'=>$result['reason']];
+
+        return [
+            'status' => $state,
+            'cstat' => $result['cstat'],
+            'reason' => $result['reason'],
+        ];
     }
 
+    private function safeDiagnostic(string $message): string
+    {
+        $message = preg_replace(
+            '/[\x00-\x1F\x7F]+/u',
+            ' ',
+            strip_tags($message)
+        ) ?? '';
+
+        return substr(trim($message), 0, 120);
+    }
+
+    private function boundedReason(string $reason): string
+    {
+        $reason = preg_replace(
+            '/[\x00-\x1F\x7F]+/u',
+            ' ',
+            strip_tags($reason)
+        ) ?? '';
+
+        return substr(trim($reason), 0, 255);
+    }
 }
