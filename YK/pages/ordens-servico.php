@@ -248,7 +248,7 @@ function os_select_options(array $items, string $selected = '', bool $onlyActive
 
 $clientOptions = array_map(static fn(Client $client): array => ['id' => $client->id(), 'name' => $client->name(), 'active' => $client->status() === 'ativo'], $clients);
 $employeeOptions = array_map(static fn(Employee $employee): array => ['id' => $employee->id(), 'name' => $employee->displayCode() . ' - ' . $employee->name()], $employees);
-$serviceOptions = array_map(static fn(ServiceDefinition $service): array => ['id' => $service->id(), 'name' => $service->name(), 'description' => $service->description() ?? $service->name(), 'unit' => 'un', 'value' => $service->value(), 'duration_minutes' => $service->durationMinutes()], $services);
+$serviceOptions = array_map(static fn(ServiceDefinition $service): array => ['id' => $service->id(), 'name' => $service->name(), 'description' => $service->description() ?? $service->name(), 'unit' => 'un', 'value' => $service->value()], $services);
 $productOptions = array_map(static fn(Product $product): array => ['id' => $product->id(), 'name' => $product->name(), 'description' => $product->description() ?? $product->name(), 'unit' => $product->unit(), 'value' => $product->salePrice()], $products);
 ?>
 <style>
@@ -419,6 +419,35 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                             $orderHasOthers = (float) $order->othersSubtotal() > 0.00001;
 
                             $orderFiscalDocuments = $fiscalDocumentsByOrder[$order->id()] ?? [];
+
+                            /*
+                             * Documentos autorizados separados por modelo.
+                             *
+                             * DANFE  = somente NF-e modelo 55.
+                             * DANFC-e = somente NFC-e modelo 65.
+                             *
+                             * Nunca usamos o XML modelo 65 para produzir um
+                             * DANFE, nem o XML modelo 55 para produzir DANFC-e.
+                             */
+                            $authorizedDanfeDocument = null;
+                            $authorizedDanfceDocument = null;
+
+                            foreach ($orderFiscalDocuments as $fiscalDocument) {
+                                if (
+                                    (string) ($fiscalDocument['processamento_status'] ?? '')
+                                    !== 'autorizado'
+                                ) {
+                                    continue;
+                                }
+
+                                $fiscalModel = (string) ($fiscalDocument['modelo'] ?? '');
+
+                                if ($fiscalModel === '55') {
+                                    $authorizedDanfeDocument = $fiscalDocument;
+                                } elseif ($fiscalModel === '65') {
+                                    $authorizedDanfceDocument = $fiscalDocument;
+                                }
+                            }
                             ?>
                             <tr>
                                 <td>
@@ -455,13 +484,90 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                                             <?php if ($canPrint): ?><li><a class="dropdown-item" href="ordem-servico-imprimir.php?id=<?= h((string) $order->id()) ?>&valores=<?= $canViewValues ? '1' : '0' ?>" target="_blank" rel="noopener"><i class="bi bi-printer"></i> Imprimir / reimprimir OS</a></li><?php endif; ?>
                                             <?php if ($canProof && $order->status() === 'finalizada'): ?><li><a class="dropdown-item" href="ordem-servico-comprovante.php?id=<?= h((string) $order->id()) ?>&valores=0" target="_blank" rel="noopener"><i class="bi bi-file-earmark-text"></i> Comprovante não fiscal sem valores</a></li><?php endif; ?>
                                             <?php if ($canProof && $canViewValues && $order->status() === 'finalizada'): ?><li><a class="dropdown-item" href="ordem-servico-comprovante.php?id=<?= h((string) $order->id()) ?>&valores=1" target="_blank" rel="noopener"><i class="bi bi-currency-dollar"></i> Comprovante não fiscal com valores</a></li><?php endif; ?>
-                                            <?php foreach ($orderFiscalDocuments as $fiscalDocument): ?>
-                                                <?php if (($fiscalDocument['processamento_status'] ?? '') === 'autorizado' && $canViewFiscal): ?>
-                                                    <li><a class="dropdown-item" href="nota-fiscal-imprimir.php?id=<?= h((string) $fiscalDocument['id']) ?>" target="_blank" rel="noopener"><i class="bi bi-printer"></i> Imprimir <?= ($fiscalDocument['modelo'] ?? '') === '55' ? 'DANFE' : 'DANFCE' ?> autorizada</a></li>
+                                            <?php if ($canViewFiscal): ?>
+
+                                                <!-- DANFE / NF-e modelo 55 -->
+                                                <?php if (is_array($authorizedDanfeDocument)): ?>
+                                                    <li>
+                                                        <a
+                                                            class="dropdown-item"
+                                                            href="nota-fiscal-imprimir.php?id=<?= h((string) $authorizedDanfeDocument['id']) ?>"
+                                                            target="_blank"
+                                                            rel="noopener"
+                                                            title="Abrir DANFE A4 da NF-e modelo 55 autorizada"
+                                                        >
+                                                            <i class="bi bi-file-earmark-pdf"></i>
+                                                            Imprimir DANFE autorizada
+                                                            <small class="text-muted ms-1">(NF-e 55)</small>
+                                                        </a>
+                                                    </li>
                                                 <?php else: ?>
-                                                    <li><span class="dropdown-item-text text-muted"><i class="bi bi-file-earmark-lock"></i> Modelo <?= h((string) ($fiscalDocument['modelo'] ?? '')) ?>: <?= h((string) ($fiscalDocument['processamento_status'] ?? 'rascunho')) ?></span></li>
+                                                    <li>
+                                                        <span
+                                                            class="dropdown-item-text text-muted"
+                                                            title="DANFE somente pode ser gerada a partir de uma NF-e modelo 55 autorizada"
+                                                        >
+                                                            <i class="bi bi-file-earmark-pdf"></i>
+                                                            DANFE
+                                                            <small class="ms-1">(NF-e 55 não autorizada)</small>
+                                                        </span>
+                                                    </li>
                                                 <?php endif; ?>
-                                            <?php endforeach; ?>
+
+                                                <!-- DANFC-e / NFC-e modelo 65 -->
+                                                <?php if (is_array($authorizedDanfceDocument)): ?>
+                                                    <li>
+                                                        <a
+                                                            class="dropdown-item"
+                                                            href="nota-fiscal-imprimir.php?id=<?= h((string) $authorizedDanfceDocument['id']) ?>"
+                                                            target="_blank"
+                                                            rel="noopener"
+                                                            title="Abrir DANFC-e da NFC-e modelo 65 autorizada"
+                                                        >
+                                                            <i class="bi bi-receipt"></i>
+                                                            Imprimir DANFC-e autorizada
+                                                            <small class="text-muted ms-1">(NFC-e 65)</small>
+                                                        </a>
+                                                    </li>
+                                                <?php else: ?>
+                                                    <li>
+                                                        <span
+                                                            class="dropdown-item-text text-muted"
+                                                            title="DANFC-e somente pode ser gerado a partir de uma NFC-e modelo 65 autorizada"
+                                                        >
+                                                            <i class="bi bi-receipt"></i>
+                                                            DANFC-e
+                                                            <small class="ms-1">(NFC-e 65 não autorizada)</small>
+                                                        </span>
+                                                    </li>
+                                                <?php endif; ?>
+
+                                                <?php
+                                                /*
+                                                 * Mostra estados fiscais não autorizados sem misturar
+                                                 * isso com os botões de impressão acima.
+                                                 */
+                                                ?>
+                                                <?php foreach ($orderFiscalDocuments as $fiscalDocument): ?>
+                                                    <?php
+                                                    $fiscalStatus = (string) ($fiscalDocument['processamento_status'] ?? 'rascunho');
+
+                                                    if ($fiscalStatus === 'autorizado') {
+                                                        continue;
+                                                    }
+
+                                                    $fiscalModel = (string) ($fiscalDocument['modelo'] ?? '');
+                                                    ?>
+                                                    <li>
+                                                        <span class="dropdown-item-text text-muted">
+                                                            <i class="bi bi-file-earmark-lock"></i>
+                                                            <?= $fiscalModel === '55' ? 'NF-e 55' : ($fiscalModel === '65' ? 'NFC-e 65' : 'Modelo ' . h($fiscalModel)) ?>:
+                                                            <?= h($fiscalStatus) ?>
+                                                        </span>
+                                                    </li>
+                                                <?php endforeach; ?>
+
+                                            <?php endif; ?>
                                             <?php if ($order->status() === 'finalizada'): ?>
 
                                                 <?php if ($canIssueFiscal && $orderHasProducts): ?>
@@ -650,78 +756,23 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                         </section>
                     </div>
                     <div class="tab-pane fade" id="os-tab-items">
-                        <section class="form-section item-category-card item-category-card--service">
-                            <div class="item-category-header">
-                                <div class="item-category-heading">
-                                    <span class="item-category-icon"><i class="bi bi-tools"></i></span>
-                                    <div>
-                                        <h3 class="form-section-title">Serviços</h3>
-                                        <p>Serviços executados e o local específico de cada atendimento.</p>
-                                    </div>
-                                </div>
-                                <span class="item-category-count" data-item-counter="servico">0 itens</span>
-                            </div>
-                            <div class="item-category-body">
-                                <div class="os-items item-category-items" data-os-items="servico" data-empty-label="Nenhum serviço adicionado."></div>
-                            </div>
-                            <div class="item-category-footer">
-                                <button class="btn-filter btn-filter-ghost js-os-add-item" type="button" data-type="servico"><i class="bi bi-plus-lg"></i> Adicionar serviço</button>
-                            </div>
+                        <section class="form-section">
+                            <h3 class="form-section-title">Servicos</h3>
+                            <div class="os-items" data-os-items="servico"></div><button class="btn-filter btn-filter-ghost js-os-add-item" type="button" data-type="servico"><i class="bi bi-plus-lg"></i> Adicionar servico</button>
                         </section>
-                        <section class="form-section item-category-card item-category-card--product">
-                            <div class="item-category-header">
-                                <div class="item-category-heading">
-                                    <span class="item-category-icon"><i class="bi bi-box-seam"></i></span>
-                                    <div>
-                                        <h3 class="form-section-title">Produtos / peças</h3>
-                                        <p>Materiais e peças utilizados nesta Ordem de Serviço.</p>
-                                    </div>
-                                </div>
-                                <span class="item-category-count" data-item-counter="produto">0 itens</span>
-                            </div>
-                            <div class="item-category-body">
-                                <div class="os-items item-category-items" data-os-items="produto" data-empty-label="Nenhum produto ou peça adicionado."></div>
-                            </div>
-                            <div class="item-category-footer">
-                                <button class="btn-filter btn-filter-ghost js-os-add-item" type="button" data-type="produto"><i class="bi bi-plus-lg"></i> Adicionar produto / peça</button>
-                            </div>
+                        <section class="form-section">
+                            <h3 class="form-section-title">Produtos</h3>
+                            <div class="os-items" data-os-items="produto"></div><button class="btn-filter btn-filter-ghost js-os-add-item" type="button" data-type="produto"><i class="bi bi-plus-lg"></i> Adicionar produto</button>
                         </section>
-                        <section class="form-section item-category-card item-category-card--other">
-                            <div class="item-category-header">
-                                <div class="item-category-heading">
-                                    <span class="item-category-icon"><i class="bi bi-plus-square"></i></span>
-                                    <div>
-                                        <h3 class="form-section-title">Outros itens</h3>
-                                        <p>Itens adicionais que não pertencem ao catálogo de serviços ou produtos.</p>
-                                    </div>
-                                </div>
-                                <span class="item-category-count" data-item-counter="outro">0 itens</span>
-                            </div>
-                            <div class="item-category-body">
-                                <div class="os-items item-category-items" data-os-items="outro" data-empty-label="Nenhum outro item adicionado."></div>
-                            </div>
-                            <div class="item-category-footer">
-                                <button class="btn-filter btn-filter-ghost js-os-add-item" type="button" data-type="outro"><i class="bi bi-plus-lg"></i> Adicionar outro item</button>
-                            </div>
+                        <section class="form-section">
+                            <h3 class="form-section-title">Outros</h3>
+                            <div class="os-items" data-os-items="outro"></div><button class="btn-filter btn-filter-ghost js-os-add-item" type="button" data-type="outro"><i class="bi bi-plus-lg"></i> Adicionar outro item</button>
                         </section>
                     </div>
                     <?php if ($canTeam || $canSchedule): ?><div class="tab-pane fade" id="os-tab-team">
                             <section class="form-section"><?php if ($canTeam): ?><input type="hidden" name="team_submitted" value="1"><?php endif; ?><div class="os-team-members" data-team-members data-team-editable="<?= $canTeam ? '1' : '0' ?>"></div><?php if ($canTeam): ?><button class="btn-filter btn-filter-ghost js-os-add-team-member" type="button"><i class="bi bi-plus-lg"></i> Adicionar funcionário</button><?php endif; ?><div class="form-row mt-3">
-                                    <div class="form-group">
-                                        <label class="form-label" for="os-scheduled-start">Data e hora do serviço</label>
-                                        <input class="form-control-os" type="datetime-local" name="agendado_inicio" id="os-scheduled-start" data-os-schedule-start <?= $canSchedule ? '' : 'disabled' ?>>
-                                        <small class="text-muted">Este é o horário que realmente reserva o funcionário na agenda.</small>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label" for="os-scheduled-duration">Duração prevista (minutos)</label>
-                                        <input class="form-control-os" type="number" name="agendamento_duracao_minutos" id="os-scheduled-duration" data-os-schedule-duration min="5" max="1440" step="5" inputmode="numeric" <?= $canSchedule ? '' : 'disabled' ?>>
-                                        <small class="text-muted">O sistema sugere a duração pelos serviços cadastrados; ajuste quando necessário.</small>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label" for="os-scheduled-end">Término previsto</label>
-                                        <input class="form-control-os" type="datetime-local" name="agendado_fim" id="os-scheduled-end" data-os-schedule-end readonly <?= $canSchedule ? '' : 'disabled' ?>>
-                                        <small class="text-muted" data-os-schedule-summary>Somente este intervalo será protegido contra sobreposição.</small>
-                                    </div>
+                                    <div class="form-group"><label class="form-label">Início</label><input class="form-control-os" type="datetime-local" name="agendado_inicio" id="os-scheduled-start" <?= $canSchedule ? '' : 'disabled' ?>></div>
+                                    <div class="form-group"><label class="form-label">Fim</label><input class="form-control-os" type="datetime-local" name="agendado_fim" id="os-scheduled-end" <?= $canSchedule ? '' : 'disabled' ?>></div>
                                 </div>
                             </section>
                         </div><?php endif; ?>
@@ -747,9 +798,8 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
 
 <template id="os-item-template">
     <div class="form-row os-item-row"><input type="hidden" data-field="id"><input type="hidden" data-field="type"><input type="hidden" data-field="origin" value="manual"><input type="hidden" data-field="budget_item_id">
-        <div class="form-group os-reference-wrap"><label class="form-label" data-os-reference-label>Referência</label><select class="form-control-os" data-field="reference_id"></select></div>
-        <div class="form-group os-description-wrap"><label class="form-label" data-os-description-label>Descrição</label><input class="form-control-os" data-field="description" maxlength="255" required></div>
-        <div class="form-group os-execution-location-wrap d-none"><label class="form-label">Local / ambiente</label><input class="form-control-os" data-field="execution_location" maxlength="150" placeholder="Ex.: Recepção 2, Sala 03, Administração"></div>
+        <div class="form-group os-reference-wrap"><label class="form-label">Referencia</label><select class="form-control-os" data-field="reference_id"></select></div>
+        <div class="form-group"><label class="form-label">Descricao</label><input class="form-control-os" data-field="description" required></div>
         <div class="form-group"><label class="form-label">Unidade</label><input class="form-control-os" data-field="unit" value="un" required></div>
         <div class="form-group"><label class="form-label">Qtd.</label><input class="form-control-os" data-field="quantity" value="1" required></div>
         <div class="form-group"><label class="form-label">Valor unit.</label><input class="form-control-os" data-field="unit_price" value="0,00" required></div>
@@ -801,8 +851,7 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                             <thead>
                                 <tr>
                                     <th>Tipo</th>
-                                    <th>Descrição</th>
-                                    <th>Local / ambiente</th>
+                                    <th>Descricao</th>
                                     <th>Qtd.</th>
                                     <th>Valor</th>
                                     <th>Subtotal</th>
@@ -824,19 +873,8 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                 <h2 class="modal-title fs-5">Equipe e agendamento</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="id" id="os-team-id"><?php if ($canTeam): ?><input type="hidden" name="team_submitted" value="1"><?php endif; ?><div class="os-team-members" data-team-members data-team-editable="<?= $canTeam ? '1' : '0' ?>"></div><?php if ($canTeam): ?><button class="btn-filter btn-filter-ghost js-os-add-team-member" type="button"><i class="bi bi-plus-lg"></i> Adicionar funcionário</button><?php endif; ?><div class="form-row mt-3">
-                    <div class="form-group">
-                        <label class="form-label" for="os-team-start">Data e hora do serviço</label>
-                        <input class="form-control-os" type="datetime-local" name="agendado_inicio" id="os-team-start" data-os-schedule-start <?= $canSchedule ? '' : 'disabled' ?>>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="os-team-duration">Duração prevista (minutos)</label>
-                        <input class="form-control-os" type="number" name="agendamento_duracao_minutos" id="os-team-duration" data-os-schedule-duration min="5" max="1440" step="5" inputmode="numeric" <?= $canSchedule ? '' : 'disabled' ?>>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="os-team-end">Término previsto</label>
-                        <input class="form-control-os" type="datetime-local" name="agendado_fim" id="os-team-end" data-os-schedule-end readonly <?= $canSchedule ? '' : 'disabled' ?>>
-                        <small class="text-muted" data-os-schedule-summary>Somente este intervalo será protegido contra sobreposição.</small>
-                    </div>
+                    <div class="form-group"><label class="form-label">Início</label><input class="form-control-os" type="datetime-local" name="agendado_inicio" id="os-team-start" <?= $canSchedule ? '' : 'disabled' ?>></div>
+                    <div class="form-group"><label class="form-label">Fim</label><input class="form-control-os" type="datetime-local" name="agendado_fim" id="os-team-end" <?= $canSchedule ? '' : 'disabled' ?>></div>
                 </div>
             </div>
             <div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Salvar</button></div>
