@@ -248,7 +248,7 @@ function os_select_options(array $items, string $selected = '', bool $onlyActive
 
 $clientOptions = array_map(static fn(Client $client): array => ['id' => $client->id(), 'name' => $client->name(), 'active' => $client->status() === 'ativo'], $clients);
 $employeeOptions = array_map(static fn(Employee $employee): array => ['id' => $employee->id(), 'name' => $employee->displayCode() . ' - ' . $employee->name()], $employees);
-$serviceOptions = array_map(static fn(ServiceDefinition $service): array => ['id' => $service->id(), 'name' => $service->name(), 'description' => $service->description() ?? $service->name(), 'unit' => 'un', 'value' => $service->value()], $services);
+$serviceOptions = array_map(static fn(ServiceDefinition $service): array => ['id' => $service->id(), 'name' => $service->name(), 'description' => $service->description() ?? $service->name(), 'unit' => 'un', 'value' => $service->value(), 'duration_minutes' => $service->durationMinutes()], $services);
 $productOptions = array_map(static fn(Product $product): array => ['id' => $product->id(), 'name' => $product->name(), 'description' => $product->description() ?? $product->name(), 'unit' => $product->unit(), 'value' => $product->salePrice()], $products);
 ?>
 <style>
@@ -665,8 +665,21 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                     </div>
                     <?php if ($canTeam || $canSchedule): ?><div class="tab-pane fade" id="os-tab-team">
                             <section class="form-section"><?php if ($canTeam): ?><input type="hidden" name="team_submitted" value="1"><?php endif; ?><div class="os-team-members" data-team-members data-team-editable="<?= $canTeam ? '1' : '0' ?>"></div><?php if ($canTeam): ?><button class="btn-filter btn-filter-ghost js-os-add-team-member" type="button"><i class="bi bi-plus-lg"></i> Adicionar funcionário</button><?php endif; ?><div class="form-row mt-3">
-                                    <div class="form-group"><label class="form-label">Início</label><input class="form-control-os" type="datetime-local" name="agendado_inicio" id="os-scheduled-start" <?= $canSchedule ? '' : 'disabled' ?>></div>
-                                    <div class="form-group"><label class="form-label">Fim</label><input class="form-control-os" type="datetime-local" name="agendado_fim" id="os-scheduled-end" <?= $canSchedule ? '' : 'disabled' ?>></div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="os-scheduled-start">Data e hora do serviço</label>
+                                        <input class="form-control-os" type="datetime-local" name="agendado_inicio" id="os-scheduled-start" data-os-schedule-start <?= $canSchedule ? '' : 'disabled' ?>>
+                                        <small class="text-muted">Este é o horário que realmente reserva o funcionário na agenda.</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="os-scheduled-duration">Duração prevista (minutos)</label>
+                                        <input class="form-control-os" type="number" name="agendamento_duracao_minutos" id="os-scheduled-duration" data-os-schedule-duration min="5" max="1440" step="5" inputmode="numeric" <?= $canSchedule ? '' : 'disabled' ?>>
+                                        <small class="text-muted">O sistema sugere a duração pelos serviços cadastrados; ajuste quando necessário.</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="os-scheduled-end">Término previsto</label>
+                                        <input class="form-control-os" type="datetime-local" name="agendado_fim" id="os-scheduled-end" data-os-schedule-end readonly <?= $canSchedule ? '' : 'disabled' ?>>
+                                        <small class="text-muted" data-os-schedule-summary>Somente este intervalo será protegido contra sobreposição.</small>
+                                    </div>
                                 </div>
                             </section>
                         </div><?php endif; ?>
@@ -767,8 +780,19 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                 <h2 class="modal-title fs-5">Equipe e agendamento</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="id" id="os-team-id"><?php if ($canTeam): ?><input type="hidden" name="team_submitted" value="1"><?php endif; ?><div class="os-team-members" data-team-members data-team-editable="<?= $canTeam ? '1' : '0' ?>"></div><?php if ($canTeam): ?><button class="btn-filter btn-filter-ghost js-os-add-team-member" type="button"><i class="bi bi-plus-lg"></i> Adicionar funcionário</button><?php endif; ?><div class="form-row mt-3">
-                    <div class="form-group"><label class="form-label">Início</label><input class="form-control-os" type="datetime-local" name="agendado_inicio" id="os-team-start" <?= $canSchedule ? '' : 'disabled' ?>></div>
-                    <div class="form-group"><label class="form-label">Fim</label><input class="form-control-os" type="datetime-local" name="agendado_fim" id="os-team-end" <?= $canSchedule ? '' : 'disabled' ?>></div>
+                    <div class="form-group">
+                        <label class="form-label" for="os-team-start">Data e hora do serviço</label>
+                        <input class="form-control-os" type="datetime-local" name="agendado_inicio" id="os-team-start" data-os-schedule-start <?= $canSchedule ? '' : 'disabled' ?>>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="os-team-duration">Duração prevista (minutos)</label>
+                        <input class="form-control-os" type="number" name="agendamento_duracao_minutos" id="os-team-duration" data-os-schedule-duration min="5" max="1440" step="5" inputmode="numeric" <?= $canSchedule ? '' : 'disabled' ?>>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="os-team-end">Término previsto</label>
+                        <input class="form-control-os" type="datetime-local" name="agendado_fim" id="os-team-end" data-os-schedule-end readonly <?= $canSchedule ? '' : 'disabled' ?>>
+                        <small class="text-muted" data-os-schedule-summary>Somente este intervalo será protegido contra sobreposição.</small>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Salvar</button></div>

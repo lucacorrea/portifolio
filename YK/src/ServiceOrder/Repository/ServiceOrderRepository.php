@@ -275,35 +275,82 @@ final class ServiceOrderRepository
         return $this->selectOrders($where, $params, 'os.agendado_inicio ASC, os.id ASC');
     }
 
-    public function hasEmployeeConflict(int $employeeId, DateTimeImmutable $start, DateTimeImmutable $end, ?int $ignoreOrderId = null): bool
-    {
-        return $this->employeeConflictNames([$employeeId], $start, $end, $ignoreOrderId) !== [];
+    public function hasEmployeeConflict(
+        int $employeeId,
+        DateTimeImmutable $start,
+        DateTimeImmutable $end,
+        ?int $ignoreOrderId = null
+    ): bool {
+        return $this->employeeScheduleConflicts(
+            [$employeeId],
+            $start,
+            $end,
+            $ignoreOrderId
+        ) !== [];
     }
 
-    /** @param int[] $employeeIds @return array<int,string> */
-    public function employeeConflictNames(array $employeeIds, DateTimeImmutable $start, DateTimeImmutable $end, ?int $ignoreOrderId = null): array
-    {
-        $employeeIds = array_values(array_unique(array_filter($employeeIds, static fn(int $id): bool => $id > 0)));
-        if ($employeeIds === []) return [];
+    /**
+     * @param int[] $employeeIds
+     *
+     * @return array<int,array{
+     *     employee_id:int,
+     *     employee_name:string,
+     *     order_id:int,
+     *     order_number:string,
+     *     scheduled_start:string,
+     *     scheduled_end:string
+     * }>
+     */
+    public function employeeScheduleConflicts(
+        array $employeeIds,
+        DateTimeImmutable $start,
+        DateTimeImmutable $end,
+        ?int $ignoreOrderId = null
+    ): array {
+        $employeeIds = array_values(
+            array_unique(
+                array_filter(
+                    array_map('intval', $employeeIds),
+                    static fn(int $id): bool => $id > 0
+                )
+            )
+        );
+
+        if ($employeeIds === []) {
+            return [];
+        }
 
         $employeePlaceholders = [];
-        $parameters = ['start' => $this->formatDateTime($start), 'end' => $this->formatDateTime($end)];
+        $parameters = [
+            'start' => $this->formatDateTime($start),
+            'end' => $this->formatDateTime($end),
+        ];
+
         foreach ($employeeIds as $index => $employeeId) {
             $placeholder = 'employee_' . $index;
             $employeePlaceholders[] = ':' . $placeholder;
             $parameters[$placeholder] = $employeeId;
         }
+
         $statusPlaceholders = [];
+
         foreach (self::BLOCKING_STATUSES as $index => $status) {
             $placeholder = 'status_' . $index;
             $statusPlaceholders[] = ':' . $placeholder;
             $parameters[$placeholder] = $status;
         }
 
-        $sql = 'SELECT DISTINCT f.id, f.nome
+        $sql = 'SELECT DISTINCT
+                       f.id AS employee_id,
+                       f.nome AS employee_name,
+                       os.id AS order_id,
+                       os.numero AS order_number,
+                       os.agendado_inicio AS scheduled_start,
+                       os.agendado_fim AS scheduled_end
                   FROM funcionarios f
                   JOIN ordem_servico_funcionarios osf
-                    ON osf.funcionario_id = f.id AND osf.ativo = 1
+                    ON osf.funcionario_id = f.id
+                   AND osf.ativo = 1
                   JOIN ordens_servico os
                     ON os.id = osf.ordem_servico_id
                  WHERE f.id IN (' . implode(', ', $employeePlaceholders) . ')
@@ -313,20 +360,64 @@ final class ServiceOrderRepository
                    AND os.agendado_fim IS NOT NULL
                    AND :start < os.agendado_fim
                    AND :end > os.agendado_inicio';
+
         if ($ignoreOrderId !== null) {
             $this->assertPositiveId($ignoreOrderId);
             $sql .= ' AND os.id <> :ignore_order_id';
             $parameters['ignore_order_id'] = $ignoreOrderId;
         }
-        $sql .= ' FOR UPDATE';
+
+        $sql .= ' ORDER BY os.agendado_inicio ASC, os.id ASC FOR UPDATE';
 
         $statement = $this->connection->prepare($sql);
         $statement->execute($parameters);
+
         $conflicts = [];
+
         foreach ($statement->fetchAll() as $row) {
-            $conflicts[(int) $row['id']] = (string) $row['nome'];
+            $conflicts[] = [
+                'employee_id' => (int) ($row['employee_id'] ?? 0),
+                'employee_name' => (string) ($row['employee_name'] ?? ''),
+                'order_id' => (int) ($row['order_id'] ?? 0),
+                'order_number' => (string) ($row['order_number'] ?? ''),
+                'scheduled_start' => (string) ($row['scheduled_start'] ?? ''),
+                'scheduled_end' => (string) ($row['scheduled_end'] ?? ''),
+            ];
         }
+
         return $conflicts;
+    }
+
+    /**
+     * @param int[] $employeeIds
+     *
+     * @return array<int,string>
+     */
+    public function employeeConflictNames(
+        array $employeeIds,
+        DateTimeImmutable $start,
+        DateTimeImmutable $end,
+        ?int $ignoreOrderId = null
+    ): array {
+        $names = [];
+
+        foreach (
+            $this->employeeScheduleConflicts(
+                $employeeIds,
+                $start,
+                $end,
+                $ignoreOrderId
+            ) as $conflict
+        ) {
+            $employeeId = (int) $conflict['employee_id'];
+            $employeeName = trim((string) $conflict['employee_name']);
+
+            if ($employeeId > 0 && $employeeName !== '') {
+                $names[$employeeId] = $employeeName;
+            }
+        }
+
+        return $names;
     }
 
     public function updateTeam(int $orderId, int $primaryEmployeeId, int $supportEmployeeId): void

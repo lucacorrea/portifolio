@@ -1382,7 +1382,7 @@ final class ServiceOrderManagementService
             || $order->scheduledEnd() === null
         ) {
             throw new InvalidArgumentException(
-                'Informe início e fim do agendamento antes de alterar o status.'
+                'Informe a data, a hora e a duração prevista do serviço antes de alterar o status.'
             );
         }
 
@@ -1594,7 +1594,7 @@ final class ServiceOrderManagementService
         ServiceOrderScheduleData $schedule
     ): void {
         $conflicts =
-            $this->orders->employeeConflictNames(
+            $this->orders->employeeScheduleConflicts(
                 $team->employeeIds(),
                 $schedule->start(),
                 $schedule->end(),
@@ -1605,18 +1605,72 @@ final class ServiceOrderManagementService
             return;
         }
 
+        $messages = [];
+
+        foreach ($conflicts as $conflict) {
+            $name = trim((string) (
+                $conflict['employee_name']
+                ?? 'Funcionário'
+            ));
+
+            $orderNumber = trim((string) (
+                $conflict['order_number']
+                ?? ''
+            ));
+
+            $start = trim((string) (
+                $conflict['scheduled_start']
+                ?? ''
+            ));
+
+            $end = trim((string) (
+                $conflict['scheduled_end']
+                ?? ''
+            ));
+
+            $period = '';
+
+            try {
+                if ($start !== '' && $end !== '') {
+                    $startDate = new DateTimeImmutable($start);
+                    $endDate = new DateTimeImmutable($end);
+
+                    $period = $startDate->format('d/m/Y H:i')
+                        . (
+                            $startDate->format('Y-m-d') === $endDate->format('Y-m-d')
+                                ? ' às ' . $endDate->format('H:i')
+                                : ' até ' . $endDate->format('d/m/Y H:i')
+                        );
+                }
+            } catch (Throwable) {
+                $period = '';
+            }
+
+            $message = $name !== ''
+                ? $name
+                : 'Funcionário';
+
+            if ($period !== '') {
+                $message .= ' está ocupado em ' . $period;
+            } else {
+                $message .= ' já possui atendimento no horário informado';
+            }
+
+            if ($orderNumber !== '') {
+                $message .= ' na ' . $orderNumber;
+            }
+
+            $messages[] = $message;
+        }
+
+        $messages = array_values(
+            array_unique($messages)
+        );
+
         throw new InvalidArgumentException(
-            count($conflicts) === 1
-                ? (
-                    'O funcionário '
-                    . reset($conflicts)
-                    . ' já possui atendimento nesse período.'
-                )
-                : (
-                    'Os funcionários '
-                    . implode(', ', $conflicts)
-                    . ' já possuem atendimento nesse período.'
-                )
+            'Conflito de horário: '
+            . implode('; ', array_slice($messages, 0, 4))
+            . '. A agenda bloqueia somente o intervalo em que o serviço será executado.'
         );
     }
 
