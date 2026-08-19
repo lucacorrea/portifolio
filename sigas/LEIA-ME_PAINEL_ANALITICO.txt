@@ -1,0 +1,24 @@
+PACOTE: MELHORIA DO PAINEL DO MÓDULO COARI MEU PRIMEIRO EMPREGO
+
+Arquivos alterados:
+1. frontend/modules/primeiro-emprego/lib/dashboard.php
+   - Novo arquivo com consultas analíticas do painel.
+
+2. frontend/modules/primeiro-emprego/pages/painel.php
+   - Painel reconstruído com mais indicadores, gráficos e listas operacionais.
+
+3. assets/css/modules/primeiro-emprego.css
+   - Novos estilos do painel analítico.
+
+O que foi adicionado:
+- KPIs mais úteis para gestão
+- Pipeline do programa
+- Gráficos de evolução, status, lotações, pendências, bairros, parceiros, encaminhamentos, bolsas e frequência
+- Bloco de saúde operacional
+- Lista de alertas prioritários
+- Atividade recente
+
+Observação técnica:
+- O painel usa Chart.js por carregamento automático via CDN se a biblioteca ainda não existir na página.
+- O arquivo dashboard.php foi separado para não bagunçar repository.php.
+- O painel depende das tabelas operacionais do módulo e da tabela pe_lotacoes.

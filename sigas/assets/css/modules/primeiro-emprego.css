@@ -2000,3 +2000,306 @@ body[data-module="primeiro-emprego"] .pe-candidate-review-table .pe-badge-ok { c
 body[data-module="primeiro-emprego"] .pe-candidate-review-table .text-bg-danger { color: #c73342 !important; }
 body[data-module="primeiro-emprego"] .pe-candidate-review-table .text-bg-warning,
 body[data-module="primeiro-emprego"] .pe-candidate-review-table .text-warning-emphasis { color: #b06c00 !important; }
+
+/* ===== Painel analítico do Meu Primeiro Emprego ===== */
+.pe-dashboard-panel {
+    display: grid;
+    gap: 1rem;
+}
+
+.pe-dashboard-summary-grid,
+.pe-dashboard-info-grid {
+    display: grid;
+    grid-template-columns: 1.15fr .85fr;
+    gap: 1rem;
+}
+
+.pe-dashboard-summary-card,
+.pe-dashboard-info-card {
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    background: #fff;
+    padding: 1rem;
+}
+
+.pe-dashboard-summary-card h3,
+.pe-chart-card h3,
+.pe-dashboard-info-card h2 {
+    margin: .2rem 0 .35rem;
+    color: var(--module-ink);
+}
+
+.pe-dashboard-summary-card p,
+.pe-chart-card p,
+.pe-dashboard-info-card p {
+    margin: 0;
+    color: var(--text-secondary);
+}
+
+.pe-pipeline-strip {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: .75rem;
+    margin-top: 1rem;
+}
+
+.pe-pipeline-step {
+    padding: .85rem;
+    border: 1px solid var(--border);
+    border-radius: .95rem;
+    background: linear-gradient(180deg, #ffffff 0%, #f7fbfc 100%);
+}
+
+.pe-pipeline-step strong {
+    display: block;
+    margin-bottom: .2rem;
+    color: var(--module-ink);
+    font-size: 1.3rem;
+    line-height: 1;
+}
+
+.pe-pipeline-step span {
+    display: block;
+    color: var(--text-secondary);
+    font-size: .84rem;
+}
+
+.pe-metric-list {
+    display: grid;
+    gap: .8rem;
+    margin: 1rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.pe-metric-list li {
+    display: grid;
+    gap: .1rem;
+    padding: .85rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: .95rem;
+    background: #f9fcfd;
+}
+
+.pe-metric-list strong {
+    color: var(--module-ink);
+    font-size: 1.15rem;
+}
+
+.pe-metric-list span,
+.pe-metric-list small,
+.pe-inline-meta span {
+    color: var(--text-secondary);
+}
+
+.pe-dashboard-chart-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.pe-chart-card {
+    min-height: 380px;
+}
+
+.pe-chart-card--wide {
+    grid-column: 1 / -1;
+}
+
+.pe-chart-card__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.pe-inline-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+}
+
+.pe-inline-meta span {
+    padding: .4rem .65rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: #f8fbfc;
+    font-size: .78rem;
+    font-weight: 700;
+}
+
+.pe-chart-wrap {
+    position: relative;
+    min-height: 280px;
+}
+
+.pe-chart-wrap canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.pe-chart-wrap--donut {
+    min-height: 310px;
+}
+
+.pe-chart-wrap--split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    min-height: 320px;
+}
+
+.pe-chart-wrap--split > div {
+    position: relative;
+    min-height: 280px;
+}
+
+.pe-chart-empty {
+    display: grid;
+    min-height: 260px;
+    place-items: center;
+    text-align: center;
+    border: 1px dashed var(--border);
+    border-radius: .95rem;
+    background: #fbfdfe;
+    color: var(--text-secondary);
+    padding: 1rem;
+}
+
+.pe-health-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .85rem;
+}
+
+.pe-health-card {
+    display: grid;
+    gap: .15rem;
+    padding: .95rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: .95rem;
+    background: #fff;
+}
+
+.pe-health-card strong {
+    color: var(--module-ink);
+    font-size: 1.25rem;
+}
+
+.pe-health-card span {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.pe-health-card small {
+    color: var(--text-secondary);
+}
+
+.pe-health-card--success {
+    border-color: #b7dec4;
+    background: #f5fcf7;
+}
+
+.pe-health-card--warning {
+    border-color: #f2dfb7;
+    background: #fffaf1;
+}
+
+.pe-health-card--danger {
+    border-color: #efc2c2;
+    background: #fff6f6;
+}
+
+.pe-health-card--info {
+    border-color: #c7dfea;
+    background: #f6fbfe;
+}
+
+.pe-alert-list {
+    display: grid;
+    gap: .75rem;
+}
+
+.pe-alert-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .9rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: .95rem;
+    background: #fff;
+}
+
+.pe-alert-item strong,
+.pe-alert-item span {
+    display: block;
+}
+
+.pe-alert-item > div span {
+    margin-top: .2rem;
+    color: var(--text-secondary);
+    font-size: .85rem;
+}
+
+.pe-inline-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: .4rem .7rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-size: .78rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.pe-inline-badge--danger {
+    color: #a63b3b;
+    background: #fff4f4;
+    border-color: #f0cccc;
+}
+
+.pe-inline-badge--warning {
+    color: #8f6c0d;
+    background: #fff9ea;
+    border-color: #f0deb0;
+}
+
+.pe-inline-badge--info {
+    color: #165c76;
+    background: #eef8fb;
+    border-color: #cfe7ef;
+}
+
+@media (max-width: 1199.98px) {
+    .pe-pipeline-strip,
+    .pe-health-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 991.98px) {
+    .pe-dashboard-summary-grid,
+    .pe-dashboard-chart-grid,
+    .pe-dashboard-info-grid,
+    .pe-chart-wrap--split {
+        grid-template-columns: 1fr;
+    }
+
+    .pe-chart-card--wide {
+        grid-column: auto;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .pe-pipeline-strip,
+    .pe-health-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pe-alert-item {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
