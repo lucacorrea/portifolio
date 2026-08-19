@@ -1,41 +1,18 @@
-SIGAS — COARI MEU PRIMEIRO EMPREGO
-PADRÃO DE LISTAGENS + CRUD EM MODAIS
+SIGAS — MEU PRIMEIRO EMPREGO — LOTAÇÕES
 
-INSTALAÇÃO
-1. Faça backup dos arquivos atuais.
-2. Extraia o conteúdo deste pacote diretamente dentro da pasta /sigas/ da hospedagem.
-3. Substitua os arquivos existentes quando solicitado.
-4. Não é necessário executar SQL novo para esta alteração de interface/CRUD.
-5. Após o upload, use Ctrl+F5.
+Arquivos incluídos:
 
-ASSETS OFICIAIS
-O módulo passa a usar como fonte principal:
-- assets/css/modules/primeiro-emprego.css
-- assets/js/modules/primeiro-emprego.js
+1) frontend/modules/primeiro-emprego/lib/lotacoes.php
+   Repositório isolado e seguro para a nova estrutura pe_lotacoes.
 
-Os antigos module.css/module2.0.css/module.js/module2.0.js ficaram apenas como compatibilidade e não contêm mais o layout operacional.
+2) frontend/modules/primeiro-emprego/pages/lotacoes.php
+   Página completa de listagem + modais de nova lotação, visualizar, editar e encerrar.
 
-PADRÃO APLICADO
-- Tela inicial das páginas operacionais mostra somente cabeçalho, busca e listagem.
-- Novo registro: modal.
-- Clique na linha: modal de ações.
-- Visualizar: modal.
-- Editar: modal.
-- Excluir: modal de confirmação.
-- Responsivo: tabela vira cartões no celular.
-- Candidatos com pendência: fundo branco; somente texto/indicadores recebem cor.
+3) database/primeiroEmprego/0004-primeiroEmprego-lotacoes.sql
+   Criação idempotente da tabela e migração de lotações antigas presentes em pe_fichas_cadastrais.
 
-PÁGINAS PADRONIZADAS
-- Candidatos
-- Órgãos e instituições parceiras
-- Vagas e oportunidades
-- Lotações
-- Encaminhamentos
-- Documentação
-- Frequência
-- Bolsas
-- Capacitações
-- Acompanhamentos / visitas sociais
-
-OBSERVAÇÃO
-Relatórios permanecem como tela de consulta/exportação; cadastro e configurações sem listagem mantêm seu fluxo próprio.
+IMPORTANTE
+- pe_lotacoes passa a ser a fonte oficial das lotações.
+- pe_fichas_cadastrais.local_atuacao e turno_atuacao continuam sincronizados temporariamente para compatibilidade.
+- Encerrar lotação NÃO apaga o registro; preserva histórico.
+- A importação dos setores do Excel ainda NÃO está incluída nesta etapa. Ela deve ser feita somente depois de validar a tela usando a nova tabela.
