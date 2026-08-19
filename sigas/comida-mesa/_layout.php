@@ -47,17 +47,18 @@ if (!is_file($view)) {
 
 require $view;
 
-/*
- * Arquivos públicos do módulo são carregados pelo ModuleRegistry em:
- *   assets/css/modules/comida-mesa.css
- *   assets/js/modules/comida-mesa.js
- *
- * Não exponha /frontend/modules/... por HTTP: a pasta /frontend é
- * corretamente protegida pelo .htaccess do SIGAS.
- */
 $extraStyles = array_values(array_unique($pageExtraStyles));
 $extraScripts = array_values(array_unique(array_merge([
     'assets/js/comida-mesa.js',
 ], $pageExtraScripts)));
+
+/*
+ * Os assets base do módulo são carregados pelo ModuleRegistry:
+ *   assets/css/modules/comida-mesa.css
+ *   assets/js/modules/comida-mesa.js
+ *
+ * /frontend permanece protegido pelo .htaccess e nunca deve ser
+ * referenciado por URL pública.
+ */
 
 require dirname(__DIR__) . '/frontend/layouts/module-layout.php';

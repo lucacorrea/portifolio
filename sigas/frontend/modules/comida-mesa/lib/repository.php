@@ -23,10 +23,19 @@ final class ComidaMesaModuleRepository
     public function dashboardStats(?int $competenceId): array
     {
         $params = [];
-        $deliveryWhere = '1 = 0';
+        $deliveryWhereDelivered = '1 = 0';
+        $deliveryWhereCancelled = '1 = 0';
+
         if ($competenceId !== null) {
-            $deliveryWhere = 'e.competencia_id = :competencia_id';
-            $params['competencia_id'] = $competenceId;
+            /*
+             * Database::connection() usa PDO::ATTR_EMULATE_PREPARES = false.
+             * O MySQL não permite reutilizar o mesmo placeholder nomeado
+             * duas vezes em um prepared statement nativo.
+             */
+            $deliveryWhereDelivered = 'e.competencia_id = :competencia_entregas';
+            $deliveryWhereCancelled = 'e.competencia_id = :competencia_canceladas';
+            $params['competencia_entregas'] = $competenceId;
+            $params['competencia_canceladas'] = $competenceId;
         }
 
         $sql = "SELECT
@@ -38,10 +47,12 @@ final class ComidaMesaModuleRepository
             (SELECT COUNT(*) FROM comida_mesa_polos WHERE ativo = 1) AS polos_ativos,
             (SELECT COUNT(*) FROM comida_mesa_documentos) AS documentos,
             (SELECT COUNT(*) FROM comida_mesa_historico) AS eventos,
-            (SELECT COUNT(*) FROM comida_mesa_entregas e WHERE {$deliveryWhere} AND e.status = 'entregue') AS entregas,
-            (SELECT COUNT(*) FROM comida_mesa_entregas e WHERE {$deliveryWhere} AND e.status = 'cancelada') AS entregas_canceladas";
+            (SELECT COUNT(*) FROM comida_mesa_entregas e WHERE {$deliveryWhereDelivered} AND e.status = 'entregue') AS entregas,
+            (SELECT COUNT(*) FROM comida_mesa_entregas e WHERE {$deliveryWhereCancelled} AND e.status = 'cancelada') AS entregas_canceladas";
         $stmt = $this->pdo->prepare($sql);
-        foreach ($params as $key => $value) $stmt->bindValue(':' . $key, $value, PDO::PARAM_INT);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue(':' . $key, $value, PDO::PARAM_INT);
+        }
         $stmt->execute();
         $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 

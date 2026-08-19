@@ -1,0 +1,23 @@
+HOTFIX — INDEX DO COMIDA NA MESA
+
+Causa 1 — erro fatal no painel
+--------------------------------
+O método dashboardStats() reutilizava :competencia_id duas vezes na mesma
+query preparada. O SIGAS usa PDO::ATTR_EMULATE_PREPARES = false, portanto
+prepared statements nativos do MySQL exigem placeholders nomeados únicos.
+Isso causava SQLSTATE[HY093] e o bootstrap exibia apenas:
+"O sistema não pôde ser inicializado."
+
+Correção:
+- :competencia_entregas
+- :competencia_canceladas
+
+Causa 2 — CSS/JS do módulo
+--------------------------
+O ZIP ainda referenciava assets públicos dentro de /frontend/, pasta bloqueada
+pelo .htaccess. Os assets completos foram movidos/copied para:
+- assets/css/modules/comida-mesa.css
+- assets/js/modules/comida-mesa.js
+E o comida-mesa/_layout.php deixou de apontar URLs públicas para /frontend/.
+
+Não é necessário executar SQL.
