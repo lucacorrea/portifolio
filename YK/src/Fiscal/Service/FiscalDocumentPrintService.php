@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Fiscal\Service;
 
+use App\Fiscal\Print\ReadableDanfe;
 use App\Fiscal\Print\ReadableDanfce;
 use App\Fiscal\Repository\FiscalDocumentRepository;
 use App\Fiscal\Storage\FiscalDocumentStorage;
 use DOMDocument;
 use DOMXPath;
 use InvalidArgumentException;
-use NFePHP\DA\NFe\Danfe;
 use NFePHP\DA\NFe\Danfce;
 use RuntimeException;
 
@@ -56,26 +56,14 @@ final class FiscalDocumentPrintService
             );
 
         if ($model === '55') {
-            if (!class_exists(Danfe::class)) {
-                throw new RuntimeException(
-                    'O gerador oficial de DANFE não está instalado no servidor.'
-                );
-            }
-
+            /*
+             * NF-e modelo 55:
+             * DANFE A4 próprio e separado do DANFC-e.
+             */
             $renderer =
-                new Danfe(
+                new ReadableDanfe(
                     $xml
                 );
-
-            /*
-             * NF-e modelo 55 permanece em A4.
-             */
-            $renderer->printParameters(
-                'P',
-                'A4',
-                2,
-                2
-            );
         } elseif ($model === '65') {
             if (!class_exists(Danfce::class)) {
                 throw new RuntimeException(
