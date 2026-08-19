@@ -1,0 +1,154 @@
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
+
+CREATE TABLE IF NOT EXISTS pe_importacoes (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    arquivo_nome VARCHAR(255) NOT NULL,
+    arquivo_hash CHAR(64) NULL,
+    total_linhas INT UNSIGNED NOT NULL DEFAULT 0,
+    importados INT UNSIGNED NOT NULL DEFAULT 0,
+    atualizados INT UNSIGNED NOT NULL DEFAULT 0,
+    bloqueados INT UNSIGNED NOT NULL DEFAULT 0,
+    avisos INT UNSIGNED NOT NULL DEFAULT 0,
+    erros INT UNSIGNED NOT NULL DEFAULT 0,
+    marcar_como_contemplados TINYINT(1) NOT NULL DEFAULT 0,
+    responsavel VARCHAR(160) NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'Processando',
+    criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    finalizada_em TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (id),
+    KEY idx_pe_importacoes_status (status),
+    KEY idx_pe_importacoes_criado (criado_em),
+    KEY idx_pe_importacoes_hash (arquivo_hash)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS pe_candidatos (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    nome VARCHAR(160) NOT NULL,
+    sexo VARCHAR(20) NULL,
+    data_nascimento DATE NULL,
+    rg VARCHAR(40) NULL,
+    cpf VARCHAR(11) NULL,
+    cpf_informado VARCHAR(32) NULL,
+    estado_civil VARCHAR(40) NULL,
+    nis VARCHAR(32) NULL,
+    cor_raca VARCHAR(30) NULL,
+    rua VARCHAR(180) NULL,
+    endereco VARCHAR(220) NULL,
+    bairro VARCHAR(100) NULL,
+    ponto_referencia VARCHAR(180) NULL,
+    municipio VARCHAR(100) NULL DEFAULT 'Coari',
+    cep VARCHAR(8) NULL,
+    telefone VARCHAR(20) NULL,
+    whatsapp VARCHAR(20) NULL,
+    email VARCHAR(160) NULL,
+    responsavel_familiar VARCHAR(160) NULL,
+    total_membros_familia SMALLINT UNSIGNED NULL,
+    atividade_responsaveis VARCHAR(220) NULL,
+    renda_familiar_mensal DECIMAL(12,2) NULL,
+    matriculado VARCHAR(10) NULL,
+    escolaridade VARCHAR(80) NULL,
+    instituicao_ensino VARCHAR(180) NULL,
+    situacao_escolar VARCHAR(40) NULL,
+    turno_estudo VARCHAR(30) NULL,
+    situacao_habitacional VARCHAR(80) NULL,
+    condicao_moradia VARCHAR(60) NULL,
+    numero_comodos SMALLINT UNSIGNED NULL,
+    agua_tratada VARCHAR(10) NULL,
+    energia_eletrica VARCHAR(10) NULL,
+    coleta_lixo VARCHAR(10) NULL,
+    vulnerabilidades LONGTEXT NULL,
+    vulnerabilidade_outro VARCHAR(220) NULL,
+    data_entrevista DATE NULL,
+    tecnico_triagem VARCHAR(160) NULL,
+    status VARCHAR(40) NOT NULL DEFAULT 'Em triagem',
+    origem VARCHAR(30) NOT NULL DEFAULT 'manual',
+    chave_importacao CHAR(64) NULL,
+    importacao_id BIGINT UNSIGNED NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_pe_candidatos_cpf (cpf),
+    UNIQUE KEY uk_pe_candidatos_chave_importacao (chave_importacao),
+    KEY idx_pe_candidatos_nome (nome),
+    KEY idx_pe_candidatos_bairro (bairro),
+    KEY idx_pe_candidatos_status (status),
+    KEY idx_pe_candidatos_origem (origem),
+    KEY idx_pe_candidatos_importacao (importacao_id),
+    CONSTRAINT fk_pe_candidatos_importacao
+        FOREIGN KEY (importacao_id)
+        REFERENCES pe_importacoes(id)
+        ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS pe_visitas_sociais (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    candidato_id BIGINT UNSIGNED NOT NULL,
+    entrevistador VARCHAR(160) NULL,
+    data_visita DATE NOT NULL,
+    informacoes_complementares TEXT NULL,
+    parecer_tecnico TEXT NOT NULL,
+    decisao VARCHAR(20) NOT NULL DEFAULT 'Pendente',
+    tecnico_responsavel VARCHAR(160) NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_pe_visitas_candidato (candidato_id),
+    KEY idx_pe_visitas_data (data_visita),
+    KEY idx_pe_visitas_decisao (decisao),
+    CONSTRAINT fk_pe_visitas_candidato
+        FOREIGN KEY (candidato_id)
+        REFERENCES pe_candidatos(id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS pe_fichas_cadastrais (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    candidato_id BIGINT UNSIGNED NOT NULL,
+    foto_path VARCHAR(255) NULL,
+    nivel_escolaridade VARCHAR(80) NULL,
+    situacao_escolar VARCHAR(40) NULL,
+    instituicao_ensino VARCHAR(180) NULL,
+    serie_periodo VARCHAR(80) NULL,
+    turno_estudo VARCHAR(30) NULL,
+    local_atuacao VARCHAR(180) NULL,
+    turno_atuacao VARCHAR(30) NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_pe_ficha_candidato (candidato_id),
+    KEY idx_pe_ficha_local (local_atuacao),
+    CONSTRAINT fk_pe_ficha_candidato
+        FOREIGN KEY (candidato_id)
+        REFERENCES pe_candidatos(id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS pe_importacao_itens (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    importacao_id BIGINT UNSIGNED NOT NULL,
+    linha INT UNSIGNED NOT NULL,
+    candidato_id BIGINT UNSIGNED NULL,
+    status VARCHAR(20) NOT NULL,
+    nome VARCHAR(160) NOT NULL,
+    cpf_informado VARCHAR(32) NULL,
+    cpf_validado VARCHAR(11) NULL,
+    data_nascimento DATE NULL,
+    setor_informado VARCHAR(180) NULL,
+    mensagem TEXT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_pe_importacao_linha (importacao_id, linha),
+    KEY idx_pe_importacao_itens_status (status),
+    KEY idx_pe_importacao_itens_candidato (candidato_id),
+    CONSTRAINT fk_pe_importacao_itens_importacao
+        FOREIGN KEY (importacao_id)
+        REFERENCES pe_importacoes(id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_pe_importacao_itens_candidato
+        FOREIGN KEY (candidato_id)
+        REFERENCES pe_candidatos(id)
+        ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+SET FOREIGN_KEY_CHECKS = 1;
