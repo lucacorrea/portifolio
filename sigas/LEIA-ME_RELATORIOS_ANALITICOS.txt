@@ -1,0 +1,38 @@
+PACOTE: CENTRAL ANALÍTICA DE RELATÓRIOS — COARI MEU PRIMEIRO EMPREGO
+
+OBJETIVO
+Transformar a página Relatórios em uma central de análise gerencial e operacional, mantendo o mesmo padrão visual do Painel e das páginas de listagem.
+
+ARQUIVOS
+1. frontend/modules/primeiro-emprego/lib/relatorios.php
+   Novo repositório analítico específico de relatórios.
+
+2. frontend/modules/primeiro-emprego/pages/relatorios.php
+   Nova página completa de relatórios.
+
+3. assets/css/modules/primeiro-emprego.css
+   CSS global atualizado. Este arquivo já preserva as melhorias anteriores do Painel.
+
+4. primeiro-emprego/relatorios.php
+   Wrapper da rota, incluído para conferência. Não muda a regra de negócio.
+
+RECURSOS ADICIONADOS
+- Filtros globais por pesquisa, status, revisão, lotação, parceiro, bairro, local/setor, origem, sexo, idade e período de cadastro.
+- KPIs filtrados.
+- Resumo gerencial com taxas de lotação, regularidade cadastral e revisão pendente.
+- Indicadores de visitas, frequência, bolsas, vagas, parceiros e documentação.
+- 13 gráficos analíticos.
+- Tabela detalhada paginada.
+- Exportação CSV respeitando todos os filtros.
+- Impressão/PDF pelo navegador.
+- Layout responsivo e impressão organizada.
+
+BANCO DE DADOS
+Nenhuma alteração SQL é necessária para este pacote.
+A página usa as estruturas que já existem, especialmente pe_lotacoes, pe_parceiros, pe_vagas, pe_encaminhamentos, pe_documentos, pe_frequencias e pe_bolsas.
+
+CHART.JS
+A página reutiliza Chart.js se ele já estiver carregado. Caso contrário, faz carregamento automático pela CDN jsDelivr.
+
+INSTALAÇÃO
+Copie os arquivos mantendo exatamente os caminhos do ZIP para dentro da raiz /sigas/.
