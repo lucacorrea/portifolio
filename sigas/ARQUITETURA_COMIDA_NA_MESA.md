@@ -31,3 +31,15 @@ Nenhuma página operacional nova depende de dados demonstrativos. As consultas s
 ## Histórico e exclusão
 
 Operações com impacto histórico não usam exclusão física quando isso comprometeria rastreabilidade. Polos são desativados; entregas são canceladas com justificativa; o histórico permanece somente leitura.
+
+## Consulta por CPF — fluxo manual sequencial
+
+A página `comida-mesa/consulta-cpf.php` não utiliza mais câmera/OCR. O fluxo oficial é:
+
+1. CPF digitado manualmente;
+2. modal de resultado;
+3. modal central de ações;
+4. modal específica da operação;
+5. retorno automático à etapa anterior quando a ação for fechada.
+
+Isso evita modais empilhadas simultaneamente e mantém o contexto do beneficiário consultado.

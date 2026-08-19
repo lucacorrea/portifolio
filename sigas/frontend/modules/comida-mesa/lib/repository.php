@@ -166,7 +166,7 @@ final class ComidaMesaModuleRepository
     /** @return list<array<string,mixed>> */
     public function documents(array $filters = [], int $limit = 200): array
     {
-        $limit = max(20, min(500, $limit));
+        $limit = max(20, min(10000, $limit));
         $where = ['a.ativo = 1'];
         $params = [];
         if (!empty($filters['q'])) {
@@ -203,7 +203,7 @@ final class ComidaMesaModuleRepository
     /** @return list<array<string,mixed>> */
     public function histories(array $filters = [], int $limit = 250): array
     {
-        $limit = max(20, min(1000, $limit));
+        $limit = max(20, min(10000, $limit));
         $where = ['1=1'];
         $params = [];
         if (!empty($filters['q'])) {

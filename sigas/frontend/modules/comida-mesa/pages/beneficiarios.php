@@ -52,6 +52,18 @@ $total = $registrations->getTotal();
 $currentPage = $registrations->getPage();
 $totalPages = $registrations->getTotalPages();
 $hasAdvanced = $filter->zone !== null || $filter->district !== null || $filter->community !== null || $filter->poleId !== null;
+$exportParams = array_filter([
+    'tipo' => 'beneficiarios',
+    'search' => $filter->search,
+    'competencia_id' => $currentCompetenceId,
+    'program_status' => $filter->programStatus,
+    'delivery_status' => $filter->deliveryStatus,
+    'zone' => $filter->zone,
+    'district' => $filter->district,
+    'community' => $filter->community,
+    'pole_id' => $filter->poleId,
+], static fn($v) => $v !== null && $v !== '');
+$exportExcelUrl = 'comida-mesa/exportar-excel.php?' . http_build_query($exportParams);
 
 $queryForPage = static function (int $pageNumber) use ($filter): string {
     $params = array_filter([
@@ -87,6 +99,7 @@ ob_start();
         <label><span>Situação da entrega</span><select class="form-select" name="delivery_status"><option value="">Todas</option><?php foreach ($deliveryStatuses as $value=>$label): ?><option value="<?= cm_h($value) ?>"<?= cm_selected($filter->deliveryStatus,$value) ?>><?= cm_h($label) ?></option><?php endforeach; ?></select></label>
         <button class="btn btn-light" type="button" data-toggle-advanced aria-expanded="<?= $hasAdvanced?'true':'false' ?>"><i class="bi bi-sliders"></i> Avançados</button>
         <button class="btn btn-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
+        <a class="btn btn-light" href="<?= cm_h($exportExcelUrl) ?>"><i class="bi bi-file-earmark-excel"></i> Exportar Excel</a>
         <a class="btn btn-light cm-filter-clear" href="comida-mesa/beneficiarios.php" title="Limpar filtros"><i class="bi bi-x-lg"></i></a>
         <div class="cm-advanced-filters<?= $hasAdvanced?' show':'' ?>" id="advancedFilters">
             <label><span>Zona</span><select class="form-select" name="zone"><option value="">Todas</option><option value="urbana"<?= cm_selected($filter->zone,'urbana') ?>>Urbana</option><option value="rural"<?= cm_selected($filter->zone,'rural') ?>>Rural</option></select></label>

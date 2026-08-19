@@ -185,6 +185,45 @@ final class ComidaMesaRepository
         }
     }
 
+    /** @return list<array<string,mixed>> */
+    public function exportRegistrations(ComidaMesaFilter $filter, int $limit = 20000): array
+    {
+        $limit = max(1, min(50000, $limit));
+        [$where, $params] = $this->filterWhere($filter);
+        $deliveryJoin = $this->deliveryJoin($filter->competenceId, 'entrega_competencia_id');
+
+        if ($filter->competenceId !== null) {
+            $params['entrega_competencia_id'] = $filter->competenceId;
+        }
+
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT i.id AS inscricao_id, f.id AS familia_id, f.codigo AS familia_codigo,
+                    p.id AS pessoa_id, p.nome AS responsavel_nome, p.cpf, p.nis, p.rg, p.data_nascimento, p.telefone, p.email,
+                    f.zona, f.logradouro, f.numero, f.complemento, f.bairro, f.comunidade, f.ponto_referencia, f.cep,
+                    f.quantidade_membros, f.renda_familiar,
+                    i.polo_id, polo.nome AS polo_nome, polo.ativo AS polo_ativo, i.status AS inscricao_status, i.prioridade,
+                    i.data_inscricao, i.data_aprovacao, i.motivo_suspensao, i.observacao, i.atualizado_em,
+                    entrega.id AS entrega_id, entrega.status AS entrega_status, entrega.entregue_em AS entrega_data,
+                    entrega.recebedor_nome, entrega.motivo_cancelamento, entrega_operador.nome AS entrega_operador_nome
+                 FROM comida_mesa_inscricoes i
+                 INNER JOIN familias f ON f.id = i.familia_id
+                 INNER JOIN pessoas p ON p.id = f.responsavel_pessoa_id
+                 LEFT JOIN comida_mesa_polos polo ON polo.id = i.polo_id
+                 {$deliveryJoin}
+                 LEFT JOIN usuarios entrega_operador ON entrega_operador.id = entrega.entregue_por
+                 WHERE {$where}
+                 ORDER BY CASE i.prioridade WHEN 'alta' THEN 1 WHEN 'normal' THEN 2 WHEN 'baixa' THEN 3 ELSE 4 END, p.nome, i.id
+                 LIMIT {$limit}"
+            );
+            $this->bind($stmt, $params);
+            $stmt->execute();
+            return $stmt->fetchAll() ?: [];
+        } catch (PDOException $exception) {
+            throw $this->fail('exportRegistrations', 'Falha ao preparar a exportação das famílias.', $exception);
+        }
+    }
+
     /** @return array<string,mixed>|null */
     public function findByCpf(string $cpf, ?int $competenceId): ?array
     {

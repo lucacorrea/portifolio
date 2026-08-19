@@ -9,6 +9,7 @@ if($selectedCompetenceId===null){$default=$moduleRepository->defaultCompetence()
 $selectedCompetence=null; foreach($competences as $c){if((int)$c['id']===$selectedCompetenceId){$selectedCompetence=$c;break;}}
 $report=$moduleRepository->reportOverview($selectedCompetenceId); $stats=$report['stats'];
 $competenceLabel=$selectedCompetence?cm_month_label((int)$selectedCompetence['mes'],(int)$selectedCompetence['ano']):'Sem competência';
+$exportExcelUrl='comida-mesa/exportar-excel.php?'.http_build_query(['tipo'=>'relatorio','competencia_id'=>$selectedCompetenceId]);
 
 if(($_GET['export']??'')==='csv'){
     header('Content-Type: text/csv; charset=UTF-8');
@@ -38,7 +39,7 @@ ob_start();
 ?>
 <section class="content-card cm-list-card cm-report-page">
 <?php cm_list_header('Análise gerencial','Relatórios do Comida na Mesa','Indicadores e gráficos reais do banco do SIGAS para acompanhamento e prestação de informações.'); ?>
-<form class="cm-filter-panel cm-filter-panel--report" method="get" action="comida-mesa/relatorios.php"><label><span>Competência</span><select class="form-select" name="competencia_id"><option value="">Padrão</option><?php foreach($competences as $c): ?><option value="<?= (int)$c['id'] ?>"<?= cm_selected($selectedCompetenceId,$c['id']) ?>><?= cm_h(cm_month_label((int)$c['mes'],(int)$c['ano'])) ?> — <?= cm_h(cm_competence_label((string)$c['status'])) ?></option><?php endforeach; ?></select></label><button class="btn btn-primary" type="submit"><i class="bi bi-funnel"></i> Aplicar</button><a class="btn btn-light" href="comida-mesa/relatorios.php?competencia_id=<?= (int)$selectedCompetenceId ?>&export=csv"><i class="bi bi-file-earmark-spreadsheet"></i> Exportar CSV</a><button class="btn btn-light" type="button" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir / PDF</button></form>
+<form class="cm-filter-panel cm-filter-panel--report" method="get" action="comida-mesa/relatorios.php"><label><span>Competência</span><select class="form-select" name="competencia_id"><option value="">Padrão</option><?php foreach($competences as $c): ?><option value="<?= (int)$c['id'] ?>"<?= cm_selected($selectedCompetenceId,$c['id']) ?>><?= cm_h(cm_month_label((int)$c['mes'],(int)$c['ano'])) ?> — <?= cm_h(cm_competence_label((string)$c['status'])) ?></option><?php endforeach; ?></select></label><button class="btn btn-primary" type="submit"><i class="bi bi-funnel"></i> Aplicar</button><a class="btn btn-light" href="<?= cm_h($exportExcelUrl) ?>"><i class="bi bi-file-earmark-excel"></i> Exportar Excel</a><button class="btn btn-light" type="button" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir / PDF</button></form>
 <?php cm_metrics([
 ['label'=>'Inscrições','value'=>$stats['inscricoes']??0,'hint'=>'Base total','tone'=>'neutral'],['label'=>'Beneficiárias ativas','value'=>$stats['ativas']??0,'hint'=>'Aptas no programa','tone'=>'success'],['label'=>'Entregas','value'=>$stats['entregas']??0,'hint'=>$competenceLabel,'tone'=>'success'],['label'=>'Aguardando retirada','value'=>$stats['aguardando']??0,'hint'=>'Na competência','tone'=>'warning'],['label'=>'Execução','value'=>number_format((float)($stats['execucao_percentual']??0),1,',','.').'%','hint'=>'Ativas x entregues','tone'=>'info'],['label'=>'Restrições','value'=>$stats['restricoes']??0,'hint'=>'Suspensas/bloqueadas','tone'=>'danger'],
 ]); ?>
