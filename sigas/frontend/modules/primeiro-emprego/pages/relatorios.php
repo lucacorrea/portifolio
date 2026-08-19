@@ -36,7 +36,7 @@ $filters = [
     'data_fim' => trim((string) ($_GET['data_fim'] ?? '')),
 ];
 
-$page = max(1, (int) ($_GET['pagina'] ?? 1));
+$currentPage = max(1, (int) ($_GET['pagina'] ?? 1));
 $perPage = 50;
 $total = 0;
 $pages = 1;
@@ -75,10 +75,10 @@ if ($dbReady) {
         $options = pe_rel_filter_options($pdo);
         $total = pe_rel_candidate_count($pdo, $filters);
         $pages = max(1, (int) ceil($total / $perPage));
-        if ($page > $pages) {
-            $page = $pages;
+        if ($currentPage > $pages) {
+            $currentPage = $pages;
         }
-        $rows = pe_rel_candidate_rows($pdo, $filters, $perPage, ($page - 1) * $perPage);
+        $rows = pe_rel_candidate_rows($pdo, $filters, $perPage, ($currentPage - 1) * $perPage);
     } catch (Throwable) {
         $dbReady = false;
     }
@@ -297,7 +297,7 @@ ob_start();
                 <div>
                     <div class="card-kicker">Base detalhada</div>
                     <h3>Candidatos encontrados</h3>
-                    <p><strong><?= pe_h((string)$total) ?></strong> registro(s) encontrados. Página <?= pe_h((string)$page) ?> de <?= pe_h((string)$pages) ?>.</p>
+                    <p><strong><?= pe_h((string)$total) ?></strong> registro(s) encontrados. Página <?= pe_h((string)$currentPage) ?> de <?= pe_h((string)$pages) ?>.</p>
                 </div>
                 <div class="pe-no-print"><a class="btn btn-light" href="<?= pe_h($exportUrl) ?>"><i class="bi bi-download"></i> Baixar dados filtrados</a></div>
             </div>
@@ -309,7 +309,7 @@ ob_start();
                         <tbody>
                         <?php if (!$rows): ?><tr><td colspan="12" class="text-center text-muted py-5">Nenhum registro encontrado com os filtros informados.</td></tr><?php endif; ?>
                         <?php foreach ($rows as $index => $row):
-                            $position = (($page - 1) * $perPage) + $index + 1;
+                            $position = (($currentPage - 1) * $perPage) + $index + 1;
                             $partner = trim((string)($row['parceiro_sigla'] ?? ''));
                             if ($partner !== '') $partner .= ' — ';
                             $partner .= (string)($row['parceiro_nome'] ?? '');
@@ -347,12 +347,12 @@ ob_start();
                     <?php
                     $baseQuery = $_GET;
                     unset($baseQuery['pe_export']);
-                    $prevQuery = $baseQuery; $prevQuery['pagina'] = max(1, $page - 1);
-                    $nextQuery = $baseQuery; $nextQuery['pagina'] = min($pages, $page + 1);
+                    $prevQuery = $baseQuery; $prevQuery['pagina'] = max(1, $currentPage - 1);
+                    $nextQuery = $baseQuery; $nextQuery['pagina'] = min($pages, $currentPage + 1);
                     ?>
-                    <a class="btn btn-light<?= $page <= 1 ? ' disabled' : '' ?>" href="primeiro-emprego/relatorios.php?<?= pe_h(http_build_query($prevQuery)) ?>"><i class="bi bi-chevron-left"></i> Anterior</a>
-                    <span>Página <strong><?= $page ?></strong> de <strong><?= $pages ?></strong></span>
-                    <a class="btn btn-light<?= $page >= $pages ? ' disabled' : '' ?>" href="primeiro-emprego/relatorios.php?<?= pe_h(http_build_query($nextQuery)) ?>">Próxima <i class="bi bi-chevron-right"></i></a>
+                    <a class="btn btn-light<?= $currentPage <= 1 ? ' disabled' : '' ?>" href="primeiro-emprego/relatorios.php?<?= pe_h(http_build_query($prevQuery)) ?>"><i class="bi bi-chevron-left"></i> Anterior</a>
+                    <span>Página <strong><?= $currentPage ?></strong> de <strong><?= $pages ?></strong></span>
+                    <a class="btn btn-light<?= $currentPage >= $pages ? ' disabled' : '' ?>" href="primeiro-emprego/relatorios.php?<?= pe_h(http_build_query($nextQuery)) ?>">Próxima <i class="bi bi-chevron-right"></i></a>
                 </nav>
             <?php endif; ?>
         </section>
