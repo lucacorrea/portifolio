@@ -1,28 +1,15 @@
 <?php
 
 declare(strict_types=1);
-
-$pageDefinition = [
-    'title' => 'Frequência',
-    'description' => 'Acompanhamento demonstrativo de presenças e faltas por competência.',
-    'actions' => [['label' => 'Registrar frequência', 'icon' => 'calendar-check', 'primary' => true]],
-    'stats' => pe_demo_stats('frequencia'),
-    'search_placeholder' => 'Pesquisar participante, instituição ou competência',
-    'filters' => [
-        ['label' => 'Competência', 'options' => ['Jul/2026']],
-        ['label' => 'Situação', 'options' => ['Regular', 'Atenção']],
-    ],
-    'blocks' => [[
-        'type' => 'table',
-        'kicker' => 'Controle mensal',
-        'title' => 'Frequência dos participantes',
-        'primary' => 'participante',
-        'columns' => [
-            ['key' => 'competencia', 'label' => 'Competência'], ['key' => 'participante', 'label' => 'Participante'], ['key' => 'instituicao', 'label' => 'Instituição'],
-            ['key' => 'previstos', 'label' => 'Dias previstos'], ['key' => 'presencas', 'label' => 'Presenças'], ['key' => 'faltas', 'label' => 'Faltas'],
-            ['key' => 'percentual', 'label' => 'Percentual'], ['key' => 'situacao', 'label' => 'Situação'],
-        ],
-        'rows' => pe_demo_attendance(),
-    ]],
-    'modal' => ['title' => 'Detalhes da frequência'],
-];
+require_once dirname(__DIR__) . '/lib/repository.php';
+$pageDefinition=['title'=>'Frequência','description'=>'Registro mensal de presença dos participantes do programa.','demo'=>false,'show_states'=>false,'actions'=>[],'modal'=>['title'=>'Frequência']];
+$dbReady=pe_db_ready()&&pe_program_schema_ready();$message=null;$rows=[];$candidates=[];
+if($dbReady){$pdo=pe_db();$candidates=pe_program_candidates($pdo);if($_SERVER['REQUEST_METHOD']==='POST'&&($_POST['pe_action']??'')==='save_attendance'){try{pe_verify_csrf();pe_save_attendance($pdo,$_POST,pe_current_user_label());$message=['type'=>'success','text'=>'Frequência salva com sucesso.'];$_POST=[];}catch(Throwable $e){$message=['type'=>'danger','text'=>$e->getMessage()];}}$rows=pe_attendance_rows($pdo);}
+ob_start();
+?>
+<section class="content-card pe-form-card">
+<?php if(!$dbReady):?><div class="alert alert-warning">Execute <code>database/primeiroEmprego/0003-primeiroEmprego-programa.sql</code>.</div><?php endif;?><?php if($message):?><div class="alert alert-<?=pe_h($message['type'])?>"><?=pe_h($message['text'])?></div><?php endif;?>
+<details class="pe-operational-form mb-4"<?=!$rows?' open':''?>><summary><i class="bi bi-calendar-check"></i> Registrar frequência</summary><form method="post" class="row g-3 mt-1"><?=pe_csrf_field()?><input type="hidden" name="pe_action" value="save_attendance"><div class="col-lg-5"><label class="form-label required">Participante</label><select class="form-select" name="candidato_id" required><option value="">Selecione...</option><?php foreach($candidates as $c):?><option value="<?= (int)$c['id']?>"><?=pe_h($c['nome'])?></option><?php endforeach;?></select></div><div class="col-lg-2"><label class="form-label required">Competência</label><input class="form-control" type="month" name="competencia" value="<?=date('Y-m')?>" required></div><div class="col-lg-2"><label class="form-label">Dias previstos</label><input class="form-control" type="number" min="0" max="31" name="dias_previstos" value="22"></div><div class="col-lg-1"><label class="form-label">Presenças</label><input class="form-control" type="number" min="0" max="31" name="presencas" value="0"></div><div class="col-lg-2"><label class="form-label">Faltas</label><input class="form-control" type="number" min="0" max="31" name="faltas" value="0"></div><div class="col-lg-10"><label class="form-label">Observação</label><input class="form-control" name="observacao" maxlength="500"></div><div class="col-lg-2 d-flex align-items-end"><button class="btn btn-primary w-100"><i class="bi bi-floppy"></i> Salvar</button></div></form></details>
+<div class="pe-form-header"><div><div class="card-kicker">Controle mensal</div><h2>Frequência dos participantes</h2><p><?=count($rows)?> competência(s) registrada(s).</p></div></div><div class="table-responsive"><table class="table align-middle pe-data-table"><thead><tr><th>Competência</th><th>Participante</th><th>Local</th><th>Previstos</th><th>Presenças</th><th>Faltas</th><th>Frequência</th><th>Status</th></tr></thead><tbody><?php if(!$rows):?><tr><td colspan="8" class="text-center text-muted py-5">Nenhuma frequência registrada.</td></tr><?php endif;?><?php foreach($rows as $r):?><tr><td><?=pe_h($r['competencia'])?></td><td><strong><?=pe_h($r['candidato'])?></strong></td><td><?=pe_h($r['parceiro']?:'—')?></td><td><?= (int)$r['dias_previstos']?></td><td><?= (int)$r['presencas']?></td><td><?= (int)$r['faltas']?></td><td><strong><?=number_format((float)$r['percentual'],1,',','.')?>%</strong></td><td><span class="badge <?= $r['status']==='Atenção'?'text-bg-warning':'text-bg-success'?>"><?=pe_h($r['status'])?></span></td></tr><?php endforeach;?></tbody></table></div>
+</section>
+<?php $pageCustomContent=(string)ob_get_clean();

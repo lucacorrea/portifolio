@@ -1,28 +1,15 @@
 <?php
 
 declare(strict_types=1);
-
-$pageDefinition = [
-    'title' => 'Encaminhamentos',
-    'description' => 'Controle demonstrativo de indicações, retornos e andamento dos candidatos.',
-    'actions' => [['label' => 'Novo encaminhamento', 'icon' => 'send', 'primary' => true]],
-    'stats' => pe_demo_stats('encaminhamentos'),
-    'search_placeholder' => 'Pesquisar candidato, oportunidade ou instituição',
-    'filters' => [
-        ['label' => 'Situação', 'options' => ['Em andamento', 'Pendente', 'Encaminhado']],
-        ['label' => 'Retorno', 'options' => ['Entrevista marcada', 'Aguardando instituição', 'Análise de perfil']],
-    ],
-    'blocks' => [[
-        'type' => 'table',
-        'kicker' => 'Fluxo de oportunidades',
-        'title' => 'Encaminhamentos recentes',
-        'primary' => 'candidato',
-        'columns' => [
-            ['key' => 'candidato', 'label' => 'Candidato'], ['key' => 'oportunidade', 'label' => 'Oportunidade'], ['key' => 'instituicao', 'label' => 'Instituição'],
-            ['key' => 'data', 'label' => 'Data'], ['key' => 'responsavel', 'label' => 'Responsável'], ['key' => 'retorno', 'label' => 'Retorno'],
-            ['key' => 'situacao', 'label' => 'Situação'],
-        ],
-        'rows' => pe_demo_referrals(),
-    ]],
-    'modal' => ['title' => 'Detalhes do encaminhamento'],
-];
+require_once dirname(__DIR__) . '/lib/repository.php';
+$pageDefinition=['title'=>'Encaminhamentos','description'=>'Registro de candidatos encaminhados para oportunidades e acompanhamento do retorno.','demo'=>false,'show_states'=>false,'actions'=>[],'modal'=>['title'=>'Encaminhamento']];
+$dbReady=pe_db_ready()&&pe_program_schema_ready();$message=null;$rows=[];$candidates=[];$vacancies=[];$partners=[];
+if($dbReady){$pdo=pe_db();$candidates=pe_program_candidates($pdo);$vacancies=pe_vacancies($pdo);$partners=pe_partners($pdo);if($_SERVER['REQUEST_METHOD']==='POST'&&($_POST['pe_action']??'')==='save_referral'){try{pe_verify_csrf();pe_save_referral($pdo,$_POST,pe_current_user_label());$message=['type'=>'success','text'=>'Encaminhamento registrado com sucesso.'];$_POST=[];}catch(Throwable $e){$message=['type'=>'danger','text'=>$e->getMessage()];}}$rows=pe_referrals($pdo);}
+ob_start();
+?>
+<section class="content-card pe-form-card">
+<?php if(!$dbReady):?><div class="alert alert-warning">Execute <code>database/primeiroEmprego/0003-primeiroEmprego-programa.sql</code>.</div><?php endif;?><?php if($message):?><div class="alert alert-<?=pe_h($message['type'])?>"><?=pe_h($message['text'])?></div><?php endif;?>
+<details class="pe-operational-form mb-4"<?=!$rows?' open':''?>><summary><i class="bi bi-send"></i> Novo encaminhamento</summary><form method="post" class="row g-3 mt-1"><?=pe_csrf_field()?><input type="hidden" name="pe_action" value="save_referral"><div class="col-lg-5"><label class="form-label required">Candidato</label><select class="form-select" name="candidato_id" required><option value="">Selecione...</option><?php foreach($candidates as $c):?><option value="<?= (int)$c['id']?>"><?=pe_h($c['nome'])?> — <?=pe_h(pe_format_cpf($c['cpf']?:$c['cpf_informado']))?></option><?php endforeach;?></select></div><div class="col-lg-4"><label class="form-label">Vaga</label><select class="form-select" name="vaga_id"><option value="">Sem vaga específica</option><?php foreach($vacancies as $v):?><option value="<?= (int)$v['id']?>"><?=pe_h($v['cargo'])?> — <?=pe_h($v['parceiro']?:'Sem parceiro')?></option><?php endforeach;?></select></div><div class="col-lg-3"><label class="form-label">Instituição</label><select class="form-select" name="parceiro_id"><option value="">Automática pela vaga</option><?php foreach($partners as $p):?><option value="<?= (int)$p['id']?>"><?=pe_h($p['nome'])?></option><?php endforeach;?></select></div><div class="col-lg-3"><label class="form-label">Data</label><input class="form-control" type="date" name="data_encaminhamento" value="<?=date('Y-m-d')?>"></div><div class="col-lg-3"><label class="form-label">Status</label><select class="form-select" name="status"><option>Pendente</option><option>Encaminhado</option><option>Entrevista marcada</option><option>Aprovado</option><option>Não selecionado</option></select></div><div class="col-lg-3"><label class="form-label">Data de retorno</label><input class="form-control" type="date" name="data_retorno"></div><div class="col-lg-3"><label class="form-label">Retorno</label><input class="form-control" name="retorno"></div><div class="col-12 text-end"><button class="btn btn-primary"><i class="bi bi-send"></i> Registrar encaminhamento</button></div></form></details>
+<div class="pe-form-header"><div><div class="card-kicker">Seleção</div><h2>Encaminhamentos registrados</h2><p><?=count($rows)?> movimentação(ões).</p></div></div><div class="table-responsive"><table class="table align-middle pe-data-table"><thead><tr><th>Candidato</th><th>Oportunidade</th><th>Instituição</th><th>Data</th><th>Responsável</th><th>Retorno</th><th>Status</th></tr></thead><tbody><?php if(!$rows):?><tr><td colspan="7" class="text-center text-muted py-5">Nenhum encaminhamento registrado.</td></tr><?php endif;?><?php foreach($rows as $r):?><tr><td><strong><?=pe_h($r['candidato'])?></strong></td><td><?=pe_h($r['vaga']?:'—')?></td><td><?=pe_h($r['parceiro']?:'—')?></td><td><?=pe_h(date('d/m/Y',strtotime((string)$r['data_encaminhamento'])))?></td><td><?=pe_h($r['responsavel']?:'—')?></td><td><?=pe_h($r['retorno']?:'Aguardando')?></td><td><span class="badge text-bg-light border"><?=pe_h($r['status'])?></span></td></tr><?php endforeach;?></tbody></table></div>
+</section>
+<?php $pageCustomContent=(string)ob_get_clean();

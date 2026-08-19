@@ -1,30 +1,15 @@
 <?php
 
 declare(strict_types=1);
-
-$pageDefinition = [
-    'title' => 'Vagas e oportunidades',
-    'description' => 'Oportunidades demonstrativas e compatibilidade de perfis por instituição.',
-    'actions' => [['label' => 'Nova oportunidade', 'icon' => 'briefcase-plus', 'primary' => true]],
-    'stats' => pe_demo_stats('vagas'),
-    'search_placeholder' => 'Pesquisar cargo, instituição ou requisito',
-    'filters' => [
-        ['label' => 'Situação', 'options' => ['Aberta', 'Em seleção']],
-        ['label' => 'Escolaridade', 'options' => ['Ensino médio', 'Cursando médio']],
-        ['label' => 'Carga horária', 'options' => ['20h', '30h']],
-    ],
-    'blocks' => [[
-        'type' => 'table',
-        'kicker' => 'Oportunidades',
-        'title' => 'Vagas disponíveis',
-        'primary' => 'cargo',
-        'columns' => [
-            ['key' => 'cargo', 'label' => 'Cargo'], ['key' => 'instituicao', 'label' => 'Órgão ou instituição'], ['key' => 'setor', 'label' => 'Setor'],
-            ['key' => 'quantidade', 'label' => 'Quantidade'], ['key' => 'requisitos', 'label' => 'Requisitos'], ['key' => 'escolaridade', 'label' => 'Escolaridade'],
-            ['key' => 'carga_horaria', 'label' => 'Carga horária'], ['key' => 'remuneracao', 'label' => 'Bolsa ou remuneração'],
-            ['key' => 'prazo', 'label' => 'Prazo'], ['key' => 'situacao', 'label' => 'Situação'], ['key' => 'compativeis', 'label' => 'Candidatos compatíveis'],
-        ],
-        'rows' => pe_demo_jobs(),
-    ]],
-    'modal' => ['title' => 'Detalhes da oportunidade'],
-];
+require_once dirname(__DIR__) . '/lib/repository.php';
+$pageDefinition=['title'=>'Vagas e oportunidades','description'=>'Cadastro das oportunidades disponibilizadas pelos órgãos e instituições parceiras.','demo'=>false,'show_states'=>false,'actions'=>[],'modal'=>['title'=>'Vaga']];
+$dbReady=pe_db_ready()&&pe_program_schema_ready();$message=null;$rows=[];$partners=[];
+if($dbReady){$pdo=pe_db();$partners=pe_partners($pdo);if($_SERVER['REQUEST_METHOD']==='POST'&&($_POST['pe_action']??'')==='save_vacancy'){try{pe_verify_csrf();pe_save_vacancy($pdo,$_POST);$message=['type'=>'success','text'=>'Oportunidade cadastrada com sucesso.'];$_POST=[];}catch(Throwable $e){$message=['type'=>'danger','text'=>$e->getMessage()];}}$rows=pe_vacancies($pdo);}
+ob_start();
+?>
+<section class="content-card pe-form-card">
+<?php if(!$dbReady):?><div class="alert alert-warning">Execute <code>database/primeiroEmprego/0003-primeiroEmprego-programa.sql</code>.</div><?php endif;?><?php if($message):?><div class="alert alert-<?=pe_h($message['type'])?>"><?=pe_h($message['text'])?></div><?php endif;?>
+<details class="pe-operational-form mb-4"<?=!$rows?' open':''?>><summary><i class="bi bi-briefcase-plus"></i> Nova oportunidade</summary><form method="post" class="row g-3 mt-1"><?=pe_csrf_field()?><input type="hidden" name="pe_action" value="save_vacancy"><div class="col-lg-4"><label class="form-label required">Cargo / oportunidade</label><input class="form-control" name="cargo" required></div><div class="col-lg-4"><label class="form-label">Instituição</label><select class="form-select" name="parceiro_id"><option value="">Selecione...</option><?php foreach($partners as $p):?><option value="<?= (int)$p['id']?>"><?=pe_h($p['nome'])?></option><?php endforeach;?></select></div><div class="col-lg-4"><label class="form-label">Setor</label><input class="form-control" name="setor"></div><div class="col-lg-2"><label class="form-label">Quantidade</label><input class="form-control" type="number" min="1" name="quantidade" value="1"></div><div class="col-lg-3"><label class="form-label">Escolaridade</label><input class="form-control" name="escolaridade"></div><div class="col-lg-2"><label class="form-label">Carga horária</label><input class="form-control" name="carga_horaria" placeholder="20h"></div><div class="col-lg-2"><label class="form-label">Remuneração</label><input class="form-control" name="remuneracao" inputmode="decimal"></div><div class="col-lg-3"><label class="form-label">Prazo</label><input class="form-control" type="date" name="prazo"></div><div class="col-lg-8"><label class="form-label">Requisitos</label><textarea class="form-control" name="requisitos" rows="2"></textarea></div><div class="col-lg-4"><label class="form-label">Status</label><select class="form-select" name="status"><option>Aberta</option><option>Em seleção</option><option>Preenchida</option><option>Encerrada</option></select></div><div class="col-12 text-end"><button class="btn btn-primary"><i class="bi bi-floppy"></i> Salvar oportunidade</button></div></form></details>
+<div class="pe-form-header"><div><div class="card-kicker">Oportunidades</div><h2>Vagas cadastradas</h2><p><?=count($rows)?> oportunidade(s) registrada(s).</p></div></div><div class="table-responsive"><table class="table align-middle pe-data-table"><thead><tr><th>Cargo</th><th>Instituição</th><th>Setor</th><th>Qtd.</th><th>Escolaridade</th><th>Carga</th><th>Remuneração</th><th>Prazo</th><th>Status</th></tr></thead><tbody><?php if(!$rows):?><tr><td colspan="9" class="text-center text-muted py-5">Nenhuma oportunidade cadastrada.</td></tr><?php endif;?><?php foreach($rows as $r):?><tr><td><strong><?=pe_h($r['cargo'])?></strong><small class="d-block text-muted"><?=pe_h(mb_strimwidth((string)($r['requisitos']??''),0,80,'…'))?></small></td><td><?=pe_h($r['parceiro']?:'—')?></td><td><?=pe_h($r['setor']?:'—')?></td><td><?= (int)$r['quantidade']?></td><td><?=pe_h($r['escolaridade']?:'—')?></td><td><?=pe_h($r['carga_horaria']?:'—')?></td><td><?= $r['remuneracao']!==null?'R$ '.number_format((float)$r['remuneracao'],2,',','.'):'—'?></td><td><?= $r['prazo']?pe_h(date('d/m/Y',strtotime((string)$r['prazo']))):'—'?></td><td><span class="badge text-bg-light border"><?=pe_h($r['status'])?></span></td></tr><?php endforeach;?></tbody></table></div>
+</section>
+<?php $pageCustomContent=(string)ob_get_clean();

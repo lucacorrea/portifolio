@@ -133,6 +133,7 @@ final class ModuleRegistry
                     'painel' => ['Painel', 'speedometer2', 'primeiro-emprego/index.php'],
                     'candidatos' => ['Candidatos', 'people', 'primeiro-emprego/candidatos.php'],
                     'novo-candidato' => ['Novo candidato', 'person-plus', 'primeiro-emprego/cadastro-candidato.php'],
+                    'importar-candidatos' => ['Importar candidatos', 'file-earmark-spreadsheet', 'primeiro-emprego/importar-candidatos.php'],
                     'vagas' => ['Vagas e oportunidades', 'briefcase', 'primeiro-emprego/vagas.php'],
                     'parceiros' => ['Órgãos e instituições parceiras', 'buildings', 'primeiro-emprego/parceiros.php'],
                     'lotacoes' => ['Lotações', 'diagram-3', 'primeiro-emprego/lotacoes.php'],

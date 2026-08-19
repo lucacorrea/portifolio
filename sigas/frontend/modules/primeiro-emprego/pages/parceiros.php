@@ -1,29 +1,18 @@
 <?php
 
 declare(strict_types=1);
+require_once dirname(__DIR__) . '/lib/repository.php';
 
-$pageDefinition = [
-    'title' => 'Órgãos e instituições parceiras',
-    'description' => 'Rede de órgãos públicos, empresas e organizações vinculadas ao programa.',
-    'actions' => [['label' => 'Nova instituição', 'icon' => 'building-add', 'primary' => true]],
-    'stats' => pe_demo_stats('parceiros'),
-    'search_placeholder' => 'Pesquisar instituição, tipo ou responsável',
-    'filters' => [
-        ['label' => 'Tipo', 'options' => ['Órgão público', 'Empresa privada', 'Organização social']],
-        ['label' => 'Situação', 'options' => ['Ativa', 'Pendente']],
-    ],
-    'blocks' => [[
-        'type' => 'table',
-        'kicker' => 'Rede parceira',
-        'title' => 'Instituições cadastradas',
-        'primary' => 'instituicao',
-        'columns' => [
-            ['key' => 'instituicao', 'label' => 'Instituição'], ['key' => 'tipo', 'label' => 'Tipo'], ['key' => 'cnpj', 'label' => 'CNPJ mascarado'],
-            ['key' => 'responsavel', 'label' => 'Responsável'], ['key' => 'telefone', 'label' => 'Telefone'], ['key' => 'email', 'label' => 'E-mail'],
-            ['key' => 'oportunidades', 'label' => 'Oportunidades'], ['key' => 'lotados', 'label' => 'Participantes lotados'],
-            ['key' => 'parceria', 'label' => 'Parceria'], ['key' => 'situacao', 'label' => 'Situação'],
-        ],
-        'rows' => pe_demo_partners(),
-    ]],
-    'modal' => ['title' => 'Detalhes da instituição'],
-];
+$pageDefinition=['title'=>'Órgãos e instituições parceiras','description'=>'Cadastro e acompanhamento da rede de parceiros do Programa Meu Primeiro Emprego.','demo'=>false,'show_states'=>false,'actions'=>[],'modal'=>['title'=>'Parceiro']];
+$dbReady=pe_db_ready()&&pe_program_schema_ready();$message=null;$rows=[];
+if($dbReady){$pdo=pe_db();if($_SERVER['REQUEST_METHOD']==='POST'&&($_POST['pe_action']??'')==='save_partner'){try{pe_verify_csrf();pe_save_partner($pdo,$_POST);$message=['type'=>'success','text'=>'Instituição parceira cadastrada com sucesso.'];$_POST=[];}catch(Throwable $e){$message=['type'=>'danger','text'=>$e->getMessage()];}}$rows=pe_partners($pdo);}
+ob_start();
+?>
+<section class="content-card pe-form-card">
+<?php if(!$dbReady): ?><div class="alert alert-warning">Execute <code>database/primeiroEmprego/0003-primeiroEmprego-programa.sql</code>.</div><?php endif; ?>
+<?php if($message): ?><div class="alert alert-<?=pe_h($message['type'])?>"><?=pe_h($message['text'])?></div><?php endif; ?>
+<details class="pe-operational-form mb-4"<?= !$rows?' open':'' ?>><summary><i class="bi bi-building-add"></i> Cadastrar instituição parceira</summary><form method="post" class="row g-3 mt-1"><?=pe_csrf_field()?><input type="hidden" name="pe_action" value="save_partner"><div class="col-lg-6"><label class="form-label required">Instituição</label><input class="form-control" name="nome" required maxlength="180"></div><div class="col-lg-3"><label class="form-label">Tipo</label><select class="form-select" name="tipo"><option>Órgão público</option><option>Empresa privada</option><option>Organização social</option><option>Instituição de ensino</option><option>Outro</option></select></div><div class="col-lg-3"><label class="form-label">CNPJ</label><input class="form-control" name="cnpj" inputmode="numeric" maxlength="18"></div><div class="col-lg-4"><label class="form-label">Responsável</label><input class="form-control" name="responsavel"></div><div class="col-lg-3"><label class="form-label">Telefone</label><input class="form-control" name="telefone"></div><div class="col-lg-5"><label class="form-label">E-mail</label><input class="form-control" type="email" name="email"></div><div class="col-lg-4"><label class="form-label">Termo/parceria</label><input class="form-control" name="termo_parceria"></div><div class="col-lg-3"><label class="form-label">Status</label><select class="form-select" name="status"><option>Ativa</option><option>Pendente</option><option>Suspensa</option><option>Encerrada</option></select></div><div class="col-lg-5"><label class="form-label">Observação</label><input class="form-control" name="observacao"></div><div class="col-12 text-end"><button class="btn btn-primary"><i class="bi bi-floppy"></i> Salvar instituição</button></div></form></details>
+<div class="pe-form-header"><div><div class="card-kicker">Rede parceira</div><h2>Instituições cadastradas</h2><p><?=count($rows)?> instituição(ões) registrada(s).</p></div></div>
+<div class="table-responsive"><table class="table align-middle pe-data-table"><thead><tr><th>Instituição</th><th>Tipo</th><th>Responsável</th><th>Contato</th><th>Vagas</th><th>Lotados</th><th>Status</th></tr></thead><tbody><?php if(!$rows):?><tr><td colspan="7" class="text-center text-muted py-5">Nenhuma instituição cadastrada.</td></tr><?php endif;?><?php foreach($rows as $r):?><tr><td><strong><?=pe_h($r['nome'])?></strong><small class="d-block text-muted"><?=pe_h($r['termo_parceria']?:'Sem termo informado')?></small></td><td><?=pe_h($r['tipo']?:'—')?></td><td><?=pe_h($r['responsavel']?:'—')?></td><td><?=pe_h(pe_format_phone($r['telefone']?:''))?><small class="d-block"><?=pe_h($r['email']?:'')?></small></td><td><?= (int)$r['vagas']?></td><td><?= (int)$r['lotados']?></td><td><span class="badge text-bg-light border"><?=pe_h($r['status'])?></span></td></tr><?php endforeach;?></tbody></table></div>
+</section>
+<?php $pageCustomContent=(string)ob_get_clean();

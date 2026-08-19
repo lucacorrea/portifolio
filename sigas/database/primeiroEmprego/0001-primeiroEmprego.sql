@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS pe_importacoes (
     atualizados INT UNSIGNED NOT NULL DEFAULT 0,
     bloqueados INT UNSIGNED NOT NULL DEFAULT 0,
     avisos INT UNSIGNED NOT NULL DEFAULT 0,
+    pendentes_revisao INT UNSIGNED NOT NULL DEFAULT 0,
     erros INT UNSIGNED NOT NULL DEFAULT 0,
     marcar_como_contemplados TINYINT(1) NOT NULL DEFAULT 0,
     responsavel VARCHAR(160) NULL,
@@ -62,19 +63,37 @@ CREATE TABLE IF NOT EXISTS pe_candidatos (
     data_entrevista DATE NULL,
     tecnico_triagem VARCHAR(160) NULL,
     status VARCHAR(40) NOT NULL DEFAULT 'Em triagem',
+    revisao_status VARCHAR(40) NULL,
+    revisao_cpf TINYINT(1) NOT NULL DEFAULT 0,
+    revisao_telefone TINYINT(1) NOT NULL DEFAULT 0,
+    revisao_nascimento TINYINT(1) NOT NULL DEFAULT 0,
+    cpf_duplicado TINYINT(1) NOT NULL DEFAULT 0,
+    cpf_revisado_confirmado TINYINT(1) NOT NULL DEFAULT 0,
+    telefone_revisado_confirmado TINYINT(1) NOT NULL DEFAULT 0,
+    nascimento_revisado_confirmado TINYINT(1) NOT NULL DEFAULT 0,
+    cpf_duplicado_confirmado TINYINT(1) NOT NULL DEFAULT 0,
+    revisao_motivos LONGTEXT NULL,
+    revisao_atualizada_em DATETIME NULL,
+    revisao_revisado_por VARCHAR(160) NULL,
+    revisao_revisado_em DATETIME NULL,
     origem VARCHAR(30) NOT NULL DEFAULT 'manual',
     chave_importacao CHAR(64) NULL,
     importacao_id BIGINT UNSIGNED NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
-    UNIQUE KEY uk_pe_candidatos_cpf (cpf),
-    UNIQUE KEY uk_pe_candidatos_chave_importacao (chave_importacao),
+    KEY idx_pe_candidatos_cpf_nao_unico (cpf),
+    KEY idx_pe_candidatos_chave_importacao (chave_importacao),
     KEY idx_pe_candidatos_nome (nome),
     KEY idx_pe_candidatos_bairro (bairro),
     KEY idx_pe_candidatos_status (status),
     KEY idx_pe_candidatos_origem (origem),
     KEY idx_pe_candidatos_importacao (importacao_id),
+    KEY idx_pe_candidatos_revisao_status (revisao_status),
+    KEY idx_pe_candidatos_revisao_cpf (revisao_cpf),
+    KEY idx_pe_candidatos_revisao_telefone (revisao_telefone),
+    KEY idx_pe_candidatos_revisao_nascimento (revisao_nascimento),
+    KEY idx_pe_candidatos_cpf_duplicado (cpf_duplicado),
     CONSTRAINT fk_pe_candidatos_importacao
         FOREIGN KEY (importacao_id)
         REFERENCES pe_importacoes(id)
@@ -149,6 +168,30 @@ CREATE TABLE IF NOT EXISTS pe_importacao_itens (
         FOREIGN KEY (candidato_id)
         REFERENCES pe_candidatos(id)
         ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+CREATE TABLE IF NOT EXISTS pe_revisoes_cadastrais (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    candidato_id BIGINT UNSIGNED NOT NULL,
+    cpf_anterior VARCHAR(32) NULL,
+    cpf_novo VARCHAR(32) NULL,
+    telefone_anterior VARCHAR(20) NULL,
+    telefone_novo VARCHAR(20) NULL,
+    nascimento_anterior DATE NULL,
+    nascimento_novo DATE NULL,
+    confirmou_cpf TINYINT(1) NOT NULL DEFAULT 0,
+    confirmou_telefone TINYINT(1) NOT NULL DEFAULT 0,
+    confirmou_nascimento TINYINT(1) NOT NULL DEFAULT 0,
+    confirmou_cpf_duplicado TINYINT(1) NOT NULL DEFAULT 0,
+    observacao VARCHAR(500) NULL,
+    revisado_por VARCHAR(160) NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_pe_revisoes_candidato (candidato_id),
+    KEY idx_pe_revisoes_data (created_at),
+    CONSTRAINT fk_pe_revisoes_candidato
+        FOREIGN KEY (candidato_id) REFERENCES pe_candidatos(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

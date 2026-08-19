@@ -1,28 +1,15 @@
 <?php
 
 declare(strict_types=1);
-
-$pageDefinition = [
-    'title' => 'Capacitações',
-    'description' => 'Cursos, oficinas e turmas de qualificação vinculadas ao programa.',
-    'actions' => [['label' => 'Nova capacitação', 'icon' => 'mortarboard', 'primary' => true]],
-    'stats' => pe_demo_stats('capacitacoes'),
-    'search_placeholder' => 'Pesquisar curso, instituição ou turma',
-    'filters' => [
-        ['label' => 'Situação', 'options' => ['Em andamento', 'Concluída', 'Inscrições abertas']],
-        ['label' => 'Certificado', 'options' => ['Previsto', 'Disponível']],
-    ],
-    'blocks' => [[
-        'type' => 'table',
-        'kicker' => 'Qualificação',
-        'title' => 'Capacitações programadas',
-        'primary' => 'curso',
-        'columns' => [
-            ['key' => 'curso', 'label' => 'Curso'], ['key' => 'instituicao', 'label' => 'Instituição'], ['key' => 'turma', 'label' => 'Turma'],
-            ['key' => 'carga_horaria', 'label' => 'Carga horária'], ['key' => 'inscritos', 'label' => 'Inscritos'], ['key' => 'concluintes', 'label' => 'Concluintes'],
-            ['key' => 'periodo', 'label' => 'Período'], ['key' => 'certificado', 'label' => 'Certificado'], ['key' => 'situacao', 'label' => 'Situação'],
-        ],
-        'rows' => pe_demo_trainings(),
-    ]],
-    'modal' => ['title' => 'Detalhes da capacitação'],
-];
+require_once dirname(__DIR__) . '/lib/repository.php';
+$pageDefinition=['title'=>'Capacitações','description'=>'Cursos, oficinas e participação dos candidatos nas ações de qualificação.','demo'=>false,'show_states'=>false,'actions'=>[],'modal'=>['title'=>'Capacitação']];
+$dbReady=pe_db_ready()&&pe_program_schema_ready();$message=null;$rows=[];$candidates=[];
+if($dbReady){$pdo=pe_db();$candidates=pe_program_candidates($pdo);if($_SERVER['REQUEST_METHOD']==='POST'){try{pe_verify_csrf();if(($_POST['pe_action']??'')==='save_training'){pe_save_training($pdo,$_POST);$message=['type'=>'success','text'=>'Capacitação cadastrada.'];}elseif(($_POST['pe_action']??'')==='enroll_training'){pe_enroll_training($pdo,$_POST);$message=['type'=>'success','text'=>'Participante inscrito na capacitação.'];}}catch(Throwable $e){$message=['type'=>'danger','text'=>$e->getMessage()];}}$rows=pe_trainings($pdo);}
+ob_start();
+?>
+<section class="content-card pe-form-card">
+<?php if(!$dbReady):?><div class="alert alert-warning">Execute <code>database/primeiroEmprego/0003-primeiroEmprego-programa.sql</code>.</div><?php endif;?><?php if($message):?><div class="alert alert-<?=pe_h($message['type'])?>"><?=pe_h($message['text'])?></div><?php endif;?>
+<div class="row g-3 mb-4"><div class="col-xl-7"><details class="pe-operational-form h-100"<?=!$rows?' open':''?>><summary><i class="bi bi-mortarboard"></i> Nova capacitação</summary><form method="post" class="row g-3 mt-1"><?=pe_csrf_field()?><input type="hidden" name="pe_action" value="save_training"><div class="col-md-6"><label class="form-label required">Curso/oficina</label><input class="form-control" name="curso" required></div><div class="col-md-6"><label class="form-label">Instituição</label><input class="form-control" name="instituicao"></div><div class="col-md-4"><label class="form-label">Turma</label><input class="form-control" name="turma"></div><div class="col-md-2"><label class="form-label">Carga (h)</label><input class="form-control" type="number" min="0" name="carga_horaria"></div><div class="col-md-3"><label class="form-label">Início</label><input class="form-control" type="date" name="data_inicio"></div><div class="col-md-3"><label class="form-label">Fim</label><input class="form-control" type="date" name="data_fim"></div><div class="col-md-3"><label class="form-label">Vagas</label><input class="form-control" type="number" min="0" name="vagas"></div><div class="col-md-4"><label class="form-label">Certificado</label><select class="form-select" name="certificado"><option>Previsto</option><option>Disponível</option><option>Não se aplica</option></select></div><div class="col-md-5"><label class="form-label">Status</label><select class="form-select" name="status"><option>Planejada</option><option>Inscrições abertas</option><option>Em andamento</option><option>Concluída</option><option>Cancelada</option></select></div><div class="col-12 text-end"><button class="btn btn-primary">Salvar capacitação</button></div></form></details></div><div class="col-xl-5"><details class="pe-operational-form h-100"><summary><i class="bi bi-person-plus"></i> Inscrever participante</summary><form method="post" class="row g-3 mt-1"><?=pe_csrf_field()?><input type="hidden" name="pe_action" value="enroll_training"><div class="col-12"><label class="form-label">Capacitação</label><select class="form-select" name="capacitacao_id" required><option value="">Selecione...</option><?php foreach($rows as $r):?><option value="<?= (int)$r['id']?>"><?=pe_h($r['curso'])?><?= $r['turma']?' — '.pe_h($r['turma']):''?></option><?php endforeach;?></select></div><div class="col-12"><label class="form-label">Candidato</label><select class="form-select" name="candidato_id" required><option value="">Selecione...</option><?php foreach($candidates as $c):?><option value="<?= (int)$c['id']?>"><?=pe_h($c['nome'])?></option><?php endforeach;?></select></div><div class="col-12 text-end"><button class="btn btn-primary">Inscrever</button></div></form></details></div></div>
+<div class="pe-form-header"><div><div class="card-kicker">Qualificação</div><h2>Capacitações cadastradas</h2><p><?=count($rows)?> ação(ões).</p></div></div><div class="table-responsive"><table class="table align-middle pe-data-table"><thead><tr><th>Curso</th><th>Instituição</th><th>Turma</th><th>Carga</th><th>Período</th><th>Inscritos</th><th>Concluintes</th><th>Certificado</th><th>Status</th></tr></thead><tbody><?php if(!$rows):?><tr><td colspan="9" class="text-center text-muted py-5">Nenhuma capacitação cadastrada.</td></tr><?php endif;?><?php foreach($rows as $r):?><tr><td><strong><?=pe_h($r['curso'])?></strong></td><td><?=pe_h($r['instituicao']?:'—')?></td><td><?=pe_h($r['turma']?:'—')?></td><td><?= $r['carga_horaria']!==null?(int)$r['carga_horaria'].'h':'—'?></td><td><?= $r['data_inicio']?pe_h(date('d/m/Y',strtotime((string)$r['data_inicio']))):'—'?><?= $r['data_fim']?' a '.pe_h(date('d/m/Y',strtotime((string)$r['data_fim']))):''?></td><td><?= (int)$r['inscritos']?></td><td><?= (int)$r['concluintes']?></td><td><?=pe_h($r['certificado'])?></td><td><span class="badge text-bg-light border"><?=pe_h($r['status'])?></span></td></tr><?php endforeach;?></tbody></table></div>
+</section>
+<?php $pageCustomContent=(string)ob_get_clean();

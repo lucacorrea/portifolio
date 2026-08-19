@@ -19,6 +19,8 @@ function sigas_frontend_page(array $definition): array
         'blocks' => [],
         'states' => ['loading', 'empty', 'error', 'success', 'no-results', 'blocked', 'maintenance'],
         'modal' => ['title' => 'Detalhes', 'fields' => []],
+        'demo' => true,
+        'show_states' => true,
     ], $definition);
 }
 

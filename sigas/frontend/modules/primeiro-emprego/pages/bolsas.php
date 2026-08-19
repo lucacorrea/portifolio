@@ -1,30 +1,15 @@
 <?php
 
 declare(strict_types=1);
-
-$pageDefinition = [
-    'title' => 'Bolsas',
-    'description' => 'Visão demonstrativa da conferência de bolsas, sem processamento financeiro real.',
-    'actions' => [['label' => 'Conferir competência', 'icon' => 'wallet2', 'primary' => true]],
-    'stats' => pe_demo_stats('bolsas'),
-    'search_placeholder' => 'Pesquisar participante, instituição ou status',
-    'filters' => [
-        ['label' => 'Competência', 'options' => ['Jul/2026']],
-        ['label' => 'Pagamento', 'options' => ['Em processamento', 'Em análise', 'Programado']],
-        ['label' => 'Documentação', 'options' => ['Regular', 'Pendente']],
-    ],
-    'blocks' => [[
-        'type' => 'table',
-        'kicker' => 'Conferência de bolsas',
-        'title' => 'Registros da competência',
-        'description' => 'Nenhum pagamento é realizado por esta interface.',
-        'primary' => 'participante',
-        'columns' => [
-            ['key' => 'competencia', 'label' => 'Competência'], ['key' => 'participante', 'label' => 'Participante'], ['key' => 'instituicao', 'label' => 'Instituição'],
-            ['key' => 'valor', 'label' => 'Valor'], ['key' => 'frequencia', 'label' => 'Frequência'], ['key' => 'documentacao', 'label' => 'Situação documental'],
-            ['key' => 'pagamento', 'label' => 'Status do pagamento'], ['key' => 'data', 'label' => 'Data'],
-        ],
-        'rows' => pe_demo_grants(),
-    ]],
-    'modal' => ['title' => 'Detalhes da bolsa'],
-];
+require_once dirname(__DIR__) . '/lib/repository.php';
+$pageDefinition=['title'=>'Bolsas','description'=>'Conferência e controle das bolsas por participante e competência.','demo'=>false,'show_states'=>false,'actions'=>[],'modal'=>['title'=>'Bolsa']];
+$dbReady=pe_db_ready()&&pe_program_schema_ready();$message=null;$rows=[];$candidates=[];$defaultValue='800.00';
+if($dbReady){$pdo=pe_db();$candidates=pe_program_candidates($pdo);$defaultValue=pe_config_value($pdo,'bolsa_valor_padrao','800.00');if($_SERVER['REQUEST_METHOD']==='POST'&&($_POST['pe_action']??'')==='save_grant'){try{pe_verify_csrf();pe_save_grant($pdo,$_POST,pe_current_user_label());$message=['type'=>'success','text'=>'Bolsa/competência salva com sucesso.'];$_POST=[];}catch(Throwable $e){$message=['type'=>'danger','text'=>$e->getMessage()];}}$rows=pe_grant_rows($pdo);}
+ob_start();
+?>
+<section class="content-card pe-form-card">
+<?php if(!$dbReady):?><div class="alert alert-warning">Execute <code>database/primeiroEmprego/0003-primeiroEmprego-programa.sql</code>.</div><?php endif;?><?php if($message):?><div class="alert alert-<?=pe_h($message['type'])?>"><?=pe_h($message['text'])?></div><?php endif;?>
+<details class="pe-operational-form mb-4"<?=!$rows?' open':''?>><summary><i class="bi bi-wallet2"></i> Registrar bolsa</summary><form method="post" class="row g-3 mt-1"><?=pe_csrf_field()?><input type="hidden" name="pe_action" value="save_grant"><div class="col-lg-5"><label class="form-label required">Participante</label><select class="form-select" name="candidato_id" required><option value="">Selecione...</option><?php foreach($candidates as $c):?><option value="<?= (int)$c['id']?>"><?=pe_h($c['nome'])?></option><?php endforeach;?></select></div><div class="col-lg-2"><label class="form-label required">Competência</label><input class="form-control" type="month" name="competencia" value="<?=date('Y-m')?>" required></div><div class="col-lg-2"><label class="form-label">Valor (R$)</label><input class="form-control" name="valor" inputmode="decimal" value="<?=pe_h(number_format((float)$defaultValue,2,',','.'))?>"></div><div class="col-lg-3"><label class="form-label">Status</label><select class="form-select" name="status"><option>Em análise</option><option>Programada</option><option>Em processamento</option><option>Paga</option><option>Suspensa</option></select></div><div class="col-lg-3"><label class="form-label">Data de pagamento</label><input class="form-control" type="date" name="data_pagamento"></div><div class="col-lg-7"><label class="form-label">Observação</label><input class="form-control" name="observacao" maxlength="500"></div><div class="col-lg-2 d-flex align-items-end"><button class="btn btn-primary w-100"><i class="bi bi-floppy"></i> Salvar</button></div></form></details>
+<div class="pe-form-header"><div><div class="card-kicker">Competências</div><h2>Bolsas registradas</h2><p><?=count($rows)?> registro(s).</p></div></div><div class="table-responsive"><table class="table align-middle pe-data-table"><thead><tr><th>Competência</th><th>Participante</th><th>Valor</th><th>Frequência</th><th>Status</th><th>Pagamento</th><th>Responsável</th></tr></thead><tbody><?php if(!$rows):?><tr><td colspan="7" class="text-center text-muted py-5">Nenhuma bolsa registrada.</td></tr><?php endif;?><?php foreach($rows as $r):?><tr><td><?=pe_h($r['competencia'])?></td><td><strong><?=pe_h($r['candidato'])?></strong></td><td>R$ <?=number_format((float)$r['valor'],2,',','.')?></td><td><?= $r['frequencia']!==null?number_format((float)$r['frequencia'],1,',','.').'%':'—'?></td><td><span class="badge text-bg-light border"><?=pe_h($r['status'])?></span></td><td><?= $r['data_pagamento']?pe_h(date('d/m/Y',strtotime((string)$r['data_pagamento']))):'—'?></td><td><?=pe_h($r['registrado_por']?:'—')?></td></tr><?php endforeach;?></tbody></table></div>
+</section>
+<?php $pageCustomContent=(string)ob_get_clean();

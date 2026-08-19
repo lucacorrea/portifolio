@@ -1,28 +1,15 @@
 <?php
 
 declare(strict_types=1);
-
-$pageDefinition = [
-    'title' => 'Documentação',
-    'description' => 'Conferência visual dos documentos exigidos, entregues e pendentes.',
-    'actions' => [['label' => 'Registrar conferência', 'icon' => 'folder-check', 'primary' => true]],
-    'stats' => pe_demo_stats('documentacao'),
-    'search_placeholder' => 'Pesquisar participante ou pendência',
-    'filters' => [
-        ['label' => 'Situação', 'options' => ['Regular', 'Pendente', 'Revisar']],
-        ['label' => 'Pendências', 'options' => ['0', 'Comprovante escolar', '2 documentos']],
-    ],
-    'blocks' => [[
-        'type' => 'table',
-        'kicker' => 'Conferência documental',
-        'title' => 'Situação dos participantes',
-        'primary' => 'participante',
-        'columns' => [
-            ['key' => 'participante', 'label' => 'Participante'], ['key' => 'exigidos', 'label' => 'Documentos exigidos'],
-            ['key' => 'entregues', 'label' => 'Documentos entregues'], ['key' => 'pendencias', 'label' => 'Pendências'],
-            ['key' => 'validade', 'label' => 'Validade'], ['key' => 'situacao', 'label' => 'Situação'],
-        ],
-        'rows' => pe_demo_documents(),
-    ]],
-    'modal' => ['title' => 'Detalhes da documentação'],
-];
+require_once dirname(__DIR__) . '/lib/repository.php';
+$pageDefinition=['title'=>'Documentação','description'=>'Conferência e armazenamento seguro dos documentos dos candidatos e contemplados.','demo'=>false,'show_states'=>false,'actions'=>[],'modal'=>['title'=>'Documentação']];
+$dbReady=pe_db_ready()&&pe_program_schema_ready();$message=null;$rows=[];$candidates=[];
+if($dbReady){$pdo=pe_db();$candidates=pe_program_candidates($pdo);if($_SERVER['REQUEST_METHOD']==='POST'&&($_POST['pe_action']??'')==='save_document'){try{pe_verify_csrf();pe_save_document($pdo,$_POST,$_FILES,pe_current_user_label());$message=['type'=>'success','text'=>'Documento/conferência registrado com sucesso.'];$_POST=[];}catch(Throwable $e){$message=['type'=>'danger','text'=>$e->getMessage()];}}$rows=pe_documents($pdo);}
+ob_start();
+?>
+<section class="content-card pe-form-card">
+<?php if(!$dbReady):?><div class="alert alert-warning">Execute <code>database/primeiroEmprego/0003-primeiroEmprego-programa.sql</code>.</div><?php endif;?><?php if($message):?><div class="alert alert-<?=pe_h($message['type'])?>"><?=pe_h($message['text'])?></div><?php endif;?>
+<details class="pe-operational-form mb-4"<?=!$rows?' open':''?>><summary><i class="bi bi-folder-plus"></i> Registrar documento</summary><form method="post" enctype="multipart/form-data" class="row g-3 mt-1"><?=pe_csrf_field()?><input type="hidden" name="pe_action" value="save_document"><div class="col-lg-5"><label class="form-label required">Candidato</label><select class="form-select" name="candidato_id" required><option value="">Selecione...</option><?php foreach($candidates as $c):?><option value="<?= (int)$c['id']?>"><?=pe_h($c['nome'])?></option><?php endforeach;?></select></div><div class="col-lg-4"><label class="form-label required">Documento</label><select class="form-select" name="tipo" required><option value="">Selecione...</option><?php foreach(['Documento de identificação','CPF','Comprovante de residência','Comprovante de escolaridade','Currículo','NIS','Outro'] as $t):?><option><?=pe_h($t)?></option><?php endforeach;?></select></div><div class="col-lg-3"><label class="form-label">Status</label><select class="form-select" name="status"><option>Regular</option><option>Pendente</option><option>Revisar</option><option>Vencido</option></select></div><div class="col-lg-3"><label class="form-label">Validade</label><input class="form-control" type="date" name="validade"></div><div class="col-lg-5"><label class="form-label">Arquivo</label><input class="form-control" type="file" name="arquivo" accept=".pdf,.jpg,.jpeg,.png,.webp"><small class="text-muted">PDF ou imagem, até 10 MB. O arquivo é salvo no storage privado do SIGAS.</small></div><div class="col-lg-4"><label class="form-label">Observação</label><input class="form-control" name="observacao" maxlength="500"></div><div class="col-12 text-end"><button class="btn btn-primary"><i class="bi bi-folder-check"></i> Registrar</button></div></form></details>
+<div class="pe-form-header"><div><div class="card-kicker">Conferência documental</div><h2>Documentos registrados</h2><p><?=count($rows)?> registro(s).</p></div></div><div class="table-responsive"><table class="table align-middle pe-data-table"><thead><tr><th>Candidato</th><th>Documento</th><th>Arquivo</th><th>Validade</th><th>Status</th><th>Responsável</th><th class="text-end">Ação</th></tr></thead><tbody><?php if(!$rows):?><tr><td colspan="7" class="text-center text-muted py-5">Nenhum documento registrado.</td></tr><?php endif;?><?php foreach($rows as $r):?><tr><td><strong><?=pe_h($r['candidato'])?></strong></td><td><?=pe_h($r['tipo'])?></td><td><?=pe_h($r['nome_original']?:($r['arquivo_path']?'Arquivo protegido':'Sem arquivo'))?></td><td><?= $r['validade']?pe_h(date('d/m/Y',strtotime((string)$r['validade']))):'—'?></td><td><span class="badge text-bg-light border"><?=pe_h($r['status'])?></span></td><td><?=pe_h($r['registrado_por']?:'—')?></td><td class="text-end"><?php if($r['arquivo_path']):?><a class="btn btn-sm btn-light" href="primeiro-emprego/documento.php?id=<?= (int)$r['id']?>"><i class="bi bi-download"></i></a><?php endif;?></td></tr><?php endforeach;?></tbody></table></div>
+</section>
+<?php $pageCustomContent=(string)ob_get_clean();
