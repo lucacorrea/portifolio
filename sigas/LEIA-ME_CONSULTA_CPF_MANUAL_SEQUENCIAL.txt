@@ -1,0 +1,37 @@
+SIGAS — COARI COMIDA NA MESA
+Consulta CPF manual + fluxo sequencial de modais
+
+ALTERAÇÃO PRINCIPAL
+- Removida da interface toda a parte de câmera, leitura de imagem e OCR.
+- A página Consultar CPF agora trabalha somente com digitação manual do CPF.
+
+NOVO FLUXO
+1. Informar CPF
+2. Conferir situação em modal
+3. Abrir central de ações em modal
+4. Abrir ação específica em modal
+5. Ao fechar a ação específica, retornar à central de ações
+6. Após entrega/cancelamento com sucesso, refazer a consulta e mostrar o resultado atualizado
+
+AÇÕES ORGANIZADAS
+- Visualizar cadastro
+- Editar cadastro
+- Registrar/Reativar entrega
+- Documentos
+- Histórico
+- Cancelar entrega
+- Gerenciar competência, quando aplicável
+
+ARQUIVOS NOVOS/ALTERADOS
+- frontend/modules/comida-mesa/pages/consulta-cpf.php
+- assets/js/modules/comida-mesa-consulta-cpf.js
+- assets/css/modules/comida-mesa-consulta-cpf.css
+
+ARQUIVOS OCR LEGADOS
+Os arquivos abaixo podem continuar na hospedagem, mas a página nova não os carrega mais:
+- assets/js/cpf-ocr.js
+- assets/js/consulta-documento.js
+- assets/css/consulta-documento-ocr.css
+
+Não é necessário SQL.
+Não foram alteradas regras de banco, CSRF, permissões ou APIs de operação.
