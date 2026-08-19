@@ -1,0 +1,49 @@
+CORREÇÃO CSS/JS — COMIDA NA MESA
+=================================
+
+CAUSA ENCONTRADA
+----------------
+O .htaccess do SIGAS bloqueia corretamente acesso HTTP à pasta /frontend:
+
+RedirectMatch 403 "(^|/)(app|database|frontend|tests|docs|...)(/|$)"
+
+Porém o módulo Comida na Mesa tentava carregar publicamente:
+- frontend/modules/comida-mesa/module.css
+- frontend/modules/comida-mesa/module.js
+
+Essas URLs recebem HTTP 403 na hospedagem.
+
+Além disso, o ModuleRegistry já apontava para os caminhos públicos corretos:
+- assets/css/modules/comida-mesa.css
+- assets/js/modules/comida-mesa.js
+
+mas esses dois arquivos públicos estavam praticamente vazios.
+
+CORREÇÃO APLICADA
+-----------------
+1. O CSS completo do módulo foi publicado em:
+   assets/css/modules/comida-mesa.css
+
+2. O JavaScript de interface completo foi publicado em:
+   assets/js/modules/comida-mesa.js
+
+3. comida-mesa/_layout.php não tenta mais expor arquivos de /frontend/modules/...
+
+4. /frontend continua bloqueada. NÃO remova essa proteção do .htaccess.
+
+ARQUIVOS DO HOTFIX
+------------------
+- comida-mesa/_layout.php
+- assets/css/modules/comida-mesa.css
+- assets/js/modules/comida-mesa.js
+
+APÓS ENVIAR
+-----------
+Abra uma página do Comida na Mesa e use Ctrl+F5.
+No DevTools > Network, os arquivos abaixo devem responder HTTP 200:
+- /sigas/assets/css/modules/comida-mesa.css
+- /sigas/assets/js/modules/comida-mesa.js
+
+Nenhuma página do Comida na Mesa deve tentar carregar:
+- /sigas/frontend/modules/comida-mesa/module.css
+- /sigas/frontend/modules/comida-mesa/module.js

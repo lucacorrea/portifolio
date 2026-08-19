@@ -47,11 +47,16 @@ if (!is_file($view)) {
 
 require $view;
 
-$extraStyles = array_values(array_unique(array_merge([
-    'frontend/modules/comida-mesa/module.css',
-], $pageExtraStyles)));
+/*
+ * Arquivos públicos do módulo são carregados pelo ModuleRegistry em:
+ *   assets/css/modules/comida-mesa.css
+ *   assets/js/modules/comida-mesa.js
+ *
+ * Não exponha /frontend/modules/... por HTTP: a pasta /frontend é
+ * corretamente protegida pelo .htaccess do SIGAS.
+ */
+$extraStyles = array_values(array_unique($pageExtraStyles));
 $extraScripts = array_values(array_unique(array_merge([
-    'frontend/modules/comida-mesa/module.js',
     'assets/js/comida-mesa.js',
 ], $pageExtraScripts)));
 
