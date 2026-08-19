@@ -650,17 +650,59 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                         </section>
                     </div>
                     <div class="tab-pane fade" id="os-tab-items">
-                        <section class="form-section">
-                            <h3 class="form-section-title">Servicos</h3>
-                            <div class="os-items" data-os-items="servico"></div><button class="btn-filter btn-filter-ghost js-os-add-item" type="button" data-type="servico"><i class="bi bi-plus-lg"></i> Adicionar servico</button>
+                        <section class="form-section item-category-card item-category-card--service">
+                            <div class="item-category-header">
+                                <div class="item-category-heading">
+                                    <span class="item-category-icon"><i class="bi bi-tools"></i></span>
+                                    <div>
+                                        <h3 class="form-section-title">Serviços</h3>
+                                        <p>Serviços executados e o local específico de cada atendimento.</p>
+                                    </div>
+                                </div>
+                                <span class="item-category-count" data-item-counter="servico">0 itens</span>
+                            </div>
+                            <div class="item-category-body">
+                                <div class="os-items item-category-items" data-os-items="servico" data-empty-label="Nenhum serviço adicionado."></div>
+                            </div>
+                            <div class="item-category-footer">
+                                <button class="btn-filter btn-filter-ghost js-os-add-item" type="button" data-type="servico"><i class="bi bi-plus-lg"></i> Adicionar serviço</button>
+                            </div>
                         </section>
-                        <section class="form-section">
-                            <h3 class="form-section-title">Produtos</h3>
-                            <div class="os-items" data-os-items="produto"></div><button class="btn-filter btn-filter-ghost js-os-add-item" type="button" data-type="produto"><i class="bi bi-plus-lg"></i> Adicionar produto</button>
+                        <section class="form-section item-category-card item-category-card--product">
+                            <div class="item-category-header">
+                                <div class="item-category-heading">
+                                    <span class="item-category-icon"><i class="bi bi-box-seam"></i></span>
+                                    <div>
+                                        <h3 class="form-section-title">Produtos / peças</h3>
+                                        <p>Materiais e peças utilizados nesta Ordem de Serviço.</p>
+                                    </div>
+                                </div>
+                                <span class="item-category-count" data-item-counter="produto">0 itens</span>
+                            </div>
+                            <div class="item-category-body">
+                                <div class="os-items item-category-items" data-os-items="produto" data-empty-label="Nenhum produto ou peça adicionado."></div>
+                            </div>
+                            <div class="item-category-footer">
+                                <button class="btn-filter btn-filter-ghost js-os-add-item" type="button" data-type="produto"><i class="bi bi-plus-lg"></i> Adicionar produto / peça</button>
+                            </div>
                         </section>
-                        <section class="form-section">
-                            <h3 class="form-section-title">Outros</h3>
-                            <div class="os-items" data-os-items="outro"></div><button class="btn-filter btn-filter-ghost js-os-add-item" type="button" data-type="outro"><i class="bi bi-plus-lg"></i> Adicionar outro item</button>
+                        <section class="form-section item-category-card item-category-card--other">
+                            <div class="item-category-header">
+                                <div class="item-category-heading">
+                                    <span class="item-category-icon"><i class="bi bi-plus-square"></i></span>
+                                    <div>
+                                        <h3 class="form-section-title">Outros itens</h3>
+                                        <p>Itens adicionais que não pertencem ao catálogo de serviços ou produtos.</p>
+                                    </div>
+                                </div>
+                                <span class="item-category-count" data-item-counter="outro">0 itens</span>
+                            </div>
+                            <div class="item-category-body">
+                                <div class="os-items item-category-items" data-os-items="outro" data-empty-label="Nenhum outro item adicionado."></div>
+                            </div>
+                            <div class="item-category-footer">
+                                <button class="btn-filter btn-filter-ghost js-os-add-item" type="button" data-type="outro"><i class="bi bi-plus-lg"></i> Adicionar outro item</button>
+                            </div>
                         </section>
                     </div>
                     <?php if ($canTeam || $canSchedule): ?><div class="tab-pane fade" id="os-tab-team">

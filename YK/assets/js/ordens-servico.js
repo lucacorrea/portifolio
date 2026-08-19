@@ -268,6 +268,16 @@ document.addEventListener('DOMContentLoaded', function () {
     return type === 'servico' ? serviceOptions : type === 'produto' ? productOptions : [];
   }
 
+  function updateItemCounters(form) {
+    ['servico', 'produto', 'outro'].forEach(function (type) {
+      const container = form.querySelector('[data-os-items="' + type + '"]');
+      const counter = form.querySelector('[data-item-counter="' + type + '"]');
+      if (!container || !counter) return;
+      const count = container.children.length;
+      counter.textContent = count + (count === 1 ? ' item' : ' itens');
+    });
+  }
+
   function recalc(form) {
     const sums = { servico: 0, produto: 0, outro: 0 };
     form.querySelectorAll('.os-item-row').forEach(function (row) {
@@ -283,6 +293,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const target = form.querySelector('[data-summary="' + key + '"]');
       if (target) target.textContent = money(value);
     });
+    updateItemCounters(form);
     refreshScheduleSuggestion(form, false);
   }
 

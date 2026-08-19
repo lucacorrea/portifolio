@@ -300,17 +300,59 @@ function budget_modal_form(string $id, string $title, array $data, ?string $erro
                                 </select></div>
                         </div>
                     </section>
-                    <section class="form-section">
-                        <h3 class="form-section-title">Serviços</h3>
-                        <div class="budget-items" data-budget-items="servico"></div><button class="btn-filter btn-filter-ghost js-add-budget-item" type="button" data-type="servico"><i class="bi bi-plus-lg"></i> Adicionar serviço</button>
+                    <section class="form-section item-category-card item-category-card--service">
+                        <div class="item-category-header">
+                            <div class="item-category-heading">
+                                <span class="item-category-icon"><i class="bi bi-tools"></i></span>
+                                <div>
+                                    <h3 class="form-section-title">Serviços</h3>
+                                    <p>Serviços que compõem o orçamento, com descrição e valores separados.</p>
+                                </div>
+                            </div>
+                            <span class="item-category-count" data-item-counter="servico">0 itens</span>
+                        </div>
+                        <div class="item-category-body">
+                            <div class="budget-items item-category-items" data-budget-items="servico" data-empty-label="Nenhum serviço adicionado."></div>
+                        </div>
+                        <div class="item-category-footer">
+                            <button class="btn-filter btn-filter-ghost js-add-budget-item" type="button" data-type="servico"><i class="bi bi-plus-lg"></i> Adicionar serviço</button>
+                        </div>
                     </section>
-                    <section class="form-section">
-                        <h3 class="form-section-title">Produtos</h3>
-                        <div class="budget-items" data-budget-items="produto"></div><button class="btn-filter btn-filter-ghost js-add-budget-item" type="button" data-type="produto"><i class="bi bi-plus-lg"></i> Adicionar produto</button>
+                    <section class="form-section item-category-card item-category-card--product">
+                        <div class="item-category-header">
+                            <div class="item-category-heading">
+                                <span class="item-category-icon"><i class="bi bi-box-seam"></i></span>
+                                <div>
+                                    <h3 class="form-section-title">Produtos / peças</h3>
+                                    <p>Materiais, peças e produtos previstos para a execução do serviço.</p>
+                                </div>
+                            </div>
+                            <span class="item-category-count" data-item-counter="produto">0 itens</span>
+                        </div>
+                        <div class="item-category-body">
+                            <div class="budget-items item-category-items" data-budget-items="produto" data-empty-label="Nenhum produto ou peça adicionado."></div>
+                        </div>
+                        <div class="item-category-footer">
+                            <button class="btn-filter btn-filter-ghost js-add-budget-item" type="button" data-type="produto"><i class="bi bi-plus-lg"></i> Adicionar produto / peça</button>
+                        </div>
                     </section>
-                    <section class="form-section">
-                        <h3 class="form-section-title">Outros itens</h3>
-                        <div class="budget-items" data-budget-items="outro"></div><button class="btn-filter btn-filter-ghost js-add-budget-item" type="button" data-type="outro"><i class="bi bi-plus-lg"></i> Adicionar outro item</button>
+                    <section class="form-section item-category-card item-category-card--other">
+                        <div class="item-category-header">
+                            <div class="item-category-heading">
+                                <span class="item-category-icon"><i class="bi bi-plus-square"></i></span>
+                                <div>
+                                    <h3 class="form-section-title">Outros itens</h3>
+                                    <p>Custos complementares ou itens fora do catálogo principal.</p>
+                                </div>
+                            </div>
+                            <span class="item-category-count" data-item-counter="outro">0 itens</span>
+                        </div>
+                        <div class="item-category-body">
+                            <div class="budget-items item-category-items" data-budget-items="outro" data-empty-label="Nenhum outro item adicionado."></div>
+                        </div>
+                        <div class="item-category-footer">
+                            <button class="btn-filter btn-filter-ghost js-add-budget-item" type="button" data-type="outro"><i class="bi bi-plus-lg"></i> Adicionar outro item</button>
+                        </div>
                     </section>
                     <section class="form-section">
                         <h3 class="form-section-title">Valores e observações</h3>
@@ -509,8 +551,8 @@ function budget_modal_form(string $id, string $title, array $data, ?string $erro
 
 <template id="budget-item-template">
     <div class="form-row budget-item-row"><input type="hidden" data-field="type">
-        <div class="form-group budget-reference-wrap"><label class="form-label">Referência</label><select class="form-control-os" data-field="reference_id"></select></div>
-        <div class="form-group"><label class="form-label">Descrição</label><input class="form-control-os" data-field="description" maxlength="255" required></div>
+        <div class="form-group budget-reference-wrap"><label class="form-label" data-budget-reference-label>Referência</label><select class="form-control-os" data-field="reference_id"></select></div>
+        <div class="form-group"><label class="form-label" data-budget-description-label>Descrição</label><input class="form-control-os" data-field="description" maxlength="255" required></div>
         <div class="form-group"><label class="form-label">Unidade</label><input class="form-control-os" data-field="unit" value="un" maxlength="20" required></div>
         <div class="form-group"><label class="form-label">Quantidade</label><input class="form-control-os" data-field="quantity" value="1" required></div>
         <div class="form-group"><label class="form-label">Valor unitário</label><input class="form-control-os" data-field="unit_price" value="0,00" required></div>
@@ -555,6 +597,16 @@ function budget_modal_form(string $id, string $title, array $data, ?string $erro
             return type === 'servico' ? serviceOptions : type === 'produto' ? productOptions : [];
         }
 
+        function updateItemCounters(form) {
+            ['servico', 'produto', 'outro'].forEach(function(type) {
+                const container = form.querySelector('[data-budget-items="' + type + '"]');
+                const counter = form.querySelector('[data-item-counter="' + type + '"]');
+                if (!container || !counter) return;
+                const count = container.children.length;
+                counter.textContent = count + (count === 1 ? ' item' : ' itens');
+            });
+        }
+
         function recalc(form) {
             let sums = {
                 servico: 0,
@@ -581,6 +633,7 @@ function budget_modal_form(string $id, string $title, array $data, ?string $erro
                 const target = form.querySelector('[data-summary="' + key + '"]');
                 if (target) target.textContent = money(value);
             });
+            updateItemCounters(form);
         }
 
         function addRow(form, type, item) {
@@ -592,6 +645,20 @@ function budget_modal_form(string $id, string $title, array $data, ?string $erro
             setName(row, type, index);
             const select = field(row, 'reference_id');
             const referenceWrap = row.querySelector('.budget-reference-wrap');
+            const referenceLabel = row.querySelector('[data-budget-reference-label]');
+            const descriptionLabel = row.querySelector('[data-budget-description-label]');
+            row.classList.add('is-' + type);
+
+            if (type === 'servico') {
+                if (referenceLabel) referenceLabel.textContent = 'Serviço';
+                if (descriptionLabel) descriptionLabel.textContent = 'Descrição do serviço';
+            } else if (type === 'produto') {
+                if (referenceLabel) referenceLabel.textContent = 'Produto / peça';
+                if (descriptionLabel) descriptionLabel.textContent = 'Descrição';
+            } else {
+                if (descriptionLabel) descriptionLabel.textContent = 'Descrição do item';
+            }
+
             if (type === 'outro') {
                 referenceWrap.classList.add('d-none');
                 select.appendChild(new Option('Personalizado', ''));
