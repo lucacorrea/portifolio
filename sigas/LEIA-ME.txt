@@ -1,0 +1,41 @@
+SIGAS — COARI MEU PRIMEIRO EMPREGO
+PADRÃO DE LISTAGENS + CRUD EM MODAIS
+
+INSTALAÇÃO
+1. Faça backup dos arquivos atuais.
+2. Extraia o conteúdo deste pacote diretamente dentro da pasta /sigas/ da hospedagem.
+3. Substitua os arquivos existentes quando solicitado.
+4. Não é necessário executar SQL novo para esta alteração de interface/CRUD.
+5. Após o upload, use Ctrl+F5.
+
+ASSETS OFICIAIS
+O módulo passa a usar como fonte principal:
+- assets/css/modules/primeiro-emprego.css
+- assets/js/modules/primeiro-emprego.js
+
+Os antigos module.css/module2.0.css/module.js/module2.0.js ficaram apenas como compatibilidade e não contêm mais o layout operacional.
+
+PADRÃO APLICADO
+- Tela inicial das páginas operacionais mostra somente cabeçalho, busca e listagem.
+- Novo registro: modal.
+- Clique na linha: modal de ações.
+- Visualizar: modal.
+- Editar: modal.
+- Excluir: modal de confirmação.
+- Responsivo: tabela vira cartões no celular.
+- Candidatos com pendência: fundo branco; somente texto/indicadores recebem cor.
+
+PÁGINAS PADRONIZADAS
+- Candidatos
+- Órgãos e instituições parceiras
+- Vagas e oportunidades
+- Lotações
+- Encaminhamentos
+- Documentação
+- Frequência
+- Bolsas
+- Capacitações
+- Acompanhamentos / visitas sociais
+
+OBSERVAÇÃO
+Relatórios permanecem como tela de consulta/exportação; cadastro e configurações sem listagem mantêm seu fluxo próprio.

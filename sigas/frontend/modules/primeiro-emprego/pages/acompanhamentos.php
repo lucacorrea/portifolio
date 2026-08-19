@@ -1,122 +1,22 @@
 <?php
 
 declare(strict_types=1);
-
 require_once dirname(__DIR__) . '/lib/repository.php';
-
-$pageDefinition = [
-    'title' => 'Visita social e parecer técnico',
-    'description' => 'Ficha utilizada pela Assistência Social na visita, vinculada ao cadastro inicial do candidato.',
-    'actions' => [['label' => 'Ver candidatos', 'icon' => 'people', 'href' => 'primeiro-emprego/candidatos.php']],
-    'demo' => false,
-    'show_states' => false,
-    'modal' => ['title' => 'Visita social'],
-];
-
-$dbReady = pe_db_ready() && pe_schema_ready();
-$message = null;
-$candidates = [];
-$selected = null;
-$visits = [];
-$programReady = false;
-$followups = [];
-if ($dbReady) {
-    $pdo = pe_db();
-    $programReady = pe_program_schema_ready();
-    $candidates = pe_recent_candidates($pdo, 1000);
-    $candidateId = (int) ($_GET['candidato_id'] ?? $_POST['candidato_id'] ?? 0);
-    if ($candidateId > 0) {
-        $selected = pe_candidate_by_id($pdo, $candidateId);
-    }
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['pe_action'] ?? '') === 'save_visit') {
-        try {
-            pe_verify_csrf();
-            pe_save_visit($pdo, $_POST);
-            $message = ['type' => 'success', 'text' => 'Visita social e parecer técnico registrados com sucesso.'];
-            $selected = pe_candidate_by_id($pdo, (int) $_POST['candidato_id']);
-        } catch (Throwable $e) {
-            $message = ['type' => 'danger', 'text' => $e->getMessage()];
-        }
-    }
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['pe_action'] ?? '') === 'save_followup' && $programReady) {
-        try {
-            pe_verify_csrf();
-            pe_save_followup($pdo, $_POST, pe_current_user_label());
-            $message = ['type' => 'success', 'text' => 'Acompanhamento operacional registrado com sucesso.'];
-            $selected = pe_candidate_by_id($pdo, (int) $_POST['candidato_id']);
-        } catch (Throwable $e) {
-            $message = ['type' => 'danger', 'text' => $e->getMessage()];
-        }
-    }
-    if ($selected) {
-        $stmt = $pdo->prepare('SELECT * FROM pe_visitas_sociais WHERE candidato_id=:id ORDER BY data_visita DESC, id DESC LIMIT 10');
-        $stmt->execute(['id' => $selected['id']]);
-        $visits = $stmt->fetchAll();
-    }
-    if ($programReady) {
-        $followups = pe_followup_rows($pdo);
-        if ($selected) {
-            $followups = array_values(array_filter($followups, static fn(array $row): bool => (int)$row['candidato_id'] === (int)$selected['id']));
-        }
-    }
-}
-
-ob_start();
-?>
-<section class="content-card pe-form-card">
-    <?php if (!$dbReady): ?><?= pe_db_notice() ?><?php endif; ?>
-    <?php if ($message): ?><div class="alert alert-<?= pe_h($message['type']) ?>"><?= pe_h($message['text']) ?></div><?php endif; ?>
-    <div class="pe-form-header">
-        <div><div class="card-kicker">Assistência Social</div><h2>Ficha de visita social</h2><p>Selecione o candidato; os dados de identificação são carregados automaticamente da triagem.</p></div>
-        <button type="button" class="btn btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir</button>
-    </div>
-
-    <?php if ($dbReady): ?>
-    <form method="get" class="row g-2 align-items-end pe-no-print mb-4">
-        <div class="col-md-9"><label class="form-label">Candidato</label><select class="form-select" name="candidato_id" required><option value="">Selecione...</option><?php foreach ($candidates as $candidate): ?><option value="<?= (int) $candidate['id'] ?>"<?= $selected && (int)$selected['id'] === (int)$candidate['id'] ? ' selected' : '' ?>><?= pe_h($candidate['nome']) ?><?= $candidate['cpf'] ? ' — ' . pe_h($candidate['cpf']) : '' ?></option><?php endforeach; ?></select></div>
-        <div class="col-md-3"><button class="btn btn-primary w-100" type="submit"><i class="bi bi-search"></i> Carregar cadastro</button></div>
-    </form>
-    <?php endif; ?>
-
-    <?php if ($selected): ?>
-        <div class="pe-prefill-grid">
-            <div><span>Adolescente/Jovem</span><strong><?= pe_h($selected['nome']) ?></strong></div>
-            <div><span>Endereço</span><strong><?= pe_h($selected['endereco'] ?: $selected['rua']) ?></strong></div>
-            <div><span>Bairro</span><strong><?= pe_h($selected['bairro']) ?></strong></div>
-            <div><span>Contato</span><strong><?= pe_h($selected['telefone']) ?></strong></div>
-        </div>
-
-        <form method="post" class="pe-real-form mt-4">
-            <?= pe_csrf_field() ?><input type="hidden" name="pe_action" value="save_visit"><input type="hidden" name="candidato_id" value="<?= (int) $selected['id'] ?>">
-            <div class="row g-3">
-                <div class="col-md-8"><label class="form-label">Nome do entrevistado(a)</label><input class="form-control" name="entrevistador" maxlength="160" value="<?= pe_h($_POST['entrevistador'] ?? '') ?>"></div>
-                <div class="col-md-4"><label class="form-label">Data da visita</label><input class="form-control" type="date" name="data_visita" value="<?= pe_h($_POST['data_visita'] ?? date('Y-m-d')) ?>"></div>
-                <div class="col-12"><label class="form-label">1.0 Informações complementares</label><textarea class="form-control pe-textarea-large" name="informacoes_complementares" rows="6" maxlength="5000"><?= pe_h($_POST['informacoes_complementares'] ?? '') ?></textarea></div>
-                <div class="col-12"><label class="form-label required">1.1 Parecer técnico</label><textarea class="form-control pe-textarea-large" name="parecer_tecnico" rows="9" maxlength="8000" required><?= pe_h($_POST['parecer_tecnico'] ?? '') ?></textarea></div>
-                <div class="col-md-4"><label class="form-label">Resultado</label><select class="form-select" name="decisao"><option>Pendente</option><option>Deferido</option><option>Indeferido</option></select></div>
-                <div class="col-md-8"><label class="form-label">Técnico responsável</label><input class="form-control" name="tecnico_responsavel" maxlength="160" value="<?= pe_h($_POST['tecnico_responsavel'] ?? '') ?>"></div>
-            </div>
-            <div class="d-flex justify-content-end mt-4 pe-no-print"><button class="btn btn-primary" type="submit"><i class="bi bi-check2-circle"></i> Salvar parecer</button></div>
-        </form>
-
-        <?php if ($visits): ?>
-            <hr class="my-4 pe-no-print"><div class="pe-no-print"><h3 class="h6">Histórico de visitas</h3><div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th>Data</th><th>Entrevistador</th><th>Decisão</th><th>Técnico</th></tr></thead><tbody><?php foreach ($visits as $visit): ?><tr><td><?= pe_h(date('d/m/Y', strtotime($visit['data_visita']))) ?></td><td><?= pe_h($visit['entrevistador']) ?></td><td><span class="badge text-bg-light"><?= pe_h($visit['decisao']) ?></span></td><td><?= pe_h($visit['tecnico_responsavel']) ?></td></tr><?php endforeach; ?></tbody></table></div></div>
-        <?php endif; ?>
-    <?php elseif ($dbReady): ?><div class="alert alert-info">Selecione um candidato para abrir a ficha da visita.</div><?php endif; ?>
-
-    <?php if ($selected && $programReady): ?>
-        <hr class="my-4 pe-no-print">
-        <div class="pe-form-header pe-no-print"><div><div class="card-kicker">Pós-encaminhamento</div><h2>Acompanhamento do participante</h2><p>Registre orientação, avaliação, contato mensal ou próxima ação.</p></div></div>
-        <form method="post" class="row g-3 pe-no-print">
-            <?= pe_csrf_field() ?><input type="hidden" name="pe_action" value="save_followup"><input type="hidden" name="candidato_id" value="<?= (int)$selected['id'] ?>">
-            <div class="col-md-3"><label class="form-label">Data</label><input class="form-control" type="date" name="data_acompanhamento" value="<?= date('Y-m-d') ?>"></div>
-            <div class="col-md-3"><label class="form-label">Tipo</label><select class="form-select" name="tipo"><option>Contato mensal</option><option>Orientação</option><option>Avaliação</option><option>Visita ao local</option><option>Outro</option></select></div>
-            <div class="col-md-3"><label class="form-label">Status</label><select class="form-select" name="status"><option>Regular</option><option>Atenção</option><option>Pendente</option><option>Concluído</option></select></div>
-            <div class="col-md-3"><label class="form-label">Próxima ação em</label><input class="form-control" type="date" name="data_proxima_acao"></div>
-            <div class="col-12"><label class="form-label required">Resumo</label><textarea class="form-control" name="resumo" rows="3" required></textarea></div>
-            <div class="col-lg-10"><label class="form-label">Próxima ação</label><input class="form-control" name="proxima_acao"></div><div class="col-lg-2 d-flex align-items-end"><button class="btn btn-primary w-100">Salvar</button></div>
-        </form>
-        <?php if ($followups): ?><div class="table-responsive mt-4 pe-no-print"><table class="table table-sm align-middle"><thead><tr><th>Data</th><th>Tipo</th><th>Resumo</th><th>Próxima ação</th><th>Status</th><th>Responsável</th></tr></thead><tbody><?php foreach($followups as $f):?><tr><td><?=pe_h(date('d/m/Y',strtotime((string)$f['data_acompanhamento'])))?></td><td><?=pe_h($f['tipo'])?></td><td><?=pe_h($f['resumo'])?></td><td><?=pe_h($f['proxima_acao']?:'—')?></td><td><span class="badge text-bg-light border"><?=pe_h($f['status'])?></span></td><td><?=pe_h($f['responsavel']?:'—')?></td></tr><?php endforeach;?></tbody></table></div><?php endif; ?>
-    <?php endif; ?>
+require_once dirname(__DIR__) . '/lib/list-ui.php';
+$pageDefinition=['title'=>'Acompanhamentos','description'=>'Visitas sociais, pareceres técnicos e acompanhamento do participante.','demo'=>false,'show_states'=>false,'actions'=>[],'modal'=>['title'=>'Acompanhamento']];
+$dbReady=pe_db_ready()&&pe_schema_ready();$programReady=$dbReady&&pe_program_schema_ready();$message=null;$candidates=[];$visits=[];$followups=[];
+if($dbReady){$pdo=pe_db();$candidates=pe_recent_candidates($pdo,2000);if($_SERVER['REQUEST_METHOD']==='POST'){try{pe_verify_csrf();$action=(string)($_POST['pe_action']??'');$id=(int)($_POST['id']??0);if($action==='save_visit'){if($id>0){pe_update_visit($pdo,$id,$_POST);$message=['type'=>'success','text'=>'Visita social atualizada com sucesso.'];}else{pe_save_visit($pdo,$_POST);$message=['type'=>'success','text'=>'Visita social registrada com sucesso.'];}}elseif($action==='delete_visit'){pe_delete_visit($pdo,$id);$message=['type'=>'success','text'=>'Visita social excluída com sucesso.'];}elseif($action==='save_followup'&&$programReady){if($id>0){pe_update_followup($pdo,$id,$_POST,pe_current_user_label());$message=['type'=>'success','text'=>'Acompanhamento atualizado com sucesso.'];}else{pe_save_followup($pdo,$_POST,pe_current_user_label());$message=['type'=>'success','text'=>'Acompanhamento registrado com sucesso.'];}}elseif($action==='delete_followup'&&$programReady){pe_delete_followup($pdo,$id);$message=['type'=>'success','text'=>'Acompanhamento excluído com sucesso.'];}}catch(Throwable $e){$message=['type'=>'danger','text'=>$e->getMessage()];}}$visits=pe_social_visit_rows($pdo);if($programReady)$followups=pe_followup_rows($pdo);}
+ob_start();?>
+<section class="content-card pe-form-card pe-page pe-list-page">
+<?php if(!$dbReady):?><?=pe_db_notice()?><?php endif;?><?php if($message):?><div class="alert alert-<?=pe_h($message['type'])?>"><?=pe_h($message['text'])?></div><?php endif;?>
+<div class="pe-page-hero"><div><div class="card-kicker">Assistência Social</div><h2>Visitas e acompanhamentos</h2><p>Somente as listagens aparecem na tela. Formulários e ações são realizados em modais.</p></div><div class="pe-page-actions pe-no-print"><button class="btn btn-primary" type="button" data-pe-open="#peVisitForm" data-pe-mode="create"><i class="bi bi-house-check"></i> Nova visita</button><?php if($programReady):?><button class="btn btn-light" type="button" data-pe-open="#peFollowupForm" data-pe-mode="create"><i class="bi bi-clipboard2-pulse"></i> Novo acompanhamento</button><?php endif;?></div></div>
+<div class="pe-list-section"><div class="pe-list-section__head"><div><h3>Visitas sociais</h3><p><?=count($visits)?> visita(s) registrada(s).</p></div><label class="pe-list-search"><i class="bi bi-search"></i><input class="form-control" type="search" placeholder="Buscar visita..." data-pe-list-search data-pe-list-scope="#peVisitTable"></label></div><div class="pe-table-wrap"><div class="table-responsive"><table id="peVisitTable" class="table align-middle pe-data-table pe-list-table" data-pe-list-table><thead><tr><th>Data</th><th>Candidato</th><th>Entrevistador</th><th>Decisão</th><th>Técnico</th></tr></thead><tbody><?php if(!$visits):?><tr class="pe-empty-row"><td colspan="5" class="text-center text-muted py-4">Nenhuma visita registrada.</td></tr><?php endif;?><?php foreach($visits as $r):$record=$r;$record['__title']=$r['candidato'];$record['__subtitle']='Visita em '.date('d/m/Y',strtotime((string)$r['data_visita'])).' · '.$r['decisao'];$record['data_visita_formatada']=date('d/m/Y',strtotime((string)$r['data_visita']));?><tr class="pe-list-row" tabindex="0" role="button" data-pe-list-row data-pe-actions-target="#peVisitActions" data-pe-record="<?=pe_record_attr($record)?>"><td data-label="Data"><?=pe_h($record['data_visita_formatada'])?></td><td data-label="Candidato"><strong><?=pe_h($r['candidato'])?></strong></td><td data-label="Entrevistador"><?=pe_h($r['entrevistador']?:'—')?></td><td data-label="Decisão"><span class="pe-status-text"><?=pe_h($r['decisao'])?></span></td><td data-label="Técnico"><?=pe_h($r['tecnico_responsavel']?:'—')?></td></tr><?php endforeach;?></tbody></table></div></div></div>
+<?php if($programReady):?><div class="pe-list-section mt-4"><div class="pe-list-section__head"><div><h3>Acompanhamentos do programa</h3><p><?=count($followups)?> registro(s).</p></div><label class="pe-list-search"><i class="bi bi-search"></i><input class="form-control" type="search" placeholder="Buscar acompanhamento..." data-pe-list-search data-pe-list-scope="#peFollowupTable"></label></div><div class="pe-table-wrap"><div class="table-responsive"><table id="peFollowupTable" class="table align-middle pe-data-table pe-list-table" data-pe-list-table><thead><tr><th>Data</th><th>Candidato</th><th>Tipo</th><th>Resumo</th><th>Próxima ação</th><th>Status</th><th>Responsável</th></tr></thead><tbody><?php if(!$followups):?><tr class="pe-empty-row"><td colspan="7" class="text-center text-muted py-4">Nenhum acompanhamento registrado.</td></tr><?php endif;?><?php foreach($followups as $r):$record=$r;$record['__title']=$r['candidato'];$record['__subtitle']=$r['tipo'].' · '.$r['status'];$record['data_acompanhamento_formatada']=date('d/m/Y',strtotime((string)$r['data_acompanhamento']));$record['data_proxima_acao_formatada']=$r['data_proxima_acao']?date('d/m/Y',strtotime((string)$r['data_proxima_acao'])):'—';?><tr class="pe-list-row" tabindex="0" role="button" data-pe-list-row data-pe-actions-target="#peFollowupActions" data-pe-record="<?=pe_record_attr($record)?>"><td data-label="Data"><?=pe_h($record['data_acompanhamento_formatada'])?></td><td data-label="Candidato"><strong><?=pe_h($r['candidato'])?></strong></td><td data-label="Tipo"><?=pe_h($r['tipo'])?></td><td data-label="Resumo"><?=pe_h(mb_strimwidth((string)$r['resumo'],0,75,'…'))?></td><td data-label="Próxima ação"><?=pe_h($r['proxima_acao']?:'—')?></td><td data-label="Status"><span class="pe-status-text"><?=pe_h($r['status'])?></span></td><td data-label="Responsável"><?=pe_h($r['responsavel']?:'—')?></td></tr><?php endforeach;?></tbody></table></div></div></div><?php endif;?>
+<?php pe_crud_actions_dialog('peVisitActions','Visita social','#peVisitView','#peVisitForm','#peVisitDelete'); ?>
+<?php if($programReady) pe_crud_actions_dialog('peFollowupActions','Acompanhamento','#peFollowupView','#peFollowupForm','#peFollowupDelete'); ?>
+<dialog class="pe-modal pe-modal--form" id="peVisitForm" data-pe-create-title="Nova visita social" data-pe-edit-title="Editar visita social"><div class="pe-modal__shell"><header class="pe-modal__header"><div><div class="card-kicker">Assistência Social</div><h2 data-pe-form-title>Nova visita social</h2><p>Registre a visita e o parecer técnico.</p></div><button type="button" class="pe-modal__close" data-pe-dialog-close><i class="bi bi-x-lg"></i></button></header><div class="pe-modal__body"><form method="post" class="pe-action-form" data-pe-record-form><?=pe_csrf_field()?><input type="hidden" name="pe_action" value="save_visit"><input type="hidden" name="id" data-pe-field="id"><div class="pe-action-form-grid pe-action-form-grid--3"><div class="pe-field-span-2"><label class="form-label required">Candidato</label><select class="form-select" name="candidato_id" data-pe-field="candidato_id" required><option value="">Selecione...</option><?php foreach($candidates as $c):?><option value="<?=(int)$c['id']?>"><?=pe_h($c['nome'])?></option><?php endforeach;?></select></div><div><label class="form-label">Data</label><input class="form-control" type="date" name="data_visita" data-pe-field="data_visita" value="<?=date('Y-m-d')?>"></div><div><label class="form-label">Entrevistador(a)</label><input class="form-control" name="entrevistador" data-pe-field="entrevistador" maxlength="160"></div><div><label class="form-label">Decisão</label><select class="form-select" name="decisao" data-pe-field="decisao"><option>Pendente</option><option>Deferido</option><option>Indeferido</option></select></div><div><label class="form-label">Técnico responsável</label><input class="form-control" name="tecnico_responsavel" data-pe-field="tecnico_responsavel" maxlength="160"></div><div class="pe-field-span-3"><label class="form-label">Informações complementares</label><textarea class="form-control" name="informacoes_complementares" data-pe-field="informacoes_complementares" rows="4"></textarea></div><div class="pe-field-span-3"><label class="form-label required">Parecer técnico</label><textarea class="form-control" name="parecer_tecnico" data-pe-field="parecer_tecnico" rows="6" required></textarea></div></div><footer class="pe-action-modal-footer"><button type="button" class="btn btn-light" data-pe-dialog-close>Cancelar</button><button class="btn btn-primary" type="submit"><i class="bi bi-check2-circle"></i> Salvar visita</button></footer></form></div></div></dialog>
+<dialog class="pe-modal pe-modal--view" id="peVisitView"><div class="pe-modal__shell"><header class="pe-modal__header"><div><div class="card-kicker">Visita social</div><h2 data-pe-current-title>Detalhes</h2><p data-pe-current-subtitle></p></div><button type="button" class="pe-modal__close" data-pe-dialog-close><i class="bi bi-x-lg"></i></button></header><div class="pe-modal__body"><dl class="pe-modal-details pe-modal-details--2"><div><dt>Data</dt><dd data-pe-text="data_visita_formatada">—</dd></div><div><dt>Decisão</dt><dd data-pe-text="decisao">—</dd></div><div><dt>Entrevistador</dt><dd data-pe-text="entrevistador">—</dd></div><div><dt>Técnico</dt><dd data-pe-text="tecnico_responsavel">—</dd></div></dl><div class="pe-view-note"><strong>Informações complementares</strong><p data-pe-text="informacoes_complementares">—</p></div><div class="pe-view-note"><strong>Parecer técnico</strong><p data-pe-text="parecer_tecnico">—</p></div></div></div></dialog>
+<?php pe_delete_dialog('peVisitDelete','visita social','delete_visit'); ?>
+<?php if($programReady):?><dialog class="pe-modal pe-modal--form" id="peFollowupForm" data-pe-create-title="Novo acompanhamento" data-pe-edit-title="Editar acompanhamento"><div class="pe-modal__shell"><header class="pe-modal__header"><div><div class="card-kicker">Pós-encaminhamento</div><h2 data-pe-form-title>Novo acompanhamento</h2><p>Registre orientação, avaliação ou próxima ação.</p></div><button type="button" class="pe-modal__close" data-pe-dialog-close><i class="bi bi-x-lg"></i></button></header><div class="pe-modal__body"><form method="post" class="pe-action-form" data-pe-record-form><?=pe_csrf_field()?><input type="hidden" name="pe_action" value="save_followup"><input type="hidden" name="id" data-pe-field="id"><div class="pe-action-form-grid pe-action-form-grid--3"><div class="pe-field-span-2"><label class="form-label required">Candidato</label><select class="form-select" name="candidato_id" data-pe-field="candidato_id" required><option value="">Selecione...</option><?php foreach($candidates as $c):?><option value="<?=(int)$c['id']?>"><?=pe_h($c['nome'])?></option><?php endforeach;?></select></div><div><label class="form-label">Data</label><input class="form-control" type="date" name="data_acompanhamento" data-pe-field="data_acompanhamento" value="<?=date('Y-m-d')?>"></div><div><label class="form-label">Tipo</label><select class="form-select" name="tipo" data-pe-field="tipo"><?php foreach(['Contato mensal','Orientação','Avaliação','Visita ao local','Outro'] as $v):?><option><?=pe_h($v)?></option><?php endforeach;?></select></div><div><label class="form-label">Status</label><select class="form-select" name="status" data-pe-field="status"><?php foreach(['Regular','Atenção','Pendente','Concluído'] as $v):?><option><?=pe_h($v)?></option><?php endforeach;?></select></div><div><label class="form-label">Próxima ação em</label><input class="form-control" type="date" name="data_proxima_acao" data-pe-field="data_proxima_acao"></div><div class="pe-field-span-3"><label class="form-label required">Resumo</label><textarea class="form-control" name="resumo" data-pe-field="resumo" rows="4" required></textarea></div><div class="pe-field-span-3"><label class="form-label">Próxima ação</label><input class="form-control" name="proxima_acao" data-pe-field="proxima_acao"></div></div><footer class="pe-action-modal-footer"><button type="button" class="btn btn-light" data-pe-dialog-close>Cancelar</button><button class="btn btn-primary" type="submit">Salvar acompanhamento</button></footer></form></div></div></dialog><dialog class="pe-modal pe-modal--view" id="peFollowupView"><div class="pe-modal__shell"><header class="pe-modal__header"><div><div class="card-kicker">Acompanhamento</div><h2 data-pe-current-title>Detalhes</h2><p data-pe-current-subtitle></p></div><button type="button" class="pe-modal__close" data-pe-dialog-close><i class="bi bi-x-lg"></i></button></header><div class="pe-modal__body"><dl class="pe-modal-details pe-modal-details--3"><div><dt>Data</dt><dd data-pe-text="data_acompanhamento_formatada">—</dd></div><div><dt>Tipo</dt><dd data-pe-text="tipo">—</dd></div><div><dt>Status</dt><dd data-pe-text="status">—</dd></div><div><dt>Responsável</dt><dd data-pe-text="responsavel">—</dd></div><div><dt>Próxima ação em</dt><dd data-pe-text="data_proxima_acao_formatada">—</dd></div><div><dt>Local</dt><dd data-pe-text="parceiro">—</dd></div></dl><div class="pe-view-note"><strong>Resumo</strong><p data-pe-text="resumo">—</p></div><div class="pe-view-note"><strong>Próxima ação</strong><p data-pe-text="proxima_acao">—</p></div></div></div></dialog><?php pe_delete_dialog('peFollowupDelete','acompanhamento','delete_followup'); ?><?php endif;?>
 </section>
-<?php $pageCustomContent = (string) ob_get_clean();
+<?php $pageCustomContent=(string)ob_get_clean();

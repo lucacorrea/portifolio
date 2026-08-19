@@ -706,3 +706,155 @@
 
     render(false);
 })();
+/* ======================================================================
+ * LISTAGENS OPERACIONAIS — CRUD EM MODAIS
+ * ====================================================================== */
+(() => {
+    let currentRecord = null;
+
+    const dialogs = () => [...document.querySelectorAll('dialog.pe-modal')];
+    const open = dialog => {
+        if (!dialog) return;
+        if (typeof dialog.showModal === 'function') {
+            if (!dialog.open) dialog.showModal();
+        } else {
+            dialog.setAttribute('open', '');
+        }
+    };
+    const close = dialog => {
+        if (!dialog) return;
+        if (typeof dialog.close === 'function' && dialog.open) dialog.close();
+        else dialog.removeAttribute('open');
+    };
+    const closeAllExcept = target => dialogs().forEach(dialog => { if (dialog !== target && dialog.open) close(dialog); });
+    const stringify = value => value === null || value === undefined || value === '' ? '—' : String(value);
+
+    const fillScope = (scope, record) => {
+        if (!scope || !record) return;
+        scope.querySelectorAll('[data-pe-current-title]').forEach(el => { el.textContent = stringify(record.__title || record.nome || record.candidato || record.cargo || record.curso); });
+        scope.querySelectorAll('[data-pe-current-subtitle]').forEach(el => { el.textContent = stringify(record.__subtitle || 'Registro selecionado'); });
+        scope.querySelectorAll('[data-pe-text]').forEach(el => {
+            const key = el.getAttribute('data-pe-text');
+            el.textContent = stringify(record[key]);
+        });
+        scope.querySelectorAll('[data-pe-href]').forEach(el => {
+            const key = el.getAttribute('data-pe-href');
+            const href = record[key] || '';
+            if (href) {
+                el.href = href;
+                el.hidden = false;
+            } else {
+                el.removeAttribute('href');
+                el.hidden = true;
+            }
+        });
+    };
+
+    const fillForm = (dialog, record, mode) => {
+        const form = dialog?.querySelector('[data-pe-record-form]');
+        if (!form) return;
+        form.reset();
+        const title = dialog.querySelector('[data-pe-form-title]');
+        if (title) title.textContent = mode === 'edit' ? (dialog.dataset.peEditTitle || 'Editar registro') : (dialog.dataset.peCreateTitle || 'Novo registro');
+        if (mode !== 'edit' || !record) {
+            form.querySelectorAll('[data-pe-field="id"]').forEach(field => { field.value = ''; });
+            return;
+        }
+        form.querySelectorAll('[data-pe-field]').forEach(field => {
+            const key = field.getAttribute('data-pe-field');
+            if (!key) return;
+            const value = record[key];
+            if (field.type === 'checkbox') {
+                field.checked = value === true || value === 1 || value === '1';
+            } else if (field.type !== 'file') {
+                field.value = value === null || value === undefined ? '' : String(value);
+            }
+        });
+    };
+
+    const showRowActions = row => {
+        try { currentRecord = JSON.parse(row.getAttribute('data-pe-record') || '{}'); }
+        catch (_) { currentRecord = {}; }
+        const selector = row.getAttribute('data-pe-actions-target');
+        const dialog = selector ? document.querySelector(selector) : null;
+        if (!dialog) return;
+        fillScope(dialog, currentRecord);
+        closeAllExcept(dialog);
+        open(dialog);
+    };
+
+    document.querySelectorAll('[data-pe-list-row]').forEach(row => {
+        row.addEventListener('click', event => {
+            if (event.target.closest('a,button,input,select,textarea,label')) return;
+            showRowActions(row);
+        });
+        row.addEventListener('keydown', event => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            showRowActions(row);
+        });
+    });
+
+    document.addEventListener('click', event => {
+        const trigger = event.target.closest('[data-pe-open]');
+        if (!trigger) return;
+        const selector = trigger.getAttribute('data-pe-open');
+        if (!selector) return;
+        const dialog = document.querySelector(selector);
+        if (!dialog) return;
+        event.preventDefault();
+        const mode = trigger.getAttribute('data-pe-mode') || 'view';
+        if (mode === 'create') currentRecord = null;
+        if (mode === 'create' || mode === 'edit') fillForm(dialog, currentRecord, mode);
+        if (currentRecord) {
+            fillScope(dialog, currentRecord);
+            dialog.querySelectorAll('[data-pe-field]').forEach(field => {
+                const key = field.getAttribute('data-pe-field');
+                if (!key || field.type === 'file') return;
+                const value = currentRecord[key];
+                if (field.type === 'checkbox') field.checked = value === true || value === 1 || value === '1';
+                else field.value = value === null || value === undefined ? '' : String(value);
+            });
+        }
+        closeAllExcept(dialog);
+        open(dialog);
+    });
+
+    document.querySelectorAll('dialog.pe-modal').forEach(dialog => {
+        dialog.addEventListener('click', event => {
+            if (event.target === dialog) close(dialog);
+        });
+    });
+
+    document.querySelectorAll('[data-pe-list-search]').forEach(input => {
+        input.addEventListener('input', () => {
+            const query = input.value.trim().toLocaleLowerCase('pt-BR');
+            const scopeSelector = input.getAttribute('data-pe-list-scope');
+            const table = scopeSelector ? document.querySelector(scopeSelector) : input.closest('.pe-list-page')?.querySelector('[data-pe-list-table]');
+            if (!table) return;
+            table.querySelectorAll('[data-pe-list-row]').forEach(row => {
+                row.hidden = query !== '' && !row.textContent.toLocaleLowerCase('pt-BR').includes(query);
+            });
+        });
+    });
+})();
+
+/* Exclusão de candidato a partir da modal de ações. */
+(() => {
+    const button = document.querySelector('[data-pe-candidate-delete]');
+    const actions = document.getElementById('peCandidateDialog');
+    const dialog = document.getElementById('peCandidateDeleteDialog');
+    if (!button || !actions || !dialog) return;
+    button.addEventListener('click', () => {
+        const reviewLink = actions.querySelector('[data-pe-modal-action-review]');
+        let id = '';
+        try { id = new URL(reviewLink?.href || '', window.location.href).searchParams.get('revisar') || ''; } catch (_) {}
+        const name = actions.querySelector('[data-pe-modal-name]')?.textContent?.trim() || 'Candidato selecionado';
+        const idField = dialog.querySelector('[data-pe-candidate-delete-id]');
+        const nameField = dialog.querySelector('[data-pe-candidate-delete-name]');
+        if (idField) idField.value = id;
+        if (nameField) nameField.textContent = name;
+        if (typeof actions.close === 'function' && actions.open) actions.close();
+        if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open','');
+    });
+})();

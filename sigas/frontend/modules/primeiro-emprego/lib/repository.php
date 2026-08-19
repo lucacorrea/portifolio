@@ -846,3 +846,241 @@ function pe_save_config(PDO $pdo,string $key,string $value,?string $description=
 {
     $stmt=$pdo->prepare('INSERT INTO pe_configuracoes (chave,valor,descricao) VALUES (:chave,:valor,:descricao) ON DUPLICATE KEY UPDATE valor=VALUES(valor),descricao=COALESCE(VALUES(descricao),descricao),updated_at=CURRENT_TIMESTAMP');$stmt->execute(['chave'=>$key,'valor'=>$value,'descricao'=>$description]);
 }
+/* ======================================================================
+ * CRUD MODAL — páginas de listagem do Meu Primeiro Emprego
+ * Mantém as rotinas de criação existentes e adiciona leitura por ID,
+ * atualização e exclusão com validação e prepared statements.
+ * ====================================================================== */
+
+function pe_partner_by_id(PDO $pdo, int $id): ?array
+{
+    $stmt = $pdo->prepare('SELECT p.*, (SELECT COUNT(*) FROM pe_vagas v WHERE v.parceiro_id=p.id) vagas, (SELECT COUNT(*) FROM pe_fichas_cadastrais f WHERE f.local_atuacao=p.nome) lotados FROM pe_parceiros p WHERE p.id=:id LIMIT 1');
+    $stmt->execute(['id' => $id]);
+    return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+}
+
+function pe_update_partner(PDO $pdo, int $id, array $input): void
+{
+    if ($id <= 0 || !pe_partner_by_id($pdo, $id)) throw new InvalidArgumentException('Instituição parceira não encontrada.');
+    $name = trim((string)($input['nome'] ?? ''));
+    if (mb_strlen($name) < 3) throw new InvalidArgumentException('Informe o nome da instituição parceira.');
+    $cnpj = pe_digits($input['cnpj'] ?? '');
+    if ($cnpj !== '' && strlen($cnpj) !== 14) throw new InvalidArgumentException('CNPJ deve possuir 14 dígitos ou ficar em branco.');
+    $email = pe_nullable($input['email'] ?? null);
+    if ($email && !filter_var($email, FILTER_VALIDATE_EMAIL)) throw new InvalidArgumentException('E-mail inválido.');
+    $stmt = $pdo->prepare('UPDATE pe_parceiros SET nome=:nome,tipo=:tipo,cnpj=:cnpj,responsavel=:responsavel,telefone=:telefone,email=:email,termo_parceria=:termo,status=:status,observacao=:obs,updated_at=CURRENT_TIMESTAMP WHERE id=:id');
+    $stmt->execute([
+        'id'=>$id,'nome'=>$name,'tipo'=>pe_nullable($input['tipo'] ?? null),'cnpj'=>$cnpj ?: null,
+        'responsavel'=>pe_nullable($input['responsavel'] ?? null),'telefone'=>pe_nullable(pe_digits($input['telefone'] ?? '')),
+        'email'=>$email,'termo'=>pe_nullable($input['termo_parceria'] ?? null),'status'=>pe_nullable($input['status'] ?? 'Ativa') ?: 'Ativa','obs'=>pe_nullable($input['observacao'] ?? null),
+    ]);
+}
+
+function pe_delete_partner(PDO $pdo, int $id): void
+{
+    if ($id <= 0) throw new InvalidArgumentException('Instituição inválida.');
+    $stmt = $pdo->prepare('DELETE FROM pe_parceiros WHERE id=:id');
+    $stmt->execute(['id' => $id]);
+}
+
+function pe_vacancy_by_id(PDO $pdo, int $id): ?array
+{
+    $stmt = $pdo->prepare('SELECT v.*,p.nome parceiro FROM pe_vagas v LEFT JOIN pe_parceiros p ON p.id=v.parceiro_id WHERE v.id=:id LIMIT 1');
+    $stmt->execute(['id'=>$id]);
+    return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+}
+
+function pe_update_vacancy(PDO $pdo, int $id, array $input): void
+{
+    if ($id <= 0 || !pe_vacancy_by_id($pdo,$id)) throw new InvalidArgumentException('Oportunidade não encontrada.');
+    $cargo = trim((string)($input['cargo'] ?? ''));
+    if (mb_strlen($cargo) < 3) throw new InvalidArgumentException('Informe o cargo/oportunidade.');
+    $partnerId=(int)($input['parceiro_id']??0);
+    $stmt=$pdo->prepare('UPDATE pe_vagas SET parceiro_id=:parceiro,cargo=:cargo,setor=:setor,quantidade=:qtd,requisitos=:req,escolaridade=:esc,carga_horaria=:carga,remuneracao=:rem,prazo=:prazo,status=:status,observacao=:obs,updated_at=CURRENT_TIMESTAMP WHERE id=:id');
+    $stmt->execute([
+        'id'=>$id,'parceiro'=>$partnerId>0?$partnerId:null,'cargo'=>$cargo,'setor'=>pe_nullable($input['setor']??null),'qtd'=>max(1,(int)($input['quantidade']??1)),
+        'req'=>pe_nullable($input['requisitos']??null),'esc'=>pe_nullable($input['escolaridade']??null),'carga'=>pe_nullable($input['carga_horaria']??null),
+        'rem'=>($input['remuneracao']??'')!==''?pe_decimal($input['remuneracao']):null,'prazo'=>pe_date_or_null($input['prazo']??''),'status'=>pe_nullable($input['status']??'Aberta')?:'Aberta','obs'=>pe_nullable($input['observacao']??null),
+    ]);
+}
+
+function pe_delete_vacancy(PDO $pdo,int $id): void
+{
+    if($id<=0) throw new InvalidArgumentException('Oportunidade inválida.');
+    $pdo->prepare('DELETE FROM pe_vagas WHERE id=:id')->execute(['id'=>$id]);
+}
+
+function pe_referral_by_id(PDO $pdo,int $id): ?array
+{
+    $stmt=$pdo->prepare('SELECT e.*,c.nome candidato,v.cargo vaga,p.nome parceiro FROM pe_encaminhamentos e JOIN pe_candidatos c ON c.id=e.candidato_id LEFT JOIN pe_vagas v ON v.id=e.vaga_id LEFT JOIN pe_parceiros p ON p.id=e.parceiro_id WHERE e.id=:id LIMIT 1');
+    $stmt->execute(['id'=>$id]);
+    return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+}
+
+function pe_update_referral(PDO $pdo,int $id,array $input,?string $responsavel): void
+{
+    if($id<=0 || !pe_referral_by_id($pdo,$id)) throw new InvalidArgumentException('Encaminhamento não encontrado.');
+    $candidateId=(int)($input['candidato_id']??0);
+    if($candidateId<=0 || !pe_candidate_by_id($pdo,$candidateId)) throw new InvalidArgumentException('Selecione um candidato.');
+    $vagaId=(int)($input['vaga_id']??0);$partnerId=(int)($input['parceiro_id']??0);
+    if($vagaId>0 && $partnerId<=0){$st=$pdo->prepare('SELECT parceiro_id FROM pe_vagas WHERE id=:id');$st->execute(['id'=>$vagaId]);$partnerId=(int)$st->fetchColumn();}
+    $stmt=$pdo->prepare('UPDATE pe_encaminhamentos SET candidato_id=:cand,vaga_id=:vaga,parceiro_id=:parceiro,data_encaminhamento=:data,responsavel=:resp,retorno=:retorno,status=:status,data_retorno=:data_ret,updated_at=CURRENT_TIMESTAMP WHERE id=:id');
+    $stmt->execute(['id'=>$id,'cand'=>$candidateId,'vaga'=>$vagaId?:null,'parceiro'=>$partnerId?:null,'data'=>pe_date_or_null($input['data_encaminhamento']??'')?:date('Y-m-d'),'resp'=>pe_nullable($responsavel),'retorno'=>pe_nullable($input['retorno']??null),'status'=>pe_nullable($input['status']??'Pendente')?:'Pendente','data_ret'=>pe_date_or_null($input['data_retorno']??'')]);
+}
+
+function pe_delete_referral(PDO $pdo,int $id): void
+{
+    if($id<=0) throw new InvalidArgumentException('Encaminhamento inválido.');
+    $pdo->prepare('DELETE FROM pe_encaminhamentos WHERE id=:id')->execute(['id'=>$id]);
+}
+
+function pe_document_by_id(PDO $pdo,int $id): ?array
+{
+    $stmt=$pdo->prepare('SELECT d.*,c.nome candidato FROM pe_documentos d JOIN pe_candidatos c ON c.id=d.candidato_id WHERE d.id=:id LIMIT 1');
+    $stmt->execute(['id'=>$id]);
+    return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+}
+
+function pe_update_document(PDO $pdo,int $id,array $input,array $files,?string $responsavel): void
+{
+    $current=pe_document_by_id($pdo,$id);if(!$current) throw new InvalidArgumentException('Documento não encontrado.');
+    $candidateId=(int)($input['candidato_id']??0);if($candidateId<=0||!pe_candidate_by_id($pdo,$candidateId))throw new InvalidArgumentException('Selecione um candidato.');
+    $type=trim((string)($input['tipo']??''));if($type==='')throw new InvalidArgumentException('Informe o tipo de documento.');
+    $path=$current['arquivo_path'];$original=$current['nome_original'];$mime=$current['mime_type'];$size=$current['size_bytes'];
+    $oldPath=null;
+    if(!empty($files['arquivo']['tmp_name'])&&is_uploaded_file($files['arquivo']['tmp_name'])){
+        $newSize=(int)($files['arquivo']['size']??0);if($newSize<=0||$newSize>10*1024*1024)throw new InvalidArgumentException('Documento deve ter até 10 MB.');
+        $finfo=finfo_open(FILEINFO_MIME_TYPE);$newMime=$finfo?finfo_file($finfo,$files['arquivo']['tmp_name']):'';if($finfo)finfo_close($finfo);
+        $allowed=['application/pdf'=>'pdf','image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp'];if(!isset($allowed[$newMime]))throw new InvalidArgumentException('Envie PDF, JPG, PNG ou WEBP.');
+        $rel='primeiro-emprego/documentos/'.\App\Core\Storage::buildRelativeDirectory();$dir=\App\Core\Storage::ensureDocumentDirectory($rel);$filename=\App\Core\Storage::generateRandomFilename($allowed[$newMime]);
+        if(!move_uploaded_file($files['arquivo']['tmp_name'],$dir.DIRECTORY_SEPARATOR.$filename))throw new RuntimeException('Não foi possível salvar o documento.');
+        $oldPath=$path;$path=$rel.'/'.$filename;$original=mb_substr(basename((string)($files['arquivo']['name']??'documento')),0,255);$mime=$newMime;$size=$newSize;
+    }
+    $stmt=$pdo->prepare('UPDATE pe_documentos SET candidato_id=:cand,tipo=:tipo,status=:status,validade=:validade,observacao=:obs,arquivo_path=:path,nome_original=:original,mime_type=:mime,size_bytes=:size,registrado_por=:resp,updated_at=CURRENT_TIMESTAMP WHERE id=:id');
+    $stmt->execute(['id'=>$id,'cand'=>$candidateId,'tipo'=>$type,'status'=>pe_nullable($input['status']??'Pendente')?:'Pendente','validade'=>pe_date_or_null($input['validade']??''),'obs'=>pe_nullable($input['observacao']??null),'path'=>$path,'original'=>$original,'mime'=>$mime,'size'=>$size,'resp'=>pe_nullable($responsavel)]);
+    if($oldPath){try{$abs=\App\Core\Storage::resolveDocumentPath((string)$oldPath);if(is_file($abs))@unlink($abs);}catch(Throwable){}}
+}
+
+function pe_delete_document(PDO $pdo,int $id): void
+{
+    $row=pe_document_by_id($pdo,$id);if(!$row) throw new InvalidArgumentException('Documento não encontrado.');
+    $pdo->beginTransaction();
+    try{$pdo->prepare('DELETE FROM pe_documentos WHERE id=:id')->execute(['id'=>$id]);$pdo->commit();}catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+    if(!empty($row['arquivo_path'])){try{$abs=\App\Core\Storage::resolveDocumentPath((string)$row['arquivo_path']);if(is_file($abs))@unlink($abs);}catch(Throwable){}}
+}
+
+function pe_attendance_by_id(PDO $pdo,int $id): ?array
+{
+    $stmt=$pdo->prepare('SELECT f.*,c.nome candidato,fc.local_atuacao parceiro FROM pe_frequencias f JOIN pe_candidatos c ON c.id=f.candidato_id LEFT JOIN pe_fichas_cadastrais fc ON fc.candidato_id=c.id WHERE f.id=:id LIMIT 1');$stmt->execute(['id'=>$id]);return $stmt->fetch(PDO::FETCH_ASSOC)?:null;
+}
+
+function pe_update_attendance(PDO $pdo,int $id,array $input,?string $responsavel): void
+{
+    if($id<=0||!pe_attendance_by_id($pdo,$id))throw new InvalidArgumentException('Frequência não encontrada.');
+    $candidateId=(int)($input['candidato_id']??0);if($candidateId<=0||!pe_candidate_by_id($pdo,$candidateId))throw new InvalidArgumentException('Selecione um candidato.');
+    $comp=trim((string)($input['competencia']??''));if(!preg_match('/^\d{4}-\d{2}$/',$comp))throw new InvalidArgumentException('Competência inválida.');
+    $prev=max(0,(int)($input['dias_previstos']??0));$pres=max(0,(int)($input['presencas']??0));$falt=max(0,(int)($input['faltas']??max(0,$prev-$pres)));$pct=$prev>0?round(min(100,($pres/$prev)*100),2):0.0;$min=(float)pe_config_value($pdo,'frequencia_minima','75.00');$status=$pct<$min?'Atenção':'Regular';
+    $stmt=$pdo->prepare('UPDATE pe_frequencias SET candidato_id=:cand,competencia=:comp,dias_previstos=:prev,presencas=:pres,faltas=:falt,percentual=:pct,status=:status,observacao=:obs,registrado_por=:resp,updated_at=CURRENT_TIMESTAMP WHERE id=:id');$stmt->execute(['id'=>$id,'cand'=>$candidateId,'comp'=>$comp,'prev'=>$prev,'pres'=>$pres,'falt'=>$falt,'pct'=>$pct,'status'=>$status,'obs'=>pe_nullable($input['observacao']??null),'resp'=>pe_nullable($responsavel)]);
+}
+
+function pe_delete_attendance(PDO $pdo,int $id): void
+{
+    if($id<=0)throw new InvalidArgumentException('Frequência inválida.');$pdo->prepare('DELETE FROM pe_frequencias WHERE id=:id')->execute(['id'=>$id]);
+}
+
+function pe_grant_by_id(PDO $pdo,int $id): ?array
+{
+    $stmt=$pdo->prepare('SELECT b.*,c.nome candidato,f.percentual frequencia FROM pe_bolsas b JOIN pe_candidatos c ON c.id=b.candidato_id LEFT JOIN pe_frequencias f ON f.candidato_id=b.candidato_id AND f.competencia=b.competencia WHERE b.id=:id LIMIT 1');$stmt->execute(['id'=>$id]);return $stmt->fetch(PDO::FETCH_ASSOC)?:null;
+}
+
+function pe_update_grant(PDO $pdo,int $id,array $input,?string $responsavel): void
+{
+    if($id<=0||!pe_grant_by_id($pdo,$id))throw new InvalidArgumentException('Bolsa não encontrada.');$candidateId=(int)($input['candidato_id']??0);if($candidateId<=0||!pe_candidate_by_id($pdo,$candidateId))throw new InvalidArgumentException('Selecione um candidato.');$comp=trim((string)($input['competencia']??''));if(!preg_match('/^\d{4}-\d{2}$/',$comp))throw new InvalidArgumentException('Competência inválida.');$valor=pe_decimal($input['valor']??'0');if($valor<0)throw new InvalidArgumentException('Valor inválido.');
+    $stmt=$pdo->prepare('UPDATE pe_bolsas SET candidato_id=:cand,competencia=:comp,valor=:valor,status=:status,data_pagamento=:data,observacao=:obs,registrado_por=:resp,updated_at=CURRENT_TIMESTAMP WHERE id=:id');$stmt->execute(['id'=>$id,'cand'=>$candidateId,'comp'=>$comp,'valor'=>$valor,'status'=>pe_nullable($input['status']??'Em análise')?:'Em análise','data'=>pe_date_or_null($input['data_pagamento']??''),'obs'=>pe_nullable($input['observacao']??null),'resp'=>pe_nullable($responsavel)]);
+}
+
+function pe_delete_grant(PDO $pdo,int $id): void
+{
+    if($id<=0)throw new InvalidArgumentException('Bolsa inválida.');$pdo->prepare('DELETE FROM pe_bolsas WHERE id=:id')->execute(['id'=>$id]);
+}
+
+function pe_training_by_id(PDO $pdo,int $id): ?array
+{
+    $stmt=$pdo->prepare('SELECT c.*, (SELECT COUNT(*) FROM pe_capacitacao_participantes cp WHERE cp.capacitacao_id=c.id) inscritos,(SELECT COUNT(*) FROM pe_capacitacao_participantes cp WHERE cp.capacitacao_id=c.id AND cp.status="Concluído") concluintes FROM pe_capacitacoes c WHERE c.id=:id LIMIT 1');$stmt->execute(['id'=>$id]);return $stmt->fetch(PDO::FETCH_ASSOC)?:null;
+}
+
+function pe_update_training(PDO $pdo,int $id,array $input): void
+{
+    if($id<=0||!pe_training_by_id($pdo,$id))throw new InvalidArgumentException('Capacitação não encontrada.');$course=trim((string)($input['curso']??''));if(mb_strlen($course)<3)throw new InvalidArgumentException('Informe o nome da capacitação.');$stmt=$pdo->prepare('UPDATE pe_capacitacoes SET curso=:curso,instituicao=:inst,turma=:turma,carga_horaria=:carga,data_inicio=:inicio,data_fim=:fim,vagas=:vagas,certificado=:cert,status=:status,observacao=:obs,updated_at=CURRENT_TIMESTAMP WHERE id=:id');$stmt->execute(['id'=>$id,'curso'=>$course,'inst'=>pe_nullable($input['instituicao']??null),'turma'=>pe_nullable($input['turma']??null),'carga'=>($input['carga_horaria']??'')===''?null:max(0,(int)$input['carga_horaria']),'inicio'=>pe_date_or_null($input['data_inicio']??''),'fim'=>pe_date_or_null($input['data_fim']??''),'vagas'=>($input['vagas']??'')===''?null:max(0,(int)$input['vagas']),'cert'=>pe_nullable($input['certificado']??'Previsto')?:'Previsto','status'=>pe_nullable($input['status']??'Planejada')?:'Planejada','obs'=>pe_nullable($input['observacao']??null)]);
+}
+
+function pe_delete_training(PDO $pdo,int $id): void
+{
+    if($id<=0)throw new InvalidArgumentException('Capacitação inválida.');$pdo->prepare('DELETE FROM pe_capacitacoes WHERE id=:id')->execute(['id'=>$id]);
+}
+
+function pe_training_participants(PDO $pdo,int $trainingId): array
+{
+    $stmt=$pdo->prepare('SELECT cp.*,c.nome,c.cpf,c.cpf_informado FROM pe_capacitacao_participantes cp JOIN pe_candidatos c ON c.id=cp.candidato_id WHERE cp.capacitacao_id=:id ORDER BY c.nome');$stmt->execute(['id'=>$trainingId]);return $stmt->fetchAll(PDO::FETCH_ASSOC)?:[];
+}
+
+function pe_followup_by_id(PDO $pdo,int $id): ?array
+{
+    $stmt=$pdo->prepare('SELECT a.*,c.nome candidato,f.local_atuacao parceiro FROM pe_acompanhamentos_programa a JOIN pe_candidatos c ON c.id=a.candidato_id LEFT JOIN pe_fichas_cadastrais f ON f.candidato_id=c.id WHERE a.id=:id LIMIT 1');$stmt->execute(['id'=>$id]);return $stmt->fetch(PDO::FETCH_ASSOC)?:null;
+}
+
+function pe_update_followup(PDO $pdo,int $id,array $input,?string $responsavel): void
+{
+    if($id<=0||!pe_followup_by_id($pdo,$id))throw new InvalidArgumentException('Acompanhamento não encontrado.');$candidateId=(int)($input['candidato_id']??0);if($candidateId<=0||!pe_candidate_by_id($pdo,$candidateId))throw new InvalidArgumentException('Selecione um candidato.');$summary=trim((string)($input['resumo']??''));if($summary==='')throw new InvalidArgumentException('Informe o resumo do acompanhamento.');$stmt=$pdo->prepare('UPDATE pe_acompanhamentos_programa SET candidato_id=:cand,data_acompanhamento=:data,tipo=:tipo,resumo=:resumo,proxima_acao=:acao,data_proxima_acao=:data_acao,status=:status,responsavel=:resp,updated_at=CURRENT_TIMESTAMP WHERE id=:id');$stmt->execute(['id'=>$id,'cand'=>$candidateId,'data'=>pe_date_or_null($input['data_acompanhamento']??'')?:date('Y-m-d'),'tipo'=>pe_nullable($input['tipo']??'Acompanhamento')?:'Acompanhamento','resumo'=>$summary,'acao'=>pe_nullable($input['proxima_acao']??null),'data_acao'=>pe_date_or_null($input['data_proxima_acao']??''),'status'=>pe_nullable($input['status']??'Regular')?:'Regular','resp'=>pe_nullable($responsavel)]);
+}
+
+function pe_delete_followup(PDO $pdo,int $id): void
+{
+    if($id<=0)throw new InvalidArgumentException('Acompanhamento inválido.');$pdo->prepare('DELETE FROM pe_acompanhamentos_programa WHERE id=:id')->execute(['id'=>$id]);
+}
+
+function pe_social_visit_rows(PDO $pdo): array
+{
+    return $pdo->query('SELECT v.*,c.nome candidato,c.cpf,c.cpf_informado,c.telefone,c.bairro FROM pe_visitas_sociais v JOIN pe_candidatos c ON c.id=v.candidato_id ORDER BY v.data_visita DESC,v.id DESC')->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
+function pe_visit_by_id(PDO $pdo,int $id): ?array
+{
+    $stmt=$pdo->prepare('SELECT v.*,c.nome candidato,c.cpf,c.cpf_informado,c.telefone,c.bairro FROM pe_visitas_sociais v JOIN pe_candidatos c ON c.id=v.candidato_id WHERE v.id=:id LIMIT 1');$stmt->execute(['id'=>$id]);return $stmt->fetch(PDO::FETCH_ASSOC)?:null;
+}
+
+function pe_update_visit(PDO $pdo,int $id,array $input): void
+{
+    if($id<=0||!pe_visit_by_id($pdo,$id))throw new InvalidArgumentException('Visita social não encontrada.');$candidateId=(int)($input['candidato_id']??0);if($candidateId<=0||!pe_candidate_by_id($pdo,$candidateId))throw new InvalidArgumentException('Selecione um candidato.');$parecer=trim((string)($input['parecer_tecnico']??''));if($parecer==='')throw new InvalidArgumentException('Informe o parecer técnico.');$stmt=$pdo->prepare('UPDATE pe_visitas_sociais SET candidato_id=:cand,entrevistador=:entrevistador,data_visita=:data,informacoes_complementares=:info,parecer_tecnico=:parecer,decisao=:decisao,tecnico_responsavel=:tecnico,updated_at=CURRENT_TIMESTAMP WHERE id=:id');$stmt->execute(['id'=>$id,'cand'=>$candidateId,'entrevistador'=>pe_nullable($input['entrevistador']??null),'data'=>pe_date_or_null($input['data_visita']??'')?:date('Y-m-d'),'info'=>pe_nullable($input['informacoes_complementares']??null),'parecer'=>$parecer,'decisao'=>pe_nullable($input['decisao']??'Pendente')?:'Pendente','tecnico'=>pe_nullable($input['tecnico_responsavel']??null)]);
+}
+
+function pe_delete_visit(PDO $pdo,int $id): void
+{
+    if($id<=0)throw new InvalidArgumentException('Visita social inválida.');$pdo->prepare('DELETE FROM pe_visitas_sociais WHERE id=:id')->execute(['id'=>$id]);
+}
+
+function pe_placement_rows(PDO $pdo): array
+{
+    return $pdo->query('SELECT c.id candidato_id,c.nome,c.cpf,c.cpf_informado,c.telefone,c.bairro,c.status,f.id ficha_id,f.local_atuacao,f.turno_atuacao,f.nivel_escolaridade,f.situacao_escolar,f.instituicao_ensino,f.serie_periodo,f.turno_estudo,f.updated_at FROM pe_candidatos c LEFT JOIN pe_fichas_cadastrais f ON f.candidato_id=c.id ORDER BY CASE WHEN f.local_atuacao IS NULL OR f.local_atuacao="" THEN 0 ELSE 1 END,c.nome')->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
+function pe_clear_placement(PDO $pdo,int $candidateId): void
+{
+    if($candidateId<=0||!pe_candidate_by_id($pdo,$candidateId))throw new InvalidArgumentException('Candidato não encontrado.');$stmt=$pdo->prepare('UPDATE pe_fichas_cadastrais SET local_atuacao=NULL,turno_atuacao=NULL,updated_at=CURRENT_TIMESTAMP WHERE candidato_id=:id');$stmt->execute(['id'=>$candidateId]);
+}
+
+function pe_delete_candidate(PDO $pdo,int $id): void
+{
+    if($id<=0||!pe_candidate_by_id($pdo,$id))throw new InvalidArgumentException('Candidato não encontrado.');$stmt=$pdo->prepare('DELETE FROM pe_candidatos WHERE id=:id');$stmt->execute(['id'=>$id]);
+}
+
+function pe_record_attr(array $record): string
+{
+    $json = json_encode($record, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+    return pe_h($json === false ? '{}' : $json);
+}
+
+function pe_save_placement(PDO $pdo,array $input): int
+{
+    $candidateId=(int)($input['candidato_id']??0);if($candidateId<=0||!pe_candidate_by_id($pdo,$candidateId))throw new InvalidArgumentException('Selecione um candidato.');$local=pe_nullable($input['local_atuacao']??null);$turno=pe_nullable($input['turno_atuacao']??null);$stmt=$pdo->prepare('INSERT INTO pe_fichas_cadastrais (candidato_id,local_atuacao,turno_atuacao) VALUES (:id,:local,:turno) ON DUPLICATE KEY UPDATE local_atuacao=VALUES(local_atuacao),turno_atuacao=VALUES(turno_atuacao),updated_at=CURRENT_TIMESTAMP');$stmt->execute(['id'=>$candidateId,'local'=>$local,'turno'=>$turno]);if($local){$pdo->prepare('UPDATE pe_candidatos SET status="Contemplado",updated_at=CURRENT_TIMESTAMP WHERE id=:id')->execute(['id'=>$candidateId]);}return $candidateId;
+}

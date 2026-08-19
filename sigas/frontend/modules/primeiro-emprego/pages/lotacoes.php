@@ -1,90 +1,24 @@
 <?php
 
 declare(strict_types=1);
-
 require_once dirname(__DIR__) . '/lib/repository.php';
-
-$pageDefinition = [
-    'title' => 'Ficha cadastral e local de atuação',
-    'description' => 'Ficha do contemplado com dados trazidos da triagem, dados escolares e local de atuação.',
-    'actions' => [['label' => 'Ver candidatos', 'icon' => 'people', 'href' => 'primeiro-emprego/candidatos.php']],
-    'demo' => false,
-    'show_states' => false,
-    'modal' => ['title' => 'Ficha cadastral'],
-];
-
-$dbReady = pe_db_ready() && pe_schema_ready();
-$message = null;
-$candidates = [];
-$selected = null;
-$profile = null;
-if ($dbReady) {
-    $pdo = pe_db();
-    $candidates = pe_recent_candidates($pdo, 1000);
-    $candidateId = (int) ($_GET['candidato_id'] ?? $_POST['candidato_id'] ?? 0);
-    if ($candidateId > 0) {
-        $selected = pe_candidate_by_id($pdo, $candidateId);
-        $stmt = $pdo->prepare('SELECT * FROM pe_fichas_cadastrais WHERE candidato_id=:id LIMIT 1');
-        $stmt->execute(['id' => $candidateId]);
-        $profile = $stmt->fetch() ?: null;
-    }
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['pe_action'] ?? '') === 'save_profile') {
-        try {
-            pe_verify_csrf();
-            pe_save_profile($pdo, $_POST, $_FILES);
-            $message = ['type' => 'success', 'text' => 'Ficha cadastral atualizada com sucesso.'];
-            $selected = pe_candidate_by_id($pdo, (int) $_POST['candidato_id']);
-            $stmt = $pdo->prepare('SELECT * FROM pe_fichas_cadastrais WHERE candidato_id=:id LIMIT 1');
-            $stmt->execute(['id' => $selected['id']]);
-            $profile = $stmt->fetch() ?: null;
-        } catch (Throwable $e) {
-            $message = ['type' => 'danger', 'text' => $e->getMessage()];
-        }
-    }
-}
-
-function pe_profile_value(?array $profile, array $candidate, string $profileKey, string $candidateKey = ''): string
-{
-    if ($profile && !empty($profile[$profileKey])) return (string) $profile[$profileKey];
-    if ($candidateKey !== '' && !empty($candidate[$candidateKey])) return (string) $candidate[$candidateKey];
-    return '';
-}
-
-ob_start();
-?>
-<section class="content-card pe-form-card">
-    <?php if (!$dbReady): ?><?= pe_db_notice() ?><?php endif; ?>
-    <?php if ($message): ?><div class="alert alert-<?= pe_h($message['type']) ?>"><?= pe_h($message['text']) ?></div><?php endif; ?>
-    <div class="pe-form-header"><div><div class="card-kicker">Meu Primeiro Emprego</div><h2>Ficha cadastral</h2><p>Dados pessoais são reaproveitados automaticamente da primeira ficha.</p></div><button type="button" class="btn btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir</button></div>
-    <?php if ($dbReady): ?><form method="get" class="row g-2 align-items-end pe-no-print mb-4"><div class="col-md-9"><label class="form-label">Candidato</label><select class="form-select" name="candidato_id"><option value="">Selecione...</option><?php foreach ($candidates as $candidate): ?><option value="<?= (int)$candidate['id'] ?>"<?= $selected && (int)$selected['id']===(int)$candidate['id']?' selected':'' ?>><?= pe_h($candidate['nome']) ?><?= $candidate['cpf'] ? ' — '.pe_h($candidate['cpf']) : '' ?></option><?php endforeach; ?></select></div><div class="col-md-3"><button class="btn btn-primary w-100" type="submit">Carregar ficha</button></div></form><?php endif; ?>
-
-    <?php if ($selected): ?>
-    <form method="post" enctype="multipart/form-data" class="pe-real-form">
-        <?= pe_csrf_field() ?><input type="hidden" name="pe_action" value="save_profile"><input type="hidden" name="candidato_id" value="<?= (int)$selected['id'] ?>">
-        <div class="pe-profile-top">
-            <div class="pe-photo-box"><?php if ($profile && $profile['foto_path']): ?><span><i class="bi bi-person-bounding-box"></i> Foto cadastrada</span><?php else: ?><span><i class="bi bi-person"></i> FOTO</span><?php endif; ?></div>
-            <div class="pe-profile-identification">
-                <div><span>Nome</span><strong><?= pe_h($selected['nome']) ?></strong></div>
-                <div class="pe-profile-two"><div><span>CPF</span><strong><?= pe_h($selected['cpf'] ?: $selected['cpf_informado']) ?></strong></div><div><span>Telefone</span><strong><?= pe_h($selected['telefone']) ?></strong></div></div>
-                <div><span>Endereço</span><strong><?= pe_h($selected['endereco'] ?: $selected['rua']) ?><?= $selected['bairro'] ? ' — '.pe_h($selected['bairro']) : '' ?></strong></div>
-                <div><span>NIS</span><strong><?= pe_h($selected['nis']) ?></strong></div>
-            </div>
-        </div>
-        <div class="row g-3 pe-no-print mb-4"><div class="col-md-6"><label class="form-label">Foto do candidato (opcional)</label><input class="form-control" type="file" name="foto" accept="image/jpeg,image/png,image/webp"><small class="text-muted">JPG, PNG ou WEBP, até 3 MB.</small></div></div>
-
-        <div class="pe-section-title"><span><i class="bi bi-mortarboard"></i></span><div><strong>Dados escolares</strong><small>Escolaridade, instituição, série/período e turno.</small></div></div>
-        <div class="row g-3">
-            <div class="col-md-4"><label class="form-label">Nível de escolaridade</label><select class="form-select" name="nivel_escolaridade"><option value="">Selecione</option><?php $current=pe_profile_value($profile,$selected,'nivel_escolaridade','escolaridade'); foreach(['Ensino Fundamental','Ensino Médio','Ensino Superior (Faculdade)'] as $v): ?><option<?= $current===$v?' selected':'' ?>><?= pe_h($v) ?></option><?php endforeach; ?></select></div>
-            <div class="col-md-4"><label class="form-label">Situação escolar</label><select class="form-select" name="situacao_escolar"><option value="">Selecione</option><?php $current=pe_profile_value($profile,$selected,'situacao_escolar','situacao_escolar'); foreach(['Cursando','Concluído'] as $v): ?><option<?= $current===$v?' selected':'' ?>><?= pe_h($v) ?></option><?php endforeach; ?></select></div>
-            <div class="col-md-4"><label class="form-label">Turno de estudo</label><select class="form-select" name="turno_estudo"><option value="">Selecione</option><?php $current=pe_profile_value($profile,$selected,'turno_estudo','turno_estudo'); foreach(['Matutino','Vespertino','Noturno','Integral'] as $v): ?><option<?= $current===$v?' selected':'' ?>><?= pe_h($v) ?></option><?php endforeach; ?></select></div>
-            <div class="col-md-8"><label class="form-label">Nome da instituição de ensino</label><input class="form-control" name="instituicao_ensino" maxlength="180" value="<?= pe_h(pe_profile_value($profile,$selected,'instituicao_ensino','instituicao_ensino')) ?>"></div>
-            <div class="col-md-4"><label class="form-label">Série/Ano ou Período</label><input class="form-control" name="serie_periodo" maxlength="80" value="<?= pe_h($profile['serie_periodo'] ?? '') ?>"></div>
-        </div>
-
-        <div class="pe-section-title"><span><i class="bi bi-building"></i></span><div><strong>Local de atuação</strong><small>Órgão/setor e turno do participante.</small></div></div>
-        <div class="row g-3"><div class="col-md-8"><label class="form-label">Local</label><input class="form-control" name="local_atuacao" maxlength="180" value="<?= pe_h($profile['local_atuacao'] ?? '') ?>"></div><div class="col-md-4"><label class="form-label">Turno</label><select class="form-select" name="turno_atuacao"><option value="">Selecione</option><?php foreach(['Matutino','Vespertino','Noturno'] as $v): ?><option<?= (($profile['turno_atuacao'] ?? '')===$v)?' selected':'' ?>><?= pe_h($v) ?></option><?php endforeach; ?></select></div></div>
-        <div class="d-flex justify-content-end mt-4 pe-no-print"><button class="btn btn-primary" type="submit"><i class="bi bi-floppy"></i> Salvar ficha</button></div>
-    </form>
-    <?php elseif ($dbReady): ?><div class="alert alert-info">Selecione um candidato para preencher a ficha cadastral.</div><?php endif; ?>
+require_once dirname(__DIR__) . '/lib/list-ui.php';
+$pageDefinition=['title'=>'Lotações','description'=>'Distribuição dos participantes por órgão, instituição ou setor de atuação.','demo'=>false,'show_states'=>false,'actions'=>[],'modal'=>['title'=>'Lotação']];
+$dbReady=pe_db_ready()&&pe_schema_ready();$message=null;$rows=[];$candidates=[];
+if($dbReady){$pdo=pe_db();$candidates=pe_recent_candidates($pdo,3000);if($_SERVER['REQUEST_METHOD']==='POST'){try{pe_verify_csrf();$action=(string)($_POST['pe_action']??'');$id=(int)($_POST['id']??$_POST['candidato_id']??0);if($action==='save_placement'){pe_save_placement($pdo,$_POST);$message=['type'=>'success','text'=>'Lotação salva com sucesso.'];}elseif($action==='delete_placement'){pe_clear_placement($pdo,$id);$message=['type'=>'success','text'=>'Lotação removida com sucesso.'];}}catch(Throwable $e){$message=['type'=>'danger','text'=>$e->getMessage()];}}$rows=pe_placement_rows($pdo);}
+ob_start();?>
+<section class="content-card pe-form-card pe-page pe-list-page">
+<?php if(!$dbReady):?><?=pe_db_notice()?><?php endif;?><?php if($message):?><div class="alert alert-<?=pe_h($message['type'])?>"><?=pe_h($message['text'])?></div><?php endif;?>
+<?php pe_list_header('Distribuição','Lotações dos participantes','Visualize todos os candidatos e defina ou altere o local de atuação por modal.','Definir lotação','#pePlacementForm','diagram-3'); ?>
+<?php pe_list_toolbar(count($rows),'Buscar candidato, CPF, bairro, local ou turno...'); ?>
+<div class="pe-table-wrap"><div class="table-responsive"><table class="table align-middle pe-data-table pe-list-table" data-pe-list-table><thead><tr><th>Candidato</th><th>CPF</th><th>Bairro</th><th>Local de atuação</th><th>Turno</th><th>Status</th></tr></thead><tbody>
+<?php if(!$rows):?><tr class="pe-empty-row"><td colspan="6" class="text-center text-muted py-5">Nenhum candidato disponível.</td></tr><?php endif;?>
+<?php foreach($rows as $r):$record=$r;$record['id']=$r['candidato_id'];$record['candidato_id']=$r['candidato_id'];$record['__title']=$r['nome'];$record['__subtitle']=($r['local_atuacao']?:'Sem lotação').' · '.($r['turno_atuacao']?:'Turno não informado');$record['cpf_formatado']=pe_format_cpf($r['cpf']?:$r['cpf_informado']);$record['telefone_formatado']=pe_format_phone($r['telefone']?:'');?>
+<tr class="pe-list-row" tabindex="0" role="button" data-pe-list-row data-pe-actions-target="#pePlacementActions" data-pe-record="<?=pe_record_attr($record)?>"><td data-label="Candidato"><strong><?=pe_h($r['nome'])?></strong></td><td data-label="CPF"><?=pe_h($record['cpf_formatado']?:'—')?></td><td data-label="Bairro"><?=pe_h($r['bairro']?:'—')?></td><td data-label="Local"><?=pe_h($r['local_atuacao']?:'Não definido')?></td><td data-label="Turno"><?=pe_h($r['turno_atuacao']?:'—')?></td><td data-label="Status"><span class="pe-status-text"><?=pe_h($r['status'])?></span></td></tr>
+<?php endforeach;?></tbody></table></div></div>
+<?php pe_crud_actions_dialog('pePlacementActions','Lotação','#pePlacementView','#pePlacementForm','#pePlacementDelete'); ?>
+<dialog class="pe-modal pe-modal--form" id="pePlacementForm" data-pe-create-title="Definir lotação" data-pe-edit-title="Editar lotação"><div class="pe-modal__shell"><header class="pe-modal__header"><div><div class="card-kicker">Lotação</div><h2 data-pe-form-title>Definir lotação</h2><p>Informe o local e o turno de atuação do participante.</p></div><button type="button" class="pe-modal__close" data-pe-dialog-close><i class="bi bi-x-lg"></i></button></header><div class="pe-modal__body"><form method="post" class="pe-action-form" data-pe-record-form><?=pe_csrf_field()?><input type="hidden" name="pe_action" value="save_placement"><input type="hidden" name="id" data-pe-field="id"><div class="pe-action-form-grid pe-action-form-grid--2"><div><label class="form-label required">Candidato</label><select class="form-select" name="candidato_id" data-pe-field="candidato_id" required><option value="">Selecione...</option><?php foreach($candidates as $c):?><option value="<?=(int)$c['id']?>"><?=pe_h($c['nome'])?></option><?php endforeach;?></select></div><div><label class="form-label">Turno de atuação</label><select class="form-select" name="turno_atuacao" data-pe-field="turno_atuacao"><option value="">Não informado</option><?php foreach(['Matutino','Vespertino','Noturno','Integral'] as $v):?><option><?=pe_h($v)?></option><?php endforeach;?></select></div><div class="pe-field-span-2"><label class="form-label required">Órgão / local de atuação</label><input class="form-control" name="local_atuacao" data-pe-field="local_atuacao" maxlength="180" required placeholder="Ex.: SEMAS, SEMED, Saúde"></div></div><footer class="pe-action-modal-footer"><button type="button" class="btn btn-light" data-pe-dialog-close>Cancelar</button><button class="btn btn-primary" type="submit"><i class="bi bi-floppy"></i> Salvar lotação</button></footer></form></div></div></dialog>
+<dialog class="pe-modal pe-modal--view" id="pePlacementView"><div class="pe-modal__shell"><header class="pe-modal__header"><div><div class="card-kicker">Lotação</div><h2 data-pe-current-title>Detalhes</h2><p data-pe-current-subtitle></p></div><button type="button" class="pe-modal__close" data-pe-dialog-close><i class="bi bi-x-lg"></i></button></header><div class="pe-modal__body"><dl class="pe-modal-details pe-modal-details--2"><div><dt>CPF</dt><dd data-pe-text="cpf_formatado">—</dd></div><div><dt>Telefone</dt><dd data-pe-text="telefone_formatado">—</dd></div><div><dt>Bairro</dt><dd data-pe-text="bairro">—</dd></div><div><dt>Status</dt><dd data-pe-text="status">—</dd></div><div><dt>Local de atuação</dt><dd data-pe-text="local_atuacao">Não definido</dd></div><div><dt>Turno</dt><dd data-pe-text="turno_atuacao">—</dd></div></dl></div></div></dialog>
+<?php pe_delete_dialog('pePlacementDelete','lotação','delete_placement'); ?>
 </section>
-<?php $pageCustomContent = (string) ob_get_clean();
+<?php $pageCustomContent=(string)ob_get_clean();

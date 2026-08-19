@@ -227,6 +227,19 @@ if ($dbReady) {
                     'type' => 'success',
                     'text' => 'Ficha cadastral atualizada com sucesso.',
                 ];
+            } elseif (
+                $action
+                === 'delete_candidate'
+            ) {
+                pe_delete_candidate(
+                    $pdo,
+                    $postedCandidateId
+                );
+
+                $message = [
+                    'type' => 'success',
+                    'text' => 'Candidato excluído com sucesso.',
+                ];
             }
         } catch (Throwable $e) {
             $message = [
@@ -2044,12 +2057,42 @@ ob_start();
 
                     </a>
 
+                    <button
+                        class="pe-modal-action pe-modal-action--danger"
+                        type="button"
+                        data-pe-candidate-delete
+                    >
+                        <span class="pe-modal-action__icon"><i class="bi bi-trash3"></i></span>
+                        <span><strong>Excluir candidato</strong><small>Remover o cadastro e os vínculos relacionados</small></span>
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+
                 </div>
 
             </div>
 
         </div>
 
+    </dialog>
+
+
+    <dialog class="pe-modal pe-modal--confirm" id="peCandidateDeleteDialog">
+        <div class="pe-modal__shell">
+            <header class="pe-modal__header">
+                <div><div class="card-kicker">Excluir candidato</div><h2>Confirmar exclusão</h2><p>Esta ação remove o candidato e os registros vinculados.</p></div>
+                <button type="button" class="pe-modal__close" data-pe-dialog-close aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="pe-modal__body">
+                <div class="pe-delete-warning"><i class="bi bi-exclamation-triangle"></i><div><strong data-pe-candidate-delete-name>Candidato selecionado</strong><span>Use esta ação somente quando a exclusão for realmente necessária.</span></div></div>
+                <form method="post" class="pe-delete-form">
+                    <?= pe_csrf_field() ?>
+                    <input type="hidden" name="pe_action" value="delete_candidate">
+                    <input type="hidden" name="candidato_id" value="" data-pe-candidate-delete-id>
+                    <label class="pe-check-option pe-delete-confirm"><input type="checkbox" required><span>Confirmo a exclusão deste candidato.</span></label>
+                    <footer class="pe-action-modal-footer"><button type="button" class="btn btn-light" data-pe-dialog-close>Cancelar</button><button type="submit" class="btn btn-danger"><i class="bi bi-trash3"></i> Excluir candidato</button></footer>
+                </form>
+            </div>
+        </div>
     </dialog>
 
 
