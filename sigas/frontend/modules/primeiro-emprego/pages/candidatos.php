@@ -36,7 +36,7 @@ $filters = [
     'origem' => trim((string) ($_GET['origem'] ?? '')),
     'revisao' => trim((string) ($_GET['revisao'] ?? '')),
 ];
-$page = max(1, (int) ($_GET['p'] ?? 1));
+$currentPage = max(1, (int) ($_GET['p'] ?? 1));
 $list = ['rows' => [], 'total' => 0, 'page' => 1, 'pages' => 1, 'per_page' => 50];
 $filterOptions = ['bairros' => [], 'setores' => []];
 $message = null;
@@ -68,7 +68,7 @@ if ($dbReady) {
     }
 
     $stats = pe_dashboard_stats($pdo);
-    $list = pe_candidate_page($pdo, $filters, $page, 50);
+    $list = pe_candidate_page($pdo, $filters, $currentPage, 50);
     $filterOptions = pe_candidate_filters($pdo);
 }
 
