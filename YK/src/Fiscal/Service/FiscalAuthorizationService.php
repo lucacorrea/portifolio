@@ -376,6 +376,19 @@ final class FiscalAuthorizationService
             ): void {
                 $documentId = (int) $document['id'];
 
+                /*
+                 * Mesmo quando o parser não consegue concluir o retorno,
+                 * o documento principal deve apontar para o XML bruto que
+                 * foi preservado. Isso evita ultima_resposta_path = NULL.
+                 */
+                $this->documents->storeResponse(
+                    $documentId,
+                    $responseArtifact,
+                    null,
+                    '',
+                    $reason
+                );
+
                 $this->documents->markPendingReconciliation(
                     $documentId,
                     $reason

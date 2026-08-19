@@ -65,6 +65,17 @@ final class FiscalDocumentXmlBuilder
         $items = $snapshot['items'] ?? [];
         $fiscal = $snapshot['fiscal'] ?? [];
         $operation = $snapshot['operation'] ?? [];
+
+        $taxApplicability = is_array($snapshot['tax_applicability'] ?? null)
+            ? $snapshot['tax_applicability']
+            : [];
+
+        $ibsCbsApplicability = is_array($taxApplicability['ibs_cbs'] ?? null)
+            ? $taxApplicability['ibs_cbs']
+            : [];
+
+        $requiresIbsCbs = (bool) ($ibsCbsApplicability['required'] ?? false);
+
         if (!is_array($company) || !is_array($customer) || !is_array($items) || $items === []) {
             throw new InvalidArgumentException('O documento fiscal não possui dados suficientes para gerar o XML.');
         }
@@ -129,7 +140,13 @@ final class FiscalDocumentXmlBuilder
             if (!is_array($item)) {
                 throw new InvalidArgumentException('Item fiscal inválido.');
             }
-            $calculation = $this->addItem($make, $item, $offset + 1, (int) $company['crt']);
+            $calculation = $this->addItem(
+                $make,
+                $item,
+                $offset + 1,
+                (int) $company['crt'],
+                $requiresIbsCbs
+            );
             if ($calculation !== null) {
                 $ibsCbsTotals ??= ['base'=>0, 'uf'=>0, 'city'=>0, 'ibs'=>0, 'cbs'=>0];
                 foreach ($ibsCbsTotals as $field => $unused) {
@@ -210,7 +227,13 @@ final class FiscalDocumentXmlBuilder
     }
 
     /** @param array<string,mixed> $item @return array<string,string>|null */
-    private function addItem(Make $make, array $item, int $number, int $crt): ?array
+    private function addItem(
+        Make $make,
+        array $item,
+        int $number,
+        int $crt,
+        bool $requiresIbsCbs
+    ): ?array
     {
         $subtotalCents = Decimal::moneyToCents((string) $item['subtotal']);
         $discountCents = Decimal::moneyToCents((string) ($item['desconto'] ?? '0'));
@@ -265,9 +288,19 @@ final class FiscalDocumentXmlBuilder
             ]));
         }
         $this->addPisCofins($make, $item, $number, $subtotal, $crt);
+
         if (!isset($item['ibs_cbs_rule'])) {
+            if ($requiresIbsCbs) {
+                throw new InvalidArgumentException(
+                    'IBS/CBS é obrigatório nesta emissão, mas o item "'
+                    . (string) ($item['descricao'] ?? $item['codigo'] ?? 'sem descrição')
+                    . '" não possui regra tributária IBS/CBS resolvida.'
+                );
+            }
+
             return null;
         }
+
         $calculation = (new IbsCbsCalculation())->calculate($item);
         $make->tagIBSCBS($this->std([
             'item'=>$number,

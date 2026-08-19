@@ -129,7 +129,13 @@ final class FiscalDocumentService
             $this->assertClientSnapshot($order, $model);
             $issueDate = date('Y-m-d');
             $crt = (int) $company['crt'];
-            $applicability = $this->ibsCbsApplicability->resolve($issueDate, $crt, $model, $environment);
+            $applicability = $this->ibsCbsApplicability->resolve(
+                $issueDate,
+                $crt,
+                $model,
+                $environment,
+                strtoupper((string) $company['endereco_uf'])
+            );
             $requiresIbsCbs = $applicability['required'];
             $this->assertItems($items, $crt, $requiresIbsCbs);
             $operation = $this->resolveOperation($company, $order, $items, $model);
@@ -428,7 +434,10 @@ final class FiscalDocumentService
                 preg_match('/^\d{3}$/', (string) ($item['cst_ibs_cbs'] ?? '')) !== 1
                 || preg_match('/^\d{6}$/', (string) ($item['classificacao_tributaria_ibs_cbs'] ?? '')) !== 1
             )) {
-                throw new InvalidArgumentException('Complete CST IBS/CBS e cClassTrib de todas as peças exigidas para este CRT e vigência.');
+                throw new InvalidArgumentException(
+                    'IBS/CBS é exigido para esta emissão. Complete CST IBS/CBS e cClassTrib '
+                    . 'das peças utilizadas na OS antes de transmitir para a SEFAZ.'
+                );
             }
         }
     }

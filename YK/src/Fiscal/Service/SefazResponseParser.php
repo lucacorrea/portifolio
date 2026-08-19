@@ -46,7 +46,7 @@ final class SefazResponseParser
         [$outerCode, $outerReason] = $this->authorizationOuterStatus($dom);
         $code = $protocolCode !== '' ? $protocolCode : $outerCode;
 
-        if (preg_match('/^\d{3}$/', $code) !== 1) {
+        if (preg_match('/^\d{3,4}$/', $code) !== 1) {
             throw new InvalidArgumentException(
                 'A resposta da SEFAZ não contém cStat fiscal válido.'
             );
@@ -108,7 +108,7 @@ final class SefazResponseParser
         }
 
         $code = $this->directChildValue($node, 'cStat');
-        if (preg_match('/^\d{3}$/', $code) !== 1) {
+        if (preg_match('/^\d{3,4}$/', $code) !== 1) {
             throw new InvalidArgumentException(
                 'A resposta de inutilização não contém cStat válido.'
             );
@@ -145,7 +145,7 @@ final class SefazResponseParser
                 continue;
             }
 
-            if (preg_match('/^\d{3}$/', $code) !== 1) {
+            if (preg_match('/^\d{3,4}$/', $code) !== 1) {
                 throw new InvalidArgumentException(
                     'A resposta de cancelamento não contém cStat válido.'
                 );
@@ -170,7 +170,7 @@ final class SefazResponseParser
             ['retEnvEvento', 'retEvento']
         );
 
-        if (preg_match('/^\d{3}$/', $outerCode) === 1) {
+        if (preg_match('/^\d{3,4}$/', $outerCode) === 1) {
             return [
                 'terminal' => false,
                 'pending' => true,
