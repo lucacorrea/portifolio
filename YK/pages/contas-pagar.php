@@ -992,14 +992,6 @@ $statusButtons = [
                                 $status
                             );
 
-                            $locked =
-                                $status !== 'pendente'
-                                || payable_value(
-                                    $account,
-                                    'possui_movimentacao',
-                                    '0'
-                                ) === '1';
-
                             $installments = is_array(
                                 $account['parcelas']
                                 ?? null
@@ -1262,7 +1254,7 @@ $statusButtons = [
                                                 </li>
                                             <?php endif; ?>
 
-                                            <?php if ($canEdit && !$locked): ?>
+                                            <?php if ($canEdit && $status !== 'cancelada'): ?>
                                                 <li>
                                                     <button
                                                         class="dropdown-item js-payable-edit"
@@ -1277,21 +1269,21 @@ $statusButtons = [
                                                 </li>
                                             <?php endif; ?>
 
-                                            <?php if ($canCancel && !$locked): ?>
+                                            <?php if ($canCancel && $status !== 'cancelada'): ?>
                                                 <li>
                                                     <hr class="dropdown-divider">
                                                 </li>
 
                                                 <li>
                                                     <button
-                                                        class="dropdown-item text-danger js-payable-cancel"
+                                                        class="dropdown-item text-danger js-payable-delete"
                                                         type="button"
                                                         data-account="<?= h($payload) ?>"
                                                         data-bs-toggle="modal"
-                                                        data-bs-target="#modal-conta-pagar-cancel"
+                                                        data-bs-target="#modal-conta-pagar-delete"
                                                     >
-                                                        <i class="bi bi-x-circle"></i>
-                                                        Cancelar título
+                                                        <i class="bi bi-trash3"></i>
+                                                        Excluir
                                                     </button>
                                                 </li>
                                             <?php endif; ?>
@@ -1526,6 +1518,18 @@ $statusButtons = [
                         </div>
                     <?php endif; ?>
 
+                    <div
+                        class="alert alert-warning"
+                        id="payable-edit-financial-lock-note"
+                        role="status"
+                        hidden
+                    >
+                        <strong>Dados financeiros protegidos.</strong>
+                        Esta conta já possui pagamento ou histórico de movimentação. Você pode corrigir fornecedor,
+                        descrição, documento, emissão, forma prevista e observações, mas valor, vencimento e parcelamento
+                        permanecem bloqueados para preservar o Caixa e a auditoria.
+                    </div>
+
                     <?php
                     payable_form_fields(
                         'edit-payable',
@@ -1560,7 +1564,7 @@ $statusButtons = [
 <?php if ($canCancel): ?>
     <div
         class="modal fade"
-        id="modal-conta-pagar-cancel"
+        id="modal-conta-pagar-delete"
         tabindex="-1"
         aria-hidden="true"
     >
@@ -1568,11 +1572,11 @@ $statusButtons = [
             <form
                 class="modal-content visual-modal"
                 method="post"
-                action="actions/conta-pagar-cancelar.php"
+                action="actions/conta-pagar-excluir.php"
             >
                 <div class="modal-header">
                     <h2 class="modal-title fs-5">
-                        Cancelar título
+                        Excluir conta a pagar
                     </h2>
 
                     <button
@@ -1592,19 +1596,24 @@ $statusButtons = [
                         name="id"
                     >
 
-                    <p id="payable-cancel-message"></p>
+                    <p id="payable-delete-message"></p>
+
+                    <div class="alert alert-warning" role="alert">
+                        A exclusão é auditável: o registro será mantido como cancelado. Se houver parcelas pagas,
+                        o sistema fará o estorno financeiro antes de excluir e preservará o histórico dos lançamentos.
+                    </div>
 
                     <div class="form-group mb-0">
                         <label
                             class="form-label"
-                            for="payable-cancel-reason"
+                            for="payable-delete-reason"
                         >
-                            Motivo do cancelamento
+                            Motivo da exclusão
                         </label>
 
                         <textarea
                             class="form-control-os"
-                            id="payable-cancel-reason"
+                            id="payable-delete-reason"
                             name="motivo"
                             maxlength="255"
                             rows="3"
@@ -1626,8 +1635,8 @@ $statusButtons = [
                         class="btn-modal-save"
                         type="submit"
                     >
-                        <i class="bi bi-x-circle"></i>
-                        Confirmar cancelamento
+                        <i class="bi bi-trash3"></i>
+                        Excluir conta
                     </button>
                 </div>
             </form>

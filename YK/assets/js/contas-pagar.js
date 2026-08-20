@@ -15,6 +15,13 @@ document.addEventListener('DOMContentLoaded', function () {
     'observacao'
   ];
 
+  const financialStructureFields = [
+    'vencimento_em',
+    'valor',
+    'tipo_pagamento',
+    'quantidade_parcelas'
+  ];
+
   const paymentLabels = {
     dinheiro: 'Dinheiro',
     pix: 'Pix',
@@ -572,7 +579,10 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     );
 
-    toggleInstallments(form);
+    configureEditFinancialLock(
+      form,
+      account
+    );
 
     const subtitle =
       document.getElementById(
@@ -587,6 +597,96 @@ document.addEventListener('DOMContentLoaded', function () {
           account,
           'fornecedor_nome'
         );
+    }
+  }
+
+  function configureEditFinancialLock(
+    form,
+    account
+  ) {
+    form.querySelectorAll(
+      '.js-payable-financial-lock-value'
+    ).forEach(function (field) {
+      field.remove();
+    });
+
+    const locked = (
+      String(
+        account.status || ''
+      ) !== 'pendente'
+      || String(
+        account.possui_movimentacao
+        || '0'
+      ) === '1'
+    );
+
+    form.dataset.financialLocked = locked
+      ? '1'
+      : '0';
+
+    const note = document.getElementById(
+      'payable-edit-financial-lock-note'
+    );
+
+    if (note) {
+      note.hidden = !locked;
+    }
+
+    financialStructureFields.forEach(
+      function (name) {
+        const field =
+          form.elements.namedItem(name);
+
+        if (
+          !field
+          || field instanceof RadioNodeList
+        ) {
+          return;
+        }
+
+        field.disabled = locked;
+
+        if (!locked) {
+          field.removeAttribute(
+            'aria-disabled'
+          );
+          field.removeAttribute('title');
+          return;
+        }
+
+        field.setAttribute(
+          'aria-disabled',
+          'true'
+        );
+        field.title =
+          'Campo financeiro protegido por histórico de pagamento.';
+
+        const hidden =
+          document.createElement('input');
+
+        hidden.type = 'hidden';
+        hidden.name = name;
+        hidden.value = account[name] ?? '';
+        hidden.className =
+          'js-payable-financial-lock-value';
+
+        form.appendChild(hidden);
+      }
+    );
+
+    if (!locked) {
+      toggleInstallments(form);
+      return;
+    }
+
+    const wrap = form.querySelector(
+      '.js-payable-installment-count'
+    );
+
+    if (wrap) {
+      wrap.hidden = String(
+        account.tipo_pagamento || ''
+      ) !== 'parcelado';
     }
   }
 
@@ -692,9 +792,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  function populateCancel(account) {
+  function populateDelete(account) {
     const form = document.querySelector(
-      '#modal-conta-pagar-cancel form'
+      '#modal-conta-pagar-delete form'
     );
 
     if (!form) {
@@ -709,12 +809,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const message =
       document.getElementById(
-        'payable-cancel-message'
+        'payable-delete-message'
       );
 
     if (message) {
+      const paid = Number(
+        account.parcelas_pagas || 0
+      );
+
       message.textContent =
-        'Cancelar a conta “'
+        'Excluir a conta “'
         + value(
           account,
           'codigo'
@@ -724,7 +828,11 @@ document.addEventListener('DOMContentLoaded', function () {
           account,
           'fornecedor_nome'
         )
-        + '?';
+        + (paid > 0
+          ? ' e estornar '
+            + paid
+            + ' parcela(s) paga(s)?'
+          : '?');
     }
   }
 
@@ -886,7 +994,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
       const button =
         event.target.closest(
-          '.js-payable-view, .js-payable-edit, .js-payable-cancel'
+          '.js-payable-view, .js-payable-edit, .js-payable-delete'
         );
 
       if (!button) {
@@ -915,7 +1023,7 @@ document.addEventListener('DOMContentLoaded', function () {
       ) {
         populateEdit(account);
       } else {
-        populateCancel(account);
+        populateDelete(account);
       }
     }
   );
@@ -957,7 +1065,12 @@ document.addEventListener('DOMContentLoaded', function () {
            * Sincroniza o campo de parcelas antes
            * da validação nativa do navegador.
            */
-          toggleInstallments(form);
+          if (
+            form.dataset.financialLocked
+            !== '1'
+          ) {
+            toggleInstallments(form);
+          }
 
           if (!form.checkValidity()) {
             event.preventDefault();
