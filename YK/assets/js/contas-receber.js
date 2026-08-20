@@ -25,6 +25,23 @@ document.addEventListener('DOMContentLoaded', function () {
     return (value / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }
 
+  function updateAccountEditPreview() {
+    const form = document.getElementById('cr-account-edit-form');
+    const totalInput = document.getElementById('cr-account-edit-total');
+    const balanceInput = document.getElementById('cr-account-edit-balance');
+    const help = document.getElementById('cr-account-edit-total-help');
+    if (!form || !totalInput || !balanceInput) return;
+
+    const received = Number.parseInt(form.dataset.receivedCents || '0', 10) || 0;
+    const total = cents(totalInput.value);
+    const valid = total > 0 && total >= received;
+    totalInput.setCustomValidity(valid ? '' : 'O valor total deve ser maior que zero e não pode ser menor que o valor já recebido.');
+    balanceInput.value = moneyFromCents(Math.max(0, total - received));
+    if (help) help.textContent = received > 0
+      ? 'Mínimo permitido: ' + moneyFromCents(received) + ' (valor já recebido).'
+      : 'Informe o valor total negociado para esta conta.';
+  }
+
   function updateBatchSelection(message) {
     const selected = selectedAccounts();
     const activeClient = selected[0]?.dataset.clientId || '';
@@ -71,6 +88,25 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   document.addEventListener('click', function (event) {
+    const accountEditButton = event.target.closest?.('.js-cr-account-edit');
+    if (accountEditButton) {
+      const form = document.getElementById('cr-account-edit-form');
+      const receivedValue = cents(accountEditButton.dataset.received);
+      if (form) form.dataset.receivedCents = String(receivedValue);
+      setValue('cr-account-edit-id', accountEditButton.dataset.id);
+      setValue('cr-account-edit-client', accountEditButton.dataset.client);
+      setValue('cr-account-edit-order', accountEditButton.dataset.order);
+      setValue('cr-account-edit-status', accountEditButton.dataset.status);
+      setValue('cr-account-edit-total', accountEditButton.dataset.total);
+      setValue('cr-account-edit-received', moneyFromCents(receivedValue));
+      setValue('cr-account-edit-due', accountEditButton.dataset.due);
+      setValue('cr-account-edit-reminder', accountEditButton.dataset.reminder);
+      setValue('cr-account-edit-notes', accountEditButton.dataset.notes);
+      setText('cr-account-edit-subtitle', (accountEditButton.dataset.order || '') + ' — ' + (accountEditButton.dataset.client || ''));
+      updateAccountEditPreview();
+      return;
+    }
+
     const paymentButton = event.target.closest?.('.js-cr-payment');
     if (paymentButton) {
       setValue('cr-payment-id', paymentButton.dataset.id);
@@ -118,6 +154,20 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
     updateBatchSelection();
+  });
+
+  document.getElementById('cr-account-edit-total')?.addEventListener('input', updateAccountEditPreview);
+  document.getElementById('cr-account-edit-form')?.addEventListener('submit', function (event) {
+    updateAccountEditPreview();
+    const totalInput = document.getElementById('cr-account-edit-total');
+    if (!totalInput?.checkValidity()) {
+      event.preventDefault();
+      totalInput?.reportValidity();
+      totalInput?.focus();
+      return;
+    }
+    const submit = event.currentTarget.querySelector('[type="submit"]');
+    if (submit) submit.disabled = true;
   });
 
   document.querySelector('#modal-cr-payment-edit form')?.addEventListener('submit', function (event) {

@@ -185,6 +185,130 @@ final class AccountsReceivableManagementService
         return $id;
     }
 
+    /**
+     * Edita os dados comerciais da conta a receber sem reescrever o histórico de pagamentos.
+     * Valor recebido, saldo e situação são derivados dos pagamentos ativos e recalculados automaticamente.
+     *
+     * @return array{id:int,valor_total:string,valor_recebido:string,saldo:string,status:string}
+     */
+    public function editAccount(
+        int $accountId,
+        string $total,
+        ?string $dueDate,
+        ?string $reminderDate,
+        ?string $notes,
+        int $userId
+    ): array {
+        if ($accountId <= 0) {
+            throw new InvalidArgumentException('Conta a receber inválida.');
+        }
+        if ($userId <= 0) {
+            throw new InvalidArgumentException('Usuário inválido.');
+        }
+
+        $totalCents = $this->moneyToCents($total);
+        if ($totalCents <= 0) {
+            throw new InvalidArgumentException('O valor total deve ser maior que zero.');
+        }
+        $dueDate = $this->accountDate($dueDate, 'Data de vencimento inválida.');
+        $reminderDate = $this->accountDate($reminderDate, 'Data do próximo lembrete inválida.');
+        $notes = $this->accountNotes($notes);
+
+        $ownsTransaction = !$this->connection->inTransaction();
+        if ($ownsTransaction) $this->connection->beginTransaction();
+
+        try {
+            $account = $this->lockAccount($accountId);
+            if (in_array((string) $account['status'], ['cancelada', 'estornada'], true)) {
+                throw new InvalidArgumentException('Esta conta não pode mais ser editada.');
+            }
+
+            $receivedCents = $this->moneyToCents((string) $account['valor_recebido']);
+            if ($totalCents < $receivedCents) {
+                throw new InvalidArgumentException(
+                    'O valor total não pode ser menor que o valor já recebido ('
+                    . $this->centsToDecimal($receivedCents) . '). Edite ou estorne os pagamentos primeiro.'
+                );
+            }
+
+            $oldTotalCents = $this->moneyToCents((string) $account['valor_total']);
+            $oldDueDate = $account['vencimento_em'] === null ? null : (string) $account['vencimento_em'];
+            $oldReminderDate = $account['proximo_lembrete_em'] === null ? null : (string) $account['proximo_lembrete_em'];
+            $oldNotes = $account['observacao'] === null ? null : (string) $account['observacao'];
+
+            $balanceCents = max(0, $totalCents - $receivedCents);
+            $status = $this->accountStatusAfterCorrection($receivedCents, $balanceCents, $dueDate);
+
+            $this->connection->prepare(
+                'UPDATE contas_receber
+                    SET valor_total = :total, saldo = :balance, vencimento_em = :due_date,
+                        proximo_lembrete_em = :reminder_date, status = :status, observacao = :notes
+                  WHERE id = :id'
+            )->execute([
+                'id' => $accountId,
+                'total' => $this->centsToDecimal($totalCents),
+                'balance' => $this->centsToDecimal($balanceCents),
+                'due_date' => $dueDate,
+                'reminder_date' => $reminderDate,
+                'status' => $status,
+                'notes' => $notes,
+            ]);
+
+            if ($oldTotalCents !== $totalCents) {
+                $this->event(
+                    $accountId,
+                    'negociacao',
+                    'Valor total alterado de ' . $this->centsToDecimal($oldTotalCents)
+                    . ' para ' . $this->centsToDecimal($totalCents) . '.',
+                    $this->centsToDecimal($totalCents),
+                    $userId
+                );
+            }
+            if ($oldDueDate !== $dueDate) {
+                $this->event(
+                    $accountId,
+                    'alteracao_vencimento',
+                    'Vencimento alterado de ' . ($oldDueDate ?? 'sem vencimento')
+                    . ' para ' . ($dueDate ?? 'sem vencimento') . '.',
+                    null,
+                    $userId
+                );
+            }
+            if ($oldReminderDate !== $reminderDate) {
+                $this->event(
+                    $accountId,
+                    'lembrete',
+                    'Próximo lembrete alterado de ' . ($oldReminderDate ?? 'sem lembrete')
+                    . ' para ' . ($reminderDate ?? 'sem lembrete') . '.',
+                    null,
+                    $userId
+                );
+            }
+            if ($oldNotes !== $notes) {
+                $this->event(
+                    $accountId,
+                    'observacao',
+                    'Observação da conta atualizada.',
+                    null,
+                    $userId
+                );
+            }
+
+            if ($ownsTransaction) $this->connection->commit();
+
+            return [
+                'id' => $accountId,
+                'valor_total' => $this->centsToDecimal($totalCents),
+                'valor_recebido' => $this->centsToDecimal($receivedCents),
+                'saldo' => $this->centsToDecimal($balanceCents),
+                'status' => $status,
+            ];
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $this->connection->inTransaction()) $this->connection->rollBack();
+            throw $exception;
+        }
+    }
+
     public function registerPayment(
         int $accountId,
         string $value,
@@ -581,6 +705,32 @@ final class AccountsReceivableManagementService
         $due = trim((string) ($dueDate ?? ''));
         if ($due !== '' && $due < date('Y-m-d')) return 'vencida';
         return $received > 0 ? 'parcial' : 'pendente';
+    }
+
+    private function accountDate(?string $value, string $message): ?string
+    {
+        $value = trim((string) ($value ?? ''));
+        if ($value === '') return null;
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+        $errors = DateTimeImmutable::getLastErrors();
+        if ($date === false
+            || ($errors !== false && (($errors['warning_count'] ?? 0) > 0 || ($errors['error_count'] ?? 0) > 0))
+            || $date->format('Y-m-d') !== $value
+        ) {
+            throw new InvalidArgumentException($message);
+        }
+        return $value;
+    }
+
+    private function accountNotes(?string $value): ?string
+    {
+        $value = trim((string) ($value ?? ''));
+        if ($value === '') return null;
+        $length = function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8') : strlen($value);
+        if ($length > 2000 || str_contains($value, "\0")) {
+            throw new InvalidArgumentException('A observação deve ter no máximo 2.000 caracteres.');
+        }
+        return $value;
     }
 
     private function limitText(string $value, int $max): string

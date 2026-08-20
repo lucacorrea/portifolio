@@ -22,6 +22,9 @@ $accounts = $service->listAccounts($filters);
 $canPay = $authorization->can('contas_receber.registrar_pagamento');
 $canReversePayment = $authorization->can('contas_receber.estornar_pagamento');
 $canEditPayment = $canPay && $canReversePayment;
+$canEditAccount = $authorization->can('contas_receber.negociar')
+    && $authorization->can('contas_receber.alterar_vencimento')
+    && $authorization->can('contas_receber.configurar_lembrete');
 $canBatch = $authorization->can('contas_receber.baixa_lote');
 $canContact = $authorization->can('contas_receber.registrar_contato');
 $canIssueReceipt = $authorization->can('recibo.emitir');
@@ -114,6 +117,20 @@ function cr_payment_label(array $payment): string
             <td><?= cr_date($account['proximo_lembrete_em'] ?? null) ?></td>
             <td><span class="badge-soft badge-<?= h(cr_status_badge((string) $account['status'])) ?>"><?= h(cr_status_label((string) $account['status'])) ?></span></td>
             <td class="table-actions-cell"><div class="dropdown table-action-dropdown"><button class="btn-action" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Acoes"><i class="bi bi-three-dots-vertical"></i></button><ul class="dropdown-menu dropdown-menu-end">
+                <?php if ($canEditAccount && !in_array((string) $account['status'], ['cancelada','estornada'], true)): ?>
+                    <li><button class="dropdown-item js-cr-account-edit" type="button"
+                        data-id="<?= h((string) $account['id']) ?>"
+                        data-client="<?= h((string) $account['cliente_nome']) ?>"
+                        data-order="<?= h((string) $account['os_numero']) ?>"
+                        data-total="<?= h((string) $account['valor_total']) ?>"
+                        data-received="<?= h((string) $account['valor_recebido']) ?>"
+                        data-balance="<?= h((string) $account['saldo']) ?>"
+                        data-due="<?= h((string) ($account['vencimento_em'] ?? '')) ?>"
+                        data-reminder="<?= h((string) ($account['proximo_lembrete_em'] ?? '')) ?>"
+                        data-notes="<?= h((string) ($account['observacao'] ?? '')) ?>"
+                        data-status="<?= h(cr_status_label((string) $account['status'])) ?>"
+                        data-bs-toggle="modal" data-bs-target="#modal-cr-account-edit"><i class="bi bi-pencil-square"></i> Editar conta</button></li>
+                <?php endif; ?>
                 <?php if ($canPay && in_array((string) $account['status'], ['pendente','parcial','vencida'], true)): ?><li><button class="dropdown-item js-cr-payment" type="button" data-id="<?= h((string) $account['id']) ?>" data-balance="<?= h((string) $account['saldo']) ?>" data-bs-toggle="modal" data-bs-target="#modal-cr-payment"><i class="bi bi-cash"></i> Registrar pagamento</button></li><?php endif; ?>
                 <?php if ((string) $account['status'] === 'paga'): ?>
                     <?php foreach ($orderPayments as $payment): ?>
@@ -158,6 +175,87 @@ function cr_payment_label(array $payment): string
     <?php endif; ?>
 </section>
 </div>
+
+
+<?php if ($canEditAccount): ?>
+<div class="modal fade" id="modal-cr-account-edit" tabindex="-1" aria-hidden="true" aria-labelledby="cr-account-edit-title">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+        <form class="modal-content visual-modal" method="post" action="actions/conta-receber-editar.php" autocomplete="off" id="cr-account-edit-form">
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title fs-5" id="cr-account-edit-title">Editar conta a receber</h2>
+                    <p class="text-muted small mb-0" id="cr-account-edit-subtitle"></p>
+                </div>
+                <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <?= $csrf->field() ?><?php return_to_field(); ?>
+                <input type="hidden" name="id" id="cr-account-edit-id">
+
+                <div class="alert alert-info">
+                    <i class="bi bi-shield-check"></i>
+                    Você pode corrigir todos os dados próprios da conta. O valor recebido continua vindo dos pagamentos registrados; saldo e situação são recalculados automaticamente para manter Caixa e histórico consistentes.
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="cr-account-edit-client">Cliente</label>
+                        <input class="form-control-os" id="cr-account-edit-client" type="text" readonly aria-readonly="true">
+                        <small class="form-text text-muted">O cliente pertence à OS de origem.</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="cr-account-edit-order">Ordem de serviço</label>
+                        <input class="form-control-os" id="cr-account-edit-order" type="text" readonly aria-readonly="true">
+                        <small class="form-text text-muted">O vínculo com a OS não é trocado pelo financeiro.</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="cr-account-edit-status">Situação atual</label>
+                        <input class="form-control-os" id="cr-account-edit-status" type="text" readonly aria-readonly="true">
+                        <small class="form-text text-muted">Será recalculada ao salvar.</small>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="cr-account-edit-total">Valor total</label>
+                        <input class="form-control-os" id="cr-account-edit-total" name="valor_total" inputmode="decimal" required>
+                        <small class="form-text text-muted" id="cr-account-edit-total-help"></small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="cr-account-edit-received">Valor recebido</label>
+                        <input class="form-control-os" id="cr-account-edit-received" type="text" readonly aria-readonly="true">
+                        <small class="form-text text-muted">Para corrigir este valor, edite ou exclua os pagamentos da conta.</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="cr-account-edit-balance">Saldo após alteração</label>
+                        <input class="form-control-os" id="cr-account-edit-balance" type="text" readonly aria-readonly="true">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="cr-account-edit-due">Vencimento</label>
+                        <input class="form-control-os" id="cr-account-edit-due" name="vencimento_em" type="date">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="cr-account-edit-reminder">Próximo lembrete</label>
+                        <input class="form-control-os" id="cr-account-edit-reminder" name="proximo_lembrete_em" type="date">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="cr-account-edit-notes">Observação</label>
+                    <textarea class="form-control-os" id="cr-account-edit-notes" name="observacao" maxlength="2000" rows="4"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button>
+                <button class="btn-modal-save" type="submit"><i class="bi bi-check2"></i> Salvar alterações</button>
+            </div>
+        </form>
+    </div>
+</div>
+<?php endif; ?>
 
 <div class="modal fade" id="modal-cr-payment" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg"><form class="modal-content visual-modal" method="post" action="actions/conta-receber-pagamento.php"><div class="modal-header"><h2 class="modal-title fs-5">Registrar pagamento</h2><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="id" id="cr-payment-id"><div class="form-row"><div class="form-group"><label class="form-label">Valor recebido</label><input class="form-control-os" name="valor" id="cr-payment-value" required></div><div class="form-group"><label class="form-label">Forma</label><select class="form-control-os" name="forma_pagamento" required><option value="dinheiro">Dinheiro</option><option value="pix">Pix</option><option value="cartao_debito">Cartao de debito</option><option value="cartao_credito">Cartao de credito</option><option value="transferencia">Transferencia</option><option value="outro">Outro</option></select></div><div class="form-group"><label class="form-label" for="cr-payment-date">Data do pagamento</label><input class="form-control-os" id="cr-payment-date" name="data_pagamento" type="date" max="<?= h(date('Y-m-d')) ?>" required><small class="form-text text-muted">Escolha a data real do recebimento.</small></div></div><div class="form-group"><label class="form-label">Observacao</label><textarea class="form-control-os" name="observacao" maxlength="255"></textarea></div></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Registrar</button></div></form></div></div>
 
