@@ -42,10 +42,10 @@ final class AccountsPayableManagementService
     /** @return array<int,array<string,mixed>> */
     public function listAccounts(array $filters = []): array
     {
-        $where = [];
+        $where = ["cp.status <> 'cancelada'"];
         $params = [];
         $search = $this->filterText($filters['search'] ?? '', 150);
-        $status = $this->filterChoice($filters['status'] ?? '', ['', 'pendente', 'vencida', 'parcial', 'paga', 'cancelada']);
+        $status = $this->filterChoice($filters['status'] ?? '', ['', 'pendente', 'vencida', 'parcial', 'paga']);
         $bucket = $this->filterChoice($filters['bucket'] ?? '', ['', 'vencidos', 'hoje', 'semana', '15dias']);
         $supplierId = $this->optionalPositiveInt($filters['supplier_id'] ?? null);
 
@@ -63,7 +63,7 @@ final class AccountsPayableManagementService
         }
         if ($status === 'pendente') $where[] = "cp.status = 'pendente' AND parcelas.vencidas = 0";
         if ($status === 'vencida') $where[] = "cp.status IN ('pendente', 'parcial') AND parcelas.vencidas > 0";
-        if (in_array($status, ['parcial', 'paga', 'cancelada'], true)) {
+        if (in_array($status, ['parcial', 'paga'], true)) {
             $where[] = 'cp.status = :status';
             $params['status'] = $status;
         }

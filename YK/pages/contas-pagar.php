@@ -581,7 +581,6 @@ $allowedStatuses = [
     'vencida',
     'parcial',
     'paga',
-    'cancelada',
 ];
 
 if (
@@ -678,7 +677,6 @@ $statusButtons = [
     ['vencida', 'Vencidas', 'red'],
     ['parcial', 'Parciais', 'blue'],
     ['paga', 'Pagas', 'green'],
-    ['cancelada', 'Canceladas', 'gray'],
 ];
 ?>
 
