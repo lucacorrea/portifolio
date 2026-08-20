@@ -8,7 +8,7 @@
     'proposals', 'reservations', 'sales', 'contracts', 'installments', 'payments',
     'accountsReceivable', 'accountsPayable', 'works', 'services', 'measurements',
     'purchaseRequests', 'quotations', 'suppliers', 'inventory', 'documents',
-    'notifications', 'audits'
+    'workPhotos', 'supportRequests', 'notifications', 'audits'
   ];
   let memoryState = null;
 
@@ -28,8 +28,11 @@
     const installmentIds = new Set(state.installments.map(item => item.id));
     const unitIds = new Set(state.units.map(item => item.id));
     const customerIds = new Set(state.customers.map(item => item.id));
+    const userIds = new Set(state.users.map(item => item.id));
+    const workIds = new Set(state.works.map(item => item.id));
     const proposalIds = new Set(state.proposals.map(item => item.id));
     const saleIds = new Set(state.sales.map(item => item.id));
+    if (state.users.some(user => user.roleCode === 'client' && (!user.customerId || !customerIds.has(user.customerId)))) throw new Error('Usuário cliente sem cadastro de cliente válido.');
     if (state.installments.some(item => !contractIds.has(item.contractId))) throw new Error('Parcela vinculada a contrato inexistente.');
     if (state.payments.some(item => !contractIds.has(item.contractId) || !installmentIds.has(item.installmentId))) throw new Error('Pagamento com vínculo inexistente.');
     if (state.accountsReceivable.some(item => !contractIds.has(item.contractId) || !installmentIds.has(item.installmentId))) throw new Error('Conta a receber com vínculo inexistente.');
@@ -48,6 +51,16 @@
       const contract = state.contracts.find(entry => entry.id === item.contractId);
       return unit?.status !== 'sold' || unit.saleId !== item.id || contract?.saleId !== item.id;
     })) throw new Error('Venda com relações inconsistentes.');
+    if (state.services.some(item => !workIds.has(item.workId))) throw new Error('Etapa de obra com vínculo inexistente.');
+    if (state.workPhotos.some(item => !workIds.has(item.workId))) throw new Error('Foto de obra com vínculo inexistente.');
+    if (state.documents.some(item => {
+      const contract = state.contracts.find(entry => entry.id === item.contractId);
+      return !contract || !customerIds.has(item.customerId) || contract.customerId !== item.customerId;
+    })) throw new Error('Documento com vínculo de cliente ou contrato inconsistente.');
+    if (state.supportRequests.some(item => {
+      const contract = state.contracts.find(entry => entry.id === item.contractId);
+      return !contract || !customerIds.has(item.customerId) || !userIds.has(item.createdByUserId) || contract.customerId !== item.customerId;
+    })) throw new Error('Atendimento com vínculo de cliente, contrato ou usuário inconsistente.');
     return true;
   }
 

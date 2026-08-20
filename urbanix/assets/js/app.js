@@ -17,6 +17,20 @@
     return state.users.find(user => user.id === session.userId && user.active) || null;
   }
 
+  function isCustomerUser(user) {
+    return Boolean(user && (user.roleCode === 'client' || user.accountType === 'customer'));
+  }
+
+  function defaultRouteFor(user) {
+    return isCustomerUser(user) ? 'portal-cliente.html' : 'index.html';
+  }
+
+  function canAccessPage(user, page) {
+    if (!user) return false;
+    const file = String(page || '').split(/[?#]/)[0].toLowerCase();
+    return !isCustomerUser(user) || file === 'portal-cliente.html' || file === 'login.html';
+  }
+
   function redirectToLogin() {
     const next = encodeURIComponent(`${currentFile()}${root.location.search}${root.location.hash}`);
     root.location.replace(`login.html?next=${next}`);
@@ -29,7 +43,16 @@
 
   applyTheme();
   const isLogin = currentFile().toLowerCase() === 'login.html';
-  if (!isLogin && !sessionUser()) redirectToLogin();
+  const initialUser = sessionUser();
+  let accessRedirected = false;
+  if (!isLogin && !initialUser) {
+    accessRedirected = true;
+    redirectToLogin();
+  } else if (!isLogin && !canAccessPage(initialUser, currentFile())) {
+    // Esta barreira melhora a demonstração. O backend futuro deve revalidar sessão, cliente e recurso em toda requisição.
+    accessRedirected = true;
+    root.location.replace(defaultRouteFor(initialUser));
+  }
 
   function handleLogin() {
     const form = document.getElementById('loginForm');
@@ -79,7 +102,8 @@
         state.audits.push({ id: Store.generateId('audit'), userId: user.id, action: 'session.started', entity: 'session', entityId: user.id, detail: 'Login demonstrativo realizado', createdAt: new Date().toISOString() });
       });
       const requested = params.get('next');
-      const safeNext = requested && /^[a-z0-9-]+\.html(?:[?#].*)?$/i.test(requested) ? requested : 'index.html';
+      const requestedIsSafe = requested && /^[a-z0-9-]+\.html(?:[?#].*)?$/i.test(requested) && canAccessPage(user, requested);
+      const safeNext = requestedIsSafe ? requested : defaultRouteFor(user);
       root.location.assign(safeNext);
     });
   }
@@ -322,16 +346,21 @@
   }
 
   function initializeApp() {
+    if (accessRedirected) return;
     if (isLogin) {
       handleLogin();
       return;
     }
     const user = sessionUser();
     if (!user) return;
+    const page = document.body.dataset.page || currentFile().replace(/\.html$/i, '');
+    if (page === 'portal-cliente') {
+      Urbanix.Portal?.init(user);
+      return;
+    }
     setActiveNavigation();
     initializeSidebar();
     initializeTopbar(user);
-    const page = document.body.dataset.page || currentFile().replace(/\.html$/i, '');
     [Urbanix.Inventory, Urbanix.Commercial].forEach(module => {
       if (module && typeof module.init === 'function') module.init(page);
     });
@@ -343,5 +372,5 @@
   }
 
   document.addEventListener('DOMContentLoaded', initializeApp);
-  Urbanix.App = Object.freeze({ sessionUser, applyTheme, currentFile });
+  Urbanix.App = Object.freeze({ sessionUser, isCustomerUser, defaultRouteFor, canAccessPage, applyTheme, currentFile });
 })(window);

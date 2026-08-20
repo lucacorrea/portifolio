@@ -113,9 +113,7 @@ function assert(condition, message) {
 
   await page.goto(urlFor('portal-cliente.html'));
   await page.click('[data-portal-tab="support"]');
-  await page.fill('#supportMessage', 'Solicitacao de atendimento criada pelo smoke.');
-  await page.click('[data-support-form] button[type="submit"]');
-  assert(await page.evaluate(() => Urbanix.Store.getState().supportRequests?.length === 1), 'Atendimento do portal nao persistiu.');
+  assert(await page.isVisible('.portal-readonly-note') && await page.locator('[data-support-form]').count() === 0, 'Previa administrativa do portal nao esta somente leitura.');
 
   const protectedPages = ['index.html', 'contratos.html', 'financeiro.html', 'engenharia.html', 'compras.html', 'relatorios.html', 'portal-cliente.html', 'configuracoes.html'];
   await page.setViewportSize({ width: 375, height: 812 });

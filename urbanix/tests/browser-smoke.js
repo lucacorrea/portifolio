@@ -37,7 +37,7 @@ function assert(condition, message) {
   assert(await page.isVisible('[data-user-menu]'), 'Menu do usuário não foi renderizado.');
   const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('urbanix.erp.v1')));
   assert(persisted && persisted.meta.version === 1, 'Estado versionado não foi persistido.');
-  assert(persisted.users.length === 3 && persisted.customers.length === 15, 'Seed demonstrativo incompleto.');
+  assert(persisted.users.length === 4 && persisted.customers.length === 15, 'Seed demonstrativo incompleto.');
   assert(persisted.units.find(item => item.id === 'unit-amz-a02').reservationId === 'reservation-1', 'Relação unidade/reserva inconsistente.');
   const orphanCounts = await page.evaluate(() => {
     const state = Urbanix.Store.getState();

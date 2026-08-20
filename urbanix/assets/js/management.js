@@ -89,12 +89,18 @@
   }
 
   async function newUser() {
-    const data = await formDialog('Novo usuario', `<div class="col-md-6"><label class="form-label" for="userName">Nome</label><input id="userName" name="name" class="form-control" maxlength="100" required></div><div class="col-md-6"><label class="form-label" for="userEmail">E-mail</label><input id="userEmail" name="email" class="form-control" type="email" required></div><div class="col-md-6"><label class="form-label" for="userPhone">Telefone</label><input id="userPhone" name="phone" class="form-control" required></div><div class="col-md-6"><label class="form-label" for="userRole">Perfil</label><select id="userRole" name="role" class="form-select"><option>Diretoria</option><option>Gerente</option><option>Financeiro</option><option>Engenharia</option><option>Compras</option><option>Corretor</option><option>Cliente</option></select></div><div class="col-12"><label class="form-label" for="userPassword">Senha demonstrativa</label><input id="userPassword" name="password" class="form-control" type="password" minlength="6" required></div>`, 'Criar usuario', 'Usuarios e permissoes');
+    const customers = state().customers.filter(item => item.status === 'active');
+    const fields = `<div class="col-md-6"><label class="form-label" for="userName">Nome</label><input id="userName" name="name" class="form-control" maxlength="100" required></div><div class="col-md-6"><label class="form-label" for="userEmail">E-mail</label><input id="userEmail" name="email" class="form-control" type="email" required></div><div class="col-md-6"><label class="form-label" for="userPhone">Telefone</label><input id="userPhone" name="phone" class="form-control" required></div><div class="col-md-6"><label class="form-label" for="userRole">Perfil</label><select id="userRole" name="roleCode" class="form-select"><option value="director">Diretoria</option><option value="manager">Gerente</option><option value="finance">Financeiro</option><option value="engineering">Engenharia</option><option value="purchases">Compras</option><option value="broker">Corretor</option><option value="client">Cliente</option></select></div><div class="col-12"><label class="form-label" for="userCustomer">Cliente vinculado <small class="text-secondary">(obrigatório para o perfil Cliente)</small></label><select id="userCustomer" name="customerId" class="form-select"><option value="">Nenhum</option>${customers.map(item => `<option value="${item.id}">${UI.escapeHtml(item.name)}</option>`).join('')}</select></div><div class="col-12"><label class="form-label" for="userPassword">Senha demonstrativa</label><input id="userPassword" name="password" class="form-control" type="password" minlength="6" required></div>`;
+    const data = await formDialog('Novo usuario', fields, 'Criar usuario', 'Usuarios e permissoes');
     if (!data) return;
     const email = data.get('email').trim().toLowerCase();
     if (Store.query('users').some(item => item.email.toLowerCase() === email)) return UI.showToast('Ja existe um usuario com este e-mail.', 'danger');
+    const roleCode = data.get('roleCode');
+    const customerId = data.get('customerId');
+    if (roleCode === 'client' && !customerId) return UI.showToast('Selecione o cliente que poderá acessar o portal.', 'danger');
+    const roles = { director: 'Diretoria', manager: 'Gerente', finance: 'Financeiro', engineering: 'Engenharia', purchases: 'Compras', broker: 'Corretor', client: 'Cliente' };
     const userName = data.get('name').trim();
-    Store.create('users', { name: userName, email, phone: data.get('phone').trim(), role: data.get('role'), password: data.get('password'), initials: userName.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase(), active: true });
+    Store.create('users', { name: userName, email, phone: data.get('phone').trim(), roleCode, role: roles[roleCode], accountType: roleCode === 'client' ? 'customer' : 'internal', customerId: roleCode === 'client' ? customerId : null, password: data.get('password'), initials: userName.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase(), active: true });
     UI.showToast('Usuario demonstrativo criado.', 'success');
     renderSettings();
   }
@@ -125,56 +131,14 @@
     UI.applyMasks(form);
   }
 
-  function downloadText(filename, content) {
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = filename; document.body.appendChild(link); link.click(); const url = link.href; link.remove(); root.setTimeout(() => URL.revokeObjectURL(url), 500);
-    UI.showToast('Arquivo demonstrativo gerado.', 'success');
-  }
-
-  function renderPortal() {
-    const section = document.querySelector('.content');
-    if (!section) return;
-    document.body.classList.add('portal-mode');
-    const current = state();
-    const params = new URLSearchParams(root.location.search);
-    const requested = params.get('customer');
-    const contract = current.contracts.find(item => item.customerId === requested) || current.contracts[0];
-    const customer = byId(current.customers, contract?.customerId);
-    const unit = byId(current.units, contract?.unitId);
-    const enterprise = byId(current.enterprises, contract?.enterpriseId);
-    const work = current.works.find(item => item.enterpriseId === enterprise?.id);
-    const installments = current.installments.filter(item => item.contractId === contract?.id).sort((a, b) => a.number - b.number);
-    const paid = installments.filter(item => item.status === 'paid');
-    const next = installments.find(item => item.status !== 'paid');
-    section.innerHTML = `<div class="portal-toolbar"><div><small>Portal do cliente</small><strong>${UI.escapeHtml(customer?.name || 'Cliente')}</strong></div><div class="portal-toolbar-actions"><a class="btn btn-outline-app" href="index.html"><i class="bi bi-arrow-left me-1"></i>Administrativo</a><label>Visualizar cadastro<select class="form-select" data-portal-customer>${current.contracts.map(item => `<option value="${item.customerId}" ${item.customerId === customer?.id ? 'selected' : ''}>${UI.escapeHtml(name(current.customers, item.customerId))}</option>`).join('')}</select></label></div></div><nav class="portal-nav" aria-label="Navegacao do portal"><button class="active" data-portal-tab="home">Inicio</button><button data-portal-tab="property">Meu imovel</button><button data-portal-tab="finance">Financeiro</button><button data-portal-tab="contract">Contrato</button><button data-portal-tab="documents">Documentos</button><button data-portal-tab="work">Acompanhar obra</button><button data-portal-tab="support">Atendimento</button></nav><div data-portal-view></div>`;
-    const view = tab => {
-      section.querySelectorAll('[data-portal-tab]').forEach(button => button.classList.toggle('active', button.dataset.portalTab === tab));
-      const target = section.querySelector('[data-portal-view]');
-      if (tab === 'home') target.innerHTML = `<div class="portal-hero"><div class="small opacity-75">Ola, ${UI.escapeHtml(customer?.name?.split(' ')[0] || 'cliente')}</div><h2 class="mt-1">Seu imovel, pagamentos e obra em um so lugar.</h2><div class="portal-unit"><div class="d-flex justify-content-between"><div><small class="opacity-75">Sua unidade</small><strong class="d-block fs-5">${UI.escapeHtml(enterprise?.name || '')} · ${UI.escapeHtml(unit?.code || '')}</strong></div>${badge(contract?.status)}</div></div></div><div class="row g-3 mt-1"><div class="col-xl-4"><div class="card-app metric"><div class="label">Parcelas pagas</div><div class="value">${paid.length} / ${contract?.installmentCount || 0}</div><div class="delta">Historico financeiro</div></div></div><div class="col-xl-4"><div class="card-app metric gold"><div class="label">Proxima parcela</div><div class="value">${money(next?.amount || 0)}</div><div class="delta">${next ? `Vence em ${UI.formatDate(next.dueDate)}` : 'Contrato quitado'}</div></div></div><div class="col-xl-4"><div class="card-app metric blue"><div class="label">Avanco da obra</div><div class="value">${work?.progress || enterprise?.progress || 0}%</div><div class="delta">Atualizado pela engenharia</div></div></div></div>`;
-      if (tab === 'property') target.innerHTML = `<div class="card-app portal-detail"><div class="property-visual"><i class="bi bi-house-check"></i><span>${UI.escapeHtml(unit?.code || '')}</span></div><div><small>${UI.escapeHtml(enterprise?.type || '')} · ${UI.escapeHtml(enterprise?.city || '')}/${UI.escapeHtml(enterprise?.state || '')}</small><h2>${UI.escapeHtml(enterprise?.name || '')}</h2><div class="detail-kpis mt-3"><div><span>Unidade</span><strong>${UI.escapeHtml(unit?.code || '')}</strong></div><div><span>Area</span><strong>${unit?.area || 0} m2</strong></div><div><span>Situacao</span><strong>${badge(unit?.status)}</strong></div><div><span>Contrato</span><strong>${contract?.number || '—'}</strong></div></div></div></div>`;
-      if (tab === 'finance') target.innerHTML = `<div class="card-app"><div class="card-header"><strong>Minhas parcelas</strong></div><div class="installment-grid p-3">${installments.map(item => `<button type="button" class="installment-card" data-portal-installment="${item.id}"><small>${String(item.number).padStart(2, '0')}/${contract?.installmentCount}</small><strong>${money(item.amount)}</strong>${badge(item.status)}</button>`).join('')}</div></div>`;
-      if (tab === 'contract') target.innerHTML = `<div class="card-app document-view print-document"><small>URBANIX EMPREENDIMENTOS</small><h2 class="mt-2">Contrato ${contract?.number || ''}</h2><p>Comprador: <strong>${UI.escapeHtml(customer?.name || '')}</strong></p><p>Imovel: <strong>${UI.escapeHtml(enterprise?.name || '')} · ${UI.escapeHtml(unit?.code || '')}</strong></p><div class="detail-kpis"><div><span>Valor contratado</span><strong>${money(contract?.totalAmount || 0)}</strong></div><div><span>Entrada</span><strong>${money(contract?.downPayment || 0)}</strong></div><div><span>Saldo</span><strong>${money((contract?.totalAmount || 0) - (contract?.paidAmount || 0))}</strong></div><div><span>Assinatura</span><strong>${UI.formatDate(contract?.signedAt)}</strong></div></div><button class="btn btn-primary-app mt-3 no-print" data-contract-print>Imprimir contrato</button></div>`;
-      if (tab === 'documents') target.innerHTML = `<div class="row g-3">${current.documents.filter(item => item.customerId === customer?.id || item.contractId === contract?.id).concat([{ id: 'statement', name: 'Extrato financeiro', category: 'finance' }]).map(item => `<div class="col-md-6"><button class="doc-card w-100 text-start" data-download-document="${item.id}"><div class="doc-icon"><i class="bi bi-file-earmark-pdf"></i></div><div class="flex-grow-1"><strong>${UI.escapeHtml(item.name)}</strong><div class="object-sub">Disponivel para download demonstrativo</div></div><i class="bi bi-download"></i></button></div>`).join('')}</div>`;
-      if (tab === 'work') { const services = current.services.filter(item => item.workId === work?.id); target.innerHTML = `<div class="card-app"><div class="card-header"><strong>Acompanhamento da obra</strong></div><div class="card-body"><div class="work-progress-list">${services.map(item => `<div><span><strong>${UI.escapeHtml(item.name)}</strong><small>${item.progress}% concluido</small></span><div class="progress progress-thin"><div class="progress-bar" style="width:${item.progress}%"></div></div></div>`).join('')}</div><div class="photo-gallery mt-4"><div><i class="bi bi-image"></i><span>Pavimentacao</span></div><div><i class="bi bi-image"></i><span>Rede eletrica</span></div><div><i class="bi bi-image"></i><span>Infraestrutura</span></div></div></div></div>`; }
-      if (tab === 'support') target.innerHTML = `<div class="card-app"><div class="card-header"><strong>Fale com a Urbanix</strong></div><div class="card-body"><form class="row g-3" data-support-form><div class="col-md-6"><label class="form-label" for="supportSubject">Assunto</label><select id="supportSubject" name="subject" class="form-select"><option>Financeiro</option><option>Contrato</option><option>Obra</option><option>Atualizacao cadastral</option></select></div><div class="col-12"><label class="form-label" for="supportMessage">Mensagem</label><textarea id="supportMessage" name="message" class="form-control" rows="4" maxlength="500" required></textarea></div><div class="col-12"><button class="btn btn-primary-app" type="submit">Enviar atendimento</button></div></form></div></div>`;
-      target.querySelectorAll('[data-portal-installment]').forEach(button => button.addEventListener('click', () => { const item = byId(installments, button.dataset.portalInstallment); UI.openModal({ eyebrow: `Parcela ${item.number}`, title: money(item.amount), content: `Vencimento: ${UI.formatDate(item.dueDate)} · Situacao: ${item.status}` }); }));
-      target.querySelector('[data-contract-print]')?.addEventListener('click', () => root.print());
-      target.querySelectorAll('[data-download-document]').forEach(button => button.addEventListener('click', () => downloadText(`urbanix-${button.dataset.downloadDocument}.txt`, `Documento demonstrativo Urbanix\nCliente: ${customer?.name}\nContrato: ${contract?.number}`)));
-      target.querySelector('[data-support-form]')?.addEventListener('submit', event => { event.preventDefault(); const data = new FormData(event.currentTarget); Store.mutate('support.created', entryState => { entryState.supportRequests ||= []; entryState.supportRequests.push({ id: Store.generateId('support'), customerId: customer.id, subject: data.get('subject'), message: data.get('message').trim(), status: 'open', createdAt: new Date().toISOString() }); }); event.currentTarget.reset(); UI.showToast('Solicitacao enviada. A equipe retornara pelo canal cadastrado.', 'success'); });
-    };
-    section.querySelectorAll('[data-portal-tab]').forEach(button => button.addEventListener('click', () => view(button.dataset.portalTab)));
-    section.querySelector('[data-portal-customer]').addEventListener('change', event => root.location.assign(`portal-cliente.html?customer=${encodeURIComponent(event.target.value)}`));
-    view('home');
-  }
 
   function init() {
     const page = document.body.dataset.page;
     if (page === 'dashboard') renderDashboard();
     if (page === 'relatorios') renderReports();
     if (page === 'configuracoes') renderSettings();
-    if (page === 'portal-cliente') renderPortal();
   }
 
   document.addEventListener('DOMContentLoaded', init);
-  Urbanix.Management = Object.freeze({ init, renderDashboard, renderReports, renderSettings, renderPortal });
+  Urbanix.Management = Object.freeze({ init, renderDashboard, renderReports, renderSettings });
 })(window);

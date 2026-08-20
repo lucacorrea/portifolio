@@ -159,12 +159,13 @@
         proposalDays: 5, defaultCommissionPercent: 4
       },
       users: [
-        { id: 'user-admin', name: 'Lucas Souza', email: 'admin@empresa.com', password: '123456', role: 'Administrador', phone: '(97) 99999-0001', initials: 'LS', active: true },
-        { id: 'user-broker', name: 'João Silva', email: 'corretor@empresa.com', password: '123456', role: 'Corretor', phone: '(97) 99999-0002', initials: 'JS', brokerId: 'broker-joao', active: true },
-        { id: 'user-engineer', name: 'Mariana Lima', email: 'engenheiro@empresa.com', password: '123456', role: 'Engenharia', phone: '(97) 99999-0003', initials: 'ML', active: true }
+        { id: 'user-admin', name: 'Lucas Souza', email: 'admin@empresa.com', password: '123456', roleCode: 'admin', accountType: 'internal', role: 'Administrador', phone: '(97) 99999-0001', initials: 'LS', active: true },
+        { id: 'user-broker', name: 'João Silva', email: 'corretor@empresa.com', password: '123456', roleCode: 'broker', accountType: 'internal', role: 'Corretor', phone: '(97) 99999-0002', initials: 'JS', brokerId: 'broker-joao', active: true },
+        { id: 'user-engineer', name: 'Mariana Lima', email: 'engenheiro@empresa.com', password: '123456', roleCode: 'engineering', accountType: 'internal', role: 'Engenharia', phone: '(97) 99999-0003', initials: 'ML', active: true },
+        { id: 'user-client', name: 'João Pereira', email: 'cliente@empresa.com', password: '123456', roleCode: 'client', accountType: 'customer', role: 'Cliente', customerId: 'customer-2', phone: '(97) 99810-0137', initials: 'JP', active: true }
       ],
       enterprises: [
-        { id: 'ent-amazonas', name: 'Residencial Amazonas', city: 'Tefé', state: 'AM', type: 'loteamento', status: 'selling', unitCount: 420, progress: 82, estimatedVgv: 32400000 },
+        { id: 'ent-amazonas', name: 'Residencial Amazonas', city: 'Tefé', state: 'AM', type: 'loteamento', status: 'selling', unitCount: 420, progress: 82, estimatedVgv: 32400000, imageUrl: 'https://images.unsplash.com/photo-1489510789366-8556c6f91614?auto=format&fit=crop&w=1200&q=80', imageAlt: 'Vista aérea de um loteamento residencial em construção' },
         { id: 'ent-aguas', name: 'Parque das Águas', city: 'Tefé', state: 'AM', type: 'condomínio', status: 'launch', unitCount: 96, progress: 28, estimatedVgv: 18700000 },
         { id: 'ent-sol', name: 'Vila Sol Nascente', city: 'Coari', state: 'AM', type: 'casas', status: 'building', unitCount: 64, progress: 61, estimatedVgv: 9200000 }
       ],
@@ -194,12 +195,21 @@
         { id: 'payable-2', supplierId: 'supplier-eletro', workId: 'work-aguas', description: 'Cabos elétricos', dueDate: '2026-08-28', amount: 27840, status: 'pending' }
       ],
       works: [
-        { id: 'work-amazonas', enterpriseId: 'ent-amazonas', name: 'Infraestrutura Residencial Amazonas', budget: 5400000, executedCost: 3620000, progress: 82, status: 'active' },
-        { id: 'work-aguas', enterpriseId: 'ent-aguas', name: 'Implantação Parque das Águas', budget: 7800000, executedCost: 2480000, progress: 28, status: 'attention' }
+        { id: 'work-amazonas', enterpriseId: 'ent-amazonas', name: 'Infraestrutura Residencial Amazonas', budget: 5400000, executedCost: 3620000, progress: 82, status: 'active', updatedAt: '2026-08-19T16:30:00.000Z' },
+        { id: 'work-aguas', enterpriseId: 'ent-aguas', name: 'Implantação Parque das Águas', budget: 7800000, executedCost: 2480000, progress: 28, status: 'attention', updatedAt: '2026-08-18T15:00:00.000Z' }
       ],
       services: [
-        { id: 'service-paving', workId: 'work-amazonas', name: 'Pavimentação', budget: 920000, progress: 71 },
-        { id: 'service-electric', workId: 'work-amazonas', name: 'Rede elétrica', budget: 610000, progress: 92 }
+        { id: 'service-earthwork', workId: 'work-amazonas', name: 'Terraplanagem', budget: 680000, progress: 100, customerVisible: true, updatedAt: '2026-04-28T12:00:00.000Z' },
+        { id: 'service-drainage', workId: 'work-amazonas', name: 'Drenagem', budget: 740000, progress: 100, customerVisible: true, updatedAt: '2026-05-30T12:00:00.000Z' },
+        { id: 'service-water', workId: 'work-amazonas', name: 'Rede de água', budget: 520000, progress: 92, customerVisible: true, updatedAt: '2026-07-18T12:00:00.000Z' },
+        { id: 'service-electric', workId: 'work-amazonas', name: 'Rede elétrica', budget: 610000, progress: 85, customerVisible: true, updatedAt: '2026-08-10T12:00:00.000Z' },
+        { id: 'service-paving', workId: 'work-amazonas', name: 'Pavimentação', budget: 920000, progress: 64, customerVisible: true, updatedAt: '2026-08-19T12:00:00.000Z' },
+        { id: 'service-landscape', workId: 'work-amazonas', name: 'Paisagismo', budget: 310000, progress: 28, customerVisible: true, updatedAt: '2026-08-15T12:00:00.000Z' }
+      ],
+      workPhotos: [
+        { id: 'work-photo-1', workId: 'work-amazonas', imageUrl: 'https://images.unsplash.com/photo-1489510761922-2a8bc10a168a?auto=format&fit=crop&w=900&q=80', caption: 'Execução da pavimentação da via principal', alt: 'Vista aérea de uma via pavimentada em um loteamento em construção', createdAt: '2026-08-19T12:00:00.000Z' },
+        { id: 'work-photo-2', workId: 'work-amazonas', imageUrl: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=900&q=80', caption: 'Instalação da rede elétrica', alt: 'Profissionais trabalhando na infraestrutura de um canteiro de obras', createdAt: '2026-08-12T12:00:00.000Z' },
+        { id: 'work-photo-3', workId: 'work-amazonas', imageUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=900&q=80', caption: 'Infraestrutura de drenagem concluída', alt: 'Vista ampla de uma obra de infraestrutura em andamento', createdAt: '2026-07-30T12:00:00.000Z' }
       ],
       measurements: [
         { id: 'measurement-81', workId: 'work-amazonas', serviceId: 'service-paving', number: 'MED-0081', amount: 118420, progress: 8, status: 'submitted', accountedAt: null }
@@ -221,7 +231,12 @@
         { id: 'stock-cable', workId: 'work-amazonas', material: 'Cabo 35 mm²', unit: 'metro', balance: 1450, minimum: 500 }
       ],
       documents: [
-        { id: 'document-1', contractId: 'contract-1', customerId: 'customer-2', name: 'Contrato de compra', category: 'contract', createdAt: '2026-02-14T12:00:00.000Z' }
+        { id: 'document-1', contractId: 'contract-1', customerId: 'customer-2', name: 'Contrato de compra e venda', category: 'Contrato', fileName: 'contrato-ctr-000115.html', mimeType: 'text/html', createdAt: '2026-02-14T12:00:00.000Z' },
+        { id: 'document-2', contractId: 'contract-1', customerId: 'customer-2', name: 'Extrato financeiro demonstrativo', category: 'Financeiro', fileName: 'extrato-ctr-000115.csv', mimeType: 'text/csv', createdAt: '2026-08-20T12:00:00.000Z' },
+        { id: 'document-3', contractId: 'contract-2', customerId: 'customer-3', name: 'Contrato de compra e venda', category: 'Contrato', fileName: 'contrato-ctr-000116.html', mimeType: 'text/html', createdAt: '2026-03-06T12:00:00.000Z' }
+      ],
+      supportRequests: [
+        { id: 'support-1', customerId: 'customer-2', contractId: 'contract-1', createdByUserId: 'user-client', subject: 'Atualização da obra', message: 'Gostaria de confirmar a previsão da próxima atualização da pavimentação.', status: 'answered', createdAt: '2026-08-12T14:30:00.000Z', updatedAt: '2026-08-13T11:10:00.000Z' }
       ],
       notifications: [
         { id: 'notification-1', title: 'Nova proposta aguardando aprovação', detail: 'Proposta P-2026-0142', href: 'propostas.html', read: false, createdAt: '2026-08-20T10:45:00.000Z' },

@@ -20,6 +20,8 @@ $indicators = $service->indicators();
 $accounts = $service->listAccounts($filters);
 
 $canPay = $authorization->can('contas_receber.registrar_pagamento');
+$canReversePayment = $authorization->can('contas_receber.estornar_pagamento');
+$canEditPayment = $canPay && $canReversePayment;
 $canBatch = $authorization->can('contas_receber.baixa_lote');
 $canContact = $authorization->can('contas_receber.registrar_contato');
 $canIssueReceipt = $authorization->can('recibo.emitir');
@@ -37,7 +39,7 @@ if ($canViewFiscal || $canIssueFiscal) {
         error_log('Receivables fiscal summary unavailable [' . get_class($exception) . '].');
     }
 }
-$paymentsByOrder = ($canIssueReceipt || $canReprintReceipt)
+$paymentsByOrder = ($canEditPayment || $canReversePayment || $canIssueReceipt || $canReprintReceipt)
     ? $application->receiptService()->listActivePaymentsForOrders(array_map(
         static fn(array $account): int => (int) $account['ordem_servico_id'],
         $accounts
@@ -122,6 +124,17 @@ function cr_payment_label(array $payment): string
                         <?php endif; ?>
                     <?php endforeach; ?>
                 <?php endif; ?>
+                <?php if ($orderPayments !== [] && ($canEditPayment || $canReversePayment)): ?>
+                    <?php foreach ($orderPayments as $payment): ?>
+                        <?php $paymentLabel = cr_payment_label($payment); $paymentDate = !empty($payment['recebido_em']) ? substr((string) $payment['recebido_em'], 0, 10) : ''; ?>
+                        <?php if ($canEditPayment): ?>
+                            <li><button class="dropdown-item js-cr-payment-edit" type="button" data-payment-id="<?= h((string) $payment['id']) ?>" data-payment-label="<?= h($paymentLabel) ?>" data-value="<?= h((string) $payment['valor']) ?>" data-form="<?= h((string) $payment['forma_pagamento']) ?>" data-date="<?= h($paymentDate) ?>" data-notes="<?= h((string) ($payment['observacao'] ?? '')) ?>" data-bs-toggle="modal" data-bs-target="#modal-cr-payment-edit"><i class="bi bi-pencil-square"></i> Editar pagamento: <?= h($paymentLabel) ?></button></li>
+                        <?php endif; ?>
+                        <?php if ($canReversePayment): ?>
+                            <li><button class="dropdown-item text-danger js-cr-payment-delete" type="button" data-payment-id="<?= h((string) $payment['id']) ?>" data-payment-label="<?= h($paymentLabel) ?>" data-bs-toggle="modal" data-bs-target="#modal-cr-payment-delete"><i class="bi bi-trash3"></i> Excluir pagamento: <?= h($paymentLabel) ?></button></li>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                <?php endif; ?>
                 <?php if ((string) $account['status'] === 'paga'): ?>
                     <?php foreach ($accountFiscalDocuments as $fiscalDocument): ?>
                         <?php if (($fiscalDocument['processamento_status'] ?? '') === 'autorizado' && $canViewFiscal): ?>
@@ -147,6 +160,89 @@ function cr_payment_label(array $payment): string
 </div>
 
 <div class="modal fade" id="modal-cr-payment" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg"><form class="modal-content visual-modal" method="post" action="actions/conta-receber-pagamento.php"><div class="modal-header"><h2 class="modal-title fs-5">Registrar pagamento</h2><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="id" id="cr-payment-id"><div class="form-row"><div class="form-group"><label class="form-label">Valor recebido</label><input class="form-control-os" name="valor" id="cr-payment-value" required></div><div class="form-group"><label class="form-label">Forma</label><select class="form-control-os" name="forma_pagamento" required><option value="dinheiro">Dinheiro</option><option value="pix">Pix</option><option value="cartao_debito">Cartao de debito</option><option value="cartao_credito">Cartao de credito</option><option value="transferencia">Transferencia</option><option value="outro">Outro</option></select></div><div class="form-group"><label class="form-label" for="cr-payment-date">Data do pagamento</label><input class="form-control-os" id="cr-payment-date" name="data_pagamento" type="date" max="<?= h(date('Y-m-d')) ?>" required><small class="form-text text-muted">Escolha a data real do recebimento.</small></div></div><div class="form-group"><label class="form-label">Observacao</label><textarea class="form-control-os" name="observacao" maxlength="255"></textarea></div></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Registrar</button></div></form></div></div>
+
+<?php if ($canEditPayment): ?>
+<div class="modal fade" id="modal-cr-payment-edit" tabindex="-1" aria-hidden="true" aria-labelledby="cr-payment-edit-title">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <form class="modal-content visual-modal" method="post" action="actions/conta-receber-pagamento-editar.php" autocomplete="off">
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title fs-5" id="cr-payment-edit-title">Editar pagamento</h2>
+                    <p class="text-muted small mb-0" id="cr-payment-edit-label"></p>
+                </div>
+                <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <?= $csrf->field() ?><?php return_to_field(); ?>
+                <input type="hidden" name="pagamento_id" id="cr-payment-edit-id">
+                <div class="alert alert-info"><i class="bi bi-shield-check"></i> Se valor, forma ou data forem alterados, o sistema fará uma correção financeira segura: estorna o lançamento anterior e cria o pagamento corrigido.</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="cr-payment-edit-value">Valor recebido</label>
+                        <input class="form-control-os" id="cr-payment-edit-value" name="valor" inputmode="decimal" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="cr-payment-edit-form">Forma de pagamento</label>
+                        <select class="form-control-os" id="cr-payment-edit-form" name="forma_pagamento" required>
+                            <option value="dinheiro">Dinheiro</option>
+                            <option value="pix">Pix</option>
+                            <option value="boleto">Boleto compensado</option>
+                            <option value="cartao_debito">Cartão de débito</option>
+                            <option value="cartao_credito">Cartão de crédito</option>
+                            <option value="transferencia">Transferência</option>
+                            <option value="outro">Outro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="cr-payment-edit-date">Data do pagamento</label>
+                        <input class="form-control-os" id="cr-payment-edit-date" name="data_pagamento" type="date" max="<?= h(date('Y-m-d')) ?>" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="cr-payment-edit-notes">Observação</label>
+                    <textarea class="form-control-os" id="cr-payment-edit-notes" name="observacao" maxlength="255" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button>
+                <button class="btn-modal-save" type="submit"><i class="bi bi-check2"></i> Salvar alterações</button>
+            </div>
+        </form>
+    </div>
+</div>
+<?php endif; ?>
+
+<?php if ($canReversePayment): ?>
+<div class="modal fade" id="modal-cr-payment-delete" tabindex="-1" aria-hidden="true" aria-labelledby="cr-payment-delete-title">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content visual-modal" method="post" action="actions/conta-receber-pagamento-excluir.php" autocomplete="off">
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title fs-5" id="cr-payment-delete-title">Excluir pagamento</h2>
+                    <p class="text-muted small mb-0">O lançamento será estornado sem apagar o histórico financeiro.</p>
+                </div>
+                <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <?= $csrf->field() ?><?php return_to_field(); ?>
+                <input type="hidden" name="pagamento_id" id="cr-payment-delete-id">
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Você está excluindo <strong id="cr-payment-delete-label"></strong>. O saldo da conta e o Caixa serão corrigidos automaticamente.
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="cr-payment-delete-reason">Motivo da exclusão</label>
+                    <textarea class="form-control-os" id="cr-payment-delete-reason" name="motivo" maxlength="255" rows="3" required placeholder="Ex.: pagamento lançado com valor ou data incorreta"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button>
+                <button class="btn btn-danger" type="submit"><i class="bi bi-trash3"></i> Excluir pagamento</button>
+            </div>
+        </form>
+    </div>
+</div>
+<?php endif; ?>
 <?php if ($canIssueReceipt): ?><div class="modal fade" id="modal-cr-receipt" tabindex="-1" aria-hidden="true" aria-labelledby="cr-receipt-title"><div class="modal-dialog modal-dialog-centered"><form class="modal-content visual-modal" method="post" action="actions/recibo-emitir.php" target="_blank"><div class="modal-header"><div><h2 class="modal-title fs-5" id="cr-receipt-title">Gerar recibo</h2><p class="text-muted small mb-0" id="cr-receipt-order-number"></p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="pagamento_id" id="cr-receipt-payment-id"><p>Gerar recibo referente a <strong id="cr-receipt-payment-label"></strong>?</p><p class="text-muted small mb-0">Depois escolha entre impressão térmica de 80 mm ou A4 em impressora comum.</p></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Gerar e escolher impressão</button></div></form></div></div><?php endif; ?>
 
 <?php if ($canBatch): ?><div class="modal fade" id="modal-cr-batch" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-scrollable"><form class="modal-content visual-modal" id="cr-batch-form" method="post" action="actions/contas-receber-baixa-lote.php"><div class="modal-header"><div><h2 class="modal-title fs-5">Dar baixa em lote</h2><p class="text-muted small mb-0">As contas selecionadas serão quitadas integralmente.</p></div><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><div id="cr-batch-hidden-ids"></div><div class="alert alert-info" id="cr-batch-summary"></div><div class="cr-batch-account-list" id="cr-batch-account-list"></div><div class="form-row mt-3"><div class="form-group"><label class="form-label" for="cr-batch-form-payment">Forma de pagamento</label><select class="form-control-os" id="cr-batch-form-payment" name="forma_pagamento" required><option value="dinheiro">Dinheiro</option><option value="pix">Pix</option><option value="cartao_debito">Cartão de débito</option><option value="cartao_credito">Cartão de crédito</option><option value="transferencia">Transferência</option><option value="outro">Outro</option></select></div><div class="form-group"><label class="form-label" for="cr-batch-payment-date">Data do pagamento</label><input class="form-control-os" id="cr-batch-payment-date" name="data_pagamento" type="date" max="<?= h(date('Y-m-d')) ?>" required><small class="form-text text-muted">A mesma data será aplicada às contas desta baixa em lote.</small></div></div><div class="form-group"><label class="form-label" for="cr-batch-notes">Observação</label><textarea class="form-control-os" id="cr-batch-notes" name="observacao" maxlength="255" rows="3"></textarea></div><div class="alert alert-warning mb-0"><i class="bi bi-shield-check"></i> A operação é transacional: se uma conta falhar, nenhuma baixa será registrada.</div></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit"><i class="bi bi-check2-all"></i> Confirmar baixa em lote</button></div></form></div></div><?php endif; ?>

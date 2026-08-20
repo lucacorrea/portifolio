@@ -78,6 +78,25 @@ document.addEventListener('DOMContentLoaded', function () {
       setValue('cr-payment-date', '');
       return;
     }
+    const editPaymentButton = event.target.closest?.('.js-cr-payment-edit');
+    if (editPaymentButton) {
+      setValue('cr-payment-edit-id', editPaymentButton.dataset.paymentId);
+      setValue('cr-payment-edit-value', editPaymentButton.dataset.value);
+      setValue('cr-payment-edit-form', editPaymentButton.dataset.form);
+      setValue('cr-payment-edit-date', editPaymentButton.dataset.date);
+      setValue('cr-payment-edit-notes', editPaymentButton.dataset.notes);
+      setText('cr-payment-edit-label', editPaymentButton.dataset.paymentLabel);
+      return;
+    }
+
+    const deletePaymentButton = event.target.closest?.('.js-cr-payment-delete');
+    if (deletePaymentButton) {
+      setValue('cr-payment-delete-id', deletePaymentButton.dataset.paymentId);
+      setValue('cr-payment-delete-reason', '');
+      setText('cr-payment-delete-label', deletePaymentButton.dataset.paymentLabel);
+      return;
+    }
+
     const receiptButton = event.target.closest?.('.js-cr-receipt');
     if (receiptButton) {
       setValue('cr-receipt-payment-id', receiptButton.dataset.paymentId);
@@ -99,6 +118,21 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
     updateBatchSelection();
+  });
+
+  document.querySelector('#modal-cr-payment-edit form')?.addEventListener('submit', function (event) {
+    const submit = event.currentTarget.querySelector('[type="submit"]');
+    if (submit) submit.disabled = true;
+  });
+  document.querySelector('#modal-cr-payment-delete form')?.addEventListener('submit', function (event) {
+    const reason = event.currentTarget.querySelector('[name="motivo"]');
+    if (!reason || String(reason.value || '').trim() === '') {
+      event.preventDefault();
+      reason?.focus();
+      return;
+    }
+    const submit = event.currentTarget.querySelector('[type="submit"]');
+    if (submit) submit.disabled = true;
   });
 
   document.getElementById('modal-cr-batch')?.addEventListener('show.bs.modal', prepareBatchModal);
