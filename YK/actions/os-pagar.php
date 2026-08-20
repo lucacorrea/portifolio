@@ -18,6 +18,7 @@ try {
         (string) ($_POST['valor'] ?? ''),
         (string) ($_POST['forma_pagamento'] ?? ''),
         (string) ($_POST['quantidade_parcelas'] ?? '1'),
+        (string) ($_POST['data_pagamento'] ?? ''),
         isset($_POST['observacao']) ? (string) $_POST['observacao'] : null,
         (string) ($_POST['payment_token'] ?? ''),
         $user->id()

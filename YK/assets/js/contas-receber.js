@@ -53,6 +53,8 @@ document.addEventListener('DOMContentLoaded', function () {
       event?.preventDefault(); updateBatchSelection('Selecione somente contas do mesmo cliente.'); return;
     }
 
+    setValue('cr-batch-payment-date', '');
+
     const hiddenHost = document.getElementById('cr-batch-hidden-ids');
     const list = document.getElementById('cr-batch-account-list');
     const summary = document.getElementById('cr-batch-summary');
@@ -73,6 +75,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (paymentButton) {
       setValue('cr-payment-id', paymentButton.dataset.id);
       setValue('cr-payment-value', paymentButton.dataset.balance);
+      setValue('cr-payment-date', '');
       return;
     }
     const receiptButton = event.target.closest?.('.js-cr-receipt');
