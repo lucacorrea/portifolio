@@ -220,34 +220,273 @@ final class FiscalDocumentXmlBuilder
     }
 
     /** @param array<string,mixed> $customer */
-    private function addCustomer(Make $make, array $customer, string $model): void
-    {
-        $document = $this->digits((string) ($customer['cliente_documento'] ?? ''));
-        if ($model === '65' && $document === '') {
+    private function addCustomer(
+        Make $make,
+        array $customer,
+        string $model
+    ): void {
+        $document = $this->digits(
+            (string) ($customer['cliente_documento'] ?? '')
+        );
+
+        /*
+         * NFC-e sem consumidor identificado:
+         * não cria grupo dest/enderDest.
+         */
+        if (
+            $model === '65'
+            && $document === ''
+        ) {
             return;
         }
-        $indicator = ['contribuinte' => 1, 'isento' => 2, 'nao_contribuinte' => 9][(string) ($customer['indicador_ie'] ?? '')] ?? 9;
-        $make->tagdest($this->std([
-            strlen($document) === 14 ? 'CNPJ' : 'CPF' => $document,
-            'xNome' => $customer['cliente_nome'] ?? '',
-            'indIEDest' => $indicator,
-            'IE' => $customer['inscricao_estadual'] ?? null,
-            'email' => $customer['cliente_email'] ?? null,
-        ]));
-        if ($model === '55' || trim((string) ($customer['endereco'] ?? '')) !== '') {
-            $make->tagenderDest($this->std([
-                'xLgr' => $customer['endereco'] ?? '',
-                'nro' => $customer['cliente_numero'] ?? 'SN',
-                'xCpl' => $customer['complemento'] ?? null,
-                'xBairro' => $customer['bairro'] ?? '',
-                'cMun' => $customer['cliente_codigo_municipio'] ?? '',
-                'xMun' => $customer['cidade'] ?? '',
-                'UF' => $customer['uf'] ?? '',
-                'CEP' => $this->digits((string) ($customer['cep'] ?? '')),
-                'cPais' => '1058',
-                'xPais' => 'BRASIL',
-            ]));
+
+        $indicatorKey =
+            (string) (
+                $customer['indicador_ie']
+                ?? 'nao_contribuinte'
+            );
+
+        $indicator = [
+            'contribuinte' => 1,
+            'isento' => 2,
+            'nao_contribuinte' => 9,
+        ][$indicatorKey] ?? 9;
+
+        /*
+         * IE só acompanha o destinatário quando ele estiver
+         * classificado como contribuinte.
+         */
+        $stateRegistration =
+            $indicator === 1
+                ? trim(
+                    (string) (
+                        $customer['inscricao_estadual']
+                        ?? ''
+                    )
+                )
+                : '';
+
+        $make->tagdest(
+            $this->std([
+                strlen($document) === 14
+                    ? 'CNPJ'
+                    : 'CPF'
+                    => $document,
+
+                'xNome' =>
+                    trim(
+                        (string) (
+                            $customer['cliente_nome']
+                            ?? ''
+                        )
+                    ),
+
+                'indIEDest' =>
+                    $indicator,
+
+                'IE' =>
+                    $stateRegistration !== ''
+                        ? $stateRegistration
+                        : null,
+
+                'email' =>
+                    trim(
+                        (string) (
+                            $customer['cliente_email']
+                            ?? ''
+                        )
+                    ) ?: null,
+            ])
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Endereço do destinatário
+        |--------------------------------------------------------------------------
+        |
+        | NF-e 55:
+        | sempre gera enderDest; o Service já validou os campos.
+        |
+        | NFC-e 65:
+        | só gera enderDest quando o endereço estiver completo e
+        | estruturalmente válido. Endereço parcial não derruba a NFC-e.
+        |
+        */
+        $includeAddress =
+            $model === '55'
+            || $this->hasUsableOptionalNfceAddress(
+                $customer
+            );
+
+        if (!$includeAddress) {
+            return;
         }
+
+        $cep = $this->digits(
+            (string) (
+                $customer['cep']
+                ?? ''
+            )
+        );
+
+        $make->tagenderDest(
+            $this->std([
+                'xLgr' =>
+                    trim(
+                        (string) (
+                            $customer['endereco']
+                            ?? ''
+                        )
+                    ),
+
+                'nro' =>
+                    trim(
+                        (string) (
+                            $customer['cliente_numero']
+                            ?? ''
+                        )
+                    ),
+
+                'xCpl' =>
+                    trim(
+                        (string) (
+                            $customer['complemento']
+                            ?? ''
+                        )
+                    ) ?: null,
+
+                'xBairro' =>
+                    trim(
+                        (string) (
+                            $customer['bairro']
+                            ?? ''
+                        )
+                    ),
+
+                'cMun' =>
+                    trim(
+                        (string) (
+                            $customer['cliente_codigo_municipio']
+                            ?? ''
+                        )
+                    ),
+
+                'xMun' =>
+                    trim(
+                        (string) (
+                            $customer['cidade']
+                            ?? ''
+                        )
+                    ),
+
+                'UF' =>
+                    strtoupper(
+                        trim(
+                            (string) (
+                                $customer['uf']
+                                ?? ''
+                            )
+                        )
+                    ),
+
+                'CEP' =>
+                    $cep !== ''
+                        ? $cep
+                        : null,
+
+                'cPais' =>
+                    '1058',
+
+                'xPais' =>
+                    'BRASIL',
+            ])
+        );
+    }
+
+    /**
+     * Para NFC-e o endereço é opcional.
+     *
+     * Se estiver parcial ou inconsistente, ele é omitido do XML em vez
+     * de impedir a emissão. Quando estiver completo e válido, é enviado.
+     *
+     * @param array<string,mixed> $customer
+     */
+    private function hasUsableOptionalNfceAddress(
+        array $customer
+    ): bool {
+        foreach ([
+            'endereco',
+            'cliente_numero',
+            'bairro',
+            'cidade',
+            'uf',
+            'cliente_codigo_municipio',
+        ] as $field) {
+            if (
+                trim(
+                    (string) (
+                        $customer[$field]
+                        ?? ''
+                    )
+                ) === ''
+            ) {
+                return false;
+            }
+        }
+
+        $state = strtoupper(
+            trim(
+                (string) (
+                    $customer['uf']
+                    ?? ''
+                )
+            )
+        );
+
+        if (
+            preg_match(
+                '/^[A-Z]{2}$/',
+                $state
+            ) !== 1
+        ) {
+            return false;
+        }
+
+        if (
+            !FiscalConfigurationService::isValidIbgeCityCode(
+                (string) (
+                    $customer['cliente_codigo_municipio']
+                    ?? ''
+                ),
+                $state
+            )
+        ) {
+            return false;
+        }
+
+        $rawCep = trim(
+            (string) (
+                $customer['cep']
+                ?? ''
+            )
+        );
+
+        if ($rawCep !== '') {
+            $cep = $this->digits(
+                $rawCep
+            );
+
+            if (
+                preg_match(
+                    '/^\d{8}$/',
+                    $cep
+                ) !== 1
+            ) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /** @param array<string,mixed> $item @return array<string,string>|null */

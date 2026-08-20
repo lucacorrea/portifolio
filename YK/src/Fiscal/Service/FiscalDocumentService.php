@@ -430,56 +430,140 @@ final class FiscalDocumentService
     /** @param array<string,mixed> $order */
     private function assertClientSnapshot(array $order, string $model): void
     {
-        $document = FiscalIdentityValidator::normalizeTaxId((string) ($order['cliente_documento'] ?? ''));
-        if ($model === '65' && $document === '') {
-            return;
-        }
-        if (!FiscalIdentityValidator::isValidCpfOrCnpj($document)) {
-            throw new InvalidArgumentException('O CPF/CNPJ do cliente é inválido para emissão fiscal.');
-        }
+        $document = FiscalIdentityValidator::normalizeTaxId(
+            (string) ($order['cliente_documento'] ?? '')
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | NFC-e - modelo 65
+        |--------------------------------------------------------------------------
+        |
+        | O endereço do consumidor não deve bloquear a NFC-e.
+        |
+        | - consumidor não identificado continua permitido;
+        | - consumidor identificado exige CPF/CNPJ válido e nome;
+        | - endereço parcial/incompleto não bloqueia a emissão;
+        | - o builder só incluirá enderDest quando o endereço estiver
+        |   estruturalmente completo e válido.
+        |
+        */
         if ($model === '65') {
+            if ($document === '') {
+                return;
+            }
+
+            if (!FiscalIdentityValidator::isValidCpfOrCnpj($document)) {
+                throw new InvalidArgumentException(
+                    'O CPF/CNPJ do cliente é inválido para emissão da NFC-e.'
+                );
+            }
+
             if (trim((string) ($order['cliente_nome'] ?? '')) === '') {
-                throw new InvalidArgumentException('Consumidor identificado exige nome válido na NFC-e.');
+                throw new InvalidArgumentException(
+                    'Consumidor identificado exige nome válido na NFC-e.'
+                );
             }
-            $addressFields = ['endereco', 'cliente_numero', 'bairro', 'cidade', 'uf', 'cep', 'cliente_codigo_municipio'];
-            $hasAddress = false;
-            foreach ($addressFields as $field) {
-                $hasAddress = $hasAddress || trim((string) ($order[$field] ?? '')) !== '';
-            }
-            if ($hasAddress) {
-                foreach ($addressFields as $field) {
-                    if (trim((string) ($order[$field] ?? '')) === '') {
-                        throw new InvalidArgumentException('Complete ou remova o endereço parcial do consumidor da NFC-e.');
-                    }
-                }
-                $state = strtoupper(trim((string) $order['uf']));
-                if (!FiscalConfigurationService::isValidIbgeCityCode((string) $order['cliente_codigo_municipio'], $state)
-                    || preg_match('/^\d{8}$/', FiscalIdentityValidator::normalizeTaxId((string) $order['cep'])) !== 1
+
+            $indicator = (string) ($order['indicador_ie'] ?? 'nao_contribuinte');
+
+            if ($indicator === 'contribuinte') {
+                $state = strtoupper(
+                    trim((string) ($order['uf'] ?? ''))
+                );
+
+                $ie = trim(
+                    (string) ($order['inscricao_estadual'] ?? '')
+                );
+
+                if (
+                    $state === ''
+                    || $ie === ''
+                    || !FiscalConfigurationService::isValidStateRegistration(
+                        $ie,
+                        $state
+                    )
                 ) {
-                    throw new InvalidArgumentException('O endereço do consumidor da NFC-e possui CEP ou município inválido.');
+                    throw new InvalidArgumentException(
+                        'Cliente contribuinte exige UF e inscrição estadual válidas.'
+                    );
                 }
             }
+
             return;
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | NF-e - modelo 55
+        |--------------------------------------------------------------------------
+        |
+        | A NF-e exige destinatário identificado e endereço fiscal completo.
+        |
+        */
+        if (!FiscalIdentityValidator::isValidCpfOrCnpj($document)) {
+            throw new InvalidArgumentException(
+                'O CPF/CNPJ do cliente é inválido para emissão fiscal.'
+            );
+        }
+
         foreach ([
-            'cliente_nome', 'cliente_documento', 'endereco', 'cliente_numero',
-            'bairro', 'cidade', 'uf', 'cep', 'cliente_codigo_municipio',
+            'cliente_nome',
+            'cliente_documento',
+            'endereco',
+            'cliente_numero',
+            'bairro',
+            'cidade',
+            'uf',
+            'cliente_codigo_municipio',
         ] as $field) {
             if (trim((string) ($order[$field] ?? '')) === '') {
-                throw new InvalidArgumentException('Complete a identificação e o endereço fiscal do cliente para emitir NF-e.');
+                throw new InvalidArgumentException(
+                    'Complete a identificação e o endereço fiscal do cliente para emitir NF-e.'
+                );
             }
         }
-        $state = strtoupper(trim((string) $order['uf']));
-        if (!FiscalConfigurationService::isValidIbgeCityCode((string) $order['cliente_codigo_municipio'], $state)
-            || preg_match('/^\d{8}$/', FiscalIdentityValidator::normalizeTaxId((string) $order['cep'])) !== 1
+
+        $state = strtoupper(
+            trim((string) $order['uf'])
+        );
+
+        if (
+            !FiscalConfigurationService::isValidIbgeCityCode(
+                (string) $order['cliente_codigo_municipio'],
+                $state
+            )
         ) {
-            throw new InvalidArgumentException('O CEP ou município do cliente é incompatível com a UF informada.');
+            throw new InvalidArgumentException(
+                'O município do cliente é incompatível com a UF informada.'
+            );
         }
-        $indicator = (string) ($order['indicador_ie'] ?? 'nao_contribuinte');
-        if ($indicator === 'contribuinte'
-            && !FiscalConfigurationService::isValidStateRegistration((string) ($order['inscricao_estadual'] ?? ''), $state)
+
+        $cep = FiscalIdentityValidator::normalizeTaxId(
+            (string) ($order['cep'] ?? '')
+        );
+
+        if (
+            $cep !== ''
+            && preg_match('/^\d{8}$/', $cep) !== 1
         ) {
-            throw new InvalidArgumentException('Cliente contribuinte exige inscrição estadual válida.');
+            throw new InvalidArgumentException(
+                'O CEP do cliente deve possuir 8 dígitos quando informado.'
+            );
+        }
+
+        $indicator = (string) ($order['indicador_ie'] ?? 'nao_contribuinte');
+
+        if (
+            $indicator === 'contribuinte'
+            && !FiscalConfigurationService::isValidStateRegistration(
+                (string) ($order['inscricao_estadual'] ?? ''),
+                $state
+            )
+        ) {
+            throw new InvalidArgumentException(
+                'Cliente contribuinte exige inscrição estadual válida.'
+            );
         }
     }
 
