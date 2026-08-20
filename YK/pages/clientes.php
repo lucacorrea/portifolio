@@ -208,7 +208,110 @@ foreach ($clients as $client) {
 function client_form_fields(array $data, string $prefix, bool $editing = false): void {
 ?>
 <section class="form-section"><h3 class="form-section-title">Identificação</h3><div class="form-row"><div class="form-group"><label class="form-label">Tipo de pessoa</label><select class="form-control-os js-client-person-type" id="<?= h($prefix) ?>-person-type" name="person_type"><option value="fisica" <?= client_value($data, 'person_type', 'fisica') === 'fisica' ? 'selected' : '' ?>>Pessoa Física</option><option value="juridica" <?= client_value($data, 'person_type') === 'juridica' ? 'selected' : '' ?>>Pessoa Jurídica</option></select></div><div class="form-group"><label class="form-label">Nome / Razão social</label><input class="form-control-os" id="<?= h($prefix) ?>-name" name="name" value="<?= h(client_value($data, 'name')) ?>" maxlength="150" required></div></div><div class="form-row"><div class="form-group"><label class="form-label js-client-document-label" for="<?= h($prefix) ?>-document">CPF</label><input class="form-control-os js-client-document" id="<?= h($prefix) ?>-document" name="document" value="<?= h(client_value($data, 'document')) ?>" maxlength="20"></div><?php if (!$editing): ?><div class="form-group"><label class="form-label">Status</label><select class="form-control-os" id="<?= h($prefix) ?>-status" name="status"><option value="ativo" <?= client_value($data, 'status', 'ativo') === 'ativo' ? 'selected' : '' ?>>Ativo</option><option value="inativo" <?= client_value($data, 'status') === 'inativo' ? 'selected' : '' ?>>Inativo</option></select></div><?php endif; ?></div></section>
-<section class="form-section"><h3 class="form-section-title">Contato e endereço</h3><div class="form-row"><div class="form-group"><label class="form-label">Telefone</label><input class="form-control-os" id="<?= h($prefix) ?>-phone" name="phone" value="<?= h(client_value($data, 'phone')) ?>" maxlength="30"></div><div class="form-group"><label class="form-label">WhatsApp</label><input class="form-control-os" id="<?= h($prefix) ?>-whatsapp" name="whatsapp" value="<?= h(client_value($data, 'whatsapp')) ?>" maxlength="30"></div><div class="form-group"><label class="form-label">E-mail</label><input class="form-control-os" id="<?= h($prefix) ?>-email" type="email" name="email" value="<?= h(client_value($data, 'email')) ?>" maxlength="150"></div></div><div class="form-row"><div class="form-group"><label class="form-label">CEP</label><input class="form-control-os" id="<?= h($prefix) ?>-zip-code" name="zip_code" value="<?= h(client_value($data, 'zip_code')) ?>" maxlength="10"></div><div class="form-group"><label class="form-label">Endereço</label><input class="form-control-os" id="<?= h($prefix) ?>-address" name="address" value="<?= h(client_value($data, 'address')) ?>" maxlength="150"></div><div class="form-group"><label class="form-label">Número</label><input class="form-control-os" id="<?= h($prefix) ?>-number" name="number" value="<?= h(client_value($data, 'number')) ?>" maxlength="30"></div></div><div class="form-row"><div class="form-group"><label class="form-label">Complemento</label><input class="form-control-os" id="<?= h($prefix) ?>-complement" name="complement" value="<?= h(client_value($data, 'complement')) ?>" maxlength="100"></div><div class="form-group"><label class="form-label">Bairro</label><input class="form-control-os" id="<?= h($prefix) ?>-district" name="district" value="<?= h(client_value($data, 'district')) ?>" maxlength="100"></div><div class="form-group"><label class="form-label">Cidade</label><input class="form-control-os" id="<?= h($prefix) ?>-city" name="city" value="<?= h(client_value($data, 'city')) ?>" maxlength="100"></div><div class="form-group"><label class="form-label">UF</label><input class="form-control-os" id="<?= h($prefix) ?>-state" name="state" value="<?= h(client_value($data, 'state')) ?>" maxlength="2"></div></div><div class="form-group"><label class="form-label">Observações</label><textarea class="form-control-os" id="<?= h($prefix) ?>-notes" name="notes" rows="3"><?= h(client_value($data, 'notes')) ?></textarea></div></section>
+<section class="form-section">
+    <h3 class="form-section-title">Contato e endereço</h3>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label">Telefone</label>
+            <input class="form-control-os" id="<?= h($prefix) ?>-phone" name="phone" value="<?= h(client_value($data, 'phone')) ?>" maxlength="30">
+        </div>
+        <div class="form-group">
+            <label class="form-label">WhatsApp</label>
+            <input class="form-control-os" id="<?= h($prefix) ?>-whatsapp" name="whatsapp" value="<?= h(client_value($data, 'whatsapp')) ?>" maxlength="30">
+        </div>
+        <div class="form-group">
+            <label class="form-label">E-mail</label>
+            <input class="form-control-os" id="<?= h($prefix) ?>-email" type="email" name="email" value="<?= h(client_value($data, 'email')) ?>" maxlength="150">
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label">CEP</label>
+            <input class="form-control-os" id="<?= h($prefix) ?>-zip-code" name="zip_code" value="<?= h(client_value($data, 'zip_code')) ?>" maxlength="10" inputmode="numeric">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Endereço</label>
+            <input class="form-control-os" id="<?= h($prefix) ?>-address" name="address" value="<?= h(client_value($data, 'address')) ?>" maxlength="150">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Número</label>
+            <input class="form-control-os" id="<?= h($prefix) ?>-number" name="number" value="<?= h(client_value($data, 'number')) ?>" maxlength="30">
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label">Complemento</label>
+            <input class="form-control-os" id="<?= h($prefix) ?>-complement" name="complement" value="<?= h(client_value($data, 'complement')) ?>" maxlength="100">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Bairro</label>
+            <input class="form-control-os" id="<?= h($prefix) ?>-district" name="district" value="<?= h(client_value($data, 'district')) ?>" maxlength="100">
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label class="form-label" for="<?= h($prefix) ?>-state">UF</label>
+            <select
+                class="form-control-os js-client-uf"
+                id="<?= h($prefix) ?>-state"
+                name="state"
+                data-current-value="<?= h(strtoupper(client_value($data, 'state'))) ?>"
+            >
+                <option value="">Selecione</option>
+<option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option>
+<option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option>
+<option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option>
+<option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
+<option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option>
+<option value="PR">PR</option><option value="PE">PE</option><option value="PI">PI</option>
+<option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option>
+<option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
+<option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="<?= h($prefix) ?>-city">Cidade</label>
+            <select
+                class="form-control-os js-client-city"
+                id="<?= h($prefix) ?>-city"
+                name="city"
+                data-current-value="<?= h(client_value($data, 'city')) ?>"
+            >
+                <option value="">Selecione primeiro a UF</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="<?= h($prefix) ?>-municipality-code">
+                Código IBGE do município
+            </label>
+            <input
+                class="form-control-os js-client-municipality-code"
+                id="<?= h($prefix) ?>-municipality-code"
+                name="codigo_municipio_ibge"
+                value="<?= h(client_value($data, 'codigo_municipio_ibge')) ?>"
+                maxlength="7"
+                inputmode="numeric"
+                pattern="\d{7}"
+                placeholder="Ex.: 1301209"
+                readonly
+            >
+            <small class="text-muted js-client-ibge-status">
+                Selecione UF e cidade para preencher automaticamente.
+            </small>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label">Observações</label>
+        <textarea class="form-control-os" id="<?= h($prefix) ?>-notes" name="notes" rows="3"><?= h(client_value($data, 'notes')) ?></textarea>
+    </div>
+</section>
 <?php } ?>
 
 <?php if ($canCreate): ?><div class="modal fade" id="modal-cliente" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-scrollable"><form class="modal-content visual-modal" method="post" action="actions/cliente-salvar.php" autocomplete="off"><div class="modal-header"><div><h2 class="modal-title fs-5">Novo cliente</h2><p class="text-muted small mb-0">O código será gerado automaticamente.</p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><div class="alert alert-danger <?= $createError === null ? 'd-none' : '' ?>" id="create-client-form-error" role="alert"><?= h($createError ?? '') ?></div><?php client_form_fields($createData, 'create-client'); ?></div><div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit"><i class="bi bi-check-lg"></i> Salvar</button></div></form></div></div><?php endif; ?>
@@ -291,6 +394,280 @@ document.addEventListener('DOMContentLoaded', function () {
     function element(tag, className, value) { const node = document.createElement(tag); if (className) node.className = className; if (value !== undefined && value !== null) node.textContent = value; return node; }
     function updateDocumentLabel(select) { const modal = select.closest('.modal'); if (!modal) return; const label = modal.querySelector('.js-client-document-label'); if (label) label.textContent = select.value === 'juridica' ? 'CNPJ' : 'CPF'; }
     document.querySelectorAll('.js-client-person-type').forEach(function (select) { updateDocumentLabel(select); select.addEventListener('change', function () { updateDocumentLabel(select); }); });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Municípios / código IBGE
+    |--------------------------------------------------------------------------
+    |
+    | A UF sozinha não identifica o município. Ao selecionar a UF,
+    | carregamos os municípios oficiais do IBGE. Ao escolher a cidade,
+    | o campo codigo_municipio_ibge recebe o ID oficial de 7 dígitos.
+    |
+    | A lista é mantida em cache na sessão do navegador por UF.
+    */
+    const ibgeMunicipalityCache = new Map();
+    const ibgeControllers = new WeakMap();
+
+    function normalizeIbgeText(value) {
+        return String(value || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim()
+            .toUpperCase();
+    }
+
+    function setIbgeStatus(form, message, isError) {
+        const status = form?.querySelector('.js-client-ibge-status');
+        if (!status) return;
+        status.textContent = message;
+        status.classList.toggle('text-danger', Boolean(isError));
+        status.classList.toggle('text-success', !isError && /preenchido|selecionado/i.test(message));
+    }
+
+    function setMunicipalityCode(form, code) {
+        const input = form?.querySelector('.js-client-municipality-code');
+        if (!input) return;
+        const digits = String(code || '').replace(/\D+/g, '').slice(0, 7);
+        input.value = /^\d{7}$/.test(digits) ? digits : '';
+    }
+
+    async function fetchIbgeMunicipalities(uf, signal) {
+        const normalizedUf = String(uf || '').trim().toUpperCase();
+
+        if (!/^[A-Z]{2}$/.test(normalizedUf)) {
+            return [];
+        }
+
+        if (ibgeMunicipalityCache.has(normalizedUf)) {
+            return ibgeMunicipalityCache.get(normalizedUf);
+        }
+
+        const endpoint =
+            'https://servicodados.ibge.gov.br/api/v1/localidades/estados/'
+            + encodeURIComponent(normalizedUf)
+            + '/municipios?orderBy=nome';
+
+        const response = await fetch(endpoint, {
+            method: 'GET',
+            headers: { Accept: 'application/json' },
+            cache: 'force-cache',
+            signal
+        });
+
+        if (!response.ok) {
+            throw new Error('IBGE HTTP ' + response.status);
+        }
+
+        const payload = await response.json();
+
+        if (!Array.isArray(payload)) {
+            throw new Error('Resposta inválida do IBGE.');
+        }
+
+        const municipalities = payload
+            .map(function (item) {
+                const id = String(item?.id || '').replace(/\D+/g, '');
+                const name = String(item?.nome || '').trim();
+
+                if (!/^\d{7}$/.test(id) || !name) {
+                    return null;
+                }
+
+                return {
+                    id: id,
+                    name: name,
+                    normalizedName: normalizeIbgeText(name)
+                };
+            })
+            .filter(Boolean);
+
+        ibgeMunicipalityCache.set(normalizedUf, municipalities);
+
+        return municipalities;
+    }
+
+    function fillCitySelect(citySelect, municipalities, selectedCity) {
+        if (!citySelect) return;
+
+        const selectedNormalized = normalizeIbgeText(selectedCity);
+        const fragment = document.createDocumentFragment();
+
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = municipalities.length
+            ? 'Selecione a cidade'
+            : 'Nenhum município encontrado';
+        fragment.appendChild(placeholder);
+
+        municipalities.forEach(function (municipality) {
+            const option = document.createElement('option');
+            option.value = municipality.name;
+            option.textContent = municipality.name;
+            option.dataset.ibgeCode = municipality.id;
+
+            if (
+                selectedNormalized
+                && municipality.normalizedName === selectedNormalized
+            ) {
+                option.selected = true;
+            }
+
+            fragment.appendChild(option);
+        });
+
+        citySelect.replaceChildren(fragment);
+    }
+
+    function syncCodeFromCity(form) {
+        const citySelect = form?.querySelector('.js-client-city');
+        if (!citySelect) return;
+
+        const option = citySelect.selectedOptions?.[0];
+        const code = option?.dataset?.ibgeCode || '';
+
+        setMunicipalityCode(form, code);
+
+        if (code) {
+            setIbgeStatus(
+                form,
+                'Código IBGE preenchido automaticamente: ' + code + '.',
+                false
+            );
+        } else {
+            setIbgeStatus(
+                form,
+                'Selecione uma cidade para preencher o código IBGE.',
+                false
+            );
+        }
+    }
+
+    async function loadMunicipalitiesForForm(form, preferredCity) {
+        if (!form) return;
+
+        const stateSelect = form.querySelector('.js-client-uf');
+        const citySelect = form.querySelector('.js-client-city');
+
+        if (!stateSelect || !citySelect) return;
+
+        const uf = String(stateSelect.value || '').trim().toUpperCase();
+
+        setMunicipalityCode(form, '');
+
+        if (!uf) {
+            citySelect.innerHTML = '<option value="">Selecione primeiro a UF</option>';
+            setIbgeStatus(
+                form,
+                'Selecione a UF e depois a cidade.',
+                false
+            );
+            return;
+        }
+
+        const previous = ibgeControllers.get(form);
+        previous?.abort();
+
+        const controller = new AbortController();
+        ibgeControllers.set(form, controller);
+
+        citySelect.disabled = true;
+        citySelect.innerHTML = '<option value="">Carregando municípios...</option>';
+        setIbgeStatus(form, 'Consultando municípios no IBGE...', false);
+
+        try {
+            const municipalities = await fetchIbgeMunicipalities(
+                uf,
+                controller.signal
+            );
+
+            if (controller.signal.aborted) return;
+
+            fillCitySelect(
+                citySelect,
+                municipalities,
+                preferredCity || citySelect.dataset.currentValue || ''
+            );
+
+            citySelect.disabled = false;
+            citySelect.dataset.currentValue = '';
+
+            syncCodeFromCity(form);
+
+            if (!citySelect.value) {
+                setIbgeStatus(
+                    form,
+                    'Municípios carregados. Selecione a cidade.',
+                    false
+                );
+            }
+        } catch (error) {
+            if (error?.name === 'AbortError') return;
+
+            citySelect.disabled = false;
+            citySelect.innerHTML = '<option value="">Não foi possível carregar</option>';
+
+            /*
+             * Fallback mínimo para o município operacional já usado no YK.
+             * Evita bloquear Coari/AM caso a API pública esteja temporariamente
+             * indisponível. Outros municípios continuam exigindo nova consulta.
+             */
+            if (
+                uf === 'AM'
+                && normalizeIbgeText(preferredCity || '') === 'COARI'
+            ) {
+                const option = document.createElement('option');
+                option.value = 'Coari';
+                option.textContent = 'Coari';
+                option.dataset.ibgeCode = '1301209';
+                option.selected = true;
+                citySelect.replaceChildren(option);
+                setMunicipalityCode(form, '1301209');
+                setIbgeStatus(
+                    form,
+                    'Código IBGE de Coari/AM preenchido: 1301209.',
+                    false
+                );
+                return;
+            }
+
+            setIbgeStatus(
+                form,
+                'Não foi possível consultar o IBGE. Tente novamente.',
+                true
+            );
+        }
+    }
+
+    document.querySelectorAll('form').forEach(function (form) {
+        const stateSelect = form.querySelector('.js-client-uf');
+        const citySelect = form.querySelector('.js-client-city');
+
+        if (!stateSelect || !citySelect) return;
+
+        const currentState =
+            String(stateSelect.dataset.currentValue || '').trim().toUpperCase();
+
+        if (currentState) {
+            stateSelect.value = currentState;
+        }
+
+        stateSelect.addEventListener('change', function () {
+            loadMunicipalitiesForForm(form, '');
+        });
+
+        citySelect.addEventListener('change', function () {
+            syncCodeFromCity(form);
+        });
+
+        if (stateSelect.value) {
+            loadMunicipalitiesForForm(
+                form,
+                String(citySelect.dataset.currentValue || '').trim()
+            );
+        }
+    });
+
     function prepareClientActions(client) {
         text('client-actions-subtitle', client.code + ' · ' + client.person_type_label); text('client-actions-name', client.name); text('client-actions-status', client.status_label);
         const statusBadge = document.getElementById('client-actions-status'); if (statusBadge) statusBadge.className = 'badge-soft badge-' + (client.status === 'ativo' ? 'green' : 'gray');
@@ -302,7 +679,32 @@ document.addEventListener('DOMContentLoaded', function () {
         const tbody = document.getElementById('view-client-budgets'); if (tbody) { tbody.replaceChildren(); if (!client.budgets.length) { const row = document.createElement('tr'); const cell = document.createElement('td'); cell.colSpan = 6; cell.textContent = 'Nenhum orçamento vinculado.'; row.appendChild(cell); tbody.appendChild(row); } client.budgets.forEach(function (budget) { const row = document.createElement('tr'); ['number','issue_date','valid_until'].forEach(function (key) { const cell = document.createElement('td'); cell.textContent = budget[key] || '-'; row.appendChild(cell); }); const total = document.createElement('td'); total.textContent = money(budget.total); row.appendChild(total); const status = document.createElement('td'); status.textContent = budget.status; row.appendChild(status); const actions = document.createElement('td'); if (canViewBudget) { const link = document.createElement('a'); link.className = 'btn-filter btn-filter-ghost'; link.href = 'orcamentos.php?search=' + encodeURIComponent(budget.number); link.textContent = 'Abrir'; actions.appendChild(link); } row.appendChild(actions); tbody.appendChild(row); }); }
     }
     function prepareClientEdit(client) {
-        ['id','code','person-type','name','document','phone','whatsapp','email','address','number','complement','district','city','state','zip-code','notes','status'].forEach(function (field) { const key = field.replaceAll('-', '_'); val('edit-client-' + field, client[key]); }); text('edit-client-subtitle', client.code); document.querySelectorAll('#modal-cliente-edit .js-client-person-type').forEach(updateDocumentLabel);
+        ['id','code','person-type','name','document','phone','whatsapp','email','address','number','complement','district','zip-code','notes','status'].forEach(function (field) {
+            const key = field.replaceAll('-', '_');
+            val('edit-client-' + field, client[key]);
+        });
+
+        const stateSelect = document.getElementById('edit-client-state');
+        if (stateSelect) {
+            stateSelect.value = String(client.state || '').trim().toUpperCase();
+        }
+
+        const citySelect = document.getElementById('edit-client-city');
+        if (citySelect) {
+            citySelect.dataset.currentValue = String(client.city || '').trim();
+        }
+
+        val('edit-client-municipality-code', '');
+
+        text('edit-client-subtitle', client.code);
+        document.querySelectorAll('#modal-cliente-edit .js-client-person-type').forEach(updateDocumentLabel);
+
+        if (stateSelect?.value) {
+            loadMunicipalitiesForForm(
+                stateSelect.closest('form'),
+                String(client.city || '').trim()
+            );
+        }
     }
     function prepareClientStatus(button) { const activate = button.dataset.clientStatus === 'ativo'; val('status-client-id', button.dataset.clientId); val('status-client-value', button.dataset.clientStatus); text('client-status-title', activate ? 'Ativar cliente' : 'Desativar cliente'); text('client-status-message', (activate ? 'Deseja ativar ' : 'Deseja desativar ') + (button.dataset.clientName || 'este cliente') + '?'); }
     function prepareClientDelete(button) { val('delete-client-id', button.dataset.clientId); text('delete-client-name', button.dataset.clientName || 'este cliente'); }
@@ -384,6 +786,75 @@ document.addEventListener('DOMContentLoaded', function () {
     clearFilters?.addEventListener('click', function (event) { event.preventDefault(); filterForm.querySelectorAll('input[name], select[name]').forEach(function (field) { field.value = ''; }); searchClients(); searchInput?.focus(); });
     searchRetry?.addEventListener('click', searchClients);
     window.addEventListener('popstate', function () { const params = new URL(window.location.href).searchParams; filterForm?.querySelectorAll('[name]').forEach(function (field) { field.value = params.get(field.name) || ''; }); searchClients(); });
+
+    /*
+     * Garantia antes de salvar:
+     * se UF e cidade estiverem informadas, o código IBGE precisa estar
+     * resolvido. Isso evita gravar cadastro fiscalmente incompleto.
+     */
+    document.querySelectorAll(
+        '#modal-cliente form, #modal-cliente-edit form'
+    ).forEach(function (form) {
+        let resubmitting = false;
+
+        form.addEventListener('submit', async function (event) {
+            if (resubmitting) {
+                resubmitting = false;
+                return;
+            }
+
+            const uf = String(
+                form.querySelector('.js-client-uf')?.value || ''
+            ).trim();
+
+            const city = String(
+                form.querySelector('.js-client-city')?.value || ''
+            ).trim();
+
+            const code = String(
+                form.querySelector('.js-client-municipality-code')?.value || ''
+            ).trim();
+
+            if (!uf && !city) {
+                return;
+            }
+
+            if (!uf || !city) {
+                event.preventDefault();
+                setIbgeStatus(
+                    form,
+                    'Para endereço fiscal, informe UF e cidade.',
+                    true
+                );
+                return;
+            }
+
+            if (/^\d{7}$/.test(code)) {
+                return;
+            }
+
+            event.preventDefault();
+
+            await loadMunicipalitiesForForm(form, city);
+
+            const resolvedCode = String(
+                form.querySelector('.js-client-municipality-code')?.value || ''
+            ).trim();
+
+            if (!/^\d{7}$/.test(resolvedCode)) {
+                setIbgeStatus(
+                    form,
+                    'Não foi possível determinar o código IBGE do município.',
+                    true
+                );
+                return;
+            }
+
+            resubmitting = true;
+            form.requestSubmit();
+        });
+    });
+
     const targets = { create: 'modal-cliente', edit: 'modal-cliente-edit' };
     if (recoveryModal && targets[recoveryModal] && window.bootstrap) { const modal = document.getElementById(targets[recoveryModal]); if (modal) bootstrap.Modal.getOrCreateInstance(modal).show(); }
     if (openImportUpload && window.bootstrap) { const modal = document.getElementById('modal-client-import'); if (modal) bootstrap.Modal.getOrCreateInstance(modal).show(); }
