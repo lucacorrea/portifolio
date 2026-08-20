@@ -59,8 +59,16 @@ final class FiscalDocumentService
             ];
         }
 
-        $existingByOrigin = $this->documents->findNormalByOrder($orderId, $environment);
-        $this->assertRejectedRetryModel($existingByOrigin, $model);
+        $existingByOrigin = $this->findNormalByOrderEnvironmentModel(
+            $orderId,
+            $environment,
+            $model
+        );
+
+        $this->assertRejectedRetryModel(
+            $existingByOrigin,
+            $model
+        );
         if ($existingByOrigin !== null
             && (string) $existingByOrigin['processamento_status'] !== 'rejeitado'
         ) {
@@ -101,8 +109,22 @@ final class FiscalDocumentService
                 ];
             }
 
-            $existingByOrigin = $this->documents->findNormalByOrder($orderId, $environment, true);
-            $this->assertRejectedRetryModel($existingByOrigin, $model);
+            /*
+             * A origem fiscal é única por OS + ambiente + MODELO.
+             *
+             * Não reaproveitar NFC-e 65 quando a solicitação atual é
+             * NF-e 55, nem o contrário.
+             */
+            $existingByOrigin = $this->findNormalByOrderEnvironmentModel(
+                $orderId,
+                $environment,
+                $model
+            );
+
+            $this->assertRejectedRetryModel(
+                $existingByOrigin,
+                $model
+            );
             if ($existingByOrigin !== null
                 && (string) $existingByOrigin['processamento_status'] !== 'rejeitado'
             ) {
@@ -304,6 +326,62 @@ final class FiscalDocumentService
             $userId
         );
     }
+    /**
+     * Localiza somente o documento normal correspondente ao mesmo
+     * pedido fiscal: OS + ambiente + modelo.
+     *
+     * O código anterior usava apenas OS + ambiente e, por isso,
+     * uma NFC-e 65 já existente podia bloquear uma NF-e 55.
+     *
+     * @return array<string,mixed>|null
+     */
+    private function findNormalByOrderEnvironmentModel(
+        int $orderId,
+        string $environment,
+        string $model
+    ): ?array {
+        $grouped = $this->documents->listByOrderIds([$orderId]);
+        $documents = $grouped[$orderId] ?? [];
+
+        foreach ($documents as $document) {
+            if (
+                (int) ($document['ordem_servico_id'] ?? $orderId)
+                !== $orderId
+            ) {
+                continue;
+            }
+
+            if (
+                (string) ($document['ambiente'] ?? '')
+                !== $environment
+            ) {
+                continue;
+            }
+
+            if (
+                (string) ($document['modelo'] ?? '')
+                !== $model
+            ) {
+                continue;
+            }
+
+            /*
+             * Se o repositório devolver finalidade, respeita "normal".
+             * Se a coluna não vier no resumo, mantém compatibilidade.
+             */
+            if (
+                array_key_exists('finalidade', $document)
+                && (string) $document['finalidade'] !== 'normal'
+            ) {
+                continue;
+            }
+
+            return $document;
+        }
+
+        return null;
+    }
+
     /** @param array<string,mixed> $document */
     private function assertSameRequest(array $document, int $orderId, string $model, string $environment): void
     {
