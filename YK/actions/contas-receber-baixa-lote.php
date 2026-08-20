@@ -15,6 +15,7 @@ try {
     $summary = $application->paymentManagement()->registerAccountsReceivableBatchPayment(
         $ids,
         (string) ($_POST['forma_pagamento'] ?? ''),
+        (string) ($_POST['data_pagamento'] ?? ''),
         isset($_POST['observacao']) ? (string) $_POST['observacao'] : null,
         $user->id()
     );

@@ -13,6 +13,7 @@ try {
         os_posted_positive_int('id'),
         (string) ($_POST['valor'] ?? ''),
         (string) ($_POST['forma_pagamento'] ?? ''),
+        (string) ($_POST['data_pagamento'] ?? ''),
         isset($_POST['observacao']) ? (string) $_POST['observacao'] : null,
         $user->id()
     );

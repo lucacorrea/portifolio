@@ -185,8 +185,14 @@ final class AccountsReceivableManagementService
         return $id;
     }
 
-    public function registerPayment(int $accountId, string $value, string $form, ?string $notes, int $userId): int
-    {
+    public function registerPayment(
+        int $accountId,
+        string $value,
+        string $form,
+        string $paymentDate,
+        ?string $notes,
+        int $userId
+    ): int {
         $ownsTransaction = !$this->connection->inTransaction();
         if ($ownsTransaction) $this->connection->beginTransaction();
 
@@ -196,10 +202,11 @@ final class AccountsReceivableManagementService
                 throw new InvalidArgumentException('A situação da conta não permite novo pagamento.');
             }
             $amount = $this->moneyToCents($value);
+            $receivedAt = $this->paymentDate($paymentDate);
             if ($amount <= 0 || $amount > $this->moneyToCents((string) $account['saldo'])) {
                 throw new InvalidArgumentException('Valor de pagamento inválido para o saldo.');
             }
-            $paymentId = $this->applyPaymentToLockedAccount($account, $amount, $form, $notes, $userId);
+            $paymentId = $this->applyPaymentToLockedAccount($account, $amount, $form, $notes, $receivedAt, $userId);
 
             if ($ownsTransaction) $this->connection->commit();
             return $paymentId;
@@ -213,10 +220,16 @@ final class AccountsReceivableManagementService
      * @param array<int,mixed> $accountIds
      * @return array{client_id:int,client_name:string,count:int,total:string,account_ids:array<int,int>}
      */
-    public function registerBatchPayment(array $accountIds, string $form, ?string $notes, int $userId): array
-    {
+    public function registerBatchPayment(
+        array $accountIds,
+        string $form,
+        string $paymentDate,
+        ?string $notes,
+        int $userId
+    ): array {
         $ids = $this->batchAccountIds($accountIds);
         $form = $this->paymentForm($form);
+        $receivedAt = $this->paymentDate($paymentDate);
         $notes = $this->paymentNotes($notes);
         if ($userId <= 0) {
             throw new InvalidArgumentException('Usuário inválido para registrar a baixa.');
@@ -261,6 +274,7 @@ final class AccountsReceivableManagementService
                     $this->moneyToCents((string) $account['saldo']),
                     $form,
                     $notes,
+                    $receivedAt,
                     $userId
                 );
             }
@@ -320,6 +334,7 @@ final class AccountsReceivableManagementService
         int $amount,
         string $form,
         ?string $notes,
+        DateTimeImmutable $receivedAt,
         int $userId,
         int $installmentCount = 1,
         ?string $paymentToken = null,
@@ -336,19 +351,21 @@ final class AccountsReceivableManagementService
             $cashDescription,
             $form,
             $value,
-            $userId
+            $userId,
+            $receivedAt
         );
         $statement = $this->connection->prepare(
             'INSERT INTO ordem_servico_pagamentos
                 (ordem_servico_id, valor, forma_pagamento, quantidade_parcelas, recebido_em, observacao, status,
                  registrado_por, caixa_movimentacao_id, payment_token)
-             VALUES (:order_id, :value, :form, :installment_count, NOW(), :notes, :status, :user_id, :cash_id, :payment_token)'
+             VALUES (:order_id, :value, :form, :installment_count, :received_at, :notes, :status, :user_id, :cash_id, :payment_token)'
         );
         $statement->execute([
             'order_id' => $account['ordem_servico_id'],
             'value' => $value,
             'form' => $form,
             'installment_count' => $installmentCount,
+            'received_at' => $receivedAt->format('Y-m-d H:i:s'),
             'notes' => $notes,
             'status' => 'ativo',
             'user_id' => $userId,
@@ -443,6 +460,30 @@ final class AccountsReceivableManagementService
         }
         sort($ids, SORT_NUMERIC);
         return $ids;
+    }
+
+    private function paymentDate(string $value): DateTimeImmutable
+    {
+        $value = trim($value);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) !== 1) {
+            throw new InvalidArgumentException('Informe a data do pagamento.');
+        }
+
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+        $errors = DateTimeImmutable::getLastErrors();
+        if (
+            $date === false
+            || ($errors !== false && (($errors['warning_count'] ?? 0) > 0 || ($errors['error_count'] ?? 0) > 0))
+            || $date->format('Y-m-d') !== $value
+        ) {
+            throw new InvalidArgumentException('Data do pagamento inválida.');
+        }
+
+        if ($date > new DateTimeImmutable('today')) {
+            throw new InvalidArgumentException('A data do pagamento não pode ser futura.');
+        }
+
+        return $date;
     }
 
     private function paymentForm(string $form): string

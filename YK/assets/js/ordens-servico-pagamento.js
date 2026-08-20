@@ -92,6 +92,7 @@ document.addEventListener('DOMContentLoaded', function () {
     setValue('os-pay-value', total);
     setValue('os-pay-token', data.payment_token || paymentToken());
     setValue('os-pay-notes', data.observacao || '');
+    setValue('os-pay-date', data.data_pagamento || '');
     setValue('os-pay-method', data.forma_pagamento || 'dinheiro');
     setValue('os-pay-installments', data.quantidade_parcelas || '1');
     setText('os-pay-summary', (data.order_number || 'OS') + ' — saldo ' + money(parseNumber(total)) + '. Informe o valor efetivamente recebido.');

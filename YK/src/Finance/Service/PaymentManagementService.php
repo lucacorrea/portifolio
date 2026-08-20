@@ -17,9 +17,15 @@ final class PaymentManagementService
     {
     }
 
-    public function registerAccountsReceivablePayment(int $accountId, string $value, string $form, ?string $notes, int $userId): int
-    {
-        return $this->accounts->registerPayment($accountId, $value, $form, $notes, $userId);
+    public function registerAccountsReceivablePayment(
+        int $accountId,
+        string $value,
+        string $form,
+        string $paymentDate,
+        ?string $notes,
+        int $userId
+    ): int {
+        return $this->accounts->registerPayment($accountId, $value, $form, $paymentDate, $notes, $userId);
     }
 
     /** @return array{payment_id:int,receipt_id:int,receipt_created:bool,account_status:string,idempotent:bool} */
@@ -28,6 +34,7 @@ final class PaymentManagementService
         string $value,
         string $form,
         int|string $installmentCount,
+        string $paymentDate,
         ?string $notes,
         string $paymentToken,
         int $userId
@@ -40,6 +47,7 @@ final class PaymentManagementService
                 $value,
                 $form,
                 $installmentCount,
+                $paymentDate,
                 $notes,
                 $paymentToken,
                 $userId
@@ -64,8 +72,13 @@ final class PaymentManagementService
      * @param array<int,mixed> $accountIds
      * @return array{client_id:int,client_name:string,count:int,total:string,account_ids:array<int,int>}
      */
-    public function registerAccountsReceivableBatchPayment(array $accountIds, string $form, ?string $notes, int $userId): array
-    {
-        return $this->accounts->registerBatchPayment($accountIds, $form, $notes, $userId);
+    public function registerAccountsReceivableBatchPayment(
+        array $accountIds,
+        string $form,
+        string $paymentDate,
+        ?string $notes,
+        int $userId
+    ): array {
+        return $this->accounts->registerBatchPayment($accountIds, $form, $paymentDate, $notes, $userId);
     }
 }
