@@ -22,6 +22,20 @@ $canTestIntegration =
 $canActivateProduction =
     $authorization->can('nota_fiscal.ativar_producao');
 
+/*
+ * Acesso ao ambiente de produção:
+ *
+ * - nota_fiscal.configurar: pode abrir e criar versão de configuração;
+ * - nota_fiscal.ativar_producao: pode ativar a configuração para uso real.
+ *
+ * Isso evita o problema anterior em que o usuário conseguia configurar
+ * homologação, mas era redirecionado automaticamente para homologação
+ * ao tentar apenas ABRIR produção.
+ */
+$canAccessProduction =
+    $canConfigure
+    || $canActivateProduction;
+
 $canInutilize =
     $authorization->can('nota_fiscal.inutilizar');
 
@@ -59,12 +73,15 @@ if (
 }
 
 /*
- * Usuário sem permissão de produção nunca consegue sequer
- * abrir a configuração de produção.
+ * O ambiente de produção pode ser VISUALIZADO por quem possui
+ * permissão de configuração ou ativação.
+ *
+ * A ativação real continua protegida por
+ * nota_fiscal.ativar_producao.
  */
 if (
     $selectedEnvironment === 'producao'
-    && !$canActivateProduction
+    && !$canAccessProduction
 ) {
     $selectedEnvironment = 'homologacao';
 }
@@ -74,10 +91,15 @@ $selectedEnvironmentLabel =
         ? 'Produção'
         : 'Homologação';
 
+/*
+ * Criar/editar versões de configuração é sempre responsabilidade
+ * da permissão nota_fiscal.configurar.
+ *
+ * Ativar produção é uma operação diferente e continua exigindo
+ * nota_fiscal.ativar_producao.
+ */
 $canEditSelectedEnvironment =
-    $selectedEnvironment === 'producao'
-        ? $canActivateProduction
-        : $canConfigure;
+    $canConfigure;
 
 /*
 |--------------------------------------------------------------------------
@@ -277,11 +299,11 @@ $currentCertificateId =
                             <?= $selectedEnvironment === 'producao'
                                 ? 'selected'
                                 : '' ?>
-                            <?= !$canActivateProduction
+                            <?= !$canAccessProduction
                                 ? 'disabled'
                                 : '' ?>
                         >
-                            Produção<?= !$canActivateProduction
+                            Produção<?= !$canAccessProduction
                                 ? ' — sem permissão'
                                 : '' ?>
                         </option>
@@ -356,12 +378,26 @@ $currentCertificateId =
 
             </div>
 
-            <?php if (!$canActivateProduction): ?>
+            <?php if (!$canAccessProduction): ?>
 
                 <div class="alert alert-warning py-2 mt-3 mb-0">
                     <i class="bi bi-lock me-1"></i>
-                    O ambiente de produção está visível, mas bloqueado para este usuário.
+                    O ambiente de produção está bloqueado para este usuário.
                     É necessária a permissão
+                    <code>nota_fiscal.configurar</code>
+                    ou
+                    <code>nota_fiscal.ativar_producao</code>.
+                </div>
+
+            <?php elseif (
+                $canConfigure
+                && !$canActivateProduction
+            ): ?>
+
+                <div class="alert alert-info py-2 mt-3 mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Você pode configurar e testar o ambiente de produção.
+                    A ativação para emissão real continuará exigindo
                     <code>nota_fiscal.ativar_producao</code>.
                 </div>
 
@@ -423,7 +459,7 @@ $currentCertificateId =
             Homologação
         </a>
 
-        <?php if ($canActivateProduction): ?>
+        <?php if ($canAccessProduction): ?>
 
             <a
                 class="btn-filter <?= $selectedEnvironment === 'producao'
@@ -440,7 +476,7 @@ $currentCertificateId =
             <span
                 class="btn-filter btn-filter-ghost disabled"
                 aria-disabled="true"
-                title="Seu usuário não possui a permissão nota_fiscal.ativar_producao"
+                title="Seu usuário não possui permissão para acessar o ambiente de produção"
             >
                 <i class="bi bi-lock"></i>
                 Produção
@@ -1318,9 +1354,11 @@ $currentCertificateId =
                     <?php
                     $canRunSefazTest =
                         (
-                            $selectedEnvironment === 'producao'
-                                ? $canActivateProduction
-                                : $canTestIntegration
+                            $canTestIntegration
+                            || (
+                                $selectedEnvironment === 'producao'
+                                && $canActivateProduction
+                            )
                         )
                         && $configuration !== null
                         && ($runtime['homologation_ready'] ?? false);
