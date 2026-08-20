@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard | Urbanix ERP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" rel="stylesheet">
+<link href="assets/css/app.css" rel="stylesheet">
+</head>
+<body data-page="dashboard">
+<div class="app-shell">
+<aside class="sidebar">
+  <div class="brand"><div class="brand-mark">U</div><div><strong>URBANIX</strong><small>Construtora & Imobiliária</small></div></div>
+  <div class="sidebar-scroll"><div class="nav-section">GERAL</div>
+<a class="nav-link active" href="index.html"><i class="bi bi-grid-1x2-fill"></i><span>Dashboard</span></a>
+<div class="nav-section">EMPREENDIMENTOS</div>
+<a class="nav-link" href="empreendimentos.html"><i class="bi bi-buildings"></i><span>Empreendimentos</span></a>
+<a class="nav-link" href="mapa-unidades.html"><i class="bi bi-map"></i><span>Mapa de unidades</span></a>
+<a class="nav-link" href="tabela-precos.html"><i class="bi bi-tags"></i><span>Tabela de preços</span></a>
+<div class="nav-section">COMERCIAL</div>
+<a class="nav-link" href="crm.html"><i class="bi bi-kanban"></i><span>CRM / Leads</span></a>
+<a class="nav-link" href="clientes.html"><i class="bi bi-people"></i><span>Clientes</span></a>
+<a class="nav-link" href="propostas.html"><i class="bi bi-file-earmark-text"></i><span>Propostas</span></a>
+<a class="nav-link" href="reservas.html"><i class="bi bi-bookmark-check"></i><span>Reservas</span></a>
+<a class="nav-link" href="vendas.html"><i class="bi bi-bag-check"></i><span>Vendas</span></a>
+<div class="nav-section">GESTÃO</div>
+<a class="nav-link" href="contratos.html"><i class="bi bi-file-earmark-signature"></i><span>Contratos</span></a>
+<a class="nav-link" href="financeiro.html"><i class="bi bi-cash-stack"></i><span>Financeiro</span></a>
+<a class="nav-link" href="engenharia.html"><i class="bi bi-hammer"></i><span>Engenharia / Obras</span></a>
+<a class="nav-link" href="compras.html"><i class="bi bi-cart3"></i><span>Compras / Estoque</span></a>
+<a class="nav-link" href="relatorios.html"><i class="bi bi-bar-chart"></i><span>Relatórios</span></a>
+<div class="nav-section">PORTAIS</div>
+<a class="nav-link" href="portal-cliente.html"><i class="bi bi-person-badge"></i><span>Portal do cliente</span></a>
+<a class="nav-link" href="configuracoes.html"><i class="bi bi-gear"></i><span>Configurações</span></a></div>
+</aside>
+<main class="main">
+<header class="topbar">
+ <div class="topbar-left"><button class="menu-btn" data-menu-toggle><i class="bi bi-list"></i></button><div><h1 class="page-title">Dashboard</h1><div class="page-kicker">Visão consolidada da operação</div></div></div>
+ <div class="top-actions"><button class="icon-btn" title="Busca"><i class="bi bi-search"></i></button><button class="icon-btn" title="Notificações"><i class="bi bi-bell"></i></button><div class="user-chip"><div class="avatar">LS</div><div class="user-text"><strong>Lucas Souza</strong><small>Administrador</small></div><i class="bi bi-chevron-down small text-secondary"></i></div></div>
+</header>
+<section class="content"><div class="section-head"><div><h2>Visão executiva</h2><p>Indicadores consolidados da operação comercial, financeira e de engenharia.</p></div><a class="btn btn-primary-app" href="empreendimentos.html"><i class="bi bi-plus-lg me-2"></i>Novo empreendimento</a></div>
+<div class="row g-3 mb-3">
+<div class="col-xl-3 col-md-6"><div class="card-app metric "><div class="label">VGV total</div><div class="value">R$ 35,2 mi</div><div class="delta">+ 8,4% no período</div><div class="metric-icon"><i class="bi bi-currency-dollar"></i></div></div></div>
+<div class="col-xl-3 col-md-6"><div class="card-app metric gold"><div class="label">VGV vendido</div><div class="value">R$ 23,1 mi</div><div class="delta">65,6% comercializado</div><div class="metric-icon"><i class="bi bi-graph-up-arrow"></i></div></div></div>
+<div class="col-xl-3 col-md-6"><div class="card-app metric blue"><div class="label">Recebido no mês</div><div class="value">R$ 1,32 mi</div><div class="delta">+ 11,9% vs. mês anterior</div><div class="metric-icon"><i class="bi bi-wallet2"></i></div></div></div>
+<div class="col-xl-3 col-md-6"><div class="card-app metric red"><div class="label">Inadimplência</div><div class="value">4,2%</div><div class="delta">Dentro da meta < 5%</div><div class="metric-icon"><i class="bi bi-exclamation-triangle"></i></div></div></div>
+</div>
+<div class="row g-3 mb-3"><div class="col-xl-8"><div class="card-app"><div class="card-header d-flex justify-content-between"><strong>Vendas mensais</strong><span class="text-secondary small">R$ mil</span></div><div class="card-body"><div class="chart-wrap"><canvas id="salesChart"></canvas></div></div></div></div><div class="col-xl-4"><div class="card-app h-100"><div class="card-header"><strong>Disponibilidade</strong></div><div class="card-body"><div class="mini-chart"><canvas id="availabilityChart"></canvas></div><div class="donut-legend mt-3"><div class="legend-line"><span><i class="dot"></i>Vendidos</span><strong>214</strong></div><div class="legend-line"><span><i class="dot" style="background:#2767c5"></i>Disponíveis</span><strong>108</strong></div><div class="legend-line"><span><i class="dot" style="background:#d7a84b"></i>Reservados</span><strong>17</strong></div></div></div></div></div></div>
+<div class="row g-3"><div class="col-xl-8"><div class="card-app"><div class="card-header d-flex justify-content-between align-items-center"><strong>Empreendimentos</strong><a href="empreendimentos.html" class="small">Ver todos</a></div><div class="table-responsive"><table class="table table-app"><thead><tr><th>Empreendimento</th><th>Status</th><th>Obra</th><th>Unidades</th><th>VGV vendido</th></tr></thead><tbody>
+<tr><td><div class="object-title">Residencial Amazonas</div><div class="object-sub">Tefé · Loteamento</div></td><td><span class="badge-soft soft-success">Em comercialização</span></td><td style="min-width:160px"><div class="d-flex justify-content-between small mb-1"><span>82%</span><span>Obra</span></div><div class="progress progress-thin"><div class="progress-bar" style="width:82%"></div></div></td><td>420</td><td><strong>R$ 18,6 mi</strong></td></tr>
+<tr><td><div class="object-title">Parque das Águas</div><div class="object-sub">Tefé · Condomínio</div></td><td><span class="badge-soft soft-warning">Lançamento</span></td><td><div class="d-flex justify-content-between small mb-1"><span>28%</span><span>Obra</span></div><div class="progress progress-thin"><div class="progress-bar" style="width:28%"></div></div></td><td>96</td><td><strong>R$ 3,4 mi</strong></td></tr>
+<tr><td><div class="object-title">Vila Sol Nascente</div><div class="object-sub">Coari · Casas</div></td><td><span class="badge-soft soft-info">Em obras</span></td><td><div class="d-flex justify-content-between small mb-1"><span>61%</span><span>Obra</span></div><div class="progress progress-thin"><div class="progress-bar" style="width:61%"></div></div></td><td>64</td><td><strong>R$ 1,1 mi</strong></td></tr>
+</tbody></table></div></div></div><div class="col-xl-4"><div class="card-app h-100"><div class="card-header"><strong>Alertas de gestão</strong></div><div class="card-body"><div class="timeline"><div class="timeline-item"><strong>7 reservas vencem hoje</strong><small>Comercial · Residencial Amazonas</small></div><div class="timeline-item"><strong>Obra 6% abaixo do cronograma</strong><small>Parque das Águas</small></div><div class="timeline-item"><strong>R$ 84 mil em parcelas vencidas</strong><small>Financeiro · 14 contratos</small></div><div class="timeline-item"><strong>Compra aguardando aprovação</strong><small>OC-00291 · R$ 27.840</small></div></div></div></div></div></div></section>
+</main></div>
+<div class="toast-container position-fixed bottom-0 end-0 p-3"><div id="demoToast" class="toast" role="alert"><div class="toast-header"><strong class="me-auto">Demonstração</strong><small>agora</small><button type="button" class="btn-close" data-bs-dismiss="toast"></button></div><div class="toast-body">Ação registrada no protótipo. A integração real entra na etapa PHP/MySQL.</div></div></div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+<script src="assets/js/data.js"></script><script src="assets/js/storage.js"></script><script src="assets/js/ui.js"></script><script src="assets/js/management.js"></script><script src="assets/js/app.js"></script><script src="assets/js/charts.js"></script>
+</body></html>
