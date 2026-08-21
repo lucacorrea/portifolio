@@ -1,1 +1,196 @@
 /* Compatibilidade: estilos migrados para assets/css/modules/primeiro-emprego.css */
+
+/* ============================================================
+   Importações - planilha + conciliação de pagamentos por PDF
+   ============================================================ */
+.pe-import-hub .pe-import-mode-switch {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .75rem;
+    margin-top: 1rem;
+    padding: .35rem;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 1rem;
+    background: #f8fafc;
+}
+
+.pe-import-hub .pe-import-mode {
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    width: 100%;
+    padding: .9rem 1rem;
+    border: 1px solid transparent;
+    border-radius: .8rem;
+    background: transparent;
+    color: #475569;
+    text-align: left;
+    transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease, color .18s ease;
+}
+
+.pe-import-hub .pe-import-mode i {
+    display: grid;
+    place-items: center;
+    flex: 0 0 2.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: .75rem;
+    background: #e2e8f0;
+    font-size: 1.2rem;
+}
+
+.pe-import-hub .pe-import-mode span {
+    display: grid;
+    gap: .08rem;
+}
+
+.pe-import-hub .pe-import-mode small {
+    color: #64748b;
+    font-size: .77rem;
+}
+
+.pe-import-hub .pe-import-mode.is-active {
+    border-color: #bfdbfe;
+    background: #fff;
+    color: #0f172a;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, .08);
+}
+
+.pe-import-hub .pe-import-mode.is-active i {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.pe-import-guide--payment > div {
+    min-height: 100%;
+}
+
+.pe-payment-security-note {
+    display: flex;
+    gap: .85rem;
+    align-items: flex-start;
+    padding: 1rem 1.1rem;
+    border: 1px solid #dbeafe;
+    border-radius: .85rem;
+    background: #f8fbff;
+}
+
+.pe-payment-security-note > i {
+    color: #2563eb;
+    font-size: 1.2rem;
+    margin-top: .1rem;
+}
+
+.pe-payment-security-note p {
+    color: #64748b;
+    font-size: .87rem;
+}
+
+.pe-payment-analysis {
+    padding: 1.1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    background: #fff;
+}
+
+.pe-payment-analysis__head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.pe-payment-analysis__head h3 {
+    margin: .1rem 0 .2rem;
+    font-size: 1.08rem;
+}
+
+.pe-payment-analysis__head p {
+    margin: 0;
+    color: #64748b;
+    font-size: .86rem;
+}
+
+.pe-payment-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .75rem;
+    margin-top: 1rem;
+}
+
+.pe-payment-kpi {
+    padding: .9rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: .8rem;
+    background: #f8fafc;
+}
+
+.pe-payment-kpi span,
+.pe-payment-kpi strong {
+    display: block;
+}
+
+.pe-payment-kpi span {
+    color: #64748b;
+    font-size: .76rem;
+    line-height: 1.2;
+}
+
+.pe-payment-kpi strong {
+    margin-top: .3rem;
+    color: #0f172a;
+    font-size: 1.25rem;
+}
+
+.pe-payment-preview-table th,
+.pe-payment-preview-table td {
+    vertical-align: middle;
+}
+
+.pe-payment-preview-table td small,
+.pe-payment-sigas-cell small {
+    display: block;
+    margin-top: .18rem;
+    color: #64748b;
+    line-height: 1.25;
+}
+
+.pe-payment-row--conflito_financeiro,
+.pe-payment-row--cpf_ambiguo,
+.pe-payment-row--cpf_invalido {
+    background: #fff7f7;
+}
+
+.pe-payment-row--nao_localizado {
+    background: #fffbeb;
+}
+
+.pe-payment-row--atualizar_pagamento {
+    background: #f8fbff;
+}
+
+@media (max-width: 991.98px) {
+    .pe-payment-kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767.98px) {
+    .pe-import-hub .pe-import-mode-switch {
+        grid-template-columns: 1fr;
+    }
+
+    .pe-payment-analysis__head {
+        display: grid;
+    }
+
+    .pe-payment-kpis {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 479.98px) {
+    .pe-payment-kpis {
+        grid-template-columns: 1fr;
+    }
+}

@@ -39,6 +39,6 @@ if (!is_file($view)) {
 }
 
 require $view;
-$extraStyles = [];
-$extraScripts = [];
+$extraStyles = isset($extraStyles) && is_array($extraStyles) ? $extraStyles : [];
+$extraScripts = isset($extraScripts) && is_array($extraScripts) ? $extraScripts : [];
 require dirname(__DIR__) . '/frontend/layouts/module-layout.php';
