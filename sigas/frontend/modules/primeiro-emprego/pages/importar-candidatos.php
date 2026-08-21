@@ -9,7 +9,7 @@ require_once dirname(__DIR__) . '/lib/waitlist-import.php';
 
 $pageDefinition = [
     'title' => 'Importações',
-    'description' => 'Importe candidatos, atualize a Lista de espera e concilie pagamentos oficiais do Meu Primeiro Emprego por PDF.',
+    'description' => 'Importe candidatos, atualize a Lista de espera e sincronize a base oficial do Meu Primeiro Emprego pelo PDF final do Banco do Brasil.',
     'actions' => [['label' => 'Ver candidatos', 'icon' => 'people', 'href' => 'primeiro-emprego/candidatos.php']],
     'demo' => false,
     'show_states' => false,
@@ -31,7 +31,7 @@ if (($_GET['ajax'] ?? '') === 'payment_pdf_analyze') {
         pe_verify_csrf();
         $csrfChecked = true;
         if (!$paymentDbReady) {
-            throw new RuntimeException('Execute database/primeiroEmprego/0006-primeiroEmprego-pagamentos-pdf.sql antes de usar a importação por PDF.');
+            throw new RuntimeException('Execute database/primeiroEmprego/0008-primeiroEmprego-lista-final-banco.sql antes de usar a sincronização da lista oficial.');
         }
         if (empty($_FILES['pagamento_pdf'])) {
             throw new InvalidArgumentException('Selecione o PDF de pagamentos.');
@@ -184,7 +184,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['pe_action'] ?? '') === 'ru
     try {
         pe_verify_csrf();
         if (!$paymentDbReady) {
-            throw new RuntimeException('Execute database/primeiroEmprego/0006-primeiroEmprego-pagamentos-pdf.sql antes de usar a importação por PDF.');
+            throw new RuntimeException('Execute database/primeiroEmprego/0008-primeiroEmprego-lista-final-banco.sql antes de usar a sincronização da lista oficial.');
         }
         if (empty($_FILES['pagamento_pdf'])) {
             throw new InvalidArgumentException('Selecione o PDF de pagamentos.');
@@ -209,13 +209,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['pe_action'] ?? '') === 'ru
 
         $message = [
             'type' => $paymentResult['erros'] > 0 || $paymentResult['conflitos_financeiros'] > 0 ? 'warning' : 'success',
-            'text' => 'Conciliação #' . $paymentResult['import_id'] . ' concluída: '
+            'text' => 'Sincronização oficial #' . $paymentResult['import_id'] . ' concluída: '
+                . $paymentResult['ativos_lista_final'] . ' candidato(s) na base final, '
+                . $paymentResult['candidatos_criados'] . ' cadastro(s) criado(s) pelo Banco, '
+                . $paymentResult['candidatos_recuperados'] . ' cadastro(s) recuperado(s)/CPF(s) corrigido(s), '
+                . $paymentResult['candidatos_excluidos'] . ' cadastro(s) retirado(s) da base ativa, '
                 . $paymentResult['conciliados'] . ' novo(s) pagamento(s), '
-                . $paymentResult['atualizados'] . ' bolsa(s) atualizada(s), '
-                . $paymentResult['ja_conciliados'] . ' já conciliado(s), '
-                . $paymentResult['nao_localizados'] . ' CPF(s) não localizado(s), '
-                . $paymentResult['ambiguos'] . ' ambíguo(s) e '
-                . $paymentResult['conflitos_financeiros'] . ' conflito(s) financeiro(s).',
+                . $paymentResult['atualizados'] . ' bolsa(s) atualizada(s) e '
+                . $paymentResult['conflitos_financeiros'] . ' conflito(s) financeiro(s) preservado(s) para conferência.',
         ];
     } catch (Throwable $e) {
         $message = ['type' => 'danger', 'text' => $e->getMessage()];
@@ -257,7 +258,7 @@ ob_start();
         <div>
             <div class="card-kicker">Central de importações</div>
             <h2>Atualizar a base do Meu Primeiro Emprego</h2>
-            <p>Cadastre ou atualize candidatos por planilha, organize a Lista de espera com conciliação segura por CPF e use o PDF oficial do Banco do Brasil para registrar pagamentos sem sobrescrever dados pessoais.</p>
+            <p>Cadastre ou atualize candidatos por planilha, organize a Lista de espera e use o PDF final do Banco do Brasil como fonte oficial para sincronizar contemplados e pagamentos.</p>
         </div>
     </div>
 
@@ -300,7 +301,7 @@ ob_start();
             aria-controls="peImportPanelPaymentPdf"
             tabindex="<?= $defaultImportMode === 'payment-pdf' ? '0' : '-1' ?>">
             <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i>
-            <span><strong>PDF de pagamentos</strong><small>Extrato oficial do Banco do Brasil</small></span>
+            <span><strong>Lista final do Banco</strong><small>PDF oficial · contemplados e pagamentos</small></span>
             <i class="bi bi-chevron-right pe-import-mode__arrow" aria-hidden="true"></i>
         </button>
     </div>
@@ -537,14 +538,14 @@ ob_start();
         <?= $defaultImportMode === 'payment-pdf' ? '' : 'hidden' ?>>
         <?php if (!$paymentDbReady): ?>
             <div class="alert alert-warning mt-3">
-                <strong>Ative a conciliação por PDF.</strong> Execute <code>database/primeiroEmprego/0006-primeiroEmprego-pagamentos-pdf.sql</code> ou o arquivo consolidado de atualização.
+                <strong>Ative a lista oficial do Banco.</strong> Execute <code>database/primeiroEmprego/0008-primeiroEmprego-lista-final-banco.sql</code> antes da sincronização.
             </div>
         <?php endif; ?>
 
         <div class="pe-import-guide pe-import-guide--payment mt-3">
-            <div><i class="bi bi-file-earmark-check"></i><strong>Extrair e conferir</strong><span>O sistema lê todas as páginas e exige que quantidade e valor total confiram com o resumo do PDF.</span></div>
-            <div><i class="bi bi-person-check"></i><strong>Conciliar por CPF</strong><span>Somente CPF válido e único no SIGAS é aplicado automaticamente. Nome é usado como conferência.</span></div>
-            <div><i class="bi bi-shield-lock"></i><strong>Sem sobrescrever cadastro</strong><span>Telefone, endereço, nascimento, RG e outros dados pessoais não são alterados pelo PDF.</span></div>
+            <div><i class="bi bi-patch-check"></i><strong>Lista final oficial</strong><span>O PDF do Banco do Brasil passa a definir quem pertence à base ativa do programa.</span></div>
+            <div><i class="bi bi-person-plus"></i><strong>Incluir quem faltar</strong><span>CPF não encontrado será recuperado pelo nome quando houver vínculo único; caso contrário, o SIGAS cria o cadastro oficial.</span></div>
+            <div><i class="bi bi-archive"></i><strong>Retirar quem não consta</strong><span>Cadastros fora da lista final saem da base ativa, mas não são apagados: histórico, documentos e registros permanecem preservados.</span></div>
         </div>
 
         <form method="post" enctype="multipart/form-data" class="pe-payment-import-form mt-3" data-pe-payment-pdf-form <?= !$paymentDbReady ? 'inert' : '' ?>>
@@ -567,7 +568,7 @@ ob_start();
 
             <div class="pe-payment-security-note mt-3">
                 <i class="bi bi-info-circle"></i>
-                <div><strong>Regra de segurança</strong><p class="mb-0">O PDF só pode marcar o candidato como Contemplado e registrar/conciliar a bolsa. Se já existir pagamento com valor ou data incompatível, o SIGAS cria um conflito e não sobrescreve o financeiro.</p></div>
+                <div><strong>Fonte oficial da base</strong><p class="mb-0">Ao confirmar, a base ativa ficará igual à lista do Banco. Quem não estiver no PDF será arquivado da base ativa, sem exclusão física. Conflitos financeiros continuam protegidos e não são sobrescritos automaticamente.</p></div>
             </div>
 
             <div class="pe-payment-actions mt-3">
@@ -580,7 +581,7 @@ ob_start();
                         <i class="bi bi-search"></i> <span data-pe-payment-analyze-label>Analisar PDF</span>
                     </button>
                     <button class="btn btn-primary" type="submit" data-pe-payment-apply disabled title="Analise o PDF antes de confirmar">
-                        <i class="bi bi-bank"></i> <span data-pe-payment-apply-label>Confirmar conciliação</span>
+                        <i class="bi bi-database-check"></i> <span data-pe-payment-apply-label>Sincronizar lista final</span>
                     </button>
                 </div>
             </div>
@@ -588,7 +589,7 @@ ob_start();
 
         <div class="pe-payment-analysis mt-4" data-pe-payment-analysis hidden>
             <div class="pe-payment-analysis__head">
-                <div><div class="card-kicker">Pré-análise</div><h3>Conferência do extrato</h3><p data-pe-payment-meta>—</p></div>
+                <div><div class="card-kicker">Pré-análise oficial</div><h3>Como ficará a base após a sincronização</h3><p data-pe-payment-meta>—</p></div>
                 <span class="badge text-bg-light border" data-pe-payment-source>—</span>
             </div>
             <div class="pe-payment-kpis" data-pe-payment-kpis></div>
@@ -608,8 +609,8 @@ ob_start();
 
         <?php if ($paymentHistory): ?>
             <div class="mt-5">
-                <h3 class="h6 mb-3">Últimas conciliações de pagamento</h3>
-                <div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th>Data</th><th>Arquivo</th><th>Convênio/Lista</th><th>Competência</th><th>Total</th><th>Novos</th><th>Atualizados</th><th>Não localizados</th><th>Conflitos</th><th>Responsável</th></tr></thead><tbody><?php foreach ($paymentHistory as $item): ?><tr><td><?= pe_h(date('d/m/Y H:i', strtotime((string) $item['criado_em']))) ?></td><td><?= pe_h($item['arquivo_nome']) ?></td><td><?= pe_h(($item['convenio_numero'] ?: '—') . ' / ' . ($item['lista_numero'] ?: '—')) ?></td><td><?= pe_h($item['competencia']) ?></td><td><?= (int) $item['total_pagamentos'] ?><small class="d-block text-muted">R$ <?= number_format((float) $item['valor_total'], 2, ',', '.') ?></small></td><td><?= (int) $item['conciliados'] ?></td><td><?= (int) $item['atualizados'] ?></td><td><?= (int) $item['nao_localizados'] ?></td><td><?= (int) $item['conflitos_financeiros'] ?></td><td><?= pe_h($item['responsavel'] ?: '—') ?></td></tr><?php endforeach; ?></tbody></table></div>
+                <h3 class="h6 mb-3">Últimas sincronizações da lista oficial</h3>
+                <div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th>Data</th><th>Arquivo</th><th>Convênio/Lista</th><th>Total oficial</th><th>Criados</th><th>Recuperados</th><th>Retirados da base</th><th>Pagamentos</th><th>Conflitos</th><th>Responsável</th></tr></thead><tbody><?php foreach ($paymentHistory as $item): ?><tr><td><?= pe_h(date('d/m/Y H:i', strtotime((string) $item['criado_em']))) ?></td><td><?= pe_h($item['arquivo_nome']) ?></td><td><?= pe_h(($item['convenio_numero'] ?: '—') . ' / ' . ($item['lista_numero'] ?: '—')) ?></td><td><?= (int) $item['total_pagamentos'] ?><small class="d-block text-muted">R$ <?= number_format((float) $item['valor_total'], 2, ',', '.') ?></small></td><td><?= (int) $item['candidatos_criados'] ?></td><td><?= (int) $item['candidatos_recuperados'] ?></td><td><?= (int) $item['candidatos_excluidos'] ?></td><td><?= (int) ($item['conciliados'] + $item['atualizados']) ?></td><td><?= (int) $item['conflitos_financeiros'] ?></td><td><?= pe_h($item['responsavel'] ?: '—') ?></td></tr><?php endforeach; ?></tbody></table></div>
             </div>
         <?php endif; ?>
     </div>

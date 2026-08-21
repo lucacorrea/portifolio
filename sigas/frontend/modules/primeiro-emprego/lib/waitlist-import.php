@@ -248,6 +248,10 @@ function pe_waitlist_history(PDO $pdo, int $limit = 8): array
 
 function pe_waitlist_merge_existing(PDO $pdo, int $candidateId, array $row): array
 {
+    $finalListSet = pe_final_list_schema_ready($pdo)
+        ? ', lista_final_ativa=1, lista_final_excluido_em=NULL, lista_final_exclusao_motivo=NULL'
+        : '';
+
     $stmt = $pdo->prepare(
         'UPDATE pe_candidatos SET
             nome = CASE WHEN :nome <> "" THEN :nome ELSE nome END,
@@ -258,7 +262,8 @@ function pe_waitlist_merge_existing(PDO $pdo, int $candidateId, array $row): arr
             telefone = COALESCE(:telefone, telefone),
             cpf = COALESCE(:cpf, cpf),
             cpf_informado = COALESCE(:cpf_informado, cpf_informado),
-            status = CASE WHEN status = "Contemplado" THEN status ELSE "Lista de espera" END,
+            status = CASE WHEN status = "Contemplado" THEN status ELSE "Lista de espera" END
+            ' . $finalListSet . ',
             updated_at = CURRENT_TIMESTAMP
          WHERE id = :id'
     );

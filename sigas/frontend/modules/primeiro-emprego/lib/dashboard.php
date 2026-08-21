@@ -50,7 +50,8 @@ function pe_dashboard_latest_competencia(PDO $pdo, string $table): ?string
 
 function pe_dashboard_status_counts(PDO $pdo): array
 {
-    $rows = $pdo->query('SELECT COALESCE(NULLIF(status, ""), "Sem status") AS label, COUNT(*) AS total FROM pe_candidatos GROUP BY COALESCE(NULLIF(status, ""), "Sem status") ORDER BY total DESC, label ASC')->fetchAll(PDO::FETCH_ASSOC);
+    $where = pe_final_list_schema_ready($pdo) ? ' WHERE lista_final_ativa = 1' : '';
+    $rows = $pdo->query('SELECT COALESCE(NULLIF(status, ""), "Sem status") AS label, COUNT(*) AS total FROM pe_candidatos' . $where . ' GROUP BY COALESCE(NULLIF(status, ""), "Sem status") ORDER BY total DESC, label ASC')->fetchAll(PDO::FETCH_ASSOC);
     return array_map(static fn(array $row): array => ['label' => (string) $row['label'], 'value' => (int) $row['total']], $rows);
 }
 
@@ -64,6 +65,8 @@ function pe_dashboard_lotacao_distribution(PDO $pdo): array
             ['label' => 'Lotado', 'value' => 0],
         ];
     }
+
+    $activeWhere = pe_final_list_schema_ready($pdo) ? ' WHERE c.lista_final_ativa = 1' : '';
 
     $sql = '
         SELECT situacao_lotacao, COUNT(*) AS total
@@ -113,6 +116,7 @@ function pe_dashboard_lotacao_distribution(PDO $pdo): array
                     GROUP BY candidato_id
                 ) ult ON ult.ultimo_id = i1.id
             ) i ON i.candidato_id = c.id
+            ' . $activeWhere . '
         ) dados
         GROUP BY situacao_lotacao
     ';
@@ -211,7 +215,8 @@ function pe_dashboard_frequency_ranges(PDO $pdo): array
 function pe_dashboard_top_bairros(PDO $pdo, int $limit = 8): array
 {
     $limit = max(3, min($limit, 12));
-    $sql = 'SELECT COALESCE(NULLIF(bairro, ""), "Não informado") AS label, COUNT(*) AS total FROM pe_candidatos GROUP BY COALESCE(NULLIF(bairro, ""), "Não informado") ORDER BY total DESC, label ASC LIMIT ' . $limit;
+    $where = pe_final_list_schema_ready($pdo) ? ' WHERE lista_final_ativa = 1' : '';
+    $sql = 'SELECT COALESCE(NULLIF(bairro, ""), "Não informado") AS label, COUNT(*) AS total FROM pe_candidatos' . $where . ' GROUP BY COALESCE(NULLIF(bairro, ""), "Não informado") ORDER BY total DESC, label ASC LIMIT ' . $limit;
     $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     return array_map(static fn(array $row): array => ['label' => (string) $row['label'], 'value' => (int) $row['total']], $rows);
 }
@@ -252,11 +257,14 @@ function pe_dashboard_pipeline(PDO $pdo): array
         }
     }
 
+    $hasFinal = pe_final_list_schema_ready($pdo);
+    $active = $hasFinal ? ' WHERE lista_final_ativa = 1' : '';
+    $activeAnd = $hasFinal ? ' AND lista_final_ativa = 1' : '';
     $sql = 'SELECT
-        (SELECT COUNT(*) FROM pe_candidatos) AS base_total,
+        (SELECT COUNT(*) FROM pe_candidatos' . $active . ') AS base_total,
         (SELECT COUNT(*) FROM pe_visitas_sociais) AS visitas,
         (SELECT COUNT(*) FROM pe_visitas_sociais WHERE decisao = "Deferido") AS deferidos,
-        (SELECT COUNT(*) FROM pe_candidatos WHERE status = "Contemplado") AS contemplados,
+        (SELECT COUNT(*) FROM pe_candidatos WHERE status = "Contemplado"' . $activeAnd . ') AS contemplados,
         (SELECT COUNT(*) FROM pe_encaminhamentos WHERE status IN ("Encaminhado", "Entrevista marcada", "Aprovado")) AS em_fluxo';
     $row = (array) $pdo->query($sql)->fetch(PDO::FETCH_ASSOC);
 

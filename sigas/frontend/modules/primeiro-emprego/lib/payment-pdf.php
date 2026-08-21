@@ -15,8 +15,13 @@ function pe_payment_pdf_schema_ready(): bool
 {
     try {
         $pdo = pe_db();
-        $pdo->query('SELECT arquivo_hash, convenio_numero, lista_numero, competencia, conciliados, conflitos_financeiros FROM pe_pagamento_importacoes LIMIT 1');
+        $pdo->query('SELECT arquivo_hash, convenio_numero, lista_numero, competencia, conciliados, conflitos_financeiros,
+                            candidatos_criados, candidatos_recuperados, candidatos_excluidos
+                     FROM pe_pagamento_importacoes LIMIT 1');
         $pdo->query('SELECT importacao_id, conciliacao_status, cpf_validado, valor FROM pe_pagamento_importacao_itens LIMIT 1');
+        $pdo->query('SELECT lista_final_ativa, lista_final_origem, lista_final_importacao_id,
+                            lista_final_sincronizada_em, lista_final_excluido_em, lista_final_exclusao_motivo
+                     FROM pe_candidatos LIMIT 1');
         return true;
     } catch (Throwable) {
         return false;
@@ -383,7 +388,7 @@ function pe_payment_pdf_analyze(PDO $pdo, array $parsed, string $competence): ar
     $validCpfs = [];
     foreach ($parsed['rows'] as $row) {
         if (!empty($row['cpf'])) {
-            $validCpfs[$row['cpf']] = true;
+            $validCpfs[(string) $row['cpf']] = true;
         }
     }
 
@@ -400,38 +405,161 @@ function pe_payment_pdf_analyze(PDO $pdo, array $parsed, string $competence): ar
             $placeholders[] = ':' . $key;
             $params[$key] = $cpf;
         }
-        $stmt = $pdo->prepare('SELECT id, nome, cpf, cpf_informado, status, revisao_status FROM pe_candidatos WHERE cpf IN (' . implode(',', $placeholders) . ') ORDER BY id');
+
+        $stmt = $pdo->prepare(
+            'SELECT id, nome, cpf, cpf_informado, status, revisao_status, lista_final_ativa
+               FROM pe_candidatos
+              WHERE cpf IN (' . implode(',', $placeholders) . ')
+              ORDER BY lista_final_ativa DESC, id'
+        );
         $stmt->execute($params);
+
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $candidate) {
             $candidateMap[(string) $candidate['cpf']][] = $candidate;
         }
     }
 
-    // Sugestão por nome é apenas informativa. Nunca vincula automaticamente sem CPF exato.
+    // O nome é usado somente para reaproveitar um cadastro local quando não há
+    // correspondência por CPF. A lista oficial continua sendo a fonte do CPF.
     $nameMap = [];
-    $needSuggestions = count($parsed['rows']) > 0;
-    if ($needSuggestions) {
-        $all = $pdo->query('SELECT id, nome, cpf, cpf_informado, status FROM pe_candidatos ORDER BY id')->fetchAll(PDO::FETCH_ASSOC) ?: [];
-        foreach ($all as $candidate) {
-            $key = pe_payment_pdf_normalize_name((string) $candidate['nome']);
-            if ($key !== '') {
-                $nameMap[$key][] = $candidate;
+    $allCandidates = $pdo->query(
+        'SELECT id, nome, cpf, cpf_informado, status, revisao_status, lista_final_ativa
+           FROM pe_candidatos
+          ORDER BY lista_final_ativa DESC, id'
+    )->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    foreach ($allCandidates as $candidate) {
+        $key = pe_payment_pdf_normalize_name((string) $candidate['nome']);
+        if ($key !== '') {
+            $nameMap[$key][] = $candidate;
+        }
+    }
+
+    $resolvedRows = [];
+    $usedCandidateIds = [];
+    $resolvedCandidateIds = [];
+
+    foreach ($parsed['rows'] as $row) {
+        $item = $row + [
+            'candidate_id' => null,
+            'candidate_name' => null,
+            'candidate_status' => null,
+            'membership_action' => null,
+            'membership_message' => null,
+            'name_divergence' => false,
+            'ambiguous_candidates' => [],
+            'grant_id' => null,
+            'match_status' => null,
+            'match_message' => null,
+        ];
+
+        if (empty($row['cpf'])) {
+            $item['membership_action'] = 'cpf_invalido';
+            $item['membership_message'] = 'CPF oficial não passou na validação.';
+            $item['match_status'] = 'cpf_invalido';
+            $item['match_message'] = $item['membership_message'];
+            $resolvedRows[] = $item;
+            continue;
+        }
+
+        $matches = $candidateMap[$row['cpf']] ?? [];
+        $candidate = null;
+
+        if (count($matches) === 1) {
+            $candidate = $matches[0];
+        } elseif (count($matches) > 1) {
+            $officialName = pe_payment_pdf_normalize_name((string) $row['nome']);
+            $sameName = array_values(array_filter(
+                $matches,
+                static fn(array $c): bool =>
+                    pe_payment_pdf_normalize_name((string) $c['nome']) === $officialName
+            ));
+
+            if (count($sameName) === 1) {
+                $candidate = $sameName[0];
+                $item['ambiguous_candidates'] = array_map(
+                    static fn(array $c): array => [
+                        'id' => (int) $c['id'],
+                        'nome' => (string) $c['nome'],
+                        'status' => (string) $c['status'],
+                    ],
+                    array_values(array_filter(
+                        $matches,
+                        static fn(array $c): bool => (int) $c['id'] !== (int) $sameName[0]['id']
+                    ))
+                );
+            } else {
+                $item['membership_action'] = 'cpf_ambiguo';
+                $item['membership_message'] = 'Há mais de um cadastro local com o CPF oficial e não foi possível definir o cadastro principal com segurança.';
+                $item['match_status'] = 'cpf_ambiguo';
+                $item['match_message'] = $item['membership_message'];
+                $item['ambiguous_candidates'] = array_map(
+                    static fn(array $c): array => [
+                        'id' => (int) $c['id'],
+                        'nome' => (string) $c['nome'],
+                        'status' => (string) $c['status'],
+                    ],
+                    $matches
+                );
+                $resolvedRows[] = $item;
+                continue;
             }
         }
-    }
 
-    $matchedIds = [];
-    foreach ($candidateMap as $matches) {
-        if (count($matches) === 1) {
-            $matchedIds[] = (int) $matches[0]['id'];
+        if ($candidate !== null) {
+            $candidateId = (int) $candidate['id'];
+            $usedCandidateIds[$candidateId] = true;
+            $resolvedCandidateIds[$candidateId] = true;
+            $item['candidate_id'] = $candidateId;
+            $item['candidate_name'] = (string) $candidate['nome'];
+            $item['candidate_status'] = (string) $candidate['status'];
+            $item['membership_action'] = 'usar_existente';
+            $item['membership_message'] = !empty($candidate['lista_final_ativa'])
+                ? 'Cadastro localizado pelo CPF oficial.'
+                : 'Cadastro anteriormente fora da lista final será reativado pelo CPF oficial.';
+            $item['name_divergence'] =
+                pe_payment_pdf_normalize_name((string) $candidate['nome'])
+                !== pe_payment_pdf_normalize_name((string) $row['nome']);
+            $resolvedRows[] = $item;
+            continue;
         }
+
+        $nameKey = pe_payment_pdf_normalize_name((string) $row['nome']);
+        $nameMatches = array_values(array_filter(
+            $nameMap[$nameKey] ?? [],
+            static fn(array $c): bool => !isset($usedCandidateIds[(int) $c['id']])
+        ));
+
+        if (count($nameMatches) === 1) {
+            $candidate = $nameMatches[0];
+            $candidateId = (int) $candidate['id'];
+            $usedCandidateIds[$candidateId] = true;
+            $resolvedCandidateIds[$candidateId] = true;
+            $item['candidate_id'] = $candidateId;
+            $item['candidate_name'] = (string) $candidate['nome'];
+            $item['candidate_status'] = (string) $candidate['status'];
+            $item['membership_action'] = 'recuperar_cadastro';
+            $item['membership_message'] = 'CPF não batia no SIGAS, mas o nome oficial encontrou um único cadastro. O CPF será corrigido pela lista oficial.';
+            $resolvedRows[] = $item;
+            continue;
+        }
+
+        // Sem vínculo local seguro: a lista oficial cria o cadastro canônico.
+        $item['membership_action'] = 'criar_candidato_banco';
+        $item['membership_message'] = count($nameMatches) > 1
+            ? 'Há mais de um cadastro com o mesmo nome. Um novo cadastro oficial será criado e os antigos ficarão fora da lista final.'
+            : 'Não existe cadastro local correspondente. Um novo candidato oficial será criado com nome e CPF do Banco do Brasil.';
+        $resolvedRows[] = $item;
     }
 
+    $grantCandidateIds = array_keys($resolvedCandidateIds);
     $grants = [];
     foreach (pe_payment_pdf_in_query(
         $pdo,
-        'SELECT id, candidato_id, competencia, valor, status, data_pagamento, observacao FROM pe_bolsas WHERE competencia = :competencia AND candidato_id IN ',
-        $matchedIds,
+        'SELECT id, candidato_id, competencia, valor, status, data_pagamento, observacao
+           FROM pe_bolsas
+          WHERE competencia = :competencia AND candidato_id IN ',
+        $grantCandidateIds,
         ['competencia' => $competence]
     ) as $grant) {
         $grants[(int) $grant['candidato_id']] = $grant;
@@ -440,6 +568,11 @@ function pe_payment_pdf_analyze(PDO $pdo, array $parsed, string $competence): ar
     $summary = [
         'total' => count($parsed['rows']),
         'cpf_validos' => 0,
+        'candidatos_existentes' => 0,
+        'candidatos_recuperar' => 0,
+        'candidatos_criar' => 0,
+        'candidatos_excluir' => 0,
+        'ativos_apos_sincronizacao' => 0,
         'prontos' => 0,
         'atualizar_pagamento' => 0,
         'ja_conciliados' => 0,
@@ -448,86 +581,94 @@ function pe_payment_pdf_analyze(PDO $pdo, array $parsed, string $competence): ar
         'cpf_invalidos' => 0,
         'divergencias_nome' => 0,
         'conflitos_financeiros' => 0,
-        'sugestoes_nome' => 0,
         'valor_total' => round(array_sum(array_column($parsed['rows'], 'valor')), 2),
     ];
 
     $rows = [];
-    foreach ($parsed['rows'] as $row) {
-        $item = $row + [
-            'candidate_id' => null,
-            'candidate_name' => null,
-            'candidate_status' => null,
-            'match_status' => null,
-            'match_message' => null,
-            'name_divergence' => false,
-            'suggestion' => null,
-            'grant_id' => null,
-        ];
+    $officialResolvedIds = [];
+    foreach ($resolvedRows as $item) {
+        $action = (string) $item['membership_action'];
 
-        if (empty($row['cpf'])) {
+        if ($action === 'cpf_invalido') {
             $summary['cpf_invalidos']++;
-            $item['match_status'] = 'cpf_invalido';
-            $item['match_message'] = 'CPF do PDF não passou na validação.';
-        } else {
-            $summary['cpf_validos']++;
-            $matches = $candidateMap[$row['cpf']] ?? [];
-            if (count($matches) === 0) {
-                $summary['nao_localizados']++;
-                $item['match_status'] = 'nao_localizado';
-                $item['match_message'] = 'CPF não localizado em pe_candidatos.';
-                $nameKey = pe_payment_pdf_normalize_name((string) $row['nome']);
-                $nameMatches = $nameMap[$nameKey] ?? [];
-                if (count($nameMatches) === 1) {
-                    $candidate = $nameMatches[0];
-                    $item['suggestion'] = [
-                        'id' => (int) $candidate['id'],
-                        'nome' => (string) $candidate['nome'],
-                        'cpf' => $candidate['cpf'] ?: $candidate['cpf_informado'],
-                        'status' => (string) $candidate['status'],
-                    ];
-                    $summary['sugestoes_nome']++;
-                }
-            } elseif (count($matches) > 1) {
-                $summary['ambiguos']++;
-                $item['match_status'] = 'cpf_ambiguo';
-                $item['match_message'] = 'Mais de um cadastro possui este CPF; requer revisão manual.';
-                $item['ambiguous_candidates'] = array_map(static fn(array $c): array => [
-                    'id' => (int) $c['id'],
-                    'nome' => (string) $c['nome'],
-                    'status' => (string) $c['status'],
-                ], $matches);
-            } else {
-                $candidate = $matches[0];
-                $candidateId = (int) $candidate['id'];
-                $item['candidate_id'] = $candidateId;
-                $item['candidate_name'] = (string) $candidate['nome'];
-                $item['candidate_status'] = (string) $candidate['status'];
-                $item['name_divergence'] = pe_payment_pdf_normalize_name((string) $candidate['nome']) !== pe_payment_pdf_normalize_name((string) $row['nome']);
-                if ($item['name_divergence']) {
-                    $summary['divergencias_nome']++;
-                }
+            $rows[] = $item;
+            continue;
+        }
 
-                $grant = $grants[$candidateId] ?? null;
-                $finance = pe_payment_pdf_financial_state($grant, (float) $row['valor'], $row['data_situacao'] ?: ($parsed['meta']['data_pagamento'] ?? null));
-                $item['grant_id'] = $grant ? (int) $grant['id'] : null;
-                $item['match_status'] = $finance['state'];
-                $item['match_message'] = $finance['message'];
+        $summary['cpf_validos']++;
 
-                if ($finance['state'] === 'novo_pagamento') {
-                    $summary['prontos']++;
-                } elseif ($finance['state'] === 'atualizar_pagamento') {
-                    $summary['atualizar_pagamento']++;
-                } elseif ($finance['state'] === 'ja_conciliado') {
-                    $summary['ja_conciliados']++;
-                } elseif ($finance['state'] === 'conflito_financeiro') {
-                    $summary['conflitos_financeiros']++;
-                }
-            }
+        if ($action === 'cpf_ambiguo') {
+            $summary['ambiguos']++;
+            $rows[] = $item;
+            continue;
+        }
+
+        if ($action === 'usar_existente') {
+            $summary['candidatos_existentes']++;
+            $officialResolvedIds[(int) $item['candidate_id']] = true;
+        } elseif ($action === 'recuperar_cadastro') {
+            $summary['candidatos_recuperar']++;
+            $officialResolvedIds[(int) $item['candidate_id']] = true;
+        } elseif ($action === 'criar_candidato_banco') {
+            $summary['candidatos_criar']++;
+        }
+
+        if (!empty($item['name_divergence'])) {
+            $summary['divergencias_nome']++;
+        }
+
+        if ($action === 'criar_candidato_banco') {
+            $item['match_status'] = 'novo_pagamento';
+            $item['match_message'] = $item['membership_message'] . ' O pagamento oficial será registrado após a criação.';
+            $summary['prontos']++;
+            $rows[] = $item;
+            continue;
+        }
+
+        $candidateId = (int) $item['candidate_id'];
+        $grant = $grants[$candidateId] ?? null;
+        $finance = pe_payment_pdf_financial_state(
+            $grant,
+            (float) $item['valor'],
+            $item['data_situacao'] ?: ($parsed['meta']['data_pagamento'] ?? null)
+        );
+
+        $item['grant_id'] = $grant ? (int) $grant['id'] : null;
+        $item['match_status'] = $finance['state'];
+        $item['match_message'] = trim($item['membership_message'] . ' ' . $finance['message']);
+
+        if ($finance['state'] === 'novo_pagamento') {
+            $summary['prontos']++;
+        } elseif ($finance['state'] === 'atualizar_pagamento') {
+            $summary['atualizar_pagamento']++;
+        } elseif ($finance['state'] === 'ja_conciliado') {
+            $summary['ja_conciliados']++;
+        } elseif ($finance['state'] === 'conflito_financeiro') {
+            $summary['conflitos_financeiros']++;
         }
 
         $rows[] = $item;
     }
+
+    // A sincronização final só exclui registros atualmente ativos que não estão
+    // ligados a nenhuma pessoa da lista oficial. Cadastros já excluídos não são
+    // contados novamente.
+    $activeIds = $pdo->query(
+        'SELECT id FROM pe_candidatos WHERE lista_final_ativa = 1 ORDER BY id'
+    )->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
+    $excludeCount = 0;
+    foreach ($activeIds as $candidateId) {
+        if (!isset($officialResolvedIds[(int) $candidateId])) {
+            $excludeCount++;
+        }
+    }
+
+    $summary['candidatos_excluir'] = $excludeCount;
+    $summary['ativos_apos_sincronizacao'] =
+        $summary['candidatos_existentes']
+        + $summary['candidatos_recuperar']
+        + $summary['candidatos_criar'];
 
     return [
         'meta' => $parsed['meta'] + ['competencia' => $competence],
@@ -582,15 +723,25 @@ function pe_payment_pdf_apply(PDO $pdo, array $parsed, string $competence, array
         throw new InvalidArgumentException('Competência inválida.');
     }
     if (pe_payment_pdf_normalize_name((string) ($parsed['meta']['estado_lista'] ?? '')) !== 'PAGA') {
-        throw new RuntimeException('A lista do Banco do Brasil não está marcada como PAGA. A conciliação foi bloqueada.');
+        throw new RuntimeException('A lista do Banco do Brasil não está marcada como PAGA. A sincronização foi bloqueada.');
     }
 
     $fileHash = pe_nullable($fileMeta['hash'] ?? null);
     if ($fileHash) {
-        $same = $pdo->prepare('SELECT id, criado_em FROM pe_pagamento_importacoes WHERE arquivo_hash=:hash AND status="Concluída" ORDER BY id DESC LIMIT 1');
+        $same = $pdo->prepare(
+            'SELECT id, criado_em
+               FROM pe_pagamento_importacoes
+              WHERE arquivo_hash=:hash AND status="Concluída"
+              ORDER BY id DESC
+              LIMIT 1'
+        );
         $same->execute(['hash' => $fileHash]);
         if ($previous = $same->fetch(PDO::FETCH_ASSOC)) {
-            throw new RuntimeException('Este mesmo PDF já foi conciliado na importação #' . (int) $previous['id'] . '. A duplicação foi bloqueada.');
+            throw new RuntimeException(
+                'Este mesmo PDF já foi sincronizado na importação #'
+                . (int) $previous['id']
+                . '. A duplicação foi bloqueada.'
+            );
         }
     }
 
@@ -598,9 +749,20 @@ function pe_payment_pdf_apply(PDO $pdo, array $parsed, string $competence, array
     $meta = $parsed['meta'];
     $summary = $analysis['summary'];
 
+    if ((int) $summary['cpf_invalidos'] > 0 || (int) $summary['ambiguos'] > 0) {
+        throw new RuntimeException(
+            'A lista oficial não pode ser aplicada enquanto houver CPF inválido ou CPF ambíguo na base local. '
+            . 'Foram encontrados ' . (int) $summary['cpf_invalidos'] . ' CPF(s) inválido(s) e '
+            . (int) $summary['ambiguos'] . ' CPF(s) ambíguo(s).'
+        );
+    }
+
     $counters = [
         'conciliados' => 0,
         'atualizados' => 0,
+        'candidatos_criados' => 0,
+        'candidatos_recuperados' => 0,
+        'candidatos_excluidos' => 0,
         'ja_conciliados' => 0,
         'nao_localizados' => 0,
         'ambiguos' => 0,
@@ -609,16 +771,17 @@ function pe_payment_pdf_apply(PDO $pdo, array $parsed, string $competence, array
         'conflitos_financeiros' => 0,
         'erros' => 0,
     ];
-    $errors = [];
 
     $pdo->beginTransaction();
     try {
-        $header = $pdo->prepare('INSERT INTO pe_pagamento_importacoes
-            (arquivo_nome, arquivo_hash, banco, convenio_numero, convenio_nome, lista_numero, lista_nome, estado_lista,
-             data_pagamento, forma_pagamento, competencia, total_pagamentos, valor_total, fonte_extracao, responsavel, status)
-            VALUES
-            (:arquivo_nome, :arquivo_hash, :banco, :convenio_numero, :convenio_nome, :lista_numero, :lista_nome, :estado_lista,
-             :data_pagamento, :forma_pagamento, :competencia, :total_pagamentos, :valor_total, :fonte_extracao, :responsavel, "Processando")');
+        $header = $pdo->prepare(
+            'INSERT INTO pe_pagamento_importacoes
+                (arquivo_nome, arquivo_hash, banco, convenio_numero, convenio_nome, lista_numero, lista_nome, estado_lista,
+                 data_pagamento, forma_pagamento, competencia, total_pagamentos, valor_total, fonte_extracao, responsavel, status)
+             VALUES
+                (:arquivo_nome, :arquivo_hash, :banco, :convenio_numero, :convenio_nome, :lista_numero, :lista_nome, :estado_lista,
+                 :data_pagamento, :forma_pagamento, :competencia, :total_pagamentos, :valor_total, :fonte_extracao, :responsavel, "Processando")'
+        );
         $header->execute([
             'arquivo_nome' => $fileMeta['name'],
             'arquivo_hash' => $fileHash,
@@ -638,111 +801,329 @@ function pe_payment_pdf_apply(PDO $pdo, array $parsed, string $competence, array
         ]);
         $importId = (int) $pdo->lastInsertId();
 
-        $markContemplado = $pdo->prepare('UPDATE pe_candidatos SET status="Contemplado", updated_at=CURRENT_TIMESTAMP WHERE id=:id');
-        $insertGrant = $pdo->prepare('INSERT INTO pe_bolsas
-            (candidato_id, competencia, valor, status, data_pagamento, observacao, registrado_por)
-            VALUES (:candidato_id, :competencia, :valor, "Pago", :data_pagamento, :observacao, :responsavel)');
-        $updateGrant = $pdo->prepare('UPDATE pe_bolsas SET
-            valor=:valor, status="Pago", data_pagamento=:data_pagamento, observacao=:observacao,
-            registrado_por=:responsavel, updated_at=CURRENT_TIMESTAMP
-            WHERE id=:id');
+        $activateCandidate = $pdo->prepare(
+            'UPDATE pe_candidatos SET
+                status="Contemplado",
+                lista_final_ativa=1,
+                lista_final_origem="Banco do Brasil",
+                lista_final_importacao_id=:importacao_id,
+                lista_final_sincronizada_em=CURRENT_TIMESTAMP,
+                lista_final_excluido_em=NULL,
+                lista_final_exclusao_motivo=NULL,
+                updated_at=CURRENT_TIMESTAMP
+             WHERE id=:id'
+        );
+
+        $recoverCandidate = $pdo->prepare(
+            'UPDATE pe_candidatos SET
+                cpf=:cpf,
+                cpf_informado=:cpf_informado,
+                cpf_revisado_confirmado=1,
+                revisao_cpf=0,
+                status="Contemplado",
+                lista_final_ativa=1,
+                lista_final_origem="Banco do Brasil",
+                lista_final_importacao_id=:importacao_id,
+                lista_final_sincronizada_em=CURRENT_TIMESTAMP,
+                lista_final_excluido_em=NULL,
+                lista_final_exclusao_motivo=NULL,
+                updated_at=CURRENT_TIMESTAMP
+             WHERE id=:id'
+        );
+
+        $createCandidate = $pdo->prepare(
+            'INSERT INTO pe_candidatos
+                (nome, cpf, cpf_informado, status,
+                 revisao_status, revisao_cpf, revisao_telefone, revisao_nascimento, cpf_duplicado,
+                 cpf_revisado_confirmado, revisao_motivos, revisao_atualizada_em,
+                 origem, chave_importacao,
+                 lista_final_ativa, lista_final_origem, lista_final_importacao_id, lista_final_sincronizada_em)
+             VALUES
+                (:nome, :cpf, :cpf_informado, "Contemplado",
+                 "Revisar Cadastro", 0, 1, 1, 0,
+                 1, :revisao_motivos, CURRENT_TIMESTAMP,
+                 "banco_bb", :chave_importacao,
+                 1, "Banco do Brasil", :importacao_id, CURRENT_TIMESTAMP)'
+        );
+
+        $insertGrant = $pdo->prepare(
+            'INSERT INTO pe_bolsas
+                (candidato_id, competencia, valor, status, data_pagamento, observacao, registrado_por)
+             VALUES
+                (:candidato_id, :competencia, :valor, "Pago", :data_pagamento, :observacao, :responsavel)'
+        );
+
+        $updateGrant = $pdo->prepare(
+            'UPDATE pe_bolsas SET
+                valor=:valor,
+                status="Pago",
+                data_pagamento=:data_pagamento,
+                observacao=:observacao,
+                registrado_por=:responsavel,
+                updated_at=CURRENT_TIMESTAMP
+             WHERE id=:id'
+        );
+
+        $includedIds = [];
 
         foreach ($analysis['rows'] as $row) {
-            $pdo->exec('SAVEPOINT pe_payment_pdf_row');
-            try {
-                $state = (string) $row['match_status'];
-                $candidateId = $row['candidate_id'] ? (int) $row['candidate_id'] : null;
-                $message = (string) ($row['match_message'] ?? '');
-                $appliedAt = null;
-                $logStatus = '';
-
-                if ($state === 'cpf_invalido') {
-                    $counters['cpf_invalidos']++;
-                    $logStatus = 'CPF inválido';
-                } elseif ($state === 'nao_localizado') {
-                    $counters['nao_localizados']++;
-                    $logStatus = 'Não localizado';
-                    if (!empty($row['suggestion']['id'])) {
-                        $message .= ' Sugestão por nome: candidato #' . (int) $row['suggestion']['id'] . ' - ' . (string) $row['suggestion']['nome'] . '.';
-                    }
-                } elseif ($state === 'cpf_ambiguo') {
-                    $counters['ambiguos']++;
-                    $logStatus = 'CPF ambíguo';
-                } elseif ($candidateId) {
-                    // O PDF oficial confirma participação no programa, mas nunca altera dados pessoais.
-                    $markContemplado->execute(['id' => $candidateId]);
-                    $officialDate = $row['data_situacao'] ?: ($meta['data_pagamento'] ?? null);
-                    $marker = 'Pagamento BB convênio ' . ($meta['convenio_numero'] ?: '—') . ', lista ' . ($meta['lista_numero'] ?: '—') . ', N IDENT ' . $row['n_ident'];
-
-                    if ($state === 'novo_pagamento') {
-                        $insertGrant->execute([
-                            'candidato_id' => $candidateId,
-                            'competencia' => $competence,
-                            'valor' => $row['valor'],
-                            'data_pagamento' => $officialDate,
-                            'observacao' => mb_substr($marker, 0, 500, 'UTF-8'),
-                            'responsavel' => pe_nullable($responsavel),
-                        ]);
-                        $counters['conciliados']++;
-                        $logStatus = 'Aplicado';
-                        $appliedAt = date('Y-m-d H:i:s');
-                    } elseif ($state === 'atualizar_pagamento') {
-                        $grant = pe_grant_by_id($pdo, (int) $row['grant_id']);
-                        if (!$grant) {
-                            throw new RuntimeException('Bolsa existente não foi encontrada durante a conciliação.');
-                        }
-                        $updateGrant->execute([
-                            'valor' => $row['valor'],
-                            'data_pagamento' => $officialDate,
-                            'observacao' => pe_payment_pdf_append_observation($grant['observacao'] ?? null, $marker),
-                            'responsavel' => pe_nullable($responsavel),
-                            'id' => (int) $grant['id'],
-                        ]);
-                        $counters['atualizados']++;
-                        $logStatus = 'Atualizado';
-                        $appliedAt = date('Y-m-d H:i:s');
-                    } elseif ($state === 'ja_conciliado') {
-                        $counters['ja_conciliados']++;
-                        $logStatus = 'Já conciliado';
-                        $appliedAt = date('Y-m-d H:i:s');
-                    } elseif ($state === 'conflito_financeiro') {
-                        $counters['conflitos_financeiros']++;
-                        $logStatus = 'Conflito financeiro';
-                    } else {
-                        throw new RuntimeException('Estado de conciliação não reconhecido: ' . $state);
-                    }
-                } else {
-                    throw new RuntimeException('Linha sem candidato e sem classificação de pendência.');
-                }
-
-                if (!empty($row['name_divergence'])) {
-                    $message = trim($message . ' Divergência de nome: Banco “' . $row['nome'] . '” x SIGAS “' . $row['candidate_name'] . '”.');
-                }
-
-                pe_payment_pdf_log_item($pdo, $importId, $row, $logStatus, pe_nullable($message), $candidateId, $appliedAt);
-            } catch (Throwable $rowError) {
-                $pdo->exec('ROLLBACK TO SAVEPOINT pe_payment_pdf_row');
-                $counters['erros']++;
-                $errors[] = ['n_ident' => $row['n_ident'], 'message' => $rowError->getMessage()];
-                pe_payment_pdf_log_item($pdo, $importId, $row, 'Erro', $rowError->getMessage(), null, null);
+            $membershipAction = (string) ($row['membership_action'] ?? '');
+            if (in_array($membershipAction, ['cpf_invalido', 'cpf_ambiguo'], true)) {
+                throw new RuntimeException(
+                    'A sincronização encontrou uma pendência inesperada no N IDENT. '
+                    . (string) $row['n_ident']
+                    . ': ' . (string) ($row['membership_message'] ?? 'pendência cadastral')
+                );
             }
+
+            $candidateId = isset($row['candidate_id']) && $row['candidate_id']
+                ? (int) $row['candidate_id']
+                : 0;
+
+            if ($membershipAction === 'usar_existente') {
+                if ($candidateId <= 0) {
+                    throw new RuntimeException('Cadastro existente sem ID no N IDENT. ' . (string) $row['n_ident'] . '.');
+                }
+                $activateCandidate->execute([
+                    'importacao_id' => $importId,
+                    'id' => $candidateId,
+                ]);
+            } elseif ($membershipAction === 'recuperar_cadastro') {
+                if ($candidateId <= 0 || empty($row['cpf'])) {
+                    throw new RuntimeException('Cadastro a recuperar sem ID/CPF no N IDENT. ' . (string) $row['n_ident'] . '.');
+                }
+                $recoverCandidate->execute([
+                    'cpf' => $row['cpf'],
+                    'cpf_informado' => $row['cpf'],
+                    'importacao_id' => $importId,
+                    'id' => $candidateId,
+                ]);
+                $counters['candidatos_recuperados']++;
+            } elseif ($membershipAction === 'criar_candidato_banco') {
+                if (empty($row['cpf'])) {
+                    throw new RuntimeException('Não foi possível criar o candidato do N IDENT. ' . (string) $row['n_ident'] . ' sem CPF válido.');
+                }
+
+                $createCandidate->execute([
+                    'nome' => mb_substr(trim((string) $row['nome']), 0, 160, 'UTF-8'),
+                    'cpf' => $row['cpf'],
+                    'cpf_informado' => $row['cpf'],
+                    'revisao_motivos' => 'Cadastro criado pela lista oficial do Banco do Brasil. Complementar telefone e data de nascimento.',
+                    'chave_importacao' => hash(
+                        'sha256',
+                        'bb-final|'
+                        . (string) ($meta['convenio_numero'] ?? '')
+                        . '|'
+                        . (string) ($meta['lista_numero'] ?? '')
+                        . '|'
+                        . (string) $row['cpf']
+                    ),
+                    'importacao_id' => $importId,
+                ]);
+                $candidateId = (int) $pdo->lastInsertId();
+                $counters['candidatos_criados']++;
+            } else {
+                throw new RuntimeException(
+                    'Ação de vínculo oficial não reconhecida no N IDENT. '
+                    . (string) $row['n_ident']
+                    . ': ' . $membershipAction
+                );
+            }
+
+            if ($candidateId <= 0) {
+                throw new RuntimeException('Não foi possível determinar o candidato do N IDENT. ' . (string) $row['n_ident'] . '.');
+            }
+            $includedIds[$candidateId] = true;
+
+            $officialDate = $row['data_situacao'] ?: ($meta['data_pagamento'] ?? null);
+            $marker =
+                'Pagamento BB convênio ' . ($meta['convenio_numero'] ?: '—')
+                . ', lista ' . ($meta['lista_numero'] ?: '—')
+                . ', N IDENT ' . $row['n_ident'];
+
+            $state = (string) ($row['match_status'] ?? 'novo_pagamento');
+            $logStatus = 'Lista oficial';
+            $message = trim((string) ($row['match_message'] ?? ''));
+            $appliedAt = date('Y-m-d H:i:s');
+
+            // Para cadastro criado no mesmo processamento, a bolsa é sempre nova.
+            if ($membershipAction === 'criar_candidato_banco') {
+                $state = 'novo_pagamento';
+            }
+
+            if ($state === 'novo_pagamento') {
+                $insertGrant->execute([
+                    'candidato_id' => $candidateId,
+                    'competencia' => $competence,
+                    'valor' => $row['valor'],
+                    'data_pagamento' => $officialDate,
+                    'observacao' => mb_substr($marker, 0, 500, 'UTF-8'),
+                    'responsavel' => pe_nullable($responsavel),
+                ]);
+                $counters['conciliados']++;
+                $logStatus = $membershipAction === 'criar_candidato_banco'
+                    ? 'Cadastro criado + Pago'
+                    : ($membershipAction === 'recuperar_cadastro' ? 'Cadastro recuperado + Pago' : 'Aplicado');
+            } elseif ($state === 'atualizar_pagamento') {
+                $grant = pe_grant_by_id($pdo, (int) $row['grant_id']);
+                if (!$grant) {
+                    throw new RuntimeException('Bolsa existente não foi encontrada durante a sincronização.');
+                }
+                $updateGrant->execute([
+                    'valor' => $row['valor'],
+                    'data_pagamento' => $officialDate,
+                    'observacao' => pe_payment_pdf_append_observation($grant['observacao'] ?? null, $marker),
+                    'responsavel' => pe_nullable($responsavel),
+                    'id' => (int) $grant['id'],
+                ]);
+                $counters['atualizados']++;
+                $logStatus = $membershipAction === 'recuperar_cadastro'
+                    ? 'Cadastro recuperado + Atualizado'
+                    : 'Atualizado';
+            } elseif ($state === 'ja_conciliado') {
+                $counters['ja_conciliados']++;
+                $logStatus = $membershipAction === 'recuperar_cadastro'
+                    ? 'Cadastro recuperado + Já pago'
+                    : 'Já conciliado';
+            } elseif ($state === 'conflito_financeiro') {
+                // A lista oficial define quem pertence à base, mas um conflito financeiro
+                // continua protegido: o candidato entra na lista final e o pagamento fica
+                // registrado para conferência, sem sobrescrever um dado financeiro conflitante.
+                $counters['conflitos_financeiros']++;
+                $logStatus = 'Lista oficial + Conflito';
+                $appliedAt = null;
+            } else {
+                throw new RuntimeException('Estado financeiro não reconhecido: ' . $state);
+            }
+
+            if (!empty($row['name_divergence'])) {
+                $message = trim(
+                    $message
+                    . ' Divergência de nome: Banco “'
+                    . (string) $row['nome']
+                    . '” x SIGAS “'
+                    . (string) $row['candidate_name']
+                    . '”. O nome local foi preservado.'
+                );
+            }
+
+            pe_payment_pdf_log_item(
+                $pdo,
+                $importId,
+                $row,
+                $logStatus,
+                pe_nullable($message),
+                $candidateId,
+                $appliedAt
+            );
         }
 
-        $finish = $pdo->prepare('UPDATE pe_pagamento_importacoes SET
-            conciliados=:conciliados, atualizados=:atualizados, ja_conciliados=:ja_conciliados,
-            nao_localizados=:nao_localizados, ambiguos=:ambiguos, cpf_invalidos=:cpf_invalidos,
-            divergencias_nome=:divergencias_nome, conflitos_financeiros=:conflitos_financeiros, erros=:erros,
-            status="Concluída", finalizada_em=CURRENT_TIMESTAMP
-            WHERE id=:id');
+        if (count($includedIds) !== count($parsed['rows'])) {
+            throw new RuntimeException(
+                'A sincronização oficial seria incompleta: '
+                . count($includedIds)
+                . ' candidato(s) resolvido(s) para '
+                . count($parsed['rows'])
+                . ' registro(s) do Banco. Nenhuma alteração foi confirmada.'
+            );
+        }
+
+        $params = [
+            'importacao_id' => $importId,
+            'motivo' => 'Não consta na lista oficial do Banco do Brasil - convênio '
+                . (string) ($meta['convenio_numero'] ?? '—')
+                . ', lista '
+                . (string) ($meta['lista_numero'] ?? '—')
+                . '.',
+        ];
+        $placeholders = [];
+        foreach (array_keys($includedIds) as $index => $id) {
+            $key = 'incluido_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = (int) $id;
+        }
+
+        $excludeSql =
+            'UPDATE pe_candidatos SET
+                lista_final_ativa=0,
+                lista_final_importacao_id=:importacao_id,
+                lista_final_excluido_em=CURRENT_TIMESTAMP,
+                lista_final_exclusao_motivo=:motivo,
+                updated_at=CURRENT_TIMESTAMP
+             WHERE lista_final_ativa=1
+               AND id NOT IN (' . implode(',', $placeholders) . ')';
+
+        $exclude = $pdo->prepare($excludeSql);
+        $exclude->execute($params);
+        $counters['candidatos_excluidos'] = $exclude->rowCount();
+
+        // Se houver a tabela nova de lotações, encerra somente lotações ativas
+        // dos candidatos retirados da lista final. O histórico não é apagado.
+        try {
+            if ($pdo->query("SHOW TABLES LIKE 'pe_lotacoes'")->fetchColumn()) {
+                $endPlacements = $pdo->prepare(
+                    'UPDATE pe_lotacoes l
+                      INNER JOIN pe_candidatos c ON c.id=l.candidato_id
+                       SET l.status="Encerrada",
+                           l.data_fim=COALESCE(l.data_fim, :data_fim),
+                           l.candidato_ativo_id=NULL,
+                           l.observacao=CASE
+                               WHEN l.observacao IS NULL OR TRIM(l.observacao)="" THEN :observacao
+                               WHEN l.observacao LIKE :observacao_like THEN l.observacao
+                               ELSE CONCAT(LEFT(l.observacao, 360), " | ", :observacao)
+                           END,
+                           l.updated_at=CURRENT_TIMESTAMP
+                     WHERE c.lista_final_ativa=0
+                       AND c.lista_final_importacao_id=:importacao_id
+                       AND l.status="Ativa"'
+                );
+                $placementNote = 'Encerrada automaticamente: candidato fora da lista oficial do Banco do Brasil.';
+                $endPlacements->execute([
+                    'data_fim' => $meta['data_pagamento'] ?: date('Y-m-d'),
+                    'observacao' => $placementNote,
+                    'observacao_like' => '%' . $placementNote . '%',
+                    'importacao_id' => $importId,
+                ]);
+            }
+        } catch (Throwable) {
+            // A exclusão da base oficial não depende da tabela de lotações.
+        }
+
+        // Recalcula as pendências depois de retirar duplicidades que ficaram fora
+        // da lista final. Assim um CPF oficial não permanece marcado como duplicado
+        // apenas por existir em um cadastro histórico excluído.
+        foreach (array_keys($includedIds) as $candidateId) {
+            pe_recalculate_review($pdo, (int) $candidateId);
+        }
+
+        $finish = $pdo->prepare(
+            'UPDATE pe_pagamento_importacoes SET
+                conciliados=:conciliados,
+                atualizados=:atualizados,
+                candidatos_criados=:candidatos_criados,
+                candidatos_recuperados=:candidatos_recuperados,
+                candidatos_excluidos=:candidatos_excluidos,
+                ja_conciliados=:ja_conciliados,
+                nao_localizados=:nao_localizados,
+                ambiguos=:ambiguos,
+                cpf_invalidos=:cpf_invalidos,
+                divergencias_nome=:divergencias_nome,
+                conflitos_financeiros=:conflitos_financeiros,
+                erros=:erros,
+                status="Concluída",
+                finalizada_em=CURRENT_TIMESTAMP
+             WHERE id=:id'
+        );
         $finish->execute($counters + ['id' => $importId]);
 
         $pdo->commit();
 
         return $counters + [
             'import_id' => $importId,
-            'errors_list' => $errors,
+            'errors_list' => [],
             'total' => count($parsed['rows']),
             'valor_total' => $meta['valor_total'],
+            'ativos_lista_final' => count($includedIds),
         ];
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
@@ -756,7 +1137,8 @@ function pe_payment_pdf_history(PDO $pdo, int $limit = 8): array
 {
     $limit = max(1, min($limit, 50));
     return $pdo->query('SELECT id, arquivo_nome, convenio_numero, lista_numero, competencia, total_pagamentos, valor_total,
-        conciliados, atualizados, ja_conciliados, nao_localizados, ambiguos, cpf_invalidos,
+        conciliados, atualizados, candidatos_criados, candidatos_recuperados, candidatos_excluidos,
+        ja_conciliados, nao_localizados, ambiguos, cpf_invalidos,
         conflitos_financeiros, erros, responsavel, status, criado_em, finalizada_em
         FROM pe_pagamento_importacoes ORDER BY id DESC LIMIT ' . $limit)->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }

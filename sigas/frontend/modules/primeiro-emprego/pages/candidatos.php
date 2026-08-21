@@ -35,6 +35,7 @@ $stats = [
     'total' => 0,
     'contemplados' => 0,
     'lista_espera' => 0,
+    'excluidos_lista_final' => 0,
     'visitas' => 0,
     'deferidos' => 0,
     'indeferidos' => 0,
@@ -50,6 +51,14 @@ $filters = [
             (string) (
                 $_GET['q']
                 ?? ''
+            )
+        ),
+
+    'base' =>
+        trim(
+            (string) (
+                $_GET['base']
+                ?? 'ativos'
             )
         ),
 
@@ -653,6 +662,19 @@ ob_start();
         </div>
 
 
+        <div class="pe-kpi pe-kpi--muted">
+            <span>
+                Fora da lista final
+            </span>
+            <strong>
+                <?= (int) $stats['excluidos_lista_final'] ?>
+            </strong>
+            <small>
+                preservados apenas no histórico
+            </small>
+        </div>
+
+
         <div class="pe-kpi">
 
             <span>
@@ -982,6 +1004,17 @@ ob_start();
                 Sem pendência
             </option>
 
+        </select>
+
+
+        <select
+            class="form-select"
+            name="base"
+            aria-label="Filtrar base oficial"
+        >
+            <option value="ativos"<?= $filters['base'] === 'ativos' ? ' selected' : '' ?>>Base oficial ativa</option>
+            <option value="excluidos"<?= $filters['base'] === 'excluidos' ? ' selected' : '' ?>>Fora da lista final</option>
+            <option value="todos"<?= $filters['base'] === 'todos' ? ' selected' : '' ?>>Todos os cadastros</option>
         </select>
 
 
@@ -1384,14 +1417,19 @@ ob_start();
                             )
                             : 'Cadastro sem pendências';
 
-                    $candidateStatusClass =
-                        match ((string) $row['status']) {
+                    $candidateStatusLabel = !empty($row['lista_final_ativa'])
+                        ? (string) $row['status']
+                        : 'Fora da lista final';
+
+                    $candidateStatusClass = !empty($row['lista_final_ativa'])
+                        ? match ((string) $row['status']) {
                             'Contemplado' => 'status-success',
                             'Lista de espera' => 'status-warning',
                             'Indeferido' => 'status-danger',
                             'Em análise', 'Em triagem' => 'status-info',
                             default => 'status-neutral',
-                        };
+                        }
+                        : 'status-neutral';
 
                     ?>
 
@@ -1714,7 +1752,7 @@ ob_start();
                                 "
                             >
                                 <?= pe_h(
-                                    $row['status']
+                                    $candidateStatusLabel
                                 ) ?>
                             </span>
                         </td>

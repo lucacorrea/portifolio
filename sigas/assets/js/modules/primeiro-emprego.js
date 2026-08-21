@@ -1278,7 +1278,7 @@
         lastAnalysis = null;
         applyButton.disabled = true;
         applyButton.title = 'Analise o PDF antes de confirmar';
-        if (applyLabel) applyLabel.textContent = 'Confirmar conciliação';
+        if (applyLabel) applyLabel.textContent = 'Sincronizar lista final';
         analysisBox.hidden = true;
         if (rowsNode) rowsNode.innerHTML = '';
         if (kpisNode) kpisNode.innerHTML = '';
@@ -1519,13 +1519,13 @@
         }
 
         const cards = [
-            ['Registros no PDF', summary.total],
-            ['CPF válidos', summary.cpf_validos],
-            ['Novos pagamentos', summary.prontos],
-            ['Bolsas a atualizar', summary.atualizar_pagamento],
-            ['Já conciliados', summary.ja_conciliados],
-            ['Não localizados', summary.nao_localizados],
-            ['CPF ambíguo', summary.ambiguos],
+            ['Lista oficial', summary.total],
+            ['Já existentes', summary.candidatos_existentes],
+            ['Recuperar / corrigir CPF', summary.candidatos_recuperar],
+            ['Criar pelo Banco', summary.candidatos_criar],
+            ['Retirar da base ativa', summary.candidatos_excluir],
+            ['Base ativa após sincronizar', summary.ativos_apos_sincronizacao],
+            ['Pagamentos novos', summary.prontos],
             ['Conflitos financeiros', summary.conflitos_financeiros],
         ];
 
@@ -1535,20 +1535,24 @@
             )).join('');
         }
 
-        const unresolved = Number(summary.nao_localizados || 0)
-            + Number(summary.ambiguos || 0)
+        const unresolved = Number(summary.ambiguos || 0)
             + Number(summary.cpf_invalidos || 0);
         const conflicts = Number(summary.conflitos_financeiros || 0);
         const ready = Number(summary.prontos || 0);
         const updates = Number(summary.atualizar_pagamento || 0);
+        const creates = Number(summary.candidatos_criar || 0);
+        const recovers = Number(summary.candidatos_recuperar || 0);
+        const excludes = Number(summary.candidatos_excluir || 0);
         const canApplyByState = String(meta.estado_lista || '').trim().toUpperCase() === 'PAGA';
-        const hasChanges = ready + updates > 0;
+        const hasChanges = ready + updates + creates + recovers + excludes > 0;
 
         if (warningNode) {
             warningNode.className = `alert ${unresolved || conflicts ? 'alert-warning' : 'alert-success'} mt-3 mb-0`;
             warningNode.innerHTML = canApplyByState
-                ? `<strong>Pré-análise concluída.</strong> ${unresolved} registro(s) não serão aplicados automaticamente. ${Number(summary.divergencias_nome || 0)} divergência(s) de nome serão apenas registradas. ${hasChanges ? 'A conciliação pode ser confirmada.' : 'Não há novos pagamentos ou bolsas para atualizar.'}`
-                : `<strong>Conciliação bloqueada.</strong> A lista está como “${escapeHtml(meta.estado_lista || 'sem estado')}”. Somente listas PAGA podem ser aplicadas.`;
+                ? (unresolved > 0
+                    ? `<strong>Sincronização bloqueada.</strong> Existem ${unresolved} CPF(s) inválido(s) ou ambíguo(s) na base local. Resolva antes de usar a lista final.`
+                    : `<strong>Lista final pronta.</strong> O SIGAS ficará com ${Number(summary.ativos_apos_sincronizacao || 0)} candidato(s) ativos. Serão criados ${creates}, recuperados ${recovers} e retirados da base ativa ${excludes}. Os retirados não serão apagados: permanecem no histórico.`)
+                : `<strong>Sincronização bloqueada.</strong> A lista está como “${escapeHtml(meta.estado_lista || 'sem estado')}”. Somente listas PAGA podem ser aplicadas.`;
         }
 
         const priorities = {
@@ -1569,6 +1573,8 @@
                 let sigas = '—';
                 if (row.candidate_id) {
                     sigas = `<strong>#${Number(row.candidate_id)} · ${escapeHtml(row.candidate_name)}</strong><small>${escapeHtml(row.candidate_status || '')}${row.name_divergence ? ' · Divergência de nome' : ''}</small>`;
+                } else if (row.membership_action === 'criar_candidato_banco') {
+                    sigas = `<strong class="text-success-emphasis">Novo cadastro oficial</strong><small>Será criado com o CPF e o nome da lista do Banco.</small>`;
                 } else if (row.suggestion && row.suggestion.id) {
                     sigas = `<span class="text-warning-emphasis">Sugestão por nome: #${Number(row.suggestion.id)} · ${escapeHtml(row.suggestion.nome)}</span><small>Não será vinculado automaticamente.</small>`;
                 } else if (Array.isArray(row.ambiguous_candidates) && row.ambiguous_candidates.length) {
@@ -1593,14 +1599,14 @@
         }
 
         analysisBox.hidden = false;
-        analyzed = canApplyByState && hasChanges;
+        analyzed = canApplyByState && unresolved === 0 && hasChanges;
         applyButton.disabled = !analyzed;
         applyButton.title = analyzed
-            ? 'Confirmar e gravar a conciliação'
+            ? 'Sincronizar a base oficial e os pagamentos'
             : (canApplyByState ? 'Não há alterações financeiras novas para aplicar' : 'Somente listas PAGA podem ser conciliadas');
 
         if (analyzed) {
-            setLiveStatus(`PDF conferido com sucesso. ${ready} novo(s) pagamento(s) e ${updates} bolsa(s) serão atualizados. Revise a prévia e confirme a conciliação.`, 'success', 'bi-check-circle');
+            setLiveStatus(`Lista oficial conferida. Base final: ${Number(summary.ativos_apos_sincronizacao || 0)} candidato(s); ${creates} novo(s), ${recovers} recuperado(s) e ${excludes} retirado(s) da base ativa.`, 'success', 'bi-check-circle');
         } else if (canApplyByState) {
             setLiveStatus('PDF conferido. Não existem novos pagamentos ou bolsas a atualizar nesta competência.', 'warning', 'bi-exclamation-circle');
         } else {
@@ -1690,14 +1696,14 @@
         }
 
         const summary = lastAnalysis.summary || {};
-        const confirmation = `Confirmar a conciliação de ${Number(summary.prontos || 0)} novo(s) pagamento(s) e ${Number(summary.atualizar_pagamento || 0)} atualização(ões) de bolsa? Registros não localizados, ambíguos ou com conflito financeiro serão apenas registrados para revisão.`;
+        const confirmation = `CONFIRMAR SINCRONIZAÇÃO DA LISTA FINAL?\n\nA base ativa ficará com ${Number(summary.ativos_apos_sincronizacao || 0)} candidato(s).\n${Number(summary.candidatos_criar || 0)} cadastro(s) serão criados pelo Banco.\n${Number(summary.candidatos_recuperar || 0)} cadastro(s) terão o CPF oficial recuperado/corrigido.\n${Number(summary.candidatos_excluir || 0)} cadastro(s) que não constam no Banco sairão da base ativa, mas NÃO serão apagados do histórico.\n\nDeseja continuar?`;
         if (!window.confirm(confirmation)) {
             event.preventDefault();
             return;
         }
 
         applyButton.disabled = true;
-        if (applyLabel) applyLabel.textContent = 'Conciliando…';
-        setLiveStatus('Conciliação em andamento. Não feche esta página até a conclusão.', 'loading', 'bi-arrow-repeat');
+        if (applyLabel) applyLabel.textContent = 'Sincronizando…';
+        setLiveStatus('Sincronização oficial em andamento. Não feche esta página até a conclusão.', 'loading', 'bi-arrow-repeat');
     });
 })();

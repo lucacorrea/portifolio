@@ -4,6 +4,29 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 
+
+function pe_final_list_schema_ready(PDO $pdo): bool
+{
+    static $cache = [];
+    $key = spl_object_id($pdo);
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
+
+    try {
+        $pdo->query('SELECT lista_final_ativa FROM pe_candidatos LIMIT 1');
+        return $cache[$key] = true;
+    } catch (Throwable) {
+        return $cache[$key] = false;
+    }
+}
+
+function pe_final_list_condition(PDO $pdo, string $alias = 'c'): string
+{
+    $alias = preg_replace('/[^a-zA-Z0-9_]/', '', $alias) ?: 'c';
+    return pe_final_list_schema_ready($pdo) ? $alias . '.lista_final_ativa = 1' : '1=1';
+}
+
 function pe_candidate_by_id(PDO $pdo, int $id): ?array
 {
     $stmt = $pdo->prepare('SELECT * FROM pe_candidatos WHERE id = :id LIMIT 1');
@@ -15,8 +38,9 @@ function pe_candidate_by_id(PDO $pdo, int $id): ?array
 function pe_recent_candidates(PDO $pdo, int $limit = 300): array
 {
     $limit = max(1, min($limit, 1000));
+    $where = pe_final_list_schema_ready($pdo) ? ' WHERE lista_final_ativa = 1' : '';
     $sql = 'SELECT id, nome, cpf, cpf_informado, telefone, endereco, bairro, nis, data_nascimento, escolaridade, instituicao_ensino, situacao_escolar, turno_estudo
-            FROM pe_candidatos ORDER BY nome ASC LIMIT ' . $limit;
+            FROM pe_candidatos' . $where . ' ORDER BY nome ASC LIMIT ' . $limit;
     return $pdo->query($sql)->fetchAll();
 }
 
@@ -292,6 +316,9 @@ function pe_report_rows(PDO $pdo, array $filters = []): array
     $where = [];
     $params = [];
     $join = pe_active_location_join($pdo, 'c', 'f');
+    if (pe_final_list_schema_ready($pdo)) {
+        $where[] = 'c.lista_final_ativa = 1';
+    }
     $search = trim((string) ($filters['q'] ?? ''));
     if ($search !== '') {
         $like = '%' . $search . '%';
@@ -320,23 +347,32 @@ function pe_report_rows(PDO $pdo, array $filters = []): array
 
 function pe_dashboard_stats(PDO $pdo): array
 {
+    $hasFinal = pe_final_list_schema_ready($pdo);
+    $active = $hasFinal ? ' WHERE lista_final_ativa = 1' : '';
+    $activeAnd = $hasFinal ? ' AND lista_final_ativa = 1' : '';
+
     $sql = 'SELECT
-        (SELECT COUNT(*) FROM pe_candidatos) total,
-        (SELECT COUNT(*) FROM pe_candidatos WHERE status = "Contemplado") contemplados,
-        (SELECT COUNT(*) FROM pe_candidatos WHERE status = "Lista de espera") lista_espera,
+        (SELECT COUNT(*) FROM pe_candidatos' . $active . ') total,
+        (SELECT COUNT(*) FROM pe_candidatos WHERE status = "Contemplado"' . $activeAnd . ') contemplados,
+        (SELECT COUNT(*) FROM pe_candidatos WHERE status = "Lista de espera"' . $activeAnd . ') lista_espera,
+        ' . ($hasFinal
+            ? '(SELECT COUNT(*) FROM pe_candidatos WHERE lista_final_ativa = 0) excluidos_lista_final,'
+            : '0 excluidos_lista_final,') . '
         (SELECT COUNT(*) FROM pe_visitas_sociais) visitas,
         (SELECT COUNT(*) FROM pe_visitas_sociais WHERE decisao = "Deferido") deferidos,
         (SELECT COUNT(*) FROM pe_visitas_sociais WHERE decisao = "Indeferido") indeferidos,
-        (SELECT COUNT(*) FROM pe_candidatos WHERE origem = "importacao") importados,
-        (SELECT COUNT(*) FROM pe_candidatos WHERE revisao_status IS NOT NULL AND revisao_status <> "") revisao_pendente,
-        (SELECT COUNT(*) FROM pe_candidatos WHERE revisao_status = "Revisar Cadastro") revisar_cadastro,
-        (SELECT COUNT(*) FROM pe_candidatos WHERE cpf_duplicado = 1 AND cpf_duplicado_confirmado = 0) cpf_duplicado';
+        (SELECT COUNT(*) FROM pe_candidatos WHERE origem = "importacao"' . $activeAnd . ') importados,
+        (SELECT COUNT(*) FROM pe_candidatos WHERE revisao_status IS NOT NULL AND revisao_status <> ""' . $activeAnd . ') revisao_pendente,
+        (SELECT COUNT(*) FROM pe_candidatos WHERE revisao_status = "Revisar Cadastro"' . $activeAnd . ') revisar_cadastro,
+        (SELECT COUNT(*) FROM pe_candidatos WHERE cpf_duplicado = 1 AND cpf_duplicado_confirmado = 0' . $activeAnd . ') cpf_duplicado';
+
     return (array) $pdo->query($sql)->fetch();
 }
 
 function pe_candidate_filters(PDO $pdo): array
 {
-    $bairros = $pdo->query('SELECT DISTINCT bairro FROM pe_candidatos WHERE bairro IS NOT NULL AND bairro <> "" ORDER BY bairro')->fetchAll(PDO::FETCH_COLUMN);
+    $active = pe_final_list_schema_ready($pdo) ? ' AND lista_final_ativa = 1' : '';
+    $bairros = $pdo->query('SELECT DISTINCT bairro FROM pe_candidatos WHERE bairro IS NOT NULL AND bairro <> ""' . $active . ' ORDER BY bairro')->fetchAll(PDO::FETCH_COLUMN);
     try {
         if ($pdo->query("SHOW TABLES LIKE 'pe_lotacoes'")->fetchColumn()) {
             $setores = $pdo->query('SELECT DISTINCT local_atuacao FROM pe_lotacoes WHERE status="Ativa" AND local_atuacao IS NOT NULL AND local_atuacao <> "" ORDER BY local_atuacao')->fetchAll(PDO::FETCH_COLUMN);
@@ -356,6 +392,15 @@ function pe_candidate_page(PDO $pdo, array $filters, int $page = 1, int $perPage
     $where = [];
     $params = [];
     $locationJoin = pe_active_location_join($pdo, 'c', 'f');
+
+    if (pe_final_list_schema_ready($pdo)) {
+        $baseScope = trim((string) ($filters['base'] ?? 'ativos'));
+        if ($baseScope === 'excluidos') {
+            $where[] = 'c.lista_final_ativa = 0';
+        } elseif ($baseScope !== 'todos') {
+            $where[] = 'c.lista_final_ativa = 1';
+        }
+    }
 
     $search = trim((string) ($filters['q'] ?? ''));
     if ($search !== '') {
@@ -414,9 +459,14 @@ function pe_candidate_page(PDO $pdo, array $filters, int $page = 1, int $perPage
     }
     $offset = ($page - 1) * $perPage;
 
+    $finalSelect = pe_final_list_schema_ready($pdo)
+        ? 'c.lista_final_ativa, c.lista_final_exclusao_motivo,'
+        : '1 AS lista_final_ativa, NULL AS lista_final_exclusao_motivo,';
+
     $sql = 'SELECT c.id, c.nome, c.data_nascimento, c.responsavel_familiar, c.bairro,
                    COALESCE(NULLIF(c.endereco, ""), TRIM(CONCAT(COALESCE(c.rua,""), " ", COALESCE(c.ponto_referencia,"")))) AS endereco,
                    c.telefone, c.cpf, c.cpf_informado, c.status, c.origem, c.updated_at,
+                   ' . $finalSelect . '
                    c.revisao_status, c.revisao_cpf, c.revisao_telefone, c.revisao_nascimento,
                    c.cpf_duplicado, c.cpf_revisado_confirmado, c.telefone_revisado_confirmado, c.nascimento_revisado_confirmado,
                    c.cpf_duplicado_confirmado, c.revisao_motivos, c.revisao_atualizada_em,
@@ -487,7 +537,8 @@ function pe_candidate_duplicate_peers(PDO $pdo, int $candidateId, ?string $cpf):
     if (!$cpf || !pe_validate_cpf($cpf)) {
         return [];
     }
-    $stmt = $pdo->prepare('SELECT id, nome, data_nascimento, telefone, status FROM pe_candidatos WHERE cpf=:cpf AND id<>:id ORDER BY nome');
+    $activeSql = pe_final_list_schema_ready($pdo) ? ' AND lista_final_ativa = 1' : '';
+    $stmt = $pdo->prepare('SELECT id, nome, data_nascimento, telefone, status FROM pe_candidatos WHERE cpf=:cpf AND id<>:id' . $activeSql . ' ORDER BY nome');
     $stmt->execute(['cpf' => $cpf, 'id' => $candidateId]);
     return $stmt->fetchAll();
 }
@@ -631,7 +682,8 @@ function pe_review_candidate(PDO $pdo, int $candidateId, array $input, ?string $
         // Recalcula os candidatos que compartilham o CPF anterior ou o novo, para remover/adicionar alertas corretamente.
         $cpfs = array_unique(array_filter([pe_digits($current['cpf'] ?? ''), $cpfValid ? $cpfCandidate : '']));
         foreach ($cpfs as $cpf) {
-            $ids = $pdo->prepare('SELECT id FROM pe_candidatos WHERE cpf=:cpf');
+            $activePeerSql = pe_final_list_schema_ready($pdo) ? ' AND lista_final_ativa = 1' : '';
+            $ids = $pdo->prepare('SELECT id FROM pe_candidatos WHERE cpf=:cpf' . $activePeerSql);
             $ids->execute(['cpf' => $cpf]);
             foreach ($ids->fetchAll(PDO::FETCH_COLUMN) as $peerId) {
                 if ((int) $peerId !== $candidateId) {
@@ -660,7 +712,8 @@ function pe_review_history(PDO $pdo, int $candidateId, int $limit = 20): array
 
 function pe_dashboard_review_counts(PDO $pdo): array
 {
-    $rows = $pdo->query('SELECT COALESCE(revisao_status, "Sem pendência") status, COUNT(*) total FROM pe_candidatos GROUP BY COALESCE(revisao_status, "Sem pendência")')->fetchAll();
+    $where = pe_final_list_schema_ready($pdo) ? ' WHERE lista_final_ativa = 1' : '';
+    $rows = $pdo->query('SELECT COALESCE(revisao_status, "Sem pendência") status, COUNT(*) total FROM pe_candidatos' . $where . ' GROUP BY COALESCE(revisao_status, "Sem pendência")')->fetchAll();
     $out = [];
     foreach ($rows as $row) {
         $out[(string) $row['status']] = (int) $row['total'];
@@ -672,7 +725,8 @@ function pe_dashboard_monthly(PDO $pdo, int $months = 6): array
 {
     $months = max(3, min($months, 12));
     $start = (new DateTimeImmutable('first day of this month'))->modify('-' . ($months - 1) . ' months');
-    $stmt = $pdo->prepare('SELECT DATE_FORMAT(created_at, "%Y-%m") ym, COUNT(*) total FROM pe_candidatos WHERE created_at >= :start GROUP BY DATE_FORMAT(created_at, "%Y-%m") ORDER BY ym');
+    $active = pe_final_list_schema_ready($pdo) ? ' AND lista_final_ativa = 1' : '';
+    $stmt = $pdo->prepare('SELECT DATE_FORMAT(created_at, "%Y-%m") ym, COUNT(*) total FROM pe_candidatos WHERE created_at >= :start' . $active . ' GROUP BY DATE_FORMAT(created_at, "%Y-%m") ORDER BY ym');
     $stmt->execute(['start' => $start->format('Y-m-01 00:00:00')]);
     $map = [];
     foreach ($stmt->fetchAll() as $row) {
@@ -730,7 +784,8 @@ function pe_decimal(mixed $value): float
 function pe_program_candidates(PDO $pdo, int $limit = 2000): array
 {
     $limit = max(1, min($limit, 5000));
-    return $pdo->query('SELECT id,nome,cpf,cpf_informado,status FROM pe_candidatos ORDER BY nome LIMIT ' . $limit)->fetchAll();
+    $where = pe_final_list_schema_ready($pdo) ? ' WHERE lista_final_ativa = 1' : '';
+    return $pdo->query('SELECT id,nome,cpf,cpf_informado,status FROM pe_candidatos' . $where . ' ORDER BY nome LIMIT ' . $limit)->fetchAll();
 }
 
 function pe_partner_has_sigla(PDO $pdo): bool
@@ -1194,7 +1249,8 @@ function pe_delete_visit(PDO $pdo,int $id): void
 
 function pe_placement_rows(PDO $pdo): array
 {
-    return $pdo->query('SELECT c.id candidato_id,c.nome,c.cpf,c.cpf_informado,c.telefone,c.bairro,c.status,f.id ficha_id,f.local_atuacao,f.turno_atuacao,f.nivel_escolaridade,f.situacao_escolar,f.instituicao_ensino,f.serie_periodo,f.turno_estudo,f.updated_at FROM pe_candidatos c LEFT JOIN pe_fichas_cadastrais f ON f.candidato_id=c.id ORDER BY CASE WHEN f.local_atuacao IS NULL OR f.local_atuacao="" THEN 0 ELSE 1 END,c.nome')->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    $where = pe_final_list_schema_ready($pdo) ? ' WHERE c.lista_final_ativa = 1' : '';
+    return $pdo->query('SELECT c.id candidato_id,c.nome,c.cpf,c.cpf_informado,c.telefone,c.bairro,c.status,f.id ficha_id,f.local_atuacao,f.turno_atuacao,f.nivel_escolaridade,f.situacao_escolar,f.instituicao_ensino,f.serie_periodo,f.turno_estudo,f.updated_at FROM pe_candidatos c LEFT JOIN pe_fichas_cadastrais f ON f.candidato_id=c.id' . $where . ' ORDER BY CASE WHEN f.local_atuacao IS NULL OR f.local_atuacao="" THEN 0 ELSE 1 END,c.nome')->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
 function pe_clear_placement(PDO $pdo,int $candidateId): void

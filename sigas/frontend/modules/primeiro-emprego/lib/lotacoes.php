@@ -102,6 +102,7 @@ function pe_lotacao_rows(PDO $pdo): array
                 ON ult.ultimo_id = i1.id
         ) i
             ON i.candidato_id = c.id
+        ' . (pe_final_list_schema_ready($pdo) ? 'WHERE c.lista_final_ativa = 1' : '') . '
         ORDER BY
             CASE
                 WHEN (
@@ -145,6 +146,7 @@ function pe_lotacao_candidates(PDO $pdo): array
         LEFT JOIN pe_lotacoes la
             ON la.candidato_id = c.id
            AND la.status = "Ativa"
+        ' . (pe_final_list_schema_ready($pdo) ? 'WHERE c.lista_final_ativa = 1' : '') . '
         ORDER BY c.nome ASC
     ';
 
