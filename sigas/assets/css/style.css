@@ -2186,7 +2186,7 @@ fieldset[disabled] .system-fields { opacity: 1; }
     --sigas-table-slim-cell-y: 7px;
     --sigas-table-slim-x: 9px;
     --sigas-table-slim-head-font: 9px;
-    --sigas-table-slim-cell-font: 10.5px;
+    --sigas-table-slim-cell-font: 11.5px;
     --sigas-table-slim-line: 1.2;
 }
 
@@ -2295,7 +2295,7 @@ fieldset[disabled] .system-fields { opacity: 1; }
 /* As tabelas de listagem deixam de exigir quase 1000px só por padrão.
    O conteúdo continua podendo aumentar a largura e o wrapper assume o scroll. */
 .app-content .data-table {
-    min-width: 780px;
+    min-width: 1560px;
 }
 
 @media (max-width: 767.98px) {
@@ -2304,7 +2304,7 @@ fieldset[disabled] .system-fields { opacity: 1; }
         --sigas-table-slim-cell-y: 6px;
         --sigas-table-slim-x: 8px;
         --sigas-table-slim-head-font: 8.5px;
-        --sigas-table-slim-cell-font: 10px;
+        --sigas-table-slim-cell-font: 11px;
     }
 
     .app-content .data-table,

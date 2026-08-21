@@ -354,7 +354,7 @@ body[data-module="primeiro-emprego"] .pe-report-table thead th {
     border-bottom: 1px solid var(--sigas-border-strong) !important;
     background: var(--sigas-surface-table-head) !important;
     color: #5d7169 !important;
-    font-size: .61rem !important;
+    font-size: .68rem !important;
     font-weight: 800 !important;
     letter-spacing: .045em !important;
     line-height: 1.25;
@@ -1790,7 +1790,7 @@ body[data-module="primeiro-emprego"] .pe-table tbody td,
 body[data-module="primeiro-emprego"] .pe-list-table tbody td,
 body[data-module="primeiro-emprego"] .pe-report-table tbody td {
     padding: 7px 8px !important;
-    font-size: .68rem !important;
+    font-size: .75rem !important;
     line-height: 1.18 !important;
     white-space: nowrap !important;
     word-break: normal !important;
@@ -1800,7 +1800,7 @@ body[data-module="primeiro-emprego"] .pe-report-table tbody td {
 /* Candidatos: uma linha por registro, sem transformar textos longos em 2/3 linhas. */
 body[data-module="primeiro-emprego"] .pe-candidate-table {
     width: 100% !important;
-    min-width: 940px !important;
+    min-width: 1880px !important;
     table-layout: fixed !important;
 }
 
@@ -1843,13 +1843,13 @@ body[data-module="primeiro-emprego"] .pe-candidate-name small {
 
 body[data-module="primeiro-emprego"] .pe-candidate-name strong,
 body[data-module="primeiro-emprego"] .pe-candidate-name-cell strong {
-    font-size: .71rem !important;
+    font-size: .79rem !important;
     line-height: 1.12 !important;
 }
 
 body[data-module="primeiro-emprego"] .pe-candidate-name small {
     margin-top: 1px;
-    font-size: .58rem !important;
+    font-size: .64rem !important;
     line-height: 1.05 !important;
 }
 
@@ -1886,13 +1886,13 @@ body[data-module="primeiro-emprego"] .pe-review-cell .badge {
     width: max-content;
     max-width: 100%;
     padding: 3px 6px !important;
-    font-size: .56rem !important;
+    font-size: .62rem !important;
     line-height: 1.05 !important;
 }
 
 body[data-module="primeiro-emprego"] .pe-review-cell > small {
     margin-top: 2px !important;
-    font-size: .58rem !important;
+    font-size: .64rem !important;
     line-height: 1.05 !important;
 }
 
@@ -1902,7 +1902,7 @@ body[data-module="primeiro-emprego"] .pe-status-badge {
     width: auto !important;
     max-width: 100%;
     padding: 4px 7px !important;
-    font-size: .61rem !important;
+    font-size: .68rem !important;
     line-height: 1 !important;
     white-space: nowrap !important;
     word-break: normal !important;
@@ -1920,7 +1920,7 @@ body[data-module="primeiro-emprego"] .pe-candidate-table tbody td:nth-child(4) {
 /* Listagens do módulo seguem o mesmo padrão slim sem empilhar células no celular. */
 @media (max-width: 767.98px) {
     body[data-module="primeiro-emprego"] .pe-candidate-table {
-        min-width: 940px !important;
+        min-width: 1880px !important;
     }
 
     body[data-module="primeiro-emprego"] .pe-data-table thead th,
@@ -1944,7 +1944,7 @@ body[data-module="primeiro-emprego"] .pe-candidate-table tbody td:nth-child(4) {
     body[data-module="primeiro-emprego"] .pe-list-table {
         display: table !important;
         width: 100% !important;
-        min-width: 820px !important;
+        min-width: 1640px !important;
     }
 
     body[data-module="primeiro-emprego"] .pe-list-table thead {
