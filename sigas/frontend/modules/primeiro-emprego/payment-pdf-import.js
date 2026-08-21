@@ -4,36 +4,62 @@
     const hub = document.querySelector('[data-pe-import-hub]');
     if (!hub) return;
 
-    const modeButtons = Array.from(hub.querySelectorAll('[data-pe-import-mode]'));
-    const panels = Array.from(hub.querySelectorAll('[data-pe-import-panel]'));
+    const fallbackSetMode = (requestedMode) => {
+        const allowed = ['spreadsheet', 'waitlist', 'payment-pdf'];
+        const mode = allowed.includes(String(requestedMode || ''))
+            ? String(requestedMode)
+            : 'spreadsheet';
 
-    function setMode(mode) {
-        modeButtons.forEach((button) => {
+        hub.querySelectorAll('[data-pe-import-mode]').forEach((button) => {
             const active = button.dataset.peImportMode === mode;
             button.classList.toggle('is-active', active);
             button.setAttribute('aria-selected', active ? 'true' : 'false');
+            button.setAttribute('tabindex', active ? '0' : '-1');
         });
-        panels.forEach((panel) => {
-            panel.hidden = panel.dataset.peImportPanel !== mode;
-        });
-        const hashes = {
-            'payment-pdf': '#pdf-pagamentos',
-            waitlist: '#lista-espera',
-        };
-        const nextHash = hashes[mode] || '';
-        if (nextHash) {
-            history.replaceState(null, '', `${location.pathname}${location.search}${nextHash}`);
-        } else if (location.hash === '#pdf-pagamentos' || location.hash === '#lista-espera') {
-            history.replaceState(null, '', `${location.pathname}${location.search}`);
-        }
-    }
 
-    modeButtons.forEach((button) => button.addEventListener('click', () => setMode(button.dataset.peImportMode || 'spreadsheet')));
-    const requestedMode = hub.dataset.peDefaultImportMode || 'spreadsheet';
-    const initialMode = location.hash === '#pdf-pagamentos'
-        ? 'payment-pdf'
-        : (location.hash === '#lista-espera' ? 'waitlist' : (['spreadsheet', 'waitlist', 'payment-pdf'].includes(requestedMode) ? requestedMode : 'spreadsheet'));
-    setMode(initialMode);
+        hub.querySelectorAll('[data-pe-import-panel]').forEach((panel) => {
+            const active = panel.dataset.peImportPanel === mode;
+            panel.hidden = !active;
+            panel.setAttribute('aria-hidden', active ? 'false' : 'true');
+            if ('inert' in panel) panel.inert = !active;
+        });
+
+        const url = new URL(window.location.href);
+        url.hash = mode === 'payment-pdf'
+            ? '#pdf-pagamentos'
+            : (mode === 'waitlist' ? '#lista-espera' : '');
+        window.history?.replaceState?.({}, '', url.href);
+
+        return mode;
+    };
+
+    const setMode = (mode) => {
+        if (window.PEImportHub?.setMode) {
+            return window.PEImportHub.setMode(mode);
+        }
+        return fallbackSetMode(mode);
+    };
+
+    // Fallback: caso o JS global do módulo não tenha sido carregado por uma
+    // hospedagem desatualizada, este arquivo ainda mantém as abas funcionais.
+    if (!window.PEImportHub?.setMode) {
+        const modeButtons = Array.from(hub.querySelectorAll('[data-pe-import-mode]'));
+        modeButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                setMode(button.dataset.peImportMode || 'spreadsheet');
+            });
+        });
+
+        const requestedMode = hub.dataset.peDefaultImportMode || 'spreadsheet';
+        const initialMode = window.location.hash === '#pdf-pagamentos'
+            ? 'payment-pdf'
+            : (
+                window.location.hash === '#lista-espera'
+                    ? 'waitlist'
+                    : requestedMode
+            );
+        setMode(initialMode);
+    }
 
     const form = hub.querySelector('[data-pe-payment-pdf-form]');
     if (!form) return;

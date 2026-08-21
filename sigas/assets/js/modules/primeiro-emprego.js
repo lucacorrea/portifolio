@@ -984,3 +984,200 @@
 
     colorStatuses();
 })();
+
+/* =====================================================================
+ * CENTRAL DE IMPORTAÇÕES — alternância segura de abas (2026-08-21)
+ * Fica no JS oficial do módulo, que é carregado em todas as páginas.
+ * ===================================================================== */
+(() => {
+    'use strict';
+
+    const allowedModes = ['spreadsheet', 'waitlist', 'payment-pdf'];
+    const hashToMode = {
+        '#lista-espera': 'waitlist',
+        '#pdf-pagamentos': 'payment-pdf',
+    };
+    const modeToHash = {
+        spreadsheet: '',
+        waitlist: '#lista-espera',
+        'payment-pdf': '#pdf-pagamentos',
+    };
+
+    const normalizeMode = mode => (
+        allowedModes.includes(String(mode || ''))
+            ? String(mode)
+            : 'spreadsheet'
+    );
+
+    const modeFromHash = () => hashToMode[window.location.hash] || null;
+
+    const updateHash = mode => {
+        if (!window.history?.replaceState) return;
+
+        const url = new URL(window.location.href);
+        url.hash = modeToHash[mode] || '';
+        window.history.replaceState({}, '', url.href);
+    };
+
+    const bindHub = hub => {
+        if (!(hub instanceof HTMLElement) || hub.dataset.peImportBound === '1') {
+            return null;
+        }
+
+        const buttons = Array.from(hub.querySelectorAll('[data-pe-import-mode]'));
+        const panels = Array.from(hub.querySelectorAll('[data-pe-import-panel]'));
+
+        if (!buttons.length || !panels.length) {
+            return null;
+        }
+
+        hub.dataset.peImportBound = '1';
+
+        let currentMode = 'spreadsheet';
+
+        const setMode = (requestedMode, options = {}) => {
+            const mode = normalizeMode(requestedMode);
+            const {
+                updateUrl = true,
+                focusTab = false,
+            } = options;
+
+            currentMode = mode;
+            hub.dataset.peActiveImportMode = mode;
+
+            buttons.forEach(button => {
+                const isActive = button.dataset.peImportMode === mode;
+
+                button.classList.toggle('is-active', isActive);
+                button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                button.setAttribute('tabindex', isActive ? '0' : '-1');
+
+                if (isActive && focusTab) {
+                    button.focus({ preventScroll: true });
+                }
+            });
+
+            panels.forEach(panel => {
+                const isActive = panel.dataset.peImportPanel === mode;
+
+                panel.hidden = !isActive;
+                panel.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+
+                if ('inert' in panel) {
+                    panel.inert = !isActive;
+                }
+            });
+
+            if (updateUrl) {
+                updateHash(mode);
+            }
+
+            hub.dispatchEvent(new CustomEvent('pe:import-mode-change', {
+                bubbles: true,
+                detail: { mode },
+            }));
+
+            return mode;
+        };
+
+        const moveFocus = (currentButton, direction) => {
+            const currentIndex = buttons.indexOf(currentButton);
+            if (currentIndex < 0) return;
+
+            const nextIndex = (
+                currentIndex + direction + buttons.length
+            ) % buttons.length;
+
+            setMode(buttons[nextIndex].dataset.peImportMode, {
+                updateUrl: true,
+                focusTab: true,
+            });
+        };
+
+        buttons.forEach(button => {
+            button.addEventListener('click', event => {
+                event.preventDefault();
+                setMode(button.dataset.peImportMode, {
+                    updateUrl: true,
+                    focusTab: false,
+                });
+            });
+
+            button.addEventListener('keydown', event => {
+                if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    moveFocus(button, 1);
+                    return;
+                }
+
+                if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    moveFocus(button, -1);
+                    return;
+                }
+
+                if (event.key === 'Home') {
+                    event.preventDefault();
+                    setMode(buttons[0].dataset.peImportMode, {
+                        updateUrl: true,
+                        focusTab: true,
+                    });
+                    return;
+                }
+
+                if (event.key === 'End') {
+                    event.preventDefault();
+                    setMode(buttons[buttons.length - 1].dataset.peImportMode, {
+                        updateUrl: true,
+                        focusTab: true,
+                    });
+                }
+            });
+        });
+
+        const requestedMode = normalizeMode(
+            modeFromHash()
+            || hub.dataset.peDefaultImportMode
+            || 'spreadsheet'
+        );
+
+        setMode(requestedMode, {
+            updateUrl: false,
+            focusTab: false,
+        });
+
+        return {
+            hub,
+            buttons,
+            panels,
+            setMode,
+            getMode: () => currentMode,
+        };
+    };
+
+    const hubInstances = Array.from(
+        document.querySelectorAll('[data-pe-import-hub]')
+    )
+        .map(bindHub)
+        .filter(Boolean);
+
+    if (!hubInstances.length) return;
+
+    const primary = hubInstances[0];
+
+    window.PEImportHub = {
+        setMode: (mode, options = {}) => primary.setMode(mode, options),
+        getMode: () => primary.getMode(),
+    };
+
+    window.addEventListener('hashchange', () => {
+        const hashMode = modeFromHash();
+        if (!hashMode) return;
+
+        primary.setMode(hashMode, {
+            updateUrl: false,
+            focusTab: false,
+        });
+    });
+})();
+

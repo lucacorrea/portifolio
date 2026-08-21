@@ -262,18 +262,56 @@ ob_start();
     </div>
 
     <div class="pe-import-mode-switch pe-no-print" role="tablist" aria-label="Tipo de importação">
-        <button class="pe-import-mode is-active" type="button" data-pe-import-mode="spreadsheet" role="tab" aria-selected="true">
-            <i class="bi bi-file-earmark-spreadsheet"></i><span><strong>Planilha de candidatos</strong><small>XLSX ou CSV</small></span>
+        <button
+            id="peImportTabSpreadsheet"
+            class="pe-import-mode<?= $defaultImportMode === 'spreadsheet' ? ' is-active' : '' ?>"
+            type="button"
+            data-pe-import-mode="spreadsheet"
+            role="tab"
+            aria-selected="<?= $defaultImportMode === 'spreadsheet' ? 'true' : 'false' ?>"
+            aria-controls="peImportPanelSpreadsheet"
+            tabindex="<?= $defaultImportMode === 'spreadsheet' ? '0' : '-1' ?>">
+            <i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>
+            <span><strong>Planilha de candidatos</strong><small>XLSX ou CSV</small></span>
+            <i class="bi bi-chevron-right pe-import-mode__arrow" aria-hidden="true"></i>
         </button>
-        <button class="pe-import-mode" type="button" data-pe-import-mode="waitlist" role="tab" aria-selected="false">
-            <i class="bi bi-hourglass-split"></i><span><strong>Lista de espera</strong><small>XLSX ou CSV · atualiza por CPF</small></span>
+
+        <button
+            id="peImportTabWaitlist"
+            class="pe-import-mode<?= $defaultImportMode === 'waitlist' ? ' is-active' : '' ?>"
+            type="button"
+            data-pe-import-mode="waitlist"
+            role="tab"
+            aria-selected="<?= $defaultImportMode === 'waitlist' ? 'true' : 'false' ?>"
+            aria-controls="peImportPanelWaitlist"
+            tabindex="<?= $defaultImportMode === 'waitlist' ? '0' : '-1' ?>">
+            <i class="bi bi-hourglass-split" aria-hidden="true"></i>
+            <span><strong>Lista de espera</strong><small>XLSX ou CSV · conciliação por CPF</small></span>
+            <i class="bi bi-chevron-right pe-import-mode__arrow" aria-hidden="true"></i>
         </button>
-        <button class="pe-import-mode" type="button" data-pe-import-mode="payment-pdf" role="tab" aria-selected="false">
-            <i class="bi bi-file-earmark-pdf"></i><span><strong>PDF de pagamentos</strong><small>Extrato do Banco do Brasil</small></span>
+
+        <button
+            id="peImportTabPaymentPdf"
+            class="pe-import-mode<?= $defaultImportMode === 'payment-pdf' ? ' is-active' : '' ?>"
+            type="button"
+            data-pe-import-mode="payment-pdf"
+            role="tab"
+            aria-selected="<?= $defaultImportMode === 'payment-pdf' ? 'true' : 'false' ?>"
+            aria-controls="peImportPanelPaymentPdf"
+            tabindex="<?= $defaultImportMode === 'payment-pdf' ? '0' : '-1' ?>">
+            <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i>
+            <span><strong>PDF de pagamentos</strong><small>Extrato oficial do Banco do Brasil</small></span>
+            <i class="bi bi-chevron-right pe-import-mode__arrow" aria-hidden="true"></i>
         </button>
     </div>
 
-    <div data-pe-import-panel="spreadsheet">
+    <div
+        id="peImportPanelSpreadsheet"
+        class="pe-import-panel"
+        data-pe-import-panel="spreadsheet"
+        role="tabpanel"
+        aria-labelledby="peImportTabSpreadsheet"
+        <?= $defaultImportMode === 'spreadsheet' ? '' : 'hidden' ?>>
         <?php if (!$excelDbReady): ?>
             <div class="alert alert-warning mt-3">
                 <strong>Estrutura da planilha não pronta.</strong> Execute <code>database/primeiroEmprego/ATUALIZAR_HOSPEDAGEM_PRIMEIRO_EMPREGO.sql</code> no banco atual.
@@ -364,7 +402,13 @@ ob_start();
         <?php endif; ?>
     </div>
 
-    <div data-pe-import-panel="waitlist" hidden>
+    <div
+        id="peImportPanelWaitlist"
+        class="pe-import-panel"
+        data-pe-import-panel="waitlist"
+        role="tabpanel"
+        aria-labelledby="peImportTabWaitlist"
+        <?= $defaultImportMode === 'waitlist' ? '' : 'hidden' ?>>
         <?php if (!$waitlistDbReady): ?>
             <div class="alert alert-warning mt-3">
                 <strong>Ative a Lista de espera.</strong> Execute <code>database/primeiroEmprego/0007-primeiroEmprego-lista-espera.sql</code>. As demais importações continuam disponíveis mesmo antes desta atualização.
@@ -484,7 +528,13 @@ ob_start();
         <?php endif; ?>
     </div>
 
-    <div data-pe-import-panel="payment-pdf" hidden>
+    <div
+        id="peImportPanelPaymentPdf"
+        class="pe-import-panel"
+        data-pe-import-panel="payment-pdf"
+        role="tabpanel"
+        aria-labelledby="peImportTabPaymentPdf"
+        <?= $defaultImportMode === 'payment-pdf' ? '' : 'hidden' ?>>
         <?php if (!$paymentDbReady): ?>
             <div class="alert alert-warning mt-3">
                 <strong>Ative a conciliação por PDF.</strong> Execute <code>database/primeiroEmprego/0006-primeiroEmprego-pagamentos-pdf.sql</code> ou o arquivo consolidado de atualização.
