@@ -1535,8 +1535,12 @@
             )).join('');
         }
 
-        const unresolved = Number(summary.ambiguos || 0)
-            + Number(summary.cpf_invalidos || 0);
+        // A lista do Banco é a fonte oficial. Duplicidades/ambiguidades que
+        // existem apenas na base local são resolvidas criando um cadastro
+        // canônico do Banco e arquivando os registros locais conflitantes.
+        // Somente CPF inválido no próprio PDF oficial bloqueia a aplicação.
+        const unresolved = Number(summary.cpf_invalidos || 0);
+        const localAmbiguities = Number(summary.ambiguos || 0);
         const conflicts = Number(summary.conflitos_financeiros || 0);
         const ready = Number(summary.prontos || 0);
         const updates = Number(summary.atualizar_pagamento || 0);
@@ -1550,8 +1554,8 @@
             warningNode.className = `alert ${unresolved || conflicts ? 'alert-warning' : 'alert-success'} mt-3 mb-0`;
             warningNode.innerHTML = canApplyByState
                 ? (unresolved > 0
-                    ? `<strong>Sincronização bloqueada.</strong> Existem ${unresolved} CPF(s) inválido(s) ou ambíguo(s) na base local. Resolva antes de usar a lista final.`
-                    : `<strong>Lista final pronta.</strong> O SIGAS ficará com ${Number(summary.ativos_apos_sincronizacao || 0)} candidato(s) ativos. Serão criados ${creates}, recuperados ${recovers} e retirados da base ativa ${excludes}. Os retirados não serão apagados: permanecem no histórico.`)
+                    ? `<strong>Sincronização bloqueada.</strong> Existem ${unresolved} CPF(s) inválido(s) no próprio arquivo oficial. Confira o PDF antes de aplicar.`
+                    : `<strong>Lista final pronta.</strong> O SIGAS ficará com ${Number(summary.ativos_apos_sincronizacao || 0)} candidato(s) ativos. Serão criados ${creates}, recuperados ${recovers} e retirados da base ativa ${excludes}. ${localAmbiguities > 0 ? `${localAmbiguities} conflito(s) local(is) de CPF serão resolvidos por cadastro canônico do Banco. ` : ''}Os retirados não serão apagados: permanecem no histórico.`)
                 : `<strong>Sincronização bloqueada.</strong> A lista está como “${escapeHtml(meta.estado_lista || 'sem estado')}”. Somente listas PAGA podem ser aplicadas.`;
         }
 

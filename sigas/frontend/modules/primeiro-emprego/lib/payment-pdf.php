@@ -489,10 +489,14 @@ function pe_payment_pdf_analyze(PDO $pdo, array $parsed, string $competence): ar
                     ))
                 );
             } else {
-                $item['membership_action'] = 'cpf_ambiguo';
-                $item['membership_message'] = 'Há mais de um cadastro local com o CPF oficial e não foi possível definir o cadastro principal com segurança.';
-                $item['match_status'] = 'cpf_ambiguo';
-                $item['match_message'] = $item['membership_message'];
+                // A lista do Banco é a fonte oficial da composição final. Se o
+                // CPF oficial estiver repetido em cadastros locais e não houver
+                // um único nome idêntico para escolher com segurança, não
+                // bloqueamos toda a sincronização. Criamos um cadastro canônico
+                // a partir do Banco e os registros locais conflitantes serão
+                // retirados da base ativa ao final, preservando todo o histórico.
+                $item['membership_action'] = 'criar_candidato_banco';
+                $item['membership_message'] = 'O CPF oficial aparece em mais de um cadastro local sem correspondência única de nome. Será criado um cadastro canônico pela lista do Banco; os cadastros locais conflitantes sairão da base ativa e permanecerão no histórico.';
                 $item['ambiguous_candidates'] = array_map(
                     static fn(array $c): array => [
                         'id' => (int) $c['id'],
@@ -749,11 +753,11 @@ function pe_payment_pdf_apply(PDO $pdo, array $parsed, string $competence, array
     $meta = $parsed['meta'];
     $summary = $analysis['summary'];
 
-    if ((int) $summary['cpf_invalidos'] > 0 || (int) $summary['ambiguos'] > 0) {
+    if ((int) $summary['cpf_invalidos'] > 0) {
         throw new RuntimeException(
-            'A lista oficial não pode ser aplicada enquanto houver CPF inválido ou CPF ambíguo na base local. '
-            . 'Foram encontrados ' . (int) $summary['cpf_invalidos'] . ' CPF(s) inválido(s) e '
-            . (int) $summary['ambiguos'] . ' CPF(s) ambíguo(s).'
+            'A lista oficial não pode ser aplicada enquanto houver CPF inválido no próprio arquivo oficial. '
+            . 'Foram encontrados ' . (int) $summary['cpf_invalidos'] . ' CPF(s) inválido(s). '
+            . 'Conflitos/duplicidades existentes somente na base local são resolvidos criando um cadastro canônico do Banco e arquivando os cadastros locais conflitantes.'
         );
     }
 
@@ -868,12 +872,19 @@ function pe_payment_pdf_apply(PDO $pdo, array $parsed, string $competence, array
 
         foreach ($analysis['rows'] as $row) {
             $membershipAction = (string) ($row['membership_action'] ?? '');
-            if (in_array($membershipAction, ['cpf_invalido', 'cpf_ambiguo'], true)) {
+            if ($membershipAction === 'cpf_invalido') {
                 throw new RuntimeException(
-                    'A sincronização encontrou uma pendência inesperada no N IDENT. '
+                    'A sincronização encontrou CPF inválido no arquivo oficial no N IDENT. '
                     . (string) $row['n_ident']
-                    . ': ' . (string) ($row['membership_message'] ?? 'pendência cadastral')
+                    . ': ' . (string) ($row['membership_message'] ?? 'CPF inválido')
                 );
+            }
+
+            // Defesa adicional para análises antigas/cacheadas: se uma linha
+            // ainda chegar como cpf_ambiguo, converte para o mesmo tratamento
+            // canônico usado pela análise atual, em vez de bloquear toda a lista.
+            if ($membershipAction === 'cpf_ambiguo') {
+                $membershipAction = 'criar_candidato_banco';
             }
 
             $candidateId = isset($row['candidate_id']) && $row['candidate_id']
