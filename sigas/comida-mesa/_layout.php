@@ -29,7 +29,15 @@ if ($environment === null || $page === null) {
     return;
 }
 
-$frontendContext = cm_frontend_context(PageContext::requireAuthenticatedFrontendContext());
+$baseFrontendContext = PageContext::requireAuthenticatedFrontendContext();
+if (!isset($baseFrontendContext['navigation']['comida-mesa'])) {
+    http_response_code(403);
+    $errorTitle = 'Acesso não autorizado';
+    $errorMessage = 'Seu setor ou perfil não possui acesso a este módulo.';
+    require dirname(__DIR__) . '/frontend/layouts/error-layout.php';
+    return;
+}
+$frontendContext = cm_frontend_context($baseFrontendContext);
 $moduleRepository = new ComidaMesaModuleRepository(cm_db());
 $pageDefinition = [];
 $pageCustomContent = '';

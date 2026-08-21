@@ -1,0 +1,7 @@
+@import url("../sigas-program-system.css");
+.module-shell--beneficios_eventuais{}
+body[data-module="beneficios-eventuais"]{--program-accent:#7c3aed;--program-soft:#f5f3ff;}
+body[data-module="beneficios-eventuais"] .module-brand>i,body[data-module="beneficios-eventuais"] .frontend-stat-card>i{color:#7c3aed;background:#f5f3ff;}
+body[data-module="beneficios-eventuais"] .module-nav-link.active{color:#7c3aed;background:#f5f3ff;}
+body[data-module="beneficios-eventuais"] .btn-primary{background:#7c3aed;border-color:#7c3aed;}
+body[data-module="beneficios-eventuais"] .eyebrow{color:#7c3aed;}

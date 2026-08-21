@@ -27,7 +27,7 @@ function navigation_assert(bool $condition, string $message): void
     }
 }
 
-navigation_assert(count($registry) === 6, 'o portal deve possuir seis ambientes');
+navigation_assert(count($registry) === 10, 'o portal deve possuir dez ambientes');
 
 foreach ($registry as $environmentKey => $environment) {
     foreach (['key', 'name', 'kind', 'icon', 'theme', 'home_page', 'home', 'pages', 'menu', 'assets'] as $field) {

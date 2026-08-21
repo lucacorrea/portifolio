@@ -8,6 +8,13 @@ use App\Core\PageContext;
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/frontend/modules/primeiro-emprego/data/demo-data.php';
 $frontendContext = PageContext::requireAuthenticatedFrontendContext();
+if (!isset($frontendContext['navigation']['primeiro-emprego'])) {
+    http_response_code(403);
+    $errorTitle = 'Acesso não autorizado';
+    $errorMessage = 'Seu setor ou perfil não possui acesso a este módulo.';
+    require dirname(__DIR__) . '/frontend/layouts/error-layout.php';
+    return;
+}
 
 if (!isset($pageKey) || !is_string($pageKey)) {
     throw new RuntimeException('A página do módulo não foi informada.');

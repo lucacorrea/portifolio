@@ -29,12 +29,16 @@ $expected = [
     'vigilancia-socioassistencial' => 'Vigilância Socioassistencial',
     'protecao-social-basica' => 'Proteção Social Básica',
     'protecao-social-especial' => 'Proteção Social Especial',
+    'kit-maternidade' => 'Kit Maternidade',
+    'aluguel-social' => 'Aluguel Social',
+    'beneficios-eventuais' => 'Benefícios Eventuais',
+    'gestao-acessos' => 'Governança e Acessos',
     'comida-mesa' => 'Coari Comida na Mesa',
     'primeiro-emprego' => 'Coari Meu Primeiro Emprego',
 ];
 
-assert_portal_flow(count($registry) === 6, 'registro central deve possuir exatamente seis ambientes');
-assert_portal_flow(array_keys($registry) === array_keys($expected), 'ordem e chaves dos seis ambientes devem permanecer estáveis');
+assert_portal_flow(count($registry) === 10, 'registro central deve possuir exatamente dez ambientes');
+assert_portal_flow(array_keys($registry) === array_keys($expected), 'ordem e chaves dos dez ambientes devem permanecer estáveis');
 
 foreach ($expected as $key => $name) {
     assert_portal_flow(($registry[$key]['name'] ?? null) === $name, "nome incorreto para {$key}");

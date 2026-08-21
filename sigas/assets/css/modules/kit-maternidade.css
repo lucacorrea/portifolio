@@ -1,0 +1,7 @@
+@import url("../sigas-program-system.css");
+.module-shell--kit_maternidade{}
+body[data-module="kit-maternidade"]{--program-accent:#b45309;--program-soft:#fff7ed;}
+body[data-module="kit-maternidade"] .module-brand>i,body[data-module="kit-maternidade"] .frontend-stat-card>i{color:#b45309;background:#fff7ed;}
+body[data-module="kit-maternidade"] .module-nav-link.active{color:#b45309;background:#fff7ed;}
+body[data-module="kit-maternidade"] .btn-primary{background:#b45309;border-color:#b45309;}
+body[data-module="kit-maternidade"] .eyebrow{color:#b45309;}

@@ -15,6 +15,14 @@ $pageKey = is_string($_GET['pagina'] ?? null) ? trim($_GET['pagina']) : '';
 $validKey = static fn (string $value): bool => preg_match('/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/', $value) === 1;
 $environment = $validKey($environmentKey) ? ModuleRegistry::find($environmentKey) : null;
 
+if ($environment !== null && !isset($frontendContext['navigation'][$environmentKey])) {
+    http_response_code(403);
+    $errorTitle = 'Acesso não autorizado';
+    $errorMessage = 'Seu setor ou perfil não possui acesso a este módulo.';
+    require __DIR__ . '/frontend/layouts/error-layout.php';
+    exit;
+}
+
 if ($environment !== null && $pageKey === '') {
     $pageKey = (string) $environment['home_page'];
 }
