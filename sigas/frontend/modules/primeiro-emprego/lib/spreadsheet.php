@@ -606,10 +606,16 @@ function pe_import_prepared(PDO $pdo, array $prepared, string $filename, array $
     $errors = [];
     $previousRows = [];
     $previousImportId = 0;
+    $hasImportType = function_exists('pe_import_type_column_exists') && pe_import_type_column_exists($pdo);
 
     if ($fileHash) {
-        $same = $pdo->prepare('SELECT id, total_linhas, importados, atualizados, bloqueados, erros, criado_em
-            FROM pe_importacoes WHERE arquivo_hash = :hash AND status = "Concluída" ORDER BY id DESC LIMIT 1');
+        $sameSql = 'SELECT id, total_linhas, importados, atualizados, bloqueados, erros, criado_em
+            FROM pe_importacoes WHERE arquivo_hash = :hash AND status = "Concluída"';
+        if ($hasImportType) {
+            $sameSql .= ' AND tipo_importacao = "candidatos"';
+        }
+        $sameSql .= ' ORDER BY id DESC LIMIT 1';
+        $same = $pdo->prepare($sameSql);
         $same->execute(['hash' => $fileHash]);
         $previous = $same->fetch();
         if ($previous) {
@@ -630,9 +636,15 @@ function pe_import_prepared(PDO $pdo, array $prepared, string $filename, array $
 
     $pdo->beginTransaction();
     try {
-        $log = $pdo->prepare('INSERT INTO pe_importacoes
-            (arquivo_nome, arquivo_hash, total_linhas, status, marcar_como_contemplados, responsavel)
-            VALUES (:arquivo, :hash, :total, "Processando", :marcar, :responsavel)');
+        if ($hasImportType) {
+            $log = $pdo->prepare('INSERT INTO pe_importacoes
+                (arquivo_nome, arquivo_hash, tipo_importacao, total_linhas, status, marcar_como_contemplados, responsavel)
+                VALUES (:arquivo, :hash, "candidatos", :total, "Processando", :marcar, :responsavel)');
+        } else {
+            $log = $pdo->prepare('INSERT INTO pe_importacoes
+                (arquivo_nome, arquivo_hash, total_linhas, status, marcar_como_contemplados, responsavel)
+                VALUES (:arquivo, :hash, :total, "Processando", :marcar, :responsavel)');
+        }
         $log->execute([
             'arquivo' => $filename,
             'hash' => $fileHash,

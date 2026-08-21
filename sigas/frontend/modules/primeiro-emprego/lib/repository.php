@@ -323,6 +323,7 @@ function pe_dashboard_stats(PDO $pdo): array
     $sql = 'SELECT
         (SELECT COUNT(*) FROM pe_candidatos) total,
         (SELECT COUNT(*) FROM pe_candidatos WHERE status = "Contemplado") contemplados,
+        (SELECT COUNT(*) FROM pe_candidatos WHERE status = "Lista de espera") lista_espera,
         (SELECT COUNT(*) FROM pe_visitas_sociais) visitas,
         (SELECT COUNT(*) FROM pe_visitas_sociais WHERE decisao = "Deferido") deferidos,
         (SELECT COUNT(*) FROM pe_visitas_sociais WHERE decisao = "Indeferido") indeferidos,
@@ -438,13 +439,46 @@ function pe_candidate_page(PDO $pdo, array $filters, int $page = 1, int $perPage
     ];
 }
 
-function pe_import_history(PDO $pdo, int $limit = 10): array
+function pe_import_type_column_exists(PDO $pdo): bool
+{
+    static $cache = [];
+    $key = spl_object_id($pdo);
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
+    try {
+        $pdo->query('SELECT tipo_importacao FROM pe_importacoes LIMIT 1');
+        return $cache[$key] = true;
+    } catch (Throwable) {
+        return $cache[$key] = false;
+    }
+}
+
+function pe_import_history(PDO $pdo, int $limit = 10, ?string $type = null): array
 {
     $limit = max(1, min($limit, 50));
+    $hasType = pe_import_type_column_exists($pdo);
+    $params = [];
+    $where = '';
+    if ($hasType && $type !== null && $type !== '') {
+        $where = ' WHERE tipo_importacao = :tipo';
+        $params['tipo'] = $type;
+    }
+
     $sql = 'SELECT id, arquivo_nome, total_linhas, importados, atualizados, bloqueados, avisos, pendentes_revisao, erros,
-                   marcar_como_contemplados, responsavel, status, criado_em, finalizada_em
-            FROM pe_importacoes ORDER BY id DESC LIMIT ' . $limit;
-    return $pdo->query($sql)->fetchAll();
+                   marcar_como_contemplados, responsavel, status, criado_em, finalizada_em'
+        . ($hasType ? ', tipo_importacao' : '')
+        . ' FROM pe_importacoes' . $where . ' ORDER BY id DESC LIMIT ' . $limit;
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    if (!$hasType) {
+        foreach ($rows as &$row) {
+            $row['tipo_importacao'] = 'candidatos';
+        }
+        unset($row);
+    }
+    return $rows;
 }
 
 

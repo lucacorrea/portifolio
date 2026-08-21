@@ -385,3 +385,14 @@ CREATE TABLE IF NOT EXISTS pe_pagamento_importacao_itens (
     CONSTRAINT fk_pe_pag_item_candidato
         FOREIGN KEY (candidato_id) REFERENCES pe_candidatos(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 0007 - Identificação das importações da Lista de espera
+-- ============================================================
+ALTER TABLE pe_importacoes
+    ADD COLUMN IF NOT EXISTS tipo_importacao VARCHAR(30) NOT NULL DEFAULT 'candidatos' AFTER arquivo_hash,
+    ADD INDEX IF NOT EXISTS idx_pe_importacoes_tipo (tipo_importacao);
+
+UPDATE pe_importacoes
+SET tipo_importacao = 'candidatos'
+WHERE tipo_importacao IS NULL OR tipo_importacao = '';

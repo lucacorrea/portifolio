@@ -15,8 +15,8 @@ $pageDefinition = [
             'href' => 'primeiro-emprego/cadastro-candidato.php',
         ],
         [
-            'label' => 'Importar Excel',
-            'icon' => 'file-earmark-spreadsheet',
+            'label' => 'Importações',
+            'icon' => 'arrow-down-up',
             'href' => 'primeiro-emprego/importar-candidatos.php',
         ],
     ],
@@ -34,6 +34,7 @@ $dbReady =
 $stats = [
     'total' => 0,
     'contemplados' => 0,
+    'lista_espera' => 0,
     'visitas' => 0,
     'deferidos' => 0,
     'indeferidos' => 0,
@@ -610,11 +611,11 @@ ob_start();
                 <i
                     class="
                         bi
-                        bi-file-earmark-spreadsheet
+                        bi-arrow-down-up
                     "
                 ></i>
 
-                Importar Excel
+                Importações
             </a>
 
         </div>
@@ -664,6 +665,22 @@ ob_start();
 
             <small>
                 no programa
+            </small>
+        </div>
+
+
+        <div class="pe-kpi pe-kpi--info">
+
+            <span>
+                Lista de espera
+            </span>
+
+            <strong>
+                <?= (int) $stats['lista_espera'] ?>
+            </strong>
+
+            <small>
+                aguardando contemplação
             </small>
         </div>
 
@@ -987,6 +1004,7 @@ ob_start();
                     'Deferido',
                     'Indeferido',
                     'Importado',
+                    'Lista de espera',
                     'Contemplado',
                 ]
                 as $v
@@ -1366,6 +1384,15 @@ ob_start();
                             )
                             : 'Cadastro sem pendências';
 
+                    $candidateStatusClass =
+                        match ((string) $row['status']) {
+                            'Contemplado' => 'status-success',
+                            'Lista de espera' => 'status-warning',
+                            'Indeferido' => 'status-danger',
+                            'Em análise', 'Em triagem' => 'status-info',
+                            default => 'status-neutral',
+                        };
+
                     ?>
 
 
@@ -1683,6 +1710,7 @@ ob_start();
                             <span
                                 class="
                                     pe-status-badge
+                                    <?= pe_h($candidateStatusClass) ?>
                                 "
                             >
                                 <?= pe_h(

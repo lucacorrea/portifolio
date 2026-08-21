@@ -5,10 +5,11 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/lib/repository.php';
 require_once dirname(__DIR__) . '/lib/spreadsheet.php';
 require_once dirname(__DIR__) . '/lib/payment-pdf.php';
+require_once dirname(__DIR__) . '/lib/waitlist-import.php';
 
 $pageDefinition = [
     'title' => 'Importações',
-    'description' => 'Importe candidatos por planilha e concilie pagamentos oficiais do Meu Primeiro Emprego por PDF.',
+    'description' => 'Importe candidatos, atualize a Lista de espera e concilie pagamentos oficiais do Meu Primeiro Emprego por PDF.',
     'actions' => [['label' => 'Ver candidatos', 'icon' => 'people', 'href' => 'primeiro-emprego/candidatos.php']],
     'demo' => false,
     'show_states' => false,
@@ -20,6 +21,7 @@ $extraScripts = ['frontend/modules/primeiro-emprego/payment-pdf-import.js'];
 $baseDbReady = pe_db_ready() && pe_schema_ready();
 $excelDbReady = $baseDbReady && pe_import_schema_ready();
 $paymentDbReady = $baseDbReady && pe_payment_pdf_schema_ready();
+$waitlistDbReady = $excelDbReady && pe_waitlist_schema_ready();
 
 // Endpoint JSON da análise do PDF. O arquivo permanece no input do navegador porque a análise usa fetch.
 if (($_GET['ajax'] ?? '') === 'payment_pdf_analyze') {
@@ -65,10 +67,15 @@ if (($_GET['ajax'] ?? '') === 'payment_pdf_analyze') {
 $result = null;
 $preview = null;
 $paymentResult = null;
+$waitlistPreview = null;
+$waitlistResult = null;
 $message = null;
 $history = [];
 $paymentHistory = [];
-$markContemplados = !isset($_POST['pe_action']) || !empty($_POST['mark_contemplados']);
+$waitlistHistory = [];
+$currentAction = (string) ($_POST['pe_action'] ?? '');
+$spreadsheetAction = in_array($currentAction, ['validate_import', 'run_import'], true);
+$markContemplados = !$spreadsheetAction || !empty($_POST['mark_contemplados']);
 
 // Fluxo XLSX/CSV existente.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pe_action']) && in_array($_POST['pe_action'], ['validate_import', 'run_import'], true)) {
@@ -111,6 +118,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pe_action']) && in_ar
             $message = [
                 'type' => 'info',
                 'text' => 'Validação concluída. Nenhum dado foi gravado. Pendências cadastrais não bloqueiam a importação; elas seguem para revisão.',
+            ];
+        }
+    } catch (Throwable $e) {
+        $message = ['type' => 'danger', 'text' => $e->getMessage()];
+    }
+}
+
+// Importação específica da Lista de espera. Usa a mesma leitura XLSX/CSV, mas concilia por CPF e nunca rebaixa um Contemplado.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($currentAction, ['validate_waitlist', 'run_waitlist'], true)) {
+    try {
+        pe_verify_csrf();
+        if (!$waitlistDbReady) {
+            throw new RuntimeException('Execute database/primeiroEmprego/0007-primeiroEmprego-lista-espera.sql antes de usar a Lista de espera.');
+        }
+        if (empty($_FILES['lista_espera']['tmp_name']) || !is_uploaded_file($_FILES['lista_espera']['tmp_name'])) {
+            throw new InvalidArgumentException('Selecione uma planilha XLSX ou CSV da Lista de espera.');
+        }
+        if ((int) ($_FILES['lista_espera']['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+            throw new RuntimeException('Falha no upload da Lista de espera. Código: ' . (int) $_FILES['lista_espera']['error']);
+        }
+        if ((int) $_FILES['lista_espera']['size'] <= 0 || (int) $_FILES['lista_espera']['size'] > 8 * 1024 * 1024) {
+            throw new InvalidArgumentException('A Lista de espera deve ter até 8 MB.');
+        }
+
+        $waitOriginal = basename((string) $_FILES['lista_espera']['name']);
+        $waitExt = strtolower(pathinfo($waitOriginal, PATHINFO_EXTENSION));
+        if (!in_array($waitExt, ['xlsx', 'csv'], true)) {
+            throw new InvalidArgumentException('Formato inválido. Envie XLSX ou CSV.');
+        }
+
+        pe_validate_spreadsheet_upload($_FILES['lista_espera']['tmp_name'], $waitExt);
+        $waitRawRows = pe_spreadsheet_rows($_FILES['lista_espera']['tmp_name'], $waitOriginal);
+        $waitPrepared = pe_prepare_import($waitRawRows);
+        $waitlistPreview = pe_waitlist_analyze(pe_db(), $waitPrepared['rows']);
+
+        if ($currentAction === 'run_waitlist') {
+            $waitlistResult = pe_waitlist_import(pe_db(), $waitPrepared['rows'], $waitOriginal, [
+                'file_hash' => hash_file('sha256', $_FILES['lista_espera']['tmp_name']) ?: null,
+                'responsavel' => pe_current_user_label(),
+            ]);
+            $message = [
+                'type' => count($waitlistResult['errors']) > 0 || $waitlistResult['blocked'] > 0 ? 'warning' : 'success',
+                'text' => 'Lista de espera #' . $waitlistResult['import_id'] . ' concluída: '
+                    . $waitlistResult['imported'] . ' novo(s), '
+                    . $waitlistResult['updated'] . ' cadastro(s) atualizado(s), '
+                    . $waitlistResult['kept_contemplated'] . ' contemplado(s) preservado(s), '
+                    . $waitlistResult['ignored_duplicates'] . ' linha(s) repetida(s) ignorada(s), '
+                    . $waitlistResult['blocked'] . ' bloqueio(s) de segurança e '
+                    . count($waitlistResult['errors']) . ' erro(s).',
+            ];
+        } else {
+            $message = [
+                'type' => $waitlistPreview['summary']['bloqueados'] > 0 ? 'warning' : 'info',
+                'text' => 'Pré-validação da Lista de espera concluída. Nenhum dado foi gravado. Confira os vínculos por CPF e os bloqueios antes de confirmar.',
             ];
         }
     } catch (Throwable $e) {
@@ -163,7 +224,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['pe_action'] ?? '') === 'ru
 
 if ($excelDbReady) {
     try {
-        $history = pe_import_history(pe_db(), 8);
+        $history = pe_import_history(pe_db(), 8, 'candidatos');
     } catch (Throwable) {
         $history = [];
     }
@@ -175,23 +236,37 @@ if ($paymentDbReady) {
         $paymentHistory = [];
     }
 }
+if ($waitlistDbReady) {
+    try {
+        $waitlistHistory = pe_waitlist_history(pe_db(), 8);
+    } catch (Throwable) {
+        $waitlistHistory = [];
+    }
+}
+
+$defaultImportMode = in_array($currentAction, ['validate_waitlist', 'run_waitlist'], true)
+    ? 'waitlist'
+    : ($currentAction === 'run_payment_pdf' ? 'payment-pdf' : 'spreadsheet');
 
 ob_start();
 ?>
-<section class="content-card pe-form-card pe-import-hub" data-pe-import-hub data-pe-default-import-mode="<?= (($_POST['pe_action'] ?? '') === 'run_payment_pdf') ? 'payment-pdf' : 'spreadsheet' ?>">
+<section class="content-card pe-form-card pe-import-hub" data-pe-import-hub data-pe-default-import-mode="<?= pe_h($defaultImportMode) ?>">
     <?php if ($message): ?><div class="alert alert-<?= pe_h($message['type']) ?>"><?= pe_h($message['text']) ?></div><?php endif; ?>
 
     <div class="pe-form-header">
         <div>
             <div class="card-kicker">Central de importações</div>
             <h2>Atualizar a base do Meu Primeiro Emprego</h2>
-            <p>Use a planilha para cadastrar candidatos. Use o PDF oficial do Banco do Brasil para conciliar contemplados e pagamentos sem sobrescrever dados pessoais.</p>
+            <p>Cadastre ou atualize candidatos por planilha, organize a Lista de espera com conciliação segura por CPF e use o PDF oficial do Banco do Brasil para registrar pagamentos sem sobrescrever dados pessoais.</p>
         </div>
     </div>
 
     <div class="pe-import-mode-switch pe-no-print" role="tablist" aria-label="Tipo de importação">
         <button class="pe-import-mode is-active" type="button" data-pe-import-mode="spreadsheet" role="tab" aria-selected="true">
             <i class="bi bi-file-earmark-spreadsheet"></i><span><strong>Planilha de candidatos</strong><small>XLSX ou CSV</small></span>
+        </button>
+        <button class="pe-import-mode" type="button" data-pe-import-mode="waitlist" role="tab" aria-selected="false">
+            <i class="bi bi-hourglass-split"></i><span><strong>Lista de espera</strong><small>XLSX ou CSV · atualiza por CPF</small></span>
         </button>
         <button class="pe-import-mode" type="button" data-pe-import-mode="payment-pdf" role="tab" aria-selected="false">
             <i class="bi bi-file-earmark-pdf"></i><span><strong>PDF de pagamentos</strong><small>Extrato do Banco do Brasil</small></span>
@@ -285,6 +360,126 @@ ob_start();
             <div class="mt-5">
                 <h3 class="h6 mb-3">Últimas importações de candidatos</h3>
                 <div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th>Data</th><th>Arquivo</th><th>Total</th><th>Incluídos</th><th>Para revisão</th><th>Erros</th><th>Responsável</th></tr></thead><tbody><?php foreach ($history as $item): ?><tr><td><?= pe_h(date('d/m/Y H:i', strtotime((string) $item['criado_em']))) ?></td><td><?= pe_h($item['arquivo_nome']) ?></td><td><?= (int) $item['total_linhas'] ?></td><td><?= (int) $item['importados'] ?></td><td><?= (int) $item['pendentes_revisao'] ?></td><td><?= (int) $item['erros'] ?></td><td><?= pe_h($item['responsavel'] ?: '—') ?></td></tr><?php endforeach; ?></tbody></table></div>
+            </div>
+        <?php endif; ?>
+    </div>
+
+    <div data-pe-import-panel="waitlist" hidden>
+        <?php if (!$waitlistDbReady): ?>
+            <div class="alert alert-warning mt-3">
+                <strong>Ative a Lista de espera.</strong> Execute <code>database/primeiroEmprego/0007-primeiroEmprego-lista-espera.sql</code>. As demais importações continuam disponíveis mesmo antes desta atualização.
+            </div>
+        <?php endif; ?>
+
+        <div class="pe-import-guide pe-import-guide--waitlist mt-3">
+            <div><i class="bi bi-person-vcard"></i><strong>Conciliar cadastro</strong><span>CPF válido e único atualiza o cadastro existente sem criar outra pessoa para o mesmo documento.</span></div>
+            <div><i class="bi bi-hourglass-split"></i><strong>Entrar na espera</strong><span>Novos candidatos recebem o status “Lista de espera”. Quem já é Contemplado nunca é rebaixado.</span></div>
+            <div><i class="bi bi-shield-exclamation"></i><strong>Bloquear conflitos</strong><span>CPF em múltiplos cadastros ou CPF ligado a nomes incompatíveis exige revisão manual.</span></div>
+        </div>
+
+        <form method="post" enctype="multipart/form-data" class="pe-waitlist-form mt-3" <?= !$waitlistDbReady ? 'inert' : '' ?>>
+            <?= pe_csrf_field() ?>
+            <div class="row g-3 align-items-end">
+                <div class="col-lg-8">
+                    <label class="form-label required" for="peWaitlistFile">Planilha da Lista de espera</label>
+                    <input class="form-control" id="peWaitlistFile" type="file" name="lista_espera" accept=".xlsx,.csv" required>
+                    <small class="text-muted">Máximo 8 MB. Cabeçalho mínimo: NOME. Também reconhece CPF, DATA NASC., TELEFONE, BAIRRO, ENDEREÇO, RESPONSÁVEL e SETOR.</small>
+                </div>
+                <div class="col-lg-4">
+                    <div class="pe-waitlist-rule-card">
+                        <i class="bi bi-check2-circle"></i>
+                        <div><strong>Atualização conservadora</strong><small>Campos vazios da planilha não apagam dados já existentes.</small></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pe-waitlist-security mt-3">
+                <i class="bi bi-shield-lock"></i>
+                <div>
+                    <strong>Regra da Lista de espera</strong>
+                    <p class="mb-0">A planilha pode atualizar nome, nascimento, responsável, bairro, endereço e telefone quando o CPF identifica um único cadastro. O campo SETOR fica apenas no histórico da importação e não cria lotação antes da contemplação.</p>
+                </div>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 justify-content-end mt-3">
+                <button class="btn btn-outline-primary" type="submit" name="pe_action" value="validate_waitlist"><i class="bi bi-search"></i> Validar Lista de espera</button>
+                <button class="btn btn-primary" type="submit" name="pe_action" value="run_waitlist" onclick="return confirm('Confirmar a importação da Lista de espera? Cadastros localizados por CPF serão atualizados e contemplados existentes serão preservados.')"><i class="bi bi-hourglass-split"></i> Importar Lista de espera</button>
+            </div>
+        </form>
+
+        <?php if ($waitlistPreview): $ws = $waitlistPreview['summary']; ?>
+            <div class="pe-waitlist-analysis mt-4">
+                <div class="pe-payment-analysis__head">
+                    <div><div class="card-kicker">Pré-análise</div><h3>Conferência da Lista de espera</h3><p>O SIGAS prioriza os conflitos para que você revise antes de gravar.</p></div>
+                    <span class="badge <?= $ws['bloqueados'] > 0 ? 'text-bg-warning' : 'text-bg-success' ?>"><?= (int) $ws['bloqueados'] ?> bloqueio(s)</span>
+                </div>
+
+                <div class="pe-payment-kpis pe-waitlist-kpis">
+                    <div class="pe-payment-kpi"><span>Total</span><strong><?= (int) $ws['total'] ?></strong></div>
+                    <div class="pe-payment-kpi"><span>Novos</span><strong><?= (int) ($ws['novos'] + $ws['novos_revisao']) ?></strong></div>
+                    <div class="pe-payment-kpi"><span>Atualizar cadastro</span><strong><?= (int) $ws['atualizar'] ?></strong></div>
+                    <div class="pe-payment-kpi"><span>Já contemplados</span><strong><?= (int) $ws['ja_contemplados'] ?></strong></div>
+                    <div class="pe-payment-kpi"><span>Em revisão cadastral</span><strong><?= (int) $ws['pendentes_revisao'] ?></strong></div>
+                    <div class="pe-payment-kpi"><span>Linhas repetidas</span><strong><?= (int) $ws['duplicados_ignorados'] ?></strong></div>
+                    <div class="pe-payment-kpi"><span>CPF ambíguo</span><strong><?= (int) $ws['cpf_ambiguos'] ?></strong></div>
+                    <div class="pe-payment-kpi"><span>Divergência/Conflito</span><strong><?= (int) ($ws['divergencias_nome'] + $ws['conflitos_cpf_lista']) ?></strong></div>
+                </div>
+
+                <div class="alert <?= $ws['bloqueados'] > 0 ? 'alert-warning' : 'alert-success' ?> mt-3 mb-0">
+                    <?php if ($ws['bloqueados'] > 0): ?>
+                        <strong><?= (int) $ws['bloqueados'] ?> linha(s) não serão aplicadas automaticamente.</strong> Corrija CPF duplicado entre pessoas diferentes, múltiplos cadastros no SIGAS ou divergência forte entre CPF e nome.
+                    <?php else: ?>
+                        <strong>Lista pronta para importação.</strong> Nenhum conflito de identidade foi encontrado na pré-análise.
+                    <?php endif; ?>
+                </div>
+
+                <?php
+                $waitPriority = ['conflito_cpf_lista' => 1, 'cpf_ambiguo' => 2, 'divergencia_nome' => 3, 'novo_revisao' => 4, 'duplicado_lista' => 5, 'atualizar' => 6, 'novo' => 7, 'ja_contemplado' => 8];
+                $waitRows = $waitlistPreview['rows'];
+                usort($waitRows, static fn(array $a, array $b): int => ($waitPriority[$a['waitlist_status']] ?? 99) <=> ($waitPriority[$b['waitlist_status']] ?? 99));
+                ?>
+                <div class="table-responsive pe-table-scroll mt-3">
+                    <table class="table table-sm align-middle pe-waitlist-preview-table">
+                        <thead><tr><th>Linha</th><th>Nome</th><th>CPF</th><th>Telefone</th><th>SIGAS</th><th>Resultado</th></tr></thead>
+                        <tbody>
+                        <?php foreach (array_slice($waitRows, 0, 120) as $row): ?>
+                            <?php
+                            [$waitLabel, $waitBadge] = match ($row['waitlist_status']) {
+                                'novo' => ['Novo na espera', 'success'],
+                                'novo_revisao' => ['Novo + revisão', 'warning'],
+                                'atualizar' => ['Atualizar cadastro', 'primary'],
+                                'ja_contemplado' => ['Preservar contemplado', 'success'],
+                                'duplicado_lista' => ['Linha repetida', 'secondary'],
+                                'conflito_cpf_lista' => ['Conflito no arquivo', 'danger'],
+                                'cpf_ambiguo' => ['CPF ambíguo', 'danger'],
+                                'divergencia_nome' => ['Divergência de nome', 'danger'],
+                                default => ['Revisar', 'secondary'],
+                            };
+                            ?>
+                            <tr class="pe-waitlist-row pe-waitlist-row--<?= pe_h($row['waitlist_status']) ?>">
+                                <td><?= (int) $row['row'] ?></td>
+                                <td><strong><?= pe_h($row['nome']) ?></strong><?php if (!empty($row['revisao_status'])): ?><small class="d-block text-warning-emphasis"><?= pe_h($row['revisao_status']) ?></small><?php endif; ?></td>
+                                <td><?= pe_h(pe_format_cpf($row['cpf'] ?: $row['cpf_informado'] ?: '—')) ?></td>
+                                <td><?= pe_h(pe_format_phone($row['telefone'] ?: '—')) ?></td>
+                                <td><?php if (!empty($row['candidate_id'])): ?><strong>#<?= (int) $row['candidate_id'] ?> · <?= pe_h($row['candidate_name']) ?></strong><small class="d-block text-muted"><?= pe_h($row['candidate_status'] ?: '—') ?></small><?php else: ?>—<?php endif; ?></td>
+                                <td><span class="badge text-bg-<?= pe_h($waitBadge) ?>"><?= pe_h($waitLabel) ?></span><small class="d-block mt-1 text-muted"><?= pe_h($row['waitlist_message']) ?></small></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php if (count($waitRows) > 120): ?><small class="text-muted">Exibindo 120 de <?= count($waitRows) ?> linhas, priorizando conflitos e pendências.</small><?php endif; ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($waitlistResult && $waitlistResult['errors']): ?>
+            <div class="alert alert-warning mt-4"><strong>Erros técnicos:</strong><ul class="mb-0 mt-2"><?php foreach (array_slice($waitlistResult['errors'], 0, 30) as $error): ?><li>Linha <?= (int) $error['row'] ?>: <?= pe_h($error['message']) ?></li><?php endforeach; ?></ul></div>
+        <?php endif; ?>
+
+        <?php if ($waitlistHistory): ?>
+            <div class="mt-5">
+                <h3 class="h6 mb-3">Últimas importações da Lista de espera</h3>
+                <div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th>Data</th><th>Arquivo</th><th>Total</th><th>Novos</th><th>Atualizados/Preservados</th><th>Bloqueados</th><th>Revisão</th><th>Erros</th><th>Responsável</th></tr></thead><tbody><?php foreach ($waitlistHistory as $item): ?><tr><td><?= pe_h(date('d/m/Y H:i', strtotime((string) $item['criado_em']))) ?></td><td><?= pe_h($item['arquivo_nome']) ?></td><td><?= (int) $item['total_linhas'] ?></td><td><?= (int) $item['importados'] ?></td><td><?= (int) $item['atualizados'] ?></td><td><?= (int) $item['bloqueados'] ?></td><td><?= (int) $item['pendentes_revisao'] ?></td><td><?= (int) $item['erros'] ?></td><td><?= pe_h($item['responsavel'] ?: '—') ?></td></tr><?php endforeach; ?></tbody></table></div>
             </div>
         <?php endif; ?>
     </div>

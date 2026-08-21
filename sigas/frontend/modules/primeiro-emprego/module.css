@@ -5,7 +5,7 @@
    ============================================================ */
 .pe-import-hub .pe-import-mode-switch {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: .75rem;
     margin-top: 1rem;
     padding: .35rem;
@@ -192,5 +192,138 @@
 @media (max-width: 479.98px) {
     .pe-payment-kpis {
         grid-template-columns: 1fr;
+    }
+}
+
+
+/* ============================================================
+   Lista de espera - importação e atualização cadastral segura
+   ============================================================ */
+.pe-import-guide--waitlist > div {
+    min-height: 100%;
+}
+
+.pe-waitlist-form {
+    padding: 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    background: #fff;
+}
+
+.pe-waitlist-rule-card {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    min-height: 100%;
+    padding: .8rem .9rem;
+    border: 1px solid #dbeafe;
+    border-radius: .85rem;
+    background: #f8fbff;
+}
+
+.pe-waitlist-rule-card > i {
+    display: grid;
+    place-items: center;
+    flex: 0 0 2.35rem;
+    width: 2.35rem;
+    height: 2.35rem;
+    border-radius: .7rem;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-size: 1.05rem;
+}
+
+.pe-waitlist-rule-card strong,
+.pe-waitlist-rule-card small {
+    display: block;
+}
+
+.pe-waitlist-rule-card small {
+    margin-top: .15rem;
+    color: #64748b;
+    line-height: 1.25;
+}
+
+.pe-waitlist-security {
+    display: flex;
+    gap: .85rem;
+    align-items: flex-start;
+    padding: 1rem 1.1rem;
+    border: 1px solid #fde68a;
+    border-radius: .9rem;
+    background: #fffbeb;
+}
+
+.pe-waitlist-security > i {
+    color: #b45309;
+    font-size: 1.2rem;
+    margin-top: .1rem;
+}
+
+.pe-waitlist-security p {
+    color: #78613a;
+    font-size: .87rem;
+}
+
+.pe-waitlist-analysis {
+    padding: 1.1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    background: #fff;
+}
+
+.pe-waitlist-preview-table th,
+.pe-waitlist-preview-table td {
+    vertical-align: middle;
+}
+
+.pe-waitlist-preview-table td small {
+    line-height: 1.25;
+}
+
+.pe-waitlist-row--conflito_cpf_lista,
+.pe-waitlist-row--cpf_ambiguo,
+.pe-waitlist-row--divergencia_nome {
+    background: #fff7f7;
+}
+
+.pe-waitlist-row--novo_revisao {
+    background: #fffbeb;
+}
+
+.pe-waitlist-row--atualizar {
+    background: #f8fbff;
+}
+
+.pe-waitlist-row--ja_contemplado {
+    background: #f6fff9;
+}
+
+.pe-waitlist-row--duplicado_lista {
+    opacity: .75;
+}
+
+@media (max-width: 1100px) {
+    .pe-import-hub .pe-import-mode-switch {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .pe-import-hub .pe-import-mode:last-child {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .pe-import-hub .pe-import-mode-switch {
+        grid-template-columns: 1fr;
+    }
+
+    .pe-import-hub .pe-import-mode:last-child {
+        grid-column: auto;
+    }
+
+    .pe-waitlist-form,
+    .pe-waitlist-analysis {
+        padding: .85rem;
     }
 }

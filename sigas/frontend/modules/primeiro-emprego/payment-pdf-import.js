@@ -16,17 +16,23 @@
         panels.forEach((panel) => {
             panel.hidden = panel.dataset.peImportPanel !== mode;
         });
-        if (mode === 'payment-pdf') {
-            history.replaceState(null, '', `${location.pathname}${location.search}#pdf-pagamentos`);
-        } else if (location.hash === '#pdf-pagamentos') {
+        const hashes = {
+            'payment-pdf': '#pdf-pagamentos',
+            waitlist: '#lista-espera',
+        };
+        const nextHash = hashes[mode] || '';
+        if (nextHash) {
+            history.replaceState(null, '', `${location.pathname}${location.search}${nextHash}`);
+        } else if (location.hash === '#pdf-pagamentos' || location.hash === '#lista-espera') {
             history.replaceState(null, '', `${location.pathname}${location.search}`);
         }
     }
 
     modeButtons.forEach((button) => button.addEventListener('click', () => setMode(button.dataset.peImportMode || 'spreadsheet')));
-    const initialMode = hub.dataset.peDefaultImportMode === 'payment-pdf' || location.hash === '#pdf-pagamentos'
+    const requestedMode = hub.dataset.peDefaultImportMode || 'spreadsheet';
+    const initialMode = location.hash === '#pdf-pagamentos'
         ? 'payment-pdf'
-        : 'spreadsheet';
+        : (location.hash === '#lista-espera' ? 'waitlist' : (['spreadsheet', 'waitlist', 'payment-pdf'].includes(requestedMode) ? requestedMode : 'spreadsheet'));
     setMode(initialMode);
 
     const form = hub.querySelector('[data-pe-payment-pdf-form]');
