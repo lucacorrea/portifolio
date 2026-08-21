@@ -953,7 +953,7 @@
     table-layout: fixed;
 }
 
-.pe-candidate-table { min-width: 1050px; }
+.pe-candidate-table { min-width: 0; }
 
 .pe-table thead th,
 .pe-candidate-table thead th {

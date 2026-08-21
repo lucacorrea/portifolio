@@ -1,0 +1,541 @@
+/* ======================================================================
+   SIGAS — DESIGN SYSTEM GLOBAL DE TABELAS V2
+   ----------------------------------------------------------------------
+   Objetivo: padronizar todas as tabelas do SIGAS com o mesmo comportamento
+   visual da listagem SEMAS de referência:
+   - largura sempre limitada à área útil do conteúdo no desktop;
+   - nenhuma largura artificial de 2x / 1180px no desktop;
+   - células em uma linha com reticências quando necessário;
+   - tipografia e espaçamentos consistentes em todos os módulos;
+   - rolagem horizontal apenas quando a tela realmente for estreita;
+   - mesmo padrão para tabelas legadas, módulos frontend, Primeiro Emprego
+     e Comida na Mesa.
+   ====================================================================== */
+
+:root {
+    --sigas-table-bg: #ffffff;
+    --sigas-table-head-bg: #f4f7f5;
+    --sigas-table-head-color: #46594f;
+    --sigas-table-text: #3f5148;
+    --sigas-table-muted: #7a8981;
+    --sigas-table-border: #e1e8e4;
+    --sigas-table-border-strong: #d7e1dc;
+    --sigas-table-hover: #f8fbf9;
+    --sigas-table-selected: #f2f8f5;
+    --sigas-table-radius: 15px;
+    --sigas-table-head-font: 10px;
+    --sigas-table-cell-font: 13px;
+    --sigas-table-meta-font: 11px;
+    --sigas-table-head-y: 9px;
+    --sigas-table-cell-y: 10px;
+    --sigas-table-x: 11px;
+    --sigas-table-row-min-height: 46px;
+}
+
+/* ----------------------------------------------------------------------
+   1. WRAPPERS — a tabela nunca deve aumentar a largura da página.
+   ---------------------------------------------------------------------- */
+body[data-module] :is(.app-content, .module-content) :is(
+    .table-responsive,
+    .frontend-desktop-table,
+    .desktop-records,
+    .pe-table-scroll,
+    .pe-candidate-table-scroll,
+    .table-scroll,
+    [data-table-scroll]
+) {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #c4d0ca transparent;
+}
+
+body[data-module] :is(.app-content, .module-content) :is(
+    .table-responsive,
+    .frontend-desktop-table,
+    .desktop-records,
+    .pe-table-scroll,
+    .pe-candidate-table-scroll,
+    .table-scroll,
+    [data-table-scroll]
+)::-webkit-scrollbar {
+    height: 7px;
+}
+
+body[data-module] :is(.app-content, .module-content) :is(
+    .table-responsive,
+    .frontend-desktop-table,
+    .desktop-records,
+    .pe-table-scroll,
+    .pe-candidate-table-scroll,
+    .table-scroll,
+    [data-table-scroll]
+)::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: #c4d0ca;
+}
+
+/* ----------------------------------------------------------------------
+   2. TABELA BASE — um único padrão para todas as famílias de tabela.
+   A especificidade é intencional para neutralizar CSS antigo de módulos.
+   ---------------------------------------------------------------------- */
+body[data-module] :is(.app-content, .module-content) :is(
+    table.data-table,
+    table.cm-data-table,
+    table.pe-data-table,
+    table.pe-table,
+    table.pe-list-table,
+    table.pe-report-table,
+    table.pe-candidate-table,
+    .frontend-desktop-table > table,
+    .frontend-desktop-table table.table,
+    .table-responsive > table.table,
+    .table-responsive > table
+) {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    table-layout: fixed !important;
+    background: var(--sigas-table-bg) !important;
+    color: var(--sigas-table-text) !important;
+    font-size: var(--sigas-table-cell-font) !important;
+    line-height: 1.28 !important;
+}
+
+/* Cabeçalho */
+body[data-module] :is(.app-content, .module-content) :is(
+    table.data-table,
+    table.cm-data-table,
+    table.pe-data-table,
+    table.pe-table,
+    table.pe-list-table,
+    table.pe-report-table,
+    table.pe-candidate-table,
+    .frontend-desktop-table table,
+    .table-responsive > table
+) thead th {
+    height: 35px !important;
+    padding: var(--sigas-table-head-y) var(--sigas-table-x) !important;
+    border: 0 !important;
+    border-bottom: 1px solid var(--sigas-table-border-strong) !important;
+    background: var(--sigas-table-head-bg) !important;
+    color: var(--sigas-table-head-color) !important;
+    font-size: var(--sigas-table-head-font) !important;
+    font-weight: 800 !important;
+    letter-spacing: .035em !important;
+    line-height: 1.15 !important;
+    text-transform: uppercase !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+}
+
+/* Corpo */
+body[data-module] :is(.app-content, .module-content) :is(
+    table.data-table,
+    table.cm-data-table,
+    table.pe-data-table,
+    table.pe-table,
+    table.pe-list-table,
+    table.pe-report-table,
+    table.pe-candidate-table,
+    .frontend-desktop-table table,
+    .table-responsive > table
+) tbody td {
+    min-width: 0 !important;
+    height: var(--sigas-table-row-min-height) !important;
+    padding: var(--sigas-table-cell-y) var(--sigas-table-x) !important;
+    border: 0 !important;
+    border-bottom: 1px solid var(--sigas-table-border) !important;
+    background: #fff !important;
+    color: var(--sigas-table-text) !important;
+    font-size: var(--sigas-table-cell-font) !important;
+    font-weight: 450;
+    line-height: 1.24 !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+}
+
+body[data-module] :is(.app-content, .module-content) :is(
+    table.data-table,
+    table.cm-data-table,
+    table.pe-data-table,
+    table.pe-table,
+    table.pe-list-table,
+    table.pe-report-table,
+    table.pe-candidate-table,
+    .frontend-desktop-table table,
+    .table-responsive > table
+) tbody tr:last-child td {
+    border-bottom: 0 !important;
+}
+
+body[data-module] :is(.app-content, .module-content) :is(
+    table.data-table,
+    table.cm-data-table,
+    table.pe-data-table,
+    table.pe-table,
+    table.pe-list-table,
+    table.pe-report-table,
+    table.pe-candidate-table,
+    .frontend-desktop-table table,
+    .table-responsive > table
+) tbody tr {
+    transition: background-color .14s ease, box-shadow .14s ease;
+}
+
+body[data-module] :is(.app-content, .module-content) :is(
+    table.data-table,
+    table.cm-data-table,
+    table.pe-data-table,
+    table.pe-table,
+    table.pe-list-table,
+    table.pe-report-table,
+    table.pe-candidate-table,
+    .frontend-desktop-table table,
+    .table-responsive > table
+) tbody tr:hover td,
+body[data-module] :is(.app-content, .module-content) :is(
+    table.data-table,
+    table.cm-data-table,
+    table.pe-data-table,
+    table.pe-table,
+    table.pe-list-table,
+    table.pe-report-table,
+    table.pe-candidate-table,
+    .frontend-desktop-table table,
+    .table-responsive > table
+) tbody tr:focus td {
+    background: var(--sigas-table-hover) !important;
+}
+
+/* ----------------------------------------------------------------------
+   3. CONTEÚDO INTERNO DAS CÉLULAS — mantém uma linha sem desmontar o dado.
+   ---------------------------------------------------------------------- */
+body[data-module] :is(.app-content, .module-content) table td :is(
+    .record-person,
+    .pe-candidate-name,
+    .cm-person-cell,
+    .table-actions,
+    .d-flex
+) {
+    min-width: 0;
+}
+
+body[data-module] :is(.app-content, .module-content) table td :is(
+    .record-person > div,
+    .pe-candidate-name > div,
+    .cm-person-cell > div
+) {
+    min-width: 0;
+    overflow: hidden;
+}
+
+body[data-module] :is(.app-content, .module-content) table td :is(
+    strong,
+    small,
+    .small,
+    .record-person span,
+    .pe-candidate-name strong,
+    .pe-candidate-name small
+) {
+    max-width: 100%;
+}
+
+body[data-module] :is(.app-content, .module-content) table td > small,
+body[data-module] :is(.app-content, .module-content) table td > .small,
+body[data-module] :is(.app-content, .module-content) table .record-person > div > span,
+body[data-module] :is(.app-content, .module-content) table .record-person > div > small,
+body[data-module] :is(.app-content, .module-content) table .pe-candidate-name small {
+    display: block;
+    margin-top: 2px;
+    color: var(--sigas-table-muted) !important;
+    font-size: var(--sigas-table-meta-font) !important;
+    line-height: 1.1 !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap !important;
+}
+
+/* Pessoas/candidatos: primeira informação recebe destaque semelhante ao SEMAS. */
+body[data-module] :is(.app-content, .module-content) table .record-person > div > strong,
+body[data-module] :is(.app-content, .module-content) table .pe-candidate-name strong,
+body[data-module] :is(.app-content, .module-content) table .pe-candidate-name-cell strong {
+    display: block;
+    overflow: hidden;
+    color: #183b30 !important;
+    font-size: 13px !important;
+    font-weight: 750 !important;
+    line-height: 1.12 !important;
+    text-overflow: ellipsis;
+    white-space: nowrap !important;
+}
+
+/* Avatares seguem uma única escala. */
+body[data-module] :is(.app-content, .module-content) table :is(.mini-avatar, .pe-candidate-avatar) {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    flex: 0 0 32px !important;
+    border-radius: 10px !important;
+}
+
+/* Badges e ações nunca quebram. */
+body[data-module] :is(.app-content, .module-content) table :is(
+    .badge,
+    .status-badge,
+    .status-pill,
+    .pe-status-badge,
+    .source-badge
+) {
+    max-width: 100%;
+    min-height: 24px;
+    padding: 4px 7px !important;
+    font-size: 10.5px !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+body[data-module] :is(.app-content, .module-content) table .table-actions {
+    display: flex !important;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 5px !important;
+    min-width: 0;
+    white-space: nowrap !important;
+}
+
+body[data-module] :is(.app-content, .module-content) table :is(.btn-sm, .table-actions .btn) {
+    min-height: 30px !important;
+    padding: 4px 8px !important;
+    border-radius: 8px !important;
+    font-size: 10.5px !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+}
+
+/* ----------------------------------------------------------------------
+   4. PRIMEIRO EMPREGO — 8 colunas cabem dentro da mesma largura SEMAS.
+   Não existe mais min-width de 1050/1180/1880px no desktop.
+   ---------------------------------------------------------------------- */
+body[data-module="primeiro-emprego"] :is(.app-content, .module-content) table.pe-candidate-table {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed !important;
+}
+
+body[data-module="primeiro-emprego"] :is(.app-content, .module-content) .pe-candidate-table thead th:nth-child(1) { width: 23% !important; }
+body[data-module="primeiro-emprego"] :is(.app-content, .module-content) .pe-candidate-table thead th:nth-child(2) { width: 12% !important; }
+body[data-module="primeiro-emprego"] :is(.app-content, .module-content) .pe-candidate-table thead th:nth-child(3) { width: 11% !important; }
+body[data-module="primeiro-emprego"] :is(.app-content, .module-content) .pe-candidate-table thead th:nth-child(4) { width: 10% !important; }
+body[data-module="primeiro-emprego"] :is(.app-content, .module-content) .pe-candidate-table thead th:nth-child(5) { width: 11% !important; }
+body[data-module="primeiro-emprego"] :is(.app-content, .module-content) .pe-candidate-table thead th:nth-child(6) { width: 10% !important; }
+body[data-module="primeiro-emprego"] :is(.app-content, .module-content) .pe-candidate-table thead th:nth-child(7) { width: 15% !important; }
+body[data-module="primeiro-emprego"] :is(.app-content, .module-content) .pe-candidate-table thead th:nth-child(8) { width: 8% !important; }
+
+body[data-module="primeiro-emprego"] :is(.app-content, .module-content) .pe-candidate-table tbody td:nth-child(2),
+body[data-module="primeiro-emprego"] :is(.app-content, .module-content) .pe-candidate-table tbody td:nth-child(3),
+body[data-module="primeiro-emprego"] :is(.app-content, .module-content) .pe-candidate-table tbody td:nth-child(4) {
+    font-variant-numeric: tabular-nums;
+}
+
+body[data-module="primeiro-emprego"] :is(.app-content, .module-content) .pe-review-cell :is(.badge, small) {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap !important;
+}
+
+/* ----------------------------------------------------------------------
+   5. COMIDA NA MESA E TABELAS LEGADAS — remove espaçamentos laterais únicos
+   para que todas as colunas partam da mesma régua visual.
+   ---------------------------------------------------------------------- */
+body[data-module="comida-mesa"] :is(.app-content, .module-content) .cm-data-table :is(th, td):first-child {
+    padding-left: var(--sigas-table-x) !important;
+}
+
+/* ----------------------------------------------------------------------
+   6. TOOLBARS/CARDS ASSOCIADOS À TABELA — mesma linguagem visual.
+   ---------------------------------------------------------------------- */
+body[data-module] :is(.app-content, .module-content) :is(
+    .table-toolbar,
+    .cm-table-toolbar,
+    .pe-table-toolbar,
+    .pe-list-section__head,
+    .pe-report-detail-head
+) {
+    min-height: 54px;
+}
+
+body[data-module] :is(.app-content, .module-content) :is(
+    .table-card,
+    .frontend-data-card,
+    .pe-table-wrap,
+    .pe-list-section,
+    .pe-report-detail-section,
+    .cm-table-shell
+) {
+    max-width: 100%;
+    min-width: 0;
+}
+
+/* ----------------------------------------------------------------------
+   7. RESPONSIVIDADE — desktop ocupa 100%; tablet/celular preservam a tabela
+   com scroll horizontal em vez de quebrar cada registro em várias linhas.
+   ---------------------------------------------------------------------- */
+@media (max-width: 991.98px) {
+    :root {
+        --sigas-table-head-font: 9.5px;
+        --sigas-table-cell-font: 12.5px;
+        --sigas-table-meta-font: 10.5px;
+        --sigas-table-head-y: 8px;
+        --sigas-table-cell-y: 9px;
+        --sigas-table-x: 10px;
+    }
+
+    body[data-module] :is(.app-content, .module-content) :is(
+        table.data-table,
+        table.cm-data-table,
+        table.pe-data-table,
+        table.pe-table,
+        table.pe-list-table,
+        table.pe-report-table,
+        table.pe-candidate-table,
+        .frontend-desktop-table table,
+        .table-responsive > table
+    ) {
+        min-width: 920px !important;
+        max-width: none !important;
+        table-layout: fixed !important;
+    }
+
+    body[data-module="primeiro-emprego"] :is(.app-content, .module-content) table.pe-report-detail-table {
+        min-width: 1180px !important;
+    }
+}
+
+@media (max-width: 767.98px) {
+    :root {
+        --sigas-table-head-font: 9px;
+        --sigas-table-cell-font: 12px;
+        --sigas-table-meta-font: 10px;
+        --sigas-table-head-y: 7px;
+        --sigas-table-cell-y: 8px;
+        --sigas-table-x: 9px;
+        --sigas-table-row-min-height: 43px;
+    }
+
+    /* Mantém o mesmo componente visual em todos os módulos. */
+    body[data-module] :is(.app-content, .module-content) .frontend-desktop-table,
+    body[data-module] :is(.app-content, .module-content) .desktop-records {
+        display: block !important;
+    }
+
+    body[data-module] :is(.app-content, .module-content) .frontend-mobile-records,
+    body[data-module] :is(.app-content, .module-content) .mobile-records {
+        display: none !important;
+    }
+
+    body[data-module] :is(.app-content, .module-content) :is(
+        table.data-table,
+        table.cm-data-table,
+        table.pe-data-table,
+        table.pe-table,
+        table.pe-list-table,
+        table.pe-report-table,
+        table.pe-candidate-table,
+        .frontend-desktop-table table,
+        .table-responsive > table
+    ) {
+        min-width: 860px !important;
+    }
+
+    body[data-module="primeiro-emprego"] :is(.app-content, .module-content) table.pe-candidate-table {
+        min-width: 980px !important;
+    }
+
+    /* O Primeiro Emprego tinha uma regra antiga que convertia a tabela em
+       cartões no celular. O padrão global mantém tabela + scroll. */
+    body[data-module="primeiro-emprego"] :is(.app-content, .module-content) table.pe-list-table {
+        display: table !important;
+        width: 100% !important;
+    }
+
+    body[data-module="primeiro-emprego"] :is(.app-content, .module-content) .pe-list-table thead {
+        display: table-header-group !important;
+    }
+
+    body[data-module="primeiro-emprego"] :is(.app-content, .module-content) .pe-list-table tbody {
+        display: table-row-group !important;
+    }
+
+    body[data-module="primeiro-emprego"] :is(.app-content, .module-content) .pe-list-table tr,
+    body[data-module="primeiro-emprego"] :is(.app-content, .module-content) .pe-list-table tr.pe-list-row {
+        display: table-row !important;
+        width: auto !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+    }
+
+    body[data-module="primeiro-emprego"] :is(.app-content, .module-content) .pe-list-table td {
+        display: table-cell !important;
+        width: auto !important;
+        grid-template-columns: none !important;
+        gap: 0 !important;
+    }
+
+    body[data-module="primeiro-emprego"] :is(.app-content, .module-content) .pe-list-table td::before {
+        content: none !important;
+        display: none !important;
+    }
+}
+
+/* Impressão: remove rolagem e deixa o navegador distribuir a tabela. */
+@media print {
+    body[data-module] :is(.app-content, .module-content) :is(
+        .table-responsive,
+        .frontend-desktop-table,
+        .desktop-records,
+        .pe-table-scroll,
+        .pe-candidate-table-scroll,
+        .table-scroll,
+        [data-table-scroll]
+    ) {
+        overflow: visible !important;
+    }
+
+    body[data-module] :is(.app-content, .module-content) :is(
+        table.data-table,
+        table.cm-data-table,
+        table.pe-data-table,
+        table.pe-table,
+        table.pe-list-table,
+        table.pe-report-table,
+        table.pe-candidate-table,
+        .frontend-desktop-table table,
+        .table-responsive > table
+    ) {
+        width: 100% !important;
+        min-width: 0 !important;
+        font-size: 9px !important;
+    }
+}
