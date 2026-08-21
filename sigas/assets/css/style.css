@@ -2170,3 +2170,146 @@ fieldset[disabled] .system-fields { opacity: 1; }
 .program-directory-card.active { border-color: #b9d3c2; background: #f8fcf9; transform: translateY(-1px); }
 @media (max-width: 1199.98px) { .program-directory { grid-template-columns: repeat(3, minmax(0,1fr)); } }
 @media (max-width: 767.98px) { .program-directory { display: flex; overflow-x: auto; padding-bottom: 6px; } .program-directory-card { min-width: 210px; } }
+
+/* ======================================================================
+   SIGAS — PADRÃO GLOBAL DE TABELAS SLIM V1
+   ----------------------------------------------------------------------
+   Objetivo:
+   - reduzir a altura das linhas em todas as listagens do SIGAS;
+   - impedir quebra de linha dentro das células operacionais;
+   - manter tabelas largas utilizáveis com rolagem horizontal;
+   - preservar legibilidade, foco, hover e ações existentes.
+   ====================================================================== */
+
+:root {
+    --sigas-table-slim-head-y: 6px;
+    --sigas-table-slim-cell-y: 7px;
+    --sigas-table-slim-x: 9px;
+    --sigas-table-slim-head-font: 9px;
+    --sigas-table-slim-cell-font: 10.5px;
+    --sigas-table-slim-line: 1.2;
+}
+
+/* Wrappers de tabela: a página nunca deve alargar ou quebrar o layout. */
+.table-responsive,
+.frontend-desktop-table,
+.desktop-records,
+[data-table-scroll],
+.table-scroll {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+}
+
+.table-responsive::-webkit-scrollbar,
+.frontend-desktop-table::-webkit-scrollbar,
+.desktop-records::-webkit-scrollbar,
+[data-table-scroll]::-webkit-scrollbar,
+.table-scroll::-webkit-scrollbar {
+    height: 7px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb,
+.frontend-desktop-table::-webkit-scrollbar-thumb,
+.desktop-records::-webkit-scrollbar-thumb,
+[data-table-scroll]::-webkit-scrollbar-thumb,
+.table-scroll::-webkit-scrollbar-thumb {
+    background: #c7d3cd;
+    border-radius: 999px;
+}
+
+/* Listagens principais e tabelas Bootstrap do conteúdo operacional. */
+.app-content .data-table,
+.app-content .cm-data-table,
+.app-content .frontend-desktop-table .table,
+.app-content .table-responsive > .table,
+.app-content .table-card .table,
+.app-content .content-card .table {
+    width: 100%;
+    margin-bottom: 0;
+    font-size: var(--sigas-table-slim-cell-font);
+    line-height: var(--sigas-table-slim-line);
+}
+
+.app-content .data-table thead th,
+.app-content .cm-data-table thead th,
+.app-content .frontend-desktop-table .table thead th,
+.app-content .table-responsive > .table thead th,
+.app-content .table-card .table thead th,
+.app-content .content-card .table thead th {
+    padding: var(--sigas-table-slim-head-y) var(--sigas-table-slim-x) !important;
+    font-size: var(--sigas-table-slim-head-font) !important;
+    line-height: 1.15 !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+}
+
+.app-content .data-table tbody td,
+.app-content .cm-data-table tbody td,
+.app-content .frontend-desktop-table .table tbody td,
+.app-content .table-responsive > .table tbody td,
+.app-content .table-card .table tbody td,
+.app-content .content-card .table tbody td {
+    padding: var(--sigas-table-slim-cell-y) var(--sigas-table-slim-x) !important;
+    font-size: var(--sigas-table-slim-cell-font) !important;
+    line-height: var(--sigas-table-slim-line) !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+}
+
+/* Evita que pequenos textos auxiliares aumentem a altura da linha. */
+.app-content table td > small,
+.app-content table td > .small {
+    line-height: 1.15;
+}
+
+/* Badges e botões de ação também permanecem em uma única linha. */
+.app-content table .badge,
+.app-content table [class*="status-"],
+.app-content table .status-pill,
+.app-content table .table-actions,
+.app-content table .table-actions .btn,
+.app-content table .btn-sm {
+    white-space: nowrap;
+}
+
+.app-content table .table-actions {
+    gap: 4px;
+}
+
+.app-content table .btn-sm,
+.app-content table .table-actions .btn {
+    min-height: 27px;
+    padding: 3px 7px;
+    font-size: 10px;
+    line-height: 1.1;
+}
+
+/* As tabelas de listagem deixam de exigir quase 1000px só por padrão.
+   O conteúdo continua podendo aumentar a largura e o wrapper assume o scroll. */
+.app-content .data-table {
+    min-width: 780px;
+}
+
+@media (max-width: 767.98px) {
+    :root {
+        --sigas-table-slim-head-y: 5px;
+        --sigas-table-slim-cell-y: 6px;
+        --sigas-table-slim-x: 8px;
+        --sigas-table-slim-head-font: 8.5px;
+        --sigas-table-slim-cell-font: 10px;
+    }
+
+    .app-content .data-table,
+    .app-content .cm-data-table,
+    .app-content .table-responsive > .table {
+        min-width: max-content;
+    }
+}

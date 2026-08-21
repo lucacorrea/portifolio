@@ -1750,3 +1750,230 @@ body[data-module="comida-mesa"] .consulta-result-card {
         border-radius: 16px;
     }
 }
+
+/* ======================================================================
+   MEU PRIMEIRO EMPREGO — TABELAS SLIM / UMA LINHA V1
+   Carregado por último no módulo para prevalecer sobre os estilos legados.
+   ====================================================================== */
+
+body[data-module="primeiro-emprego"] .pe-table-scroll,
+body[data-module="primeiro-emprego"] .pe-candidate-table-scroll,
+body[data-module="primeiro-emprego"] .pe-table-wrap .table-responsive {
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
+body[data-module="primeiro-emprego"] .pe-data-table,
+body[data-module="primeiro-emprego"] .pe-table,
+body[data-module="primeiro-emprego"] .pe-list-table,
+body[data-module="primeiro-emprego"] .pe-report-table {
+    line-height: 1.18;
+}
+
+body[data-module="primeiro-emprego"] .pe-data-table thead th,
+body[data-module="primeiro-emprego"] .pe-table thead th,
+body[data-module="primeiro-emprego"] .pe-list-table thead th,
+body[data-module="primeiro-emprego"] .pe-report-table thead th {
+    padding: 6px 8px !important;
+    font-size: .57rem !important;
+    line-height: 1.12 !important;
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-data-table tbody td,
+body[data-module="primeiro-emprego"] .pe-table tbody td,
+body[data-module="primeiro-emprego"] .pe-list-table tbody td,
+body[data-module="primeiro-emprego"] .pe-report-table tbody td {
+    padding: 7px 8px !important;
+    font-size: .68rem !important;
+    line-height: 1.18 !important;
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+}
+
+/* Candidatos: uma linha por registro, sem transformar textos longos em 2/3 linhas. */
+body[data-module="primeiro-emprego"] .pe-candidate-table {
+    width: 100% !important;
+    min-width: 940px !important;
+    table-layout: fixed !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-candidate-table thead th:nth-child(1) { width: 18% !important; }
+body[data-module="primeiro-emprego"] .pe-candidate-table thead th:nth-child(2) { width: 11% !important; }
+body[data-module="primeiro-emprego"] .pe-candidate-table thead th:nth-child(3) { width: 10% !important; }
+body[data-module="primeiro-emprego"] .pe-candidate-table thead th:nth-child(4) { width: 10% !important; }
+body[data-module="primeiro-emprego"] .pe-candidate-table thead th:nth-child(5) { width: 11% !important; }
+body[data-module="primeiro-emprego"] .pe-candidate-table thead th:nth-child(6) { width: 12% !important; }
+body[data-module="primeiro-emprego"] .pe-candidate-table thead th:nth-child(7) { width: 18% !important; }
+body[data-module="primeiro-emprego"] .pe-candidate-table thead th:nth-child(8) { width: 10% !important; }
+
+body[data-module="primeiro-emprego"] .pe-candidate-table tbody td {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+body[data-module="primeiro-emprego"] .pe-candidate-name {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap !important;
+    gap: 7px;
+    min-width: 0;
+}
+
+body[data-module="primeiro-emprego"] .pe-candidate-name > div {
+    min-width: 0;
+    overflow: hidden;
+}
+
+body[data-module="primeiro-emprego"] .pe-candidate-name strong,
+body[data-module="primeiro-emprego"] .pe-candidate-name small {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-candidate-name strong,
+body[data-module="primeiro-emprego"] .pe-candidate-name-cell strong {
+    font-size: .71rem !important;
+    line-height: 1.12 !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-candidate-name small {
+    margin-top: 1px;
+    font-size: .58rem !important;
+    line-height: 1.05 !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-candidate-avatar {
+    width: 28px !important;
+    height: 28px !important;
+    flex: 0 0 28px !important;
+    border-radius: 9px !important;
+    font-size: .72rem;
+}
+
+/* Bairro / setor / revisão podem ser longos: mostram uma linha e reticências. */
+body[data-module="primeiro-emprego"] .pe-candidate-table tbody td:nth-child(5),
+body[data-module="primeiro-emprego"] .pe-candidate-table tbody td:nth-child(6),
+body[data-module="primeiro-emprego"] .pe-candidate-table tbody td:nth-child(7) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+body[data-module="primeiro-emprego"] .pe-review-cell {
+    min-width: 0;
+}
+
+body[data-module="primeiro-emprego"] .pe-review-cell .badge,
+body[data-module="primeiro-emprego"] .pe-review-cell > small {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-review-cell .badge {
+    width: max-content;
+    max-width: 100%;
+    padding: 3px 6px !important;
+    font-size: .56rem !important;
+    line-height: 1.05 !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-review-cell > small {
+    margin-top: 2px !important;
+    font-size: .58rem !important;
+    line-height: 1.05 !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-status-badge {
+    display: inline-flex !important;
+    align-items: center;
+    width: auto !important;
+    max-width: 100%;
+    padding: 4px 7px !important;
+    font-size: .61rem !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+}
+
+/* CPF, data e telefone nunca quebram. */
+body[data-module="primeiro-emprego"] .pe-candidate-table tbody td:nth-child(2),
+body[data-module="primeiro-emprego"] .pe-candidate-table tbody td:nth-child(3),
+body[data-module="primeiro-emprego"] .pe-candidate-table tbody td:nth-child(4) {
+    white-space: nowrap !important;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Listagens do módulo seguem o mesmo padrão slim sem empilhar células no celular. */
+@media (max-width: 767.98px) {
+    body[data-module="primeiro-emprego"] .pe-candidate-table {
+        min-width: 940px !important;
+    }
+
+    body[data-module="primeiro-emprego"] .pe-data-table thead th,
+    body[data-module="primeiro-emprego"] .pe-table thead th,
+    body[data-module="primeiro-emprego"] .pe-list-table thead th,
+    body[data-module="primeiro-emprego"] .pe-report-table thead th {
+        padding: 5px 7px !important;
+    }
+
+    body[data-module="primeiro-emprego"] .pe-data-table tbody td,
+    body[data-module="primeiro-emprego"] .pe-table tbody td,
+    body[data-module="primeiro-emprego"] .pe-list-table tbody td,
+    body[data-module="primeiro-emprego"] .pe-report-table tbody td {
+        padding: 6px 7px !important;
+    }
+}
+
+/* Em telas pequenas, as listagens continuam sendo tabelas slim.
+   Em vez de empilhar cada célula como cartão, usamos rolagem horizontal. */
+@media (max-width: 767.98px) {
+    body[data-module="primeiro-emprego"] .pe-list-table {
+        display: table !important;
+        width: 100% !important;
+        min-width: 820px !important;
+    }
+
+    body[data-module="primeiro-emprego"] .pe-list-table thead {
+        display: table-header-group !important;
+    }
+
+    body[data-module="primeiro-emprego"] .pe-list-table tbody {
+        display: table-row-group !important;
+    }
+
+    body[data-module="primeiro-emprego"] .pe-list-table tr,
+    body[data-module="primeiro-emprego"] .pe-list-table tr.pe-list-row {
+        display: table-row !important;
+        width: auto !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+    }
+
+    body[data-module="primeiro-emprego"] .pe-list-table td {
+        display: table-cell !important;
+        width: auto !important;
+        grid-template-columns: none !important;
+        gap: 0 !important;
+        border-bottom: 1px solid #e6ece9 !important;
+        white-space: nowrap !important;
+    }
+
+    body[data-module="primeiro-emprego"] .pe-list-table td::before {
+        content: none !important;
+        display: none !important;
+    }
+}
