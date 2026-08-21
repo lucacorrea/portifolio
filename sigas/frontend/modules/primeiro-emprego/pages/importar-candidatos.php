@@ -16,7 +16,7 @@ $pageDefinition = [
     'modal' => ['title' => 'Importação'],
 ];
 $extraStyles = ['frontend/modules/primeiro-emprego/module.css'];
-$extraScripts = ['frontend/modules/primeiro-emprego/payment-pdf-import.js'];
+$extraScripts = []; // A conciliação por PDF é controlada pelo JS oficial do módulo.
 
 $baseDbReady = pe_db_ready() && pe_schema_ready();
 $excelDbReady = $baseDbReady && pe_import_schema_ready();
@@ -570,9 +570,19 @@ ob_start();
                 <div><strong>Regra de segurança</strong><p class="mb-0">O PDF só pode marcar o candidato como Contemplado e registrar/conciliar a bolsa. Se já existir pagamento com valor ou data incompatível, o SIGAS cria um conflito e não sobrescreve o financeiro.</p></div>
             </div>
 
-            <div class="d-flex flex-wrap gap-2 justify-content-end mt-3">
-                <button class="btn btn-outline-primary" type="button" data-pe-payment-analyze><i class="bi bi-search"></i> Analisar PDF</button>
-                <button class="btn btn-primary" type="submit" data-pe-payment-apply disabled><i class="bi bi-bank"></i> Confirmar conciliação</button>
+            <div class="pe-payment-actions mt-3">
+                <div class="pe-payment-live-status" data-pe-payment-live-status role="status" aria-live="polite">
+                    <i class="bi bi-info-circle"></i>
+                    <span>Selecione o extrato e clique em <strong>Analisar PDF</strong>. A confirmação será liberada somente após a conferência.</span>
+                </div>
+                <div class="d-flex flex-wrap gap-2 justify-content-end">
+                    <button class="btn btn-outline-primary" type="button" data-pe-payment-analyze>
+                        <i class="bi bi-search"></i> <span data-pe-payment-analyze-label>Analisar PDF</span>
+                    </button>
+                    <button class="btn btn-primary" type="submit" data-pe-payment-apply disabled title="Analise o PDF antes de confirmar">
+                        <i class="bi bi-bank"></i> <span data-pe-payment-apply-label>Confirmar conciliação</span>
+                    </button>
+                </div>
             </div>
         </form>
 

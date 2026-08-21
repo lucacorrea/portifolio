@@ -3111,3 +3111,85 @@ body[data-module="primeiro-emprego"] .pe-candidate-review-table .text-warning-em
     }
 }
 
+
+
+/* ==========================================================================
+   IMPORTAÇÃO PDF — feedback operacional e ações (2026-08-21)
+   ========================================================================== */
+.pe-payment-actions {
+    display: grid;
+    gap: 12px;
+}
+
+.pe-payment-live-status {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-height: 44px;
+    padding: 11px 14px;
+    border: 1px solid #dbe7ee;
+    border-radius: 12px;
+    background: #f8fbfc;
+    color: #52646f;
+    font-size: .88rem;
+    line-height: 1.45;
+}
+
+.pe-payment-live-status > i {
+    flex: 0 0 auto;
+    margin-top: 2px;
+    color: #0f7894;
+}
+
+.pe-payment-live-status.is-loading {
+    border-color: #bcd9e4;
+    background: #f2f9fb;
+    color: #285c6d;
+}
+
+.pe-payment-live-status.is-success {
+    border-color: #b9dfc8;
+    background: #f3fbf6;
+    color: #22603a;
+}
+
+.pe-payment-live-status.is-warning {
+    border-color: #ead5a6;
+    background: #fffaf0;
+    color: #74551c;
+}
+
+.pe-payment-live-status.is-danger {
+    border-color: #efc2bd;
+    background: #fff6f5;
+    color: #8e3028;
+}
+
+[data-pe-payment-analyze],
+[data-pe-payment-apply] {
+    min-height: 44px;
+    border-radius: 12px;
+    font-weight: 700;
+    padding-inline: 18px;
+}
+
+[data-pe-payment-analyze]:disabled,
+[data-pe-payment-apply]:disabled {
+    cursor: not-allowed;
+}
+
+[data-pe-payment-apply]:disabled {
+    opacity: .55;
+}
+
+@media (max-width: 575.98px) {
+    .pe-payment-actions .d-flex {
+        display: grid !important;
+        grid-template-columns: 1fr;
+    }
+
+    [data-pe-payment-analyze],
+    [data-pe-payment-apply] {
+        width: 100%;
+    }
+}

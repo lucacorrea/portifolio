@@ -76,57 +76,82 @@ function pe_payment_pdf_validate_upload(array $file): array
     ];
 }
 
-function pe_payment_pdf_try_server_text(string $path): ?string
+function pe_payment_pdf_function_disabled(string $function): bool
 {
-    if (!function_exists('proc_open')) {
-        return null;
+    if (!function_exists($function)) {
+        return true;
     }
-
     $disabled = array_filter(array_map('trim', explode(',', (string) ini_get('disable_functions'))));
-    if (in_array('proc_open', $disabled, true)) {
-        return null;
-    }
+    return in_array($function, $disabled, true);
+}
 
-    $binary = null;
-    foreach (['/usr/bin/pdftotext', '/usr/local/bin/pdftotext'] as $candidate) {
+function pe_payment_pdf_find_pdftotext(): ?string
+{
+    foreach ([
+        '/usr/bin/pdftotext',
+        '/usr/local/bin/pdftotext',
+        '/opt/homebrew/bin/pdftotext',
+    ] as $candidate) {
         if (is_file($candidate) && is_executable($candidate)) {
-            $binary = $candidate;
-            break;
+            return $candidate;
         }
     }
+    return null;
+}
+
+function pe_payment_pdf_try_server_text(string $path): ?string
+{
+    $binary = pe_payment_pdf_find_pdftotext();
     if ($binary === null) {
         return null;
     }
 
-    $descriptors = [
-        0 => ['pipe', 'r'],
-        1 => ['pipe', 'w'],
-        2 => ['pipe', 'w'],
-    ];
+    // Caminho preferencial: proc_open sem shell, com argumentos separados.
+    if (!pe_payment_pdf_function_disabled('proc_open')) {
+        $descriptors = [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
 
-    $process = @proc_open([$binary, '-layout', $path, '-'], $descriptors, $pipes, null, ['LANG' => 'C.UTF-8']);
-    if (!is_resource($process)) {
-        return null;
+        $process = @proc_open([$binary, '-layout', $path, '-'], $descriptors, $pipes, null, ['LANG' => 'C.UTF-8']);
+        if (is_resource($process)) {
+            fclose($pipes[0]);
+            stream_set_timeout($pipes[1], 20);
+            stream_set_timeout($pipes[2], 20);
+            $stdout = stream_get_contents($pipes[1]);
+            stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            $exit = proc_close($process);
+
+            if ($exit === 0 && is_string($stdout) && trim($stdout) !== '') {
+                if (strlen($stdout) > 4 * 1024 * 1024) {
+                    throw new RuntimeException('O texto extraído do PDF excedeu o limite de segurança.');
+                }
+                return $stdout;
+            }
+        }
     }
 
-    fclose($pipes[0]);
-    stream_set_timeout($pipes[1], 15);
-    stream_set_timeout($pipes[2], 15);
-    $stdout = stream_get_contents($pipes[1]);
-    $stderr = stream_get_contents($pipes[2]);
-    fclose($pipes[1]);
-    fclose($pipes[2]);
-    $exit = proc_close($process);
+    // Compatibilidade com hospedagens compartilhadas que desabilitam proc_open,
+    // mas mantêm shell_exec. Os dois argumentos são escapados e o binário é fixo.
+    if (!pe_payment_pdf_function_disabled('shell_exec')) {
+        $command = escapeshellarg($binary)
+            . ' -layout '
+            . escapeshellarg($path)
+            . ' - 2>/dev/null';
+        $stdout = @shell_exec($command);
 
-    if ($exit !== 0 || !is_string($stdout) || trim($stdout) === '') {
-        return null;
+        if (is_string($stdout) && trim($stdout) !== '') {
+            if (strlen($stdout) > 4 * 1024 * 1024) {
+                throw new RuntimeException('O texto extraído do PDF excedeu o limite de segurança.');
+            }
+            return $stdout;
+        }
     }
 
-    if (strlen($stdout) > 4 * 1024 * 1024) {
-        throw new RuntimeException('O texto extraído do PDF excedeu o limite de segurança.');
-    }
-
-    return $stdout;
+    return null;
 }
 
 function pe_payment_pdf_extract_text(string $pdfPath, ?string $browserText): array

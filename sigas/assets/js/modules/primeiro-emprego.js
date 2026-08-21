@@ -1181,3 +1181,497 @@
     });
 })();
 
+
+/* =====================================================================
+ * CENTRAL DE IMPORTAÇÕES — PDF DE PAGAMENTOS (2026-08-21)
+ * Controlador integrado ao JS oficial do módulo. Não depende de arquivo
+ * complementar para que Analisar PDF / Confirmar conciliação funcionem.
+ * ===================================================================== */
+(() => {
+    'use strict';
+
+    const hub = document.querySelector('[data-pe-import-hub]');
+    if (!hub) return;
+
+    const form = hub.querySelector('[data-pe-payment-pdf-form]');
+    if (!form || form.dataset.pePaymentBound === '1') return;
+    form.dataset.pePaymentBound = '1';
+
+    const fileInput = form.querySelector('[data-pe-payment-pdf-file]');
+    const textInput = form.querySelector('[data-pe-payment-pdf-text]');
+    const competenceInput = form.querySelector('[data-pe-payment-competence]');
+    const analyzeButton = form.querySelector('[data-pe-payment-analyze]');
+    const applyButton = form.querySelector('[data-pe-payment-apply]');
+    const analyzeLabel = form.querySelector('[data-pe-payment-analyze-label]');
+    const applyLabel = form.querySelector('[data-pe-payment-apply-label]');
+    const liveStatus = form.querySelector('[data-pe-payment-live-status]');
+
+    const analysisBox = hub.querySelector('[data-pe-payment-analysis]');
+    const metaNode = hub.querySelector('[data-pe-payment-meta]');
+    const sourceNode = hub.querySelector('[data-pe-payment-source]');
+    const kpisNode = hub.querySelector('[data-pe-payment-kpis]');
+    const warningNode = hub.querySelector('[data-pe-payment-warning]');
+    const rowsNode = hub.querySelector('[data-pe-payment-rows]');
+    const limitNote = hub.querySelector('[data-pe-payment-limit-note]');
+
+    if (!fileInput || !textInput || !competenceInput || !analyzeButton || !applyButton || !analysisBox) {
+        return;
+    }
+
+    let analyzed = false;
+    let lastAnalysis = null;
+    let pdfJsPromise = null;
+
+    const escapeHtml = value => String(value == null ? '' : value).replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+    }[char]));
+
+    const money = value => new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+    }).format(Number(value || 0));
+
+    const formatCpf = value => {
+        const original = String(value || '');
+        const digits = original.replace(/\D+/g, '').padStart(11, '0');
+        if (digits.length !== 11) return original || '—';
+        return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+    };
+
+    const showToast = (message, type = 'info') => {
+        if (window.SIGASFrontend && typeof window.SIGASFrontend.toast === 'function') {
+            window.SIGASFrontend.toast(message, type);
+            return;
+        }
+
+        const container = document.getElementById('frontendToastContainer');
+        if (!container) return;
+
+        const node = document.createElement('div');
+        const bootstrapType = type === 'danger' ? 'danger' : (type === 'success' ? 'success' : (type === 'warning' ? 'warning' : 'info'));
+        node.className = `alert alert-${bootstrapType} shadow-sm`;
+        node.textContent = message;
+        container.appendChild(node);
+        window.setTimeout(() => node.remove(), 6000);
+    };
+
+    const setLiveStatus = (message, tone = 'info', icon = 'bi-info-circle') => {
+        if (!liveStatus) return;
+        liveStatus.classList.remove('is-loading', 'is-success', 'is-warning', 'is-danger');
+        if (tone && tone !== 'info') liveStatus.classList.add(`is-${tone}`);
+        liveStatus.innerHTML = `<i class="bi ${escapeHtml(icon)}"></i><span>${message}</span>`;
+    };
+
+    const updateCsrf = token => {
+        if (!token) return;
+        document.querySelectorAll('input[name="_csrf"]').forEach(input => {
+            input.value = token;
+        });
+    };
+
+    const resetAnalysis = (message = null) => {
+        analyzed = false;
+        lastAnalysis = null;
+        applyButton.disabled = true;
+        applyButton.title = 'Analise o PDF antes de confirmar';
+        if (applyLabel) applyLabel.textContent = 'Confirmar conciliação';
+        analysisBox.hidden = true;
+        if (rowsNode) rowsNode.innerHTML = '';
+        if (kpisNode) kpisNode.innerHTML = '';
+        if (metaNode) metaNode.textContent = '—';
+        if (sourceNode) sourceNode.textContent = '—';
+        if (warningNode) warningNode.textContent = '';
+        if (limitNote) limitNote.textContent = '';
+        if (message) setLiveStatus(message, 'info', 'bi-info-circle');
+    };
+
+    const loadScript = url => new Promise((resolve, reject) => {
+        const existing = document.querySelector(`script[data-pe-pdfjs-src="${CSS.escape(url)}"]`);
+        if (existing) {
+            if (window.pdfjsLib && typeof window.pdfjsLib.getDocument === 'function') {
+                resolve(url);
+                return;
+            }
+            existing.addEventListener('load', () => resolve(url), { once: true });
+            existing.addEventListener('error', () => reject(new Error(`Falha ao carregar ${url}`)), { once: true });
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.src = url;
+        script.async = true;
+        script.crossOrigin = 'anonymous';
+        script.dataset.pePdfjsSrc = url;
+        script.addEventListener('load', () => resolve(url), { once: true });
+        script.addEventListener('error', () => reject(new Error(`Falha ao carregar ${url}`)), { once: true });
+        document.head.appendChild(script);
+    });
+
+    const loadPdfJs = async () => {
+        if (window.pdfjsLib && typeof window.pdfjsLib.getDocument === 'function') {
+            return window.pdfjsLib;
+        }
+        if (pdfJsPromise) return pdfJsPromise;
+
+        pdfJsPromise = (async () => {
+            const sources = [
+                {
+                    lib: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+                    worker: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
+                },
+                {
+                    lib: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',
+                    worker: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js',
+                },
+            ];
+
+            let lastError = null;
+            for (const source of sources) {
+                try {
+                    setLiveStatus('O servidor não possui extrator local. Carregando o leitor seguro de PDF no navegador…', 'loading', 'bi-arrow-repeat');
+                    await loadScript(source.lib);
+                    if (window.pdfjsLib && typeof window.pdfjsLib.getDocument === 'function') {
+                        window.pdfjsLib.GlobalWorkerOptions.workerSrc = source.worker;
+                        return window.pdfjsLib;
+                    }
+                } catch (error) {
+                    lastError = error;
+                }
+            }
+
+            throw lastError || new Error('Não foi possível carregar o leitor de PDF. Verifique a conexão e tente novamente.');
+        })();
+
+        try {
+            return await pdfJsPromise;
+        } catch (error) {
+            pdfJsPromise = null;
+            throw error;
+        }
+    };
+
+    const pageItemsToLines = items => {
+        const prepared = items
+            .filter(item => item && typeof item.str === 'string' && item.str.trim() !== '' && Array.isArray(item.transform))
+            .map(item => ({
+                text: item.str.trim(),
+                x: Number(item.transform[4] || 0),
+                y: Number(item.transform[5] || 0),
+            }))
+            .sort((a, b) => Math.abs(b.y - a.y) > 1.8 ? b.y - a.y : a.x - b.x);
+
+        const lines = [];
+        prepared.forEach(item => {
+            let line = lines.find(candidate => Math.abs(candidate.y - item.y) <= 1.8);
+            if (!line) {
+                line = { y: item.y, items: [] };
+                lines.push(line);
+            }
+            line.items.push(item);
+        });
+
+        return lines
+            .sort((a, b) => b.y - a.y)
+            .map(line => line.items
+                .sort((a, b) => a.x - b.x)
+                .map(item => item.text)
+                .join(' ')
+                .replace(/\s+/g, ' ')
+                .trim())
+            .filter(Boolean);
+    };
+
+    const extractPdfText = async file => {
+        const pdfjsLib = await loadPdfJs();
+        const data = await file.arrayBuffer();
+        const loadingTask = pdfjsLib.getDocument({ data });
+        const pdf = await loadingTask.promise;
+
+        if (pdf.numPages < 1 || pdf.numPages > 300) {
+            await pdf.destroy();
+            throw new Error('Quantidade de páginas do PDF fora do limite permitido.');
+        }
+
+        const pages = [];
+        for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+            if (analyzeLabel) analyzeLabel.textContent = `Lendo página ${pageNumber}/${pdf.numPages}`;
+            setLiveStatus(`Extraindo texto do PDF no navegador — página ${pageNumber} de ${pdf.numPages}.`, 'loading', 'bi-arrow-repeat');
+            const page = await pdf.getPage(pageNumber);
+            const content = await page.getTextContent({ disableCombineTextItems: false });
+            pages.push(pageItemsToLines(content.items).join('\n'));
+            page.cleanup();
+        }
+        await pdf.destroy();
+        return pages.join('\n');
+    };
+
+    const parseJsonResponse = async response => {
+        const raw = await response.text();
+        if (!raw) {
+            throw new Error('O servidor respondeu sem conteúdo.');
+        }
+        try {
+            return JSON.parse(raw);
+        } catch (error) {
+            console.error('Resposta não JSON do endpoint de PDF:', raw.slice(0, 1000));
+            throw new Error('O servidor retornou uma resposta inválida. Recarregue a página e tente novamente.');
+        }
+    };
+
+    const requestAnalysis = async browserText => {
+        textInput.value = browserText || '';
+        const data = new FormData(form);
+        data.set('pe_action', 'analyze_payment_pdf');
+
+        const endpoint = `${window.location.pathname}?ajax=payment_pdf_analyze`;
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            body: data,
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+        });
+
+        const payload = await parseJsonResponse(response);
+        updateCsrf(payload.csrf_token);
+
+        if (!response.ok || !payload.success) {
+            const error = new Error(payload.message || 'Não foi possível analisar o PDF.');
+            error.status = response.status;
+            error.payload = payload;
+            throw error;
+        }
+        return payload;
+    };
+
+    const shouldUseBrowserExtractor = error => {
+        const message = String(error && error.message ? error.message : '').toLowerCase();
+        return message.includes('navegador não enviou o texto')
+            || message.includes('não possui extrator de pdf')
+            || message.includes('servidor não possui extrator')
+            || message.includes('clique em “analisar pdf”');
+    };
+
+    const statusMeta = status => {
+        const map = {
+            novo_pagamento: ['Pronto', 'success'],
+            atualizar_pagamento: ['Atualizar bolsa', 'primary'],
+            ja_conciliado: ['Já conciliado', 'secondary'],
+            conflito_financeiro: ['Conflito financeiro', 'danger'],
+            nao_localizado: ['Não localizado', 'warning'],
+            cpf_ambiguo: ['CPF ambíguo', 'danger'],
+            cpf_invalido: ['CPF inválido', 'danger'],
+        };
+        return map[status] || [status || '—', 'secondary'];
+    };
+
+    const renderAnalysis = payload => {
+        const analysis = payload.analysis || {};
+        const meta = analysis.meta || {};
+        const summary = analysis.summary || {};
+        const rows = Array.isArray(analysis.rows) ? analysis.rows : [];
+        lastAnalysis = analysis;
+
+        if (!competenceInput.value && meta.competencia) {
+            competenceInput.value = meta.competencia;
+        }
+
+        if (metaNode) {
+            metaNode.textContent = `Convênio ${meta.convenio_numero || '—'} · Lista ${meta.lista_numero || '—'} (${meta.lista_nome || '—'}) · ${Number(meta.total_pagamentos || 0)} pagamentos · ${money(meta.valor_total)} · Estado: ${meta.estado_lista || '—'}`;
+        }
+        if (sourceNode) {
+            sourceNode.textContent = payload.source === 'pdftotext-servidor'
+                ? 'Texto validado no servidor'
+                : 'Texto extraído no navegador';
+        }
+
+        const cards = [
+            ['Registros no PDF', summary.total],
+            ['CPF válidos', summary.cpf_validos],
+            ['Novos pagamentos', summary.prontos],
+            ['Bolsas a atualizar', summary.atualizar_pagamento],
+            ['Já conciliados', summary.ja_conciliados],
+            ['Não localizados', summary.nao_localizados],
+            ['CPF ambíguo', summary.ambiguos],
+            ['Conflitos financeiros', summary.conflitos_financeiros],
+        ];
+
+        if (kpisNode) {
+            kpisNode.innerHTML = cards.map(([label, value]) => (
+                `<div class="pe-payment-kpi"><span>${escapeHtml(label)}</span><strong>${Number(value || 0)}</strong></div>`
+            )).join('');
+        }
+
+        const unresolved = Number(summary.nao_localizados || 0)
+            + Number(summary.ambiguos || 0)
+            + Number(summary.cpf_invalidos || 0);
+        const conflicts = Number(summary.conflitos_financeiros || 0);
+        const ready = Number(summary.prontos || 0);
+        const updates = Number(summary.atualizar_pagamento || 0);
+        const canApplyByState = String(meta.estado_lista || '').trim().toUpperCase() === 'PAGA';
+        const hasChanges = ready + updates > 0;
+
+        if (warningNode) {
+            warningNode.className = `alert ${unresolved || conflicts ? 'alert-warning' : 'alert-success'} mt-3 mb-0`;
+            warningNode.innerHTML = canApplyByState
+                ? `<strong>Pré-análise concluída.</strong> ${unresolved} registro(s) não serão aplicados automaticamente. ${Number(summary.divergencias_nome || 0)} divergência(s) de nome serão apenas registradas. ${hasChanges ? 'A conciliação pode ser confirmada.' : 'Não há novos pagamentos ou bolsas para atualizar.'}`
+                : `<strong>Conciliação bloqueada.</strong> A lista está como “${escapeHtml(meta.estado_lista || 'sem estado')}”. Somente listas PAGA podem ser aplicadas.`;
+        }
+
+        const priorities = {
+            conflito_financeiro: 1,
+            cpf_ambiguo: 2,
+            cpf_invalido: 3,
+            nao_localizado: 4,
+            atualizar_pagamento: 5,
+            novo_pagamento: 6,
+            ja_conciliado: 7,
+        };
+        const ordered = rows.slice().sort((a, b) => (priorities[a.match_status] || 99) - (priorities[b.match_status] || 99));
+        const displayRows = ordered.slice(0, 220);
+
+        if (rowsNode) {
+            rowsNode.innerHTML = displayRows.map(row => {
+                const status = statusMeta(row.match_status);
+                let sigas = '—';
+                if (row.candidate_id) {
+                    sigas = `<strong>#${Number(row.candidate_id)} · ${escapeHtml(row.candidate_name)}</strong><small>${escapeHtml(row.candidate_status || '')}${row.name_divergence ? ' · Divergência de nome' : ''}</small>`;
+                } else if (row.suggestion && row.suggestion.id) {
+                    sigas = `<span class="text-warning-emphasis">Sugestão por nome: #${Number(row.suggestion.id)} · ${escapeHtml(row.suggestion.nome)}</span><small>Não será vinculado automaticamente.</small>`;
+                } else if (Array.isArray(row.ambiguous_candidates) && row.ambiguous_candidates.length) {
+                    sigas = row.ambiguous_candidates.slice(0, 3).map(item => `#${Number(item.id)} ${escapeHtml(item.nome)}`).join('<br>');
+                }
+
+                return `<tr class="pe-payment-row pe-payment-row--${escapeHtml(row.match_status)}">
+                    <td>${escapeHtml(row.n_ident)}</td>
+                    <td>${escapeHtml(formatCpf(row.cpf || row.cpf_informado))}</td>
+                    <td><strong>${escapeHtml(row.nome)}</strong>${row.name_divergence ? '<small class="text-warning-emphasis">Nome difere do SIGAS</small>' : ''}</td>
+                    <td>${escapeHtml(money(row.valor))}</td>
+                    <td class="pe-payment-sigas-cell">${sigas}</td>
+                    <td><span class="badge text-bg-${status[1]}">${escapeHtml(status[0])}</span><small>${escapeHtml(row.match_message || '')}</small></td>
+                </tr>`;
+            }).join('');
+        }
+
+        if (limitNote) {
+            limitNote.textContent = rows.length > displayRows.length
+                ? `Exibindo ${displayRows.length} de ${rows.length} linhas, priorizando conflitos e pendências.`
+                : `Exibindo ${rows.length} linhas.`;
+        }
+
+        analysisBox.hidden = false;
+        analyzed = canApplyByState && hasChanges;
+        applyButton.disabled = !analyzed;
+        applyButton.title = analyzed
+            ? 'Confirmar e gravar a conciliação'
+            : (canApplyByState ? 'Não há alterações financeiras novas para aplicar' : 'Somente listas PAGA podem ser conciliadas');
+
+        if (analyzed) {
+            setLiveStatus(`PDF conferido com sucesso. ${ready} novo(s) pagamento(s) e ${updates} bolsa(s) serão atualizados. Revise a prévia e confirme a conciliação.`, 'success', 'bi-check-circle');
+        } else if (canApplyByState) {
+            setLiveStatus('PDF conferido. Não existem novos pagamentos ou bolsas a atualizar nesta competência.', 'warning', 'bi-exclamation-circle');
+        } else {
+            setLiveStatus(`A lista está como “${escapeHtml(meta.estado_lista || 'sem estado')}”. A confirmação permanece bloqueada.`, 'danger', 'bi-x-circle');
+        }
+
+        if (window.PEImportHub && typeof window.PEImportHub.setMode === 'function') {
+            window.PEImportHub.setMode('payment-pdf');
+        }
+    };
+
+    fileInput.addEventListener('change', () => {
+        textInput.value = '';
+        resetAnalysis('Arquivo alterado. Clique em Analisar PDF para validar o novo extrato.');
+    });
+
+    competenceInput.addEventListener('change', () => {
+        if (!lastAnalysis) return;
+        textInput.value = '';
+        resetAnalysis('A competência foi alterada. Analise o PDF novamente antes de confirmar.');
+    });
+
+    analyzeButton.addEventListener('click', async () => {
+        const file = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+        if (!file) {
+            setLiveStatus('Selecione o PDF de pagamentos antes de analisar.', 'danger', 'bi-x-circle');
+            showToast('Selecione o PDF de pagamentos.', 'danger');
+            fileInput.focus();
+            return;
+        }
+        if (!/\.pdf$/i.test(file.name) || file.size <= 0 || file.size > 12 * 1024 * 1024) {
+            setLiveStatus('O arquivo deve ser um PDF válido com no máximo 12 MB.', 'danger', 'bi-x-circle');
+            showToast('Envie um PDF válido com no máximo 12 MB.', 'danger');
+            return;
+        }
+
+        resetAnalysis();
+        analyzeButton.disabled = true;
+        if (analyzeLabel) analyzeLabel.textContent = 'Analisando…';
+        setLiveStatus('Enviando o extrato para validação do servidor…', 'loading', 'bi-arrow-repeat');
+
+        try {
+            let payload = null;
+            try {
+                // Primeiro tenta a extração do servidor. Quando pdftotext está disponível,
+                // isso evita qualquer dependência externa no navegador.
+                payload = await requestAnalysis('');
+            } catch (serverError) {
+                if (!shouldUseBrowserExtractor(serverError)) throw serverError;
+
+                const text = await extractPdfText(file);
+                if (!text || text.length < 100) {
+                    throw new Error('O PDF não possui texto suficiente para leitura. Use o extrato digital original, não uma digitalização sem camada de texto.');
+                }
+                textInput.value = text;
+                setLiveStatus('Texto extraído. Revalidando os  dados com o servidor…', 'loading', 'bi-arrow-repeat');
+                payload = await requestAnalysis(text);
+            }
+
+            renderAnalysis(payload);
+            showToast('PDF analisado. Confira a prévia antes de confirmar.', 'success');
+        } catch (error) {
+            resetAnalysis();
+            const message = error instanceof Error ? error.message : 'Não foi possível analisar o PDF.';
+            setLiveStatus(escapeHtml(message), 'danger', 'bi-x-circle');
+            showToast(message, 'danger');
+            console.error('Falha na análise do PDF:', error);
+        } finally {
+            analyzeButton.disabled = false;
+            if (analyzeLabel) analyzeLabel.textContent = 'Analisar PDF';
+        }
+    });
+
+    form.addEventListener('submit', event => {
+        if (!analyzed || !lastAnalysis) {
+            event.preventDefault();
+            setLiveStatus('Analise o PDF e aguarde a liberação da confirmação antes de continuar.', 'danger', 'bi-x-circle');
+            showToast('Analise o PDF antes de confirmar a conciliação.', 'danger');
+            return;
+        }
+
+        if (!competenceInput.value) {
+            event.preventDefault();
+            setLiveStatus('Informe a competência da bolsa antes de confirmar.', 'danger', 'bi-x-circle');
+            competenceInput.focus();
+            return;
+        }
+
+        const summary = lastAnalysis.summary || {};
+        const confirmation = `Confirmar a conciliação de ${Number(summary.prontos || 0)} novo(s) pagamento(s) e ${Number(summary.atualizar_pagamento || 0)} atualização(ões) de bolsa? Registros não localizados, ambíguos ou com conflito financeiro serão apenas registrados para revisão.`;
+        if (!window.confirm(confirmation)) {
+            event.preventDefault();
+            return;
+        }
+
+        applyButton.disabled = true;
+        if (applyLabel) applyLabel.textContent = 'Conciliando…';
+        setLiveStatus('Conciliação em andamento. Não feche esta página até a conclusão.', 'loading', 'bi-arrow-repeat');
+    });
+})();
