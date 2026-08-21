@@ -156,20 +156,24 @@ function pe_payment_pdf_try_server_text(string $path): ?string
 
 function pe_payment_pdf_extract_text(string $pdfPath, ?string $browserText): array
 {
+    // Quando o navegador já enviou uma extração validada visualmente, ela deve
+    // ter prioridade. Isso é essencial em hospedagens cujo pdftotext existe,
+    // mas devolve a tabela rotacionada/fora de ordem. Também garante que a
+    // confirmação use exatamente o mesmo texto que foi aprovado na pré-análise.
+    $browserText = trim((string) $browserText);
+    if ($browserText !== '') {
+        if (strlen($browserText) > 4 * 1024 * 1024) {
+            throw new InvalidArgumentException('O texto extraído do PDF excede o limite permitido.');
+        }
+        return ['text' => $browserText, 'source' => 'pdfjs-navegador'];
+    }
+
     $serverText = pe_payment_pdf_try_server_text($pdfPath);
     if ($serverText !== null) {
         return ['text' => $serverText, 'source' => 'pdftotext-servidor'];
     }
 
-    $browserText = trim((string) $browserText);
-    if ($browserText === '') {
-        throw new RuntimeException('O servidor não possui extrator de PDF e o navegador não enviou o texto do documento. Clique em “Analisar PDF” antes de confirmar.');
-    }
-    if (strlen($browserText) > 4 * 1024 * 1024) {
-        throw new InvalidArgumentException('O texto extraído do PDF excede o limite permitido.');
-    }
-
-    return ['text' => $browserText, 'source' => 'pdfjs-navegador'];
+    throw new RuntimeException('O servidor não possui extrator de PDF e o navegador não enviou o texto do documento. Clique em “Analisar PDF” antes de confirmar.');
 }
 
 function pe_payment_pdf_clean_line(string $line): string

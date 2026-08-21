@@ -1354,20 +1354,43 @@
         }
     };
 
-    const pageItemsToLines = items => {
+    const pageItemsToLines = (items, viewport) => {
+        const tolerance = 2.4;
         const prepared = items
-            .filter(item => item && typeof item.str === 'string' && item.str.trim() !== '' && Array.isArray(item.transform))
-            .map(item => ({
-                text: item.str.trim(),
-                x: Number(item.transform[4] || 0),
-                y: Number(item.transform[5] || 0),
-            }))
-            .sort((a, b) => Math.abs(b.y - a.y) > 1.8 ? b.y - a.y : a.x - b.x);
+            .filter(item => item
+                && typeof item.str === 'string'
+                && item.str.trim() !== ''
+                && item.transform
+                && typeof item.transform.length === 'number'
+                && item.transform.length >= 6)
+            .map(item => {
+                const rawX = Number(item.transform[4] || 0);
+                const rawY = Number(item.transform[5] || 0);
+                let x = rawX;
+                let y = rawY;
+
+                // O extrato do Banco do Brasil é gravado com rotação de página.
+                // Normalizamos as coordenadas para o viewport já rotacionado antes
+                // de remontar as linhas; assim N IDENT., CPF, NOME, VALOR etc.
+                // permanecem na mesma linha visual.
+                if (viewport && typeof viewport.convertToViewportPoint === 'function') {
+                    const point = viewport.convertToViewportPoint(rawX, rawY);
+                    x = Number(point[0] || 0);
+                    y = Number(point[1] || 0);
+                }
+
+                return {
+                    text: item.str.trim(),
+                    x,
+                    y,
+                };
+            })
+            .sort((a, b) => Math.abs(a.y - b.y) > tolerance ? a.y - b.y : a.x - b.x);
 
         const lines = [];
         prepared.forEach(item => {
-            let line = lines.find(candidate => Math.abs(candidate.y - item.y) <= 1.8);
-            if (!line) {
+            let line = lines.length ? lines[lines.length - 1] : null;
+            if (!line || Math.abs(line.y - item.y) > tolerance) {
                 line = { y: item.y, items: [] };
                 lines.push(line);
             }
@@ -1375,7 +1398,6 @@
         });
 
         return lines
-            .sort((a, b) => b.y - a.y)
             .map(line => line.items
                 .sort((a, b) => a.x - b.x)
                 .map(item => item.text)
@@ -1402,7 +1424,8 @@
             setLiveStatus(`Extraindo texto do PDF no navegador — página ${pageNumber} de ${pdf.numPages}.`, 'loading', 'bi-arrow-repeat');
             const page = await pdf.getPage(pageNumber);
             const content = await page.getTextContent({ disableCombineTextItems: false });
-            pages.push(pageItemsToLines(content.items).join('\n'));
+            const viewport = page.getViewport({ scale: 1 });
+            pages.push(pageItemsToLines(content.items, viewport).join('\n'));
             page.cleanup();
         }
         await pdf.destroy();
@@ -1456,7 +1479,10 @@
         return message.includes('navegador não enviou o texto')
             || message.includes('não possui extrator de pdf')
             || message.includes('servidor não possui extrator')
-            || message.includes('clique em “analisar pdf”');
+            || message.includes('clique em “analisar pdf”')
+            || message.includes('nenhuma linha de pagamento foi reconhecida')
+            || message.includes('extração do pdf ficou incompleta')
+            || message.includes('foram reconhecidos');
     };
 
     const statusMeta = status => {
