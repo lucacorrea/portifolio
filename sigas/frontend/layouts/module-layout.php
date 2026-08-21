@@ -19,6 +19,7 @@ require __DIR__ . '/head.php';
         </div>
         <?php require __DIR__ . '/mobile-navigation.php'; ?>
     </div>
+    <?php require dirname(__DIR__) . '/components/row-actions-modal.php'; ?>
     <?php require dirname(__DIR__) . '/components/detail-modal.php'; ?>
     <?php require dirname(__DIR__) . '/components/confirmation-modal.php'; ?>
     <?php require __DIR__ . '/scripts.php'; ?>
