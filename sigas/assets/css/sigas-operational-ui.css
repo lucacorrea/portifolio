@@ -1800,18 +1800,18 @@ body[data-module="primeiro-emprego"] .pe-report-table tbody td {
 /* Candidatos: uma linha por registro, sem transformar textos longos em 2/3 linhas. */
 body[data-module="primeiro-emprego"] .pe-candidate-table {
     width: 100% !important;
-    min-width: 1880px !important;
+    min-width: 1180px !important;
     table-layout: fixed !important;
 }
 
-body[data-module="primeiro-emprego"] .pe-candidate-table thead th:nth-child(1) { width: 18% !important; }
-body[data-module="primeiro-emprego"] .pe-candidate-table thead th:nth-child(2) { width: 11% !important; }
-body[data-module="primeiro-emprego"] .pe-candidate-table thead th:nth-child(3) { width: 10% !important; }
-body[data-module="primeiro-emprego"] .pe-candidate-table thead th:nth-child(4) { width: 10% !important; }
+body[data-module="primeiro-emprego"] .pe-candidate-table thead th:nth-child(1) { width: 24% !important; }
+body[data-module="primeiro-emprego"] .pe-candidate-table thead th:nth-child(2) { width: 13% !important; }
+body[data-module="primeiro-emprego"] .pe-candidate-table thead th:nth-child(3) { width: 12% !important; }
+body[data-module="primeiro-emprego"] .pe-candidate-table thead th:nth-child(4) { width: 12% !important; }
 body[data-module="primeiro-emprego"] .pe-candidate-table thead th:nth-child(5) { width: 11% !important; }
-body[data-module="primeiro-emprego"] .pe-candidate-table thead th:nth-child(6) { width: 12% !important; }
-body[data-module="primeiro-emprego"] .pe-candidate-table thead th:nth-child(7) { width: 18% !important; }
-body[data-module="primeiro-emprego"] .pe-candidate-table thead th:nth-child(8) { width: 10% !important; }
+body[data-module="primeiro-emprego"] .pe-candidate-table thead th:nth-child(6) { width: 10% !important; }
+body[data-module="primeiro-emprego"] .pe-candidate-table thead th:nth-child(7) { width: 12% !important; }
+body[data-module="primeiro-emprego"] .pe-candidate-table thead th:nth-child(8) { width: 6% !important; }
 
 body[data-module="primeiro-emprego"] .pe-candidate-table tbody td {
     min-width: 0;
@@ -1920,7 +1920,7 @@ body[data-module="primeiro-emprego"] .pe-candidate-table tbody td:nth-child(4) {
 /* Listagens do módulo seguem o mesmo padrão slim sem empilhar células no celular. */
 @media (max-width: 767.98px) {
     body[data-module="primeiro-emprego"] .pe-candidate-table {
-        min-width: 1880px !important;
+        min-width: 1180px !important;
     }
 
     body[data-module="primeiro-emprego"] .pe-data-table thead th,
@@ -1944,7 +1944,7 @@ body[data-module="primeiro-emprego"] .pe-candidate-table tbody td:nth-child(4) {
     body[data-module="primeiro-emprego"] .pe-list-table {
         display: table !important;
         width: 100% !important;
-        min-width: 1640px !important;
+        min-width: 1040px !important;
     }
 
     body[data-module="primeiro-emprego"] .pe-list-table thead {
@@ -1975,5 +1975,35 @@ body[data-module="primeiro-emprego"] .pe-candidate-table tbody td:nth-child(4) {
     body[data-module="primeiro-emprego"] .pe-list-table td::before {
         content: none !important;
         display: none !important;
+    }
+}
+
+
+/* ======================================================================
+   SIGAS — LARGURA PADRÃO SEMAS PARA TABELAS
+   Mantém as tabelas ocupando a área útil, sem largura artificial 2x.
+   Em telas menores, o wrapper assume a rolagem horizontal.
+   ====================================================================== */
+body[data-module] .app-content .table-responsive > table,
+body[data-module] .app-content .frontend-desktop-table > table,
+body[data-module] .app-content .data-table,
+body[data-module] .app-content .cm-data-table {
+    width: 100% !important;
+    max-width: none !important;
+}
+
+@media (min-width: 1200px) {
+    body[data-module] .app-content .data-table,
+    body[data-module] .app-content .cm-data-table,
+    body[data-module] .app-content .table-responsive > table {
+        min-width: 1080px !important;
+    }
+}
+
+@media (max-width: 1199.98px) {
+    body[data-module] .app-content .data-table,
+    body[data-module] .app-content .cm-data-table,
+    body[data-module] .app-content .table-responsive > table {
+        min-width: 980px !important;
     }
 }

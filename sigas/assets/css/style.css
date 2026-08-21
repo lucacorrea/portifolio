@@ -2295,7 +2295,7 @@ fieldset[disabled] .system-fields { opacity: 1; }
 /* As tabelas de listagem deixam de exigir quase 1000px só por padrão.
    O conteúdo continua podendo aumentar a largura e o wrapper assume o scroll. */
 .app-content .data-table {
-    min-width: 1560px;
+    min-width: 1080px;
 }
 
 @media (max-width: 767.98px) {
@@ -2310,6 +2310,6 @@ fieldset[disabled] .system-fields { opacity: 1; }
     .app-content .data-table,
     .app-content .cm-data-table,
     .app-content .table-responsive > .table {
-        min-width: max-content;
+        min-width: 980px;
     }
 }
