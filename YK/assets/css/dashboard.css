@@ -974,6 +974,104 @@ textarea.form-control-os {
   overflow-wrap: anywhere;
 }
 
+/* Faturamento > Recibos: mantém as colunas legíveis e impede
+   que descrição/valor/data invadam as células vizinhas. */
+.billing-receipts-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.os-table.billing-receipts-table,
+.os-table.billing-receipts-table.row-actions-table {
+  min-width: 1180px;
+  table-layout: fixed;
+}
+
+.billing-receipts-table th:nth-child(1),
+.billing-receipts-table td:nth-child(1) {
+  width: 118px;
+}
+
+.billing-receipts-table th:nth-child(2),
+.billing-receipts-table td:nth-child(2) {
+  width: 72px;
+}
+
+.billing-receipts-table th:nth-child(3),
+.billing-receipts-table td:nth-child(3) {
+  width: 240px;
+}
+
+.billing-receipts-table th:nth-child(4),
+.billing-receipts-table td:nth-child(4) {
+  width: 380px;
+}
+
+.billing-receipts-table th:nth-child(5),
+.billing-receipts-table td:nth-child(5) {
+  width: 120px;
+  text-align: right;
+}
+
+.billing-receipts-table th:nth-child(6),
+.billing-receipts-table td:nth-child(6) {
+  width: 150px;
+}
+
+.billing-receipts-table th:nth-child(7),
+.billing-receipts-table td:nth-child(7) {
+  width: 100px;
+}
+
+.billing-receipts-table th:nth-child(8),
+.billing-receipts-table td:nth-child(8) {
+  width: 56px;
+}
+
+.billing-receipts-table td:nth-child(3),
+.billing-receipts-table .receipt-description-cell {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  line-height: 1.4;
+}
+
+.billing-receipts-table .receipt-description-cell {
+  max-width: none;
+}
+
+.billing-receipts-table td:nth-child(1),
+.billing-receipts-table td:nth-child(2),
+.billing-receipts-table td:nth-child(5),
+.billing-receipts-table td:nth-child(6),
+.billing-receipts-table td:nth-child(7),
+.billing-receipts-table td:nth-child(8) {
+  white-space: nowrap;
+}
+
+@media (max-width: 767.98px) {
+  .os-table.billing-receipts-table,
+  .os-table.billing-receipts-table.row-actions-table {
+    min-width: 1040px;
+  }
+
+  .billing-receipts-table th,
+  .billing-receipts-table td {
+    padding-inline: 10px;
+  }
+
+  .billing-receipts-table th:nth-child(3),
+  .billing-receipts-table td:nth-child(3) {
+    width: 210px;
+  }
+
+  .billing-receipts-table th:nth-child(4),
+  .billing-receipts-table td:nth-child(4) {
+    width: 300px;
+  }
+}
+
 .btn-action {
   width: 32px;
   height: 32px;

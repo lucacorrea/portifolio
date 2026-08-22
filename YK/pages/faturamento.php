@@ -180,7 +180,7 @@ function billing_receipt_type(array $receipt): string
           <?php if ($receipts === []): ?>
             <?php empty_state('Nenhum recibo encontrado', 'Emita um recibo avulso ou registre o pagamento de uma OS.'); ?>
           <?php else: ?>
-            <div class="table-panel-wrap"><table class="os-table"><thead><tr><th>Recibo</th><th>Tipo</th><th>Cliente</th><th>Descrição</th><th>Valor</th><th>Emissão</th><th>Status</th><th>Ações</th></tr></thead><tbody>
+            <div class="table-panel-wrap billing-receipts-wrap"><table class="os-table billing-receipts-table"><thead><tr><th>Recibo</th><th>Tipo</th><th>Cliente</th><th>Descrição</th><th>Valor</th><th>Emissão</th><th>Status</th><th>Ações</th></tr></thead><tbody>
             <?php foreach ($receipts as $receipt): ?>
               <tr>
                 <td><strong><?= h((string) ($receipt['numero'] ?? '')) ?></strong><?php if (!empty($receipt['os_numero'])): ?><br><small class="text-muted"><?= h((string) $receipt['os_numero']) ?></small><?php endif; ?></td>
