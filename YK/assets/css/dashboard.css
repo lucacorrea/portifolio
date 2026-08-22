@@ -663,6 +663,17 @@ textarea {
   box-shadow: var(--shadow-sm);
 }
 
+/* Ordens de Serviço: mantém pesquisa e filtros acessíveis durante a rolagem.
+   Escopo restrito à página de OS para não alterar os demais módulos. */
+@media (min-width: 992px) {
+  .service-orders-page > .filter-bar {
+    position: sticky;
+    top: 86px;
+    z-index: 1010;
+    box-shadow: 0 10px 28px rgba(15, 35, 50, .12);
+  }
+}
+
 .search-wrap {
   position: relative;
   flex: 1 1 240px;
