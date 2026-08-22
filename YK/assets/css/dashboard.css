@@ -664,11 +664,19 @@ textarea {
 }
 
 
-/* Ordens de Serviço: filtros e listagem ficam em blocos independentes.
-   Sem position: sticky e sem rolagem vertical forçada, para preservar
-   o carregamento e o comportamento original da página. */
+/* Ordens de Serviço: filtros + atalhos de status formam um bloco fixo.
+   A tabela permanece separada e segue a rolagem normal da página. */
+.service-orders-sticky-controls {
+  position: sticky;
+  top: 86px;
+  z-index: 1010;
+  margin-bottom: 18px;
+  padding-bottom: 2px;
+  background: var(--page);
+}
+
 .service-orders-filter-card {
-  margin-bottom: 24px;
+  margin-bottom: 10px;
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -699,13 +707,31 @@ textarea {
   box-shadow: none;
 }
 
+.service-orders-status-panel {
+  margin: 0;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.service-orders-status-panel .panel-header {
+  border-bottom: 0;
+}
+
 .service-orders-page .service-orders-results-panel {
   margin-top: 0;
 }
 
+@media (max-width: 991.98px) {
+  .service-orders-sticky-controls {
+    position: static;
+    margin-bottom: 16px;
+    padding-bottom: 0;
+    background: transparent;
+  }
+}
+
 @media (max-width: 767.98px) {
   .service-orders-filter-card {
-    margin-bottom: 16px;
     padding: 12px;
   }
 }
