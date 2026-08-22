@@ -672,6 +672,25 @@ textarea {
     z-index: 1010;
     box-shadow: 0 10px 28px rgba(15, 35, 50, .12);
   }
+
+  /* A listagem de OS ganha rolagem própria. Assim, depois que os filtros
+     ficam fixos, o cabeçalho da tabela e a barra de status continuam
+     visíveis enquanto somente as linhas da tabela são roladas. */
+  .service-orders-page .service-orders-table-wrap {
+    max-height: clamp(330px, calc(100vh - 390px), 620px);
+    overflow-x: auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    background: #fff;
+  }
+
+  .service-orders-page .service-orders-table-wrap .service-orders-table th {
+    position: sticky;
+    top: 0;
+    z-index: 6;
+    box-shadow: 0 1px 0 var(--line);
+  }
 }
 
 .search-wrap {

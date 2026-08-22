@@ -189,7 +189,14 @@ function os_money_fmt(string $value): string
 function os_payment_label(array $payment): string
 {
     $form = str_replace('_', ' ', (string) ($payment['forma_pagamento'] ?? 'pagamento'));
-    return ucfirst($form) . ' - ' . os_money_fmt((string) ($payment['valor'] ?? '0'));
+    $label = ucfirst($form) . ' - ' . os_money_fmt((string) ($payment['valor'] ?? '0'));
+    try {
+        if (!empty($payment['recebido_em'])) {
+            $label .= ' - ' . (new DateTimeImmutable((string) $payment['recebido_em']))->format('d/m/Y');
+        }
+    } catch (Throwable) {
+    }
+    return $label;
 }
 
 function os_location(ServiceOrder $order): string
@@ -408,7 +415,7 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
         <?php if ($orders === []): ?>
             <?php empty_state('Nenhuma OS encontrada', 'Cadastre uma OS ou ajuste os filtros.'); ?>
         <?php else: ?>
-            <div class="table-panel-wrap">
+            <div class="table-panel-wrap service-orders-table-wrap">
                 <table class="os-table service-orders-table">
                     <thead>
                         <tr>
@@ -1357,6 +1364,7 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                                     <option value="transferencia">Transferência</option>
                                     <option value="outro">Outro</option>
                                 </select></div>
+                            <div class="form-group"><label class="form-label" for="os-pay-date">Data do pagamento</label><input class="form-control-os" id="os-pay-date" name="data_pagamento" type="date" max="<?= h(date('Y-m-d')) ?>" required><small class="form-text text-muted">Informe manualmente a data em que o pagamento foi recebido.</small></div>
                             <div class="form-group" id="os-pay-installments-group" hidden><label class="form-label" for="os-pay-installments">Quantidade de parcelas</label><input class="form-control-os" id="os-pay-installments" name="quantidade_parcelas" type="number" min="1" max="60" value="1"></div>
                         </div>
                         <div class="alert alert-warning py-2" id="os-pay-boleto-warning" role="note" hidden><i class="bi bi-exclamation-triangle"></i> Registre boleto somente quando o pagamento já estiver compensado. Boleto emitido ou aguardando retorno deve permanecer como não pago.</div>
