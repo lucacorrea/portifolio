@@ -663,35 +663,53 @@ textarea {
   box-shadow: var(--shadow-sm);
 }
 
-/* Ordens de Serviço: mantém pesquisa e filtros acessíveis durante a rolagem.
-   Escopo restrito à página de OS para não alterar os demais módulos. */
-@media (min-width: 992px) {
-  .service-orders-page > .filter-bar {
-    position: sticky;
-    top: 86px;
-    z-index: 1010;
-    box-shadow: 0 10px 28px rgba(15, 35, 50, .12);
-  }
 
-  /* A listagem de OS ganha rolagem própria. Assim, depois que os filtros
-     ficam fixos, o cabeçalho da tabela e a barra de status continuam
-     visíveis enquanto somente as linhas da tabela são roladas. */
-  .service-orders-page .service-orders-table-wrap {
-    max-height: clamp(330px, calc(100vh - 390px), 620px);
-    overflow-x: auto;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    scrollbar-gutter: stable;
-    background: #fff;
-  }
+/* Ordens de Serviço: filtros e listagem ficam em blocos independentes.
+   Sem position: sticky e sem rolagem vertical forçada, para preservar
+   o carregamento e o comportamento original da página. */
+.service-orders-filter-card {
+  margin-bottom: 24px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+}
 
-  .service-orders-page .service-orders-table-wrap .service-orders-table th {
-    position: sticky;
-    top: 0;
-    z-index: 6;
-    box-shadow: 0 1px 0 var(--line);
+.service-orders-filter-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.service-orders-filter-card-title i {
+  color: var(--brand);
+}
+
+.service-orders-page .service-orders-filter-bar {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.service-orders-page .service-orders-results-panel {
+  margin-top: 0;
+}
+
+@media (max-width: 767.98px) {
+  .service-orders-filter-card {
+    margin-bottom: 16px;
+    padding: 12px;
   }
 }
+
 
 .search-wrap {
   position: relative;

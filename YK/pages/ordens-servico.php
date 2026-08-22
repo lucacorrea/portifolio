@@ -370,7 +370,9 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
         ['Finalizadas no mes', (string) ($summary['finished_month'] ?? 0), 'bi-check2-circle', '#15803D', 'concluidas'],
     ]); ?>
 
-    <form class="filter-bar" method="get" action="ordens-servico.php" data-live-filter="service-orders" data-live-regions="metrics results">
+    <section class="service-orders-filter-card" aria-label="Pesquisa e filtros das ordens de serviço">
+        <div class="service-orders-filter-card-title"><i class="bi bi-funnel"></i><span>Pesquisa e filtros</span></div>
+        <form class="filter-bar service-orders-filter-bar" method="get" action="ordens-servico.php" data-live-filter="service-orders" data-live-regions="metrics results">
         <div class="search-wrap"><i class="bi bi-search"></i><input class="search-input" type="search" name="search" value="<?= h($filters['search']) ?>" placeholder="Pesquisar OS, cliente, local ou funcionario"></div>
         <input class="filter-select input-date" type="date" name="date_from" value="<?= h($filters['date_from']) ?>" aria-label="Data inicial">
         <input class="filter-select input-date" type="date" name="date_to" value="<?= h($filters['date_to']) ?>" aria-label="Data final">
@@ -392,9 +394,10 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
         </select>
         <button class="btn-filter btn-filter-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
         <a class="btn-filter btn-filter-ghost" href="ordens-servico.php" data-live-filter-clear><i class="bi bi-x-lg"></i> Limpar</a>
-    </form>
+        </form>
+    </section>
 
-    <section class="panel" data-live-region="results">
+    <section class="panel service-orders-results-panel" data-live-region="results">
         <div class="panel-header budget-panel-header">
             <div class="budget-panel-heading">
                 <div class="panel-title"><i class="bi bi-wrench-adjustable-circle"></i>Ordens de Serviço</div>
@@ -415,7 +418,7 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
         <?php if ($orders === []): ?>
             <?php empty_state('Nenhuma OS encontrada', 'Cadastre uma OS ou ajuste os filtros.'); ?>
         <?php else: ?>
-            <div class="table-panel-wrap service-orders-table-wrap">
+            <div class="table-panel-wrap">
                 <table class="os-table service-orders-table">
                     <thead>
                         <tr>
