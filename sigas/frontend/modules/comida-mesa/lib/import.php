@@ -34,6 +34,98 @@ function cm_import_history(PDO $pdo, int $limit = 15): array
     return $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
+
+/**
+ * Retorna registros da importação que ainda não viraram inscrição oficial.
+ * Eles podem ser exibidos na lista de beneficiários sem liberar ações operacionais.
+ *
+ * @return array{items:list<array<string,mixed>>,total:int,page:int,per_page:int,total_pages:int}
+ */
+function cm_import_pending_items(PDO $pdo, string $search = '', int $page = 1, int $perPage = 50): array
+{
+    if (!cm_import_schema_ready($pdo)) {
+        return ['items'=>[], 'total'=>0, 'page'=>1, 'per_page'=>$perPage, 'total_pages'=>1];
+    }
+
+    $page = max(1, $page);
+    $perPage = max(10, min(100, $perPage));
+    $where = "item.inscricao_id IS NULL AND item.status IN ('Revisar','Erro')";
+    $params = [];
+    $search = trim($search);
+
+    if ($search !== '') {
+        $where .= " AND (
+            item.nome LIKE :search
+            OR item.cpf_informado LIKE :search
+            OR item.cpf_validado LIKE :search
+            OR item.telefone_informado LIKE :search
+            OR item.polo_informado LIKE :search
+            OR item.classificacao LIKE :search
+            OR item.motivos LIKE :search
+            OR item.dados_json LIKE :search
+        )";
+        $params['search'] = '%' . $search . '%';
+    }
+
+    $count = $pdo->prepare("SELECT COUNT(*)
+        FROM comida_mesa_importacao_itens item
+        WHERE {$where}");
+    $count->execute($params);
+    $total = (int) $count->fetchColumn();
+    $totalPages = max(1, (int) ceil($total / $perPage));
+    $page = min($page, $totalPages);
+    $offset = ($page - 1) * $perPage;
+
+    $stmt = $pdo->prepare("SELECT
+            item.id,
+            item.importacao_id,
+            item.linha,
+            item.status,
+            item.nome,
+            item.cpf_informado,
+            item.cpf_validado,
+            item.telefone_informado,
+            item.polo_informado,
+            item.classificacao,
+            item.motivos,
+            item.dados_json,
+            item.criado_em,
+            imp.arquivo_nome,
+            imp.criado_em AS importado_em
+        FROM comida_mesa_importacao_itens item
+        INNER JOIN comida_mesa_importacoes imp ON imp.id = item.importacao_id
+        WHERE {$where}
+        ORDER BY item.id DESC
+        LIMIT :limit OFFSET :offset");
+
+    foreach ($params as $key => $value) {
+        $stmt->bindValue(':' . $key, $value, PDO::PARAM_STR);
+    }
+    $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
+
+    $items = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    foreach ($items as &$item) {
+        $source = json_decode((string) ($item['dados_json'] ?? ''), true);
+        if (!is_array($source)) $source = [];
+        $item['bairro_origem'] = trim((string) ($source['bairro'] ?? ''));
+        $item['endereco_origem'] = trim((string) ($source['logradouro'] ?? $source['endereco'] ?? ''));
+        $item['local_origem'] = trim((string) ($source['local_origem'] ?? $source['polo_informado'] ?? $item['polo_informado'] ?? ''));
+        $item['data_nascimento_origem'] = trim((string) ($source['data_nascimento'] ?? ''));
+        $item['conjuge_origem'] = trim((string) ($source['conjuge_origem'] ?? ''));
+    }
+    unset($item);
+
+    return [
+        'items' => $items,
+        'total' => $total,
+        'page' => $page,
+        'per_page' => $perPage,
+        'total_pages' => $totalPages,
+    ];
+}
+
 /** @return array<string,mixed>|null */
 function cm_import_existing_by_cpf(PDO $pdo, string $cpf): ?array
 {

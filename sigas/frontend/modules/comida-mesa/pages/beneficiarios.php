@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/lib/forms.php';
+require_once dirname(__DIR__) . '/lib/import.php';
 
 $pageDefinition = [
     'title' => 'Beneficiários',
@@ -52,6 +53,19 @@ $items = $registrations->getItems();
 $total = $registrations->getTotal();
 $currentPage = $registrations->getPage();
 $totalPages = $registrations->getTotalPages();
+
+$pendingImport = ['items'=>[], 'total'=>0, 'page'=>1, 'per_page'=>50, 'total_pages'=>1];
+$pendingImportError = null;
+try {
+    $pendingImportPage = isset($_GET['import_page']) ? max(1, (int) $_GET['import_page']) : 1;
+    $pendingImport = cm_import_pending_items(cm_db(), (string) $filter->search, $pendingImportPage, 50);
+} catch (Throwable $e) {
+    $pendingImportError = 'Não foi possível carregar os importados pendentes de regularização.';
+}
+$pendingImportItems = $pendingImport['items'];
+$pendingImportTotal = (int) $pendingImport['total'];
+$pendingImportPage = (int) $pendingImport['page'];
+$pendingImportTotalPages = (int) $pendingImport['total_pages'];
 $hasAdvanced = $filter->zone !== null || $filter->district !== null || $filter->community !== null || $filter->poleId !== null;
 $exportParams = array_filter([
     'tipo' => 'beneficiarios',
@@ -76,6 +90,24 @@ $queryForPage = static function (int $pageNumber) use ($filter): string {
     return 'comida-mesa/beneficiarios.php' . ($q ? '?' . $q : '');
 };
 
+
+$queryForImportPage = static function (int $pageNumber) use ($filter, $currentPage): string {
+    $params = array_filter([
+        'search'=>$filter->search,
+        'competencia_id'=>$filter->competenceId,
+        'program_status'=>$filter->programStatus,
+        'delivery_status'=>$filter->deliveryStatus,
+        'zone'=>$filter->zone,
+        'district'=>$filter->district,
+        'community'=>$filter->community,
+        'pole_id'=>$filter->poleId,
+        'page'=>$currentPage > 1 ? $currentPage : null,
+        'import_page'=>$pageNumber > 1 ? $pageNumber : null,
+    ], static fn($v) => $v !== null && $v !== '');
+    $q = http_build_query($params);
+    return 'comida-mesa/beneficiarios.php' . ($q ? '?' . $q : '');
+};
+
 ob_start();
 ?>
 <section class="content-card cm-list-card">
@@ -89,6 +121,7 @@ ob_start();
         ['label'=>'Aguardando retirada','value'=>$statistics['aguardando_retirada'],'hint'=>'Benefício ainda não retirado','tone'=>'warning'],
         ['label'=>'Suspensas/bloqueadas','value'=>$statistics['suspensas']+$statistics['bloqueadas'],'hint'=>'Exigem atenção','tone'=>'danger'],
         ['label'=>'Polos ativos','value'=>$statistics['polos_ativos'],'hint'=>'Rede de distribuição','tone'=>'neutral'],
+        ['label'=>'Importados pendentes','value'=>$pendingImportTotal,'hint'=>'Aguardam regularização','tone'=>$pendingImportTotal > 0 ? 'warning' : 'neutral'],
     ]); ?>
 
     <?php if ($loadError): ?><div class="alert alert-danger mt-3 mb-0"><?= cm_h($loadError) ?></div><?php endif; ?>
@@ -152,6 +185,90 @@ ob_start();
             </tbody></table></div>
             <div class="cm-pagination"><span>Página <?= $currentPage ?> de <?= $totalPages ?></span><nav><?php if($currentPage>1): ?><a href="<?= cm_h($queryForPage($currentPage-1)) ?>"><i class="bi bi-chevron-left"></i></a><?php endif; ?><?php for($p=max(1,$currentPage-2);$p<=min($totalPages,$currentPage+2);$p++): ?><a class="<?= $p===$currentPage?'active':'' ?>" href="<?= cm_h($queryForPage($p)) ?>"><?= $p ?></a><?php endfor; ?><?php if($currentPage<$totalPages): ?><a href="<?= cm_h($queryForPage($currentPage+1)) ?>"><i class="bi bi-chevron-right"></i></a><?php endif; ?></nav></div>
         <?php else: ?><?php cm_empty('Nenhuma família encontrada','Ajuste os filtros ou cadastre uma nova inscrição.','people'); ?><?php endif; ?>
+    </div>
+
+    <div class="cm-table-shell mt-4" id="importados-pendentes">
+        <div class="cm-table-toolbar">
+            <div>
+                <h3>Importados pendentes de regularização</h3>
+                <p>Registros existentes em <code>comida_mesa_importacao_itens</code> que ainda não possuem inscrição oficial.</p>
+            </div>
+            <span><i class="bi bi-shield-exclamation"></i> Sem entrega até a regularização</span>
+        </div>
+
+        <?php if ($pendingImportError): ?>
+            <div class="alert alert-warning m-3"><?= cm_h($pendingImportError) ?></div>
+        <?php elseif ($pendingImportItems): ?>
+            <div class="cm-import-note m-3">
+                <i class="bi bi-info-circle"></i>
+                <div>
+                    <strong>Por que estes registros aparecem separados?</strong>
+                    <span>Eles foram gravados na importação, mas possuem alguma pendência que impediu a criação segura em <code>pessoas</code>, <code>familias</code> e <code>comida_mesa_inscricoes</code>. Por isso podem ser consultados aqui, porém ainda não recebem ações de entrega.</span>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="cm-data-table">
+                    <thead>
+                        <tr>
+                            <th>Importação</th>
+                            <th>Responsável</th>
+                            <th>Documento</th>
+                            <th>Telefone</th>
+                            <th>Localidade / Local</th>
+                            <th>Classificação</th>
+                            <th>Pendência</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php foreach ($pendingImportItems as $pending): ?>
+                        <?php
+                        $document = trim((string) ($pending['cpf_validado'] ?: $pending['cpf_informado']));
+                        $documentDisplay = strlen(preg_replace('/\D+/', '', $document) ?: '') === 11
+                            ? cm_format_cpf((string) preg_replace('/\D+/', '', $document))
+                            : ($document !== '' ? $document : 'Não informado');
+                        $locationParts = array_values(array_filter([
+                            trim((string) ($pending['bairro_origem'] ?? '')),
+                            trim((string) ($pending['endereco_origem'] ?? '')),
+                            trim((string) ($pending['local_origem'] ?? '')),
+                        ], static fn($v) => $v !== ''));
+                        ?>
+                        <tr>
+                            <td>
+                                <strong>#<?= (int) $pending['importacao_id'] ?></strong>
+                                <small class="d-block text-muted">Linha <?= (int) $pending['linha'] ?> · <?= cm_h(cm_date($pending['importado_em'] ?? $pending['criado_em'], true)) ?></small>
+                            </td>
+                            <td>
+                                <div class="cm-person-cell">
+                                    <span class="cm-avatar"><?= cm_h(cm_initials((string) $pending['nome'])) ?></span>
+                                    <div>
+                                        <strong><?= cm_h($pending['nome']) ?></strong>
+                                        <small><?= cm_h($pending['arquivo_nome'] ?: 'Importação') ?></small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><?= cm_h($documentDisplay) ?></td>
+                            <td><?= cm_h($pending['telefone_informado'] ?: 'Não informado') ?></td>
+                            <td><?= cm_h($locationParts ? implode(' · ', $locationParts) : 'Não informado') ?></td>
+                            <td><span class="cm-status cm-status--warning"><?= cm_h($pending['classificacao'] ?: $pending['status']) ?></span></td>
+                            <td class="cm-import-reason"><?= cm_h($pending['motivos'] ?: 'Revisão necessária') ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <div class="cm-pagination">
+                <span>Exibindo <?= count($pendingImportItems) ?> de <?= number_format($pendingImportTotal, 0, ',', '.') ?> pendente(s) · Página <?= $pendingImportPage ?> de <?= $pendingImportTotalPages ?></span>
+                <nav>
+                    <?php if ($pendingImportPage > 1): ?><a href="<?= cm_h($queryForImportPage($pendingImportPage - 1)) ?>#importados-pendentes"><i class="bi bi-chevron-left"></i></a><?php endif; ?>
+                    <?php for ($p=max(1,$pendingImportPage-2); $p<=min($pendingImportTotalPages,$pendingImportPage+2); $p++): ?>
+                        <a class="<?= $p === $pendingImportPage ? 'active' : '' ?>" href="<?= cm_h($queryForImportPage($p)) ?>#importados-pendentes"><?= $p ?></a>
+                    <?php endfor; ?>
+                    <?php if ($pendingImportPage < $pendingImportTotalPages): ?><a href="<?= cm_h($queryForImportPage($pendingImportPage + 1)) ?>#importados-pendentes"><i class="bi bi-chevron-right"></i></a><?php endif; ?>
+                </nav>
+            </div>
+        <?php else: ?>
+            <?php cm_empty('Nenhum importado pendente','Todos os registros importados foram efetivados ou não existem pendências para esta pesquisa.','check2-circle'); ?>
+        <?php endif; ?>
     </div>
 </section>
 
