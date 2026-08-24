@@ -149,6 +149,7 @@ ob_start();
     <?php if ($preview): $s = $preview['summary']; ?>
         <?php cm_metrics([
             ['label'=>'Linhas identificadas','value'=>$s['total'],'hint'=>'Registros úteis','tone'=>'neutral'],
+            ['label'=>'Blocos detectados','value'=>$s['cabecalhos_detectados'] ?? 1,'hint'=>'Cabeçalhos reconhecidos','tone'=>'info'],
             ['label'=>'Novos','value'=>$s['novos'],'hint'=>'Prontos para cadastrar','tone'=>'success'],
             ['label'=>'Atualizar','value'=>$s['atualizar'],'hint'=>'CPF já existente','tone'=>'info'],
             ['label'=>'Ignorar','value'=>$s['ignorar'],'hint'=>'Existentes sem atualização','tone'=>'neutral'],
@@ -160,7 +161,7 @@ ob_start();
 
         <div class="cm-import-note">
             <i class="bi bi-shield-lock"></i>
-            <div><strong>Regra de integridade</strong><span>O cadastro central <code>pessoas</code> exige CPF válido e único. Linhas sem CPF válido são preservadas no histórico da importação para revisão, mas não recebem CPF artificial nem sobrescrevem outra pessoa.</span></div>
+            <div><strong>Regra de integridade</strong><span>O cadastro central <code>pessoas</code> exige CPF válido e único. Linhas sem CPF válido são preservadas no histórico da importação para revisão, mas não recebem CPF artificial nem sobrescrevem outra pessoa. Cabeçalhos repetidos são reconhecidos e as colunas são remapeadas automaticamente em cada bloco.</span></div>
         </div>
 
         <div class="cm-table-shell mt-3">

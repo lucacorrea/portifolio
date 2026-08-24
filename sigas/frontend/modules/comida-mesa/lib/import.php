@@ -136,11 +136,13 @@ function cm_import_detect_columns(array $headerRow): array
     }
 
     $aliases = [
+        'ordem' => ['ORD', 'ORDEM', 'N', 'Nº'],
         'nome' => ['NOME', 'RESPONSAVEL FAMILIAR', 'RESPONSÁVEL FAMILIAR', 'NOME RESPONSAVEL', 'NOME DO RESPONSAVEL'],
-        'cpf' => ['CPF', 'CPF RESPONSAVEL', 'CPF DO RESPONSAVEL'],
+        'cpf' => ['CPF', 'CPF RESPONSAVEL', 'CPF DO RESPONSAVEL', 'CPF RG', 'CPF/RG', 'CPF_RG'],
         'nis' => ['NIS', 'NIS RESPONSAVEL'],
         'rg' => ['RG', 'IDENTIDADE'],
-        'data_nascimento' => ['DATA NASCIMENTO', 'DATA DE NASCIMENTO', 'NASCIMENTO', 'DATA NASC'],
+        'data_nascimento' => ['DATA NASCIMENTO', 'DATA DE NASCIMENTO', 'NASCIMENTO', 'DATA NASC', 'DT NASC', 'DT. NASC.'],
+        'conjuge' => ['CONJUGE', 'CÔNJUGE', 'NOME CONJUGE', 'NOME DO CONJUGE'],
         'telefone' => ['TELEFONE', 'CELULAR', 'CONTATO', 'WHATSAPP'],
         'email' => ['EMAIL', 'E MAIL'],
         'zona' => ['ZONA', 'ZONA RESIDENCIA', 'ZONA DE RESIDENCIA'],
@@ -153,7 +155,7 @@ function cm_import_detect_columns(array $headerRow): array
         'cep' => ['CEP'],
         'quantidade_membros' => ['QUANTIDADE MEMBROS', 'QTD MEMBROS', 'MEMBROS', 'QUANTIDADE DE MEMBROS'],
         'renda_familiar' => ['RENDA FAMILIAR', 'RENDA', 'RENDA TOTAL'],
-        'polo' => ['POLO', 'POLO DE ENTREGA', 'POLO ENTREGA'],
+        'polo' => ['POLO', 'POLO DE ENTREGA', 'POLO ENTREGA', 'LOCAL', 'LOCAL DE ENTREGA'],
         'status' => ['STATUS', 'SITUACAO', 'SITUAÇÃO', 'SITUACAO NO PROGRAMA', 'SITUAÇÃO NO PROGRAMA'],
         'prioridade' => ['PRIORIDADE'],
         'data_inscricao' => ['DATA INSCRICAO', 'DATA DE INSCRICAO', 'DATA INSCRIÇÃO', 'INSCRICAO EM'],
@@ -174,16 +176,41 @@ function cm_import_detect_columns(array $headerRow): array
     return $columns;
 }
 
+/**
+ * Identifica linhas de cabeçalho, inclusive quando a planilha reúne vários blocos
+ * com ordem de colunas diferente. Isso evita tratar cabeçalhos repetidos como pessoas
+ * e permite remapear CPF/CONTATO a cada novo bloco.
+ *
+ * @param array<string,mixed> $row
+ * @param array<string,string>|null $detected
+ */
+function cm_import_is_header_row(array $row, ?array $detected = null): bool
+{
+    $detected ??= cm_import_detect_columns($row);
+    if (empty($detected['nome'])) {
+        return false;
+    }
+
+    $recognized = count($detected);
+    if ($recognized < 3) {
+        return false;
+    }
+
+    foreach ($row as $column => $value) {
+        if ($column === '__row') continue;
+        if (cm_import_header_key((string) $value) === 'NOME') {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 /** @return array<string,mixed> */
 function cm_import_prepare(PDO $pdo, array $rows, array $options = []): array
 {
     if (count($rows) < 2) {
         throw new InvalidArgumentException('A planilha não possui linhas suficientes.');
-    }
-
-    $columns = cm_import_detect_columns($rows[0]);
-    if (empty($columns['nome'])) {
-        throw new InvalidArgumentException('Não encontrei a coluna NOME ou RESPONSÁVEL FAMILIAR.');
     }
 
     $defaultPoleId = isset($options['polo_padrao_id']) && (int) $options['polo_padrao_id'] > 0 ? (int) $options['polo_padrao_id'] : null;
@@ -199,6 +226,9 @@ function cm_import_prepare(PDO $pdo, array $rows, array $options = []): array
     $poleMap = cm_import_pole_map($pdo);
     $seenCpf = [];
     $prepared = [];
+    $activeColumns = [];
+    $recognizedColumns = [];
+    $headerCount = 0;
     $summary = [
         'total' => 0,
         'novos' => 0,
@@ -209,9 +239,24 @@ function cm_import_prepare(PDO $pdo, array $rows, array $options = []): array
         'telefone_invalido' => 0,
         'polo_pendente' => 0,
         'cadastro_pendente' => 0,
+        'cabecalhos_detectados' => 0,
     ];
 
-    foreach (array_slice($rows, 1) as $row) {
+    foreach ($rows as $row) {
+        $detected = cm_import_detect_columns($row);
+        if (cm_import_is_header_row($row, $detected)) {
+            $activeColumns = $detected;
+            $recognizedColumns = array_replace($recognizedColumns, $detected);
+            $headerCount++;
+            continue;
+        }
+
+        // Ignora qualquer conteúdo anterior ao primeiro cabeçalho reconhecido.
+        if (empty($activeColumns['nome'])) {
+            continue;
+        }
+
+        $columns = $activeColumns;
         $get = static function (string $field) use ($columns, $row): string {
             return isset($columns[$field], $row[$columns[$field]])
                 ? cm_import_clean_text((string) $row[$columns[$field]])
@@ -219,8 +264,10 @@ function cm_import_prepare(PDO $pdo, array $rows, array $options = []): array
         };
 
         $name = $get('nome');
-        $cpfRaw = cm_import_digits($get('cpf'));
-        $phone = cm_import_digits($get('telefone'));
+        $cpfSource = $get('cpf');
+        $cpfRaw = cm_import_digits($cpfSource);
+        $phoneSource = $get('telefone');
+        $phone = cm_import_digits($phoneSource);
 
         if ($name === '' && $cpfRaw === '' && $phone === '') {
             continue;
@@ -234,21 +281,21 @@ function cm_import_prepare(PDO $pdo, array $rows, array $options = []): array
             $issues['cadastro'][] = 'Nome do responsável não informado ou incompleto.';
         }
 
+        // Excel costuma remover um único zero à esquerda de CPFs. Recuperamos
+        // somente esse caso, e apenas quando o CPF resultante é matematicamente válido.
+        // Documentos menores não são preenchidos artificialmente porque a coluna da
+        // lista pode conter RG em vez de CPF.
         $cpfCandidate = $cpfRaw;
-        if ($cpfCandidate !== '' && strlen($cpfCandidate) < 11) {
-            $cpfCandidate = str_pad($cpfCandidate, 11, '0', STR_PAD_LEFT);
+        if (strlen($cpfRaw) === 10) {
+            $withLeadingZero = '0' . $cpfRaw;
+            if (Validator::cpf($withLeadingZero)) {
+                $cpfCandidate = $withLeadingZero;
+            }
         }
         $cpfValid = strlen($cpfCandidate) === 11 && Validator::cpf($cpfCandidate);
         if (!$cpfValid) {
-            $issues['cpf'][] = $cpfRaw === '' ? 'CPF não informado.' : 'CPF inválido.';
+            $issues['cpf'][] = $cpfRaw === '' ? 'CPF não informado.' : 'CPF/RG informado não corresponde a um CPF válido.';
             $summary['cpf_invalidos']++;
-        }
-
-        $existingPhone = cm_import_digits($existing['telefone'] ?? '');
-        $hasExistingPhone = $existing !== null && in_array(strlen($existingPhone), [10, 11], true);
-        if (($phone === '' || !in_array(strlen($phone), [10, 11], true)) && !($updateExisting && $hasExistingPhone && !isset($columns['telefone']))) {
-            $issues['telefone'][] = $phone === '' ? 'Telefone não informado.' : 'Telefone fora do padrão de 10/11 dígitos.';
-            $summary['telefone_invalido']++;
         }
 
         if ($cpfValid) {
@@ -260,6 +307,12 @@ function cm_import_prepare(PDO $pdo, array $rows, array $options = []): array
         }
 
         $existing = $cpfValid ? cm_import_existing_by_cpf($pdo, $cpfCandidate) : null;
+        $existingPhone = cm_import_digits($existing['telefone'] ?? '');
+        $hasExistingPhone = $existing !== null && in_array(strlen($existingPhone), [10, 11], true);
+        if (($phone === '' || !in_array(strlen($phone), [10, 11], true)) && !($updateExisting && $hasExistingPhone && !isset($columns['telefone']))) {
+            $issues['telefone'][] = $phone === '' ? 'Telefone não informado.' : 'Telefone fora do padrão de 10/11 dígitos.';
+            $summary['telefone_invalido']++;
+        }
 
         $birthRaw = $get('data_nascimento');
         $birthDate = cm_import_excel_date($birthRaw);
@@ -307,7 +360,7 @@ function cm_import_prepare(PDO $pdo, array $rows, array $options = []): array
         }
         $poleId = $pole ? (int) $pole['id'] : null;
         if ($status === 'ativa' && $poleId === null) {
-            $issues['polo'][] = $poleRaw === '' ? 'Inscrição ativa sem polo definido.' : 'Polo não localizado: ' . $poleRaw . '.';
+            $issues['polo'][] = $poleRaw === '' ? 'Inscrição ativa sem polo definido.' : 'Polo/local não localizado: ' . $poleRaw . '.';
             $summary['polo_pendente']++;
         }
 
@@ -367,8 +420,9 @@ function cm_import_prepare(PDO $pdo, array $rows, array $options = []): array
             'data' => [
                 'nome' => $name,
                 'cpf' => $cpfValid ? $cpfCandidate : '',
-                'cpf_informado' => $cpfRaw,
+                'cpf_informado' => $cpfSource !== '' ? $cpfSource : null,
                 'telefone' => $phone,
+                'telefone_informado' => $phoneSource !== '' ? $phoneSource : null,
                 'nis' => (($v = cm_import_digits($get('nis'))) !== '' ? $v : null),
                 'rg' => $get('rg') !== '' ? $get('rg') : null,
                 'data_nascimento' => $birthDate,
@@ -390,12 +444,23 @@ function cm_import_prepare(PDO $pdo, array $rows, array $options = []): array
                 'data_inscricao' => $registrationDate,
                 'observacao' => $get('observacao') !== '' ? $get('observacao') : null,
                 'motivo_suspensao' => $get('motivo_suspensao') !== '' ? $get('motivo_suspensao') : null,
+                // Campos da fonte que não possuem coluna própria no cadastro oficial.
+                // Permanecem em dados_json para auditoria e revisão da importação.
+                'ordem_origem' => $get('ordem') !== '' ? $get('ordem') : null,
+                'conjuge_origem' => $get('conjuge') !== '' ? $get('conjuge') : null,
+                'documento_origem' => $cpfSource !== '' ? $cpfSource : null,
+                'local_origem' => $poleRaw !== '' ? $poleRaw : null,
             ],
             'source_has' => array_fill_keys(array_keys($columns), true),
         ];
     }
 
-    return ['rows' => $prepared, 'summary' => $summary, 'columns' => $columns];
+    if ($headerCount === 0 || empty($recognizedColumns['nome'])) {
+        throw new InvalidArgumentException('Não encontrei um cabeçalho válido com a coluna NOME ou RESPONSÁVEL FAMILIAR.');
+    }
+
+    $summary['cabecalhos_detectados'] = $headerCount;
+    return ['rows' => $prepared, 'summary' => $summary, 'columns' => $recognizedColumns];
 }
 
 /** @return array<string,mixed> */
@@ -449,7 +514,7 @@ function cm_import_item_log(PDO $pdo, int $importId, array $row, string $status,
         'nome' => (string) ($data['nome'] ?? ''),
         'cpf_informado' => $data['cpf_informado'] ?? null,
         'cpf_validado' => $data['cpf'] !== '' ? $data['cpf'] : null,
-        'telefone_informado' => $data['telefone'] ?? null,
+        'telefone_informado' => $data['telefone_informado'] ?? ($data['telefone'] ?? null),
         'polo_informado' => $data['polo_informado'] ?? null,
         'classificacao' => (string) ($row['classification'] ?? ''),
         'motivos' => $issues ? implode(' | ', $issues) : null,
