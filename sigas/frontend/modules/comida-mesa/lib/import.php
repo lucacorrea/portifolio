@@ -518,6 +518,107 @@ function cm_import_decide_items(PDO $pdo, array $itemIds, string $decision, int 
     return $result;
 }
 
+/**
+ * Classifica, de uma vez, todos os registros ainda pendentes de uma importação.
+ *
+ * Esta operação é deliberadamente em lote: não tenta criar milhares de pessoas/famílias
+ * no mesmo request. Os itens passam imediatamente para a lista correta e os vínculos
+ * oficiais já existentes têm o status atualizado. Quem ainda não possui inscricao_id
+ * permanece com efetivacao_status = CadastroPendente para regularização posterior.
+ *
+ * @return array{updated:int,vinculados:int,pendentes:int,conflitos:int,errors:list<string>}
+ */
+function cm_import_decide_all_pending(PDO $pdo, int $importId, string $decision, int $userId): array
+{
+    if ($importId < 1) {
+        throw new InvalidArgumentException('Importação inválida.');
+    }
+    if (!in_array($decision, ['Beneficiario', 'ListaEspera'], true)) {
+        throw new InvalidArgumentException('Decisão do programa inválida.');
+    }
+
+    $targetStatus = $decision === 'Beneficiario' ? 'ativa' : 'lista_espera';
+    $result = ['updated'=>0,'vinculados'=>0,'pendentes'=>0,'conflitos'=>0,'errors'=>[]];
+
+    $pdo->beginTransaction();
+    try {
+        $count = $pdo->prepare("SELECT
+            COUNT(*) total,
+            SUM(CASE WHEN inscricao_id IS NOT NULL THEN 1 ELSE 0 END) vinculados
+            FROM comida_mesa_importacao_itens
+            WHERE importacao_id = :importacao_id AND situacao_programa = 'Pendente'
+            FOR UPDATE");
+        $count->execute(['importacao_id'=>$importId]);
+        $row = $count->fetch(PDO::FETCH_ASSOC) ?: [];
+        $total = (int)($row['total'] ?? 0);
+        $linked = (int)($row['vinculados'] ?? 0);
+
+        if ($total < 1) {
+            $pdo->rollBack();
+            return $result;
+        }
+
+        // Atualiza inscrições que já possuem vínculo oficial.
+        $official = $pdo->prepare("UPDATE comida_mesa_inscricoes i
+            INNER JOIN comida_mesa_importacao_itens item ON item.inscricao_id = i.id
+            SET i.status = :status,
+                i.atualizado_por = :usuario,
+                i.atualizado_em = CURRENT_TIMESTAMP
+            WHERE item.importacao_id = :importacao_id
+              AND item.situacao_programa = 'Pendente'");
+        $official->execute([
+            'status'=>$targetStatus,
+            'usuario'=>$userId,
+            'importacao_id'=>$importId,
+        ]);
+
+        // A classificação da lista é feita em um único UPDATE para suportar cargas grandes.
+        $update = $pdo->prepare("UPDATE comida_mesa_importacao_itens
+            SET situacao_programa = :situacao_programa,
+                decidido_em = CURRENT_TIMESTAMP,
+                decidido_por = :decidido_por,
+                efetivacao_status = CASE
+                    WHEN inscricao_id IS NOT NULL THEN 'Vinculado'
+                    ELSE 'CadastroPendente'
+                END,
+                efetivacao_motivo = CASE
+                    WHEN inscricao_id IS NOT NULL THEN NULL
+                    ELSE 'Classificado em lote. Beneficiário consta na lista do programa, mas o vínculo ao cadastro central ainda precisa ser concluído.'
+                END
+            WHERE importacao_id = :importacao_id
+              AND situacao_programa = 'Pendente'");
+        $update->execute([
+            'situacao_programa'=>$decision,
+            'decidido_por'=>$userId,
+            'importacao_id'=>$importId,
+        ]);
+
+        $result['updated'] = $total;
+        $result['vinculados'] = $linked;
+        $result['pendentes'] = max(0, $total - $linked);
+
+        cm_import_refresh_counts($pdo, $importId);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
+
+    try {
+        $app = cm_app();
+        $app['audit']->record($userId, null, 'confirmacao_importacao_comida_mesa_lote_total', 'comida_mesa', null, null, [
+            'importacao_id'=>$importId,
+            'decisao'=>$decision,
+            'quantidade'=>$result['updated'],
+            'vinculados'=>$result['vinculados'],
+            'cadastro_pendente'=>$result['pendentes'],
+        ]);
+    } catch (Throwable) {
+    }
+
+    return $result;
+}
+
 /** @return array<string,mixed>|null */
 function cm_import_existing_by_cpf(PDO $pdo, string $cpf): ?array
 {

@@ -59,6 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $reviewSituation = trim((string) ($_POST['return_situation'] ?? 'Pendente'));
             $reviewPage = max(1, (int) ($_POST['return_page'] ?? 1));
             $decision = (string) ($_POST['program_decision'] ?? '');
+            $decisionScope = (string) ($_POST['decision_scope'] ?? 'selected');
 
             $itemIds = [];
             if (isset($_POST['item_id'])) {
@@ -68,7 +69,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 foreach ($_POST['item_ids'] as $id) $itemIds[] = (int) $id;
             }
 
-            $decisionResult = cm_import_decide_items($pdo, $itemIds, $decision, (int) cm_app()['user']->id);
+            if ($decisionScope === 'all_pending') {
+                $decisionResult = cm_import_decide_all_pending(
+                    $pdo,
+                    $selectedImportId,
+                    $decision,
+                    (int) cm_app()['user']->id
+                );
+            } else {
+                $decisionResult = cm_import_decide_items($pdo, $itemIds, $decision, (int) cm_app()['user']->id);
+            }
             $label = $decision === 'Beneficiario' ? 'beneficiário(s)' : 'registro(s) para lista de espera';
             $message = [
                 'type' => $decisionResult['errors'] || $decisionResult['conflitos'] > 0 ? 'warning' : 'success',
@@ -278,21 +288,58 @@ ob_start();
                 <form id="bulkDecisionForm" method="post" action="comida-mesa/importar-beneficiarios.php">
                     <input type="hidden" name="_csrf" value="<?= cm_h(cm_csrf('comida_mesa_importar_decisao')) ?>">
                     <input type="hidden" name="cm_action" value="decide">
+                    <input type="hidden" name="decision_scope" value="selected">
                     <input type="hidden" name="import_id" value="<?= (int)$selectedImport['id'] ?>">
                     <input type="hidden" name="return_search" value="<?= cm_h($reviewSearch) ?>">
                     <input type="hidden" name="return_situation" value="<?= cm_h($reviewSituation) ?>">
                     <input type="hidden" name="return_page" value="<?= (int)$review['page'] ?>">
                 </form>
 
-                <div class="d-flex gap-2 flex-wrap align-items-center p-3 border-bottom">
-                    <strong>Selecionados:</strong>
-                    <button class="btn btn-success btn-sm" type="submit" form="bulkDecisionForm" name="program_decision" value="Beneficiario" onclick="return confirm('Confirmar os selecionados como beneficiários do Comida na Mesa?')"><i class="bi bi-check-circle"></i> Já recebe / Beneficiário</button>
-                    <button class="btn btn-warning btn-sm" type="submit" form="bulkDecisionForm" name="program_decision" value="ListaEspera" onclick="return confirm('Enviar os selecionados para a lista de espera?')"><i class="bi bi-hourglass-split"></i> Lista de espera</button>
+                <div class="cm-import-bulkbar border-bottom">
+                    <div class="cm-import-bulkgroup">
+                        <div class="cm-import-bulk-title">
+                            <strong>Alguns da lista</strong>
+                            <small><span id="reviewSelectedCount">0</span> selecionado(s) nesta página</small>
+                        </div>
+                        <button data-selected-action class="btn btn-success btn-sm" type="submit" form="bulkDecisionForm" name="program_decision" value="Beneficiario" disabled onclick="return confirmSelectedDecision('Beneficiário')"><i class="bi bi-check-circle"></i> Beneficiário</button>
+                        <button data-selected-action class="btn btn-warning btn-sm" type="submit" form="bulkDecisionForm" name="program_decision" value="ListaEspera" disabled onclick="return confirmSelectedDecision('Lista de espera')"><i class="bi bi-hourglass-split"></i> Lista de espera</button>
+                    </div>
+
+                    <?php if ((int)$review['counts']['Pendente'] > 0): ?>
+                        <div class="cm-import-bulkgroup cm-import-bulkgroup--all">
+                            <div class="cm-import-bulk-title">
+                                <strong>Todos da lista</strong>
+                                <small><?= number_format((int)$review['counts']['Pendente'], 0, ',', '.') ?> aguardando confirmação nesta importação</small>
+                            </div>
+                            <form method="post" action="comida-mesa/importar-beneficiarios.php" class="d-inline">
+                                <input type="hidden" name="_csrf" value="<?= cm_h(cm_csrf('comida_mesa_importar_decisao')) ?>">
+                                <input type="hidden" name="cm_action" value="decide">
+                                <input type="hidden" name="decision_scope" value="all_pending">
+                                <input type="hidden" name="import_id" value="<?= (int)$selectedImport['id'] ?>">
+                                <input type="hidden" name="program_decision" value="Beneficiario">
+                                <input type="hidden" name="return_search" value="<?= cm_h($reviewSearch) ?>">
+                                <input type="hidden" name="return_situation" value="<?= cm_h($reviewSituation) ?>">
+                                <input type="hidden" name="return_page" value="<?= (int)$review['page'] ?>">
+                                <button class="btn btn-outline-success btn-sm" type="submit" onclick="return confirm('Confirmar TODOS os <?= number_format((int)$review['counts']['Pendente'],0,',','.') ?> registros que ainda aguardam nesta importação como BENEFICIÁRIOS? Os já classificados não serão alterados.')"><i class="bi bi-people-fill"></i> Todos como beneficiários</button>
+                            </form>
+                            <form method="post" action="comida-mesa/importar-beneficiarios.php" class="d-inline">
+                                <input type="hidden" name="_csrf" value="<?= cm_h(cm_csrf('comida_mesa_importar_decisao')) ?>">
+                                <input type="hidden" name="cm_action" value="decide">
+                                <input type="hidden" name="decision_scope" value="all_pending">
+                                <input type="hidden" name="import_id" value="<?= (int)$selectedImport['id'] ?>">
+                                <input type="hidden" name="program_decision" value="ListaEspera">
+                                <input type="hidden" name="return_search" value="<?= cm_h($reviewSearch) ?>">
+                                <input type="hidden" name="return_situation" value="<?= cm_h($reviewSituation) ?>">
+                                <input type="hidden" name="return_page" value="<?= (int)$review['page'] ?>">
+                                <button class="btn btn-outline-warning btn-sm" type="submit" onclick="return confirm('Enviar TODOS os <?= number_format((int)$review['counts']['Pendente'],0,',','.') ?> registros que ainda aguardam nesta importação para a LISTA DE ESPERA? Os já classificados não serão alterados.')"><i class="bi bi-hourglass-split"></i> Todos para lista de espera</button>
+                            </form>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <div class="table-responsive">
                     <table class="cm-data-table cm-import-table">
-                        <thead><tr><th><input type="checkbox" class="form-check-input" onclick="document.querySelectorAll('[data-review-check]').forEach(el=>el.checked=this.checked)"></th><th>Ordem</th><th>Responsável</th><th>Documento / contato</th><th>Local</th><th>Cadastro</th><th>Situação no programa</th><th>Vínculo</th><th>Ações</th></tr></thead>
+                        <thead><tr><th><input id="reviewCheckAllPage" type="checkbox" class="form-check-input" title="Selecionar todos desta página"></th><th>Ordem</th><th>Responsável</th><th>Documento / contato</th><th>Local</th><th>Cadastro</th><th>Situação no programa</th><th>Vínculo</th><th>Ações</th></tr></thead>
                         <tbody>
                         <?php foreach ($review['items'] as $item): ?>
                             <?php
@@ -319,11 +366,11 @@ ob_start();
                                 <td>
                                     <div class="d-flex gap-1 flex-wrap">
                                         <form method="post" action="comida-mesa/importar-beneficiarios.php">
-                                            <input type="hidden" name="_csrf" value="<?= cm_h(cm_csrf('comida_mesa_importar_decisao')) ?>"><input type="hidden" name="cm_action" value="decide"><input type="hidden" name="import_id" value="<?= (int)$selectedImport['id'] ?>"><input type="hidden" name="item_id" value="<?= (int)$item['id'] ?>"><input type="hidden" name="program_decision" value="Beneficiario"><input type="hidden" name="return_search" value="<?= cm_h($reviewSearch) ?>"><input type="hidden" name="return_situation" value="<?= cm_h($reviewSituation) ?>"><input type="hidden" name="return_page" value="<?= (int)$review['page'] ?>">
+                                            <input type="hidden" name="_csrf" value="<?= cm_h(cm_csrf('comida_mesa_importar_decisao')) ?>"><input type="hidden" name="cm_action" value="decide"><input type="hidden" name="decision_scope" value="selected"><input type="hidden" name="import_id" value="<?= (int)$selectedImport['id'] ?>"><input type="hidden" name="item_id" value="<?= (int)$item['id'] ?>"><input type="hidden" name="program_decision" value="Beneficiario"><input type="hidden" name="return_search" value="<?= cm_h($reviewSearch) ?>"><input type="hidden" name="return_situation" value="<?= cm_h($reviewSituation) ?>"><input type="hidden" name="return_page" value="<?= (int)$review['page'] ?>">
                                             <button class="btn btn-success btn-sm" type="submit" title="Confirmar como beneficiário"><i class="bi bi-check-lg"></i></button>
                                         </form>
                                         <form method="post" action="comida-mesa/importar-beneficiarios.php">
-                                            <input type="hidden" name="_csrf" value="<?= cm_h(cm_csrf('comida_mesa_importar_decisao')) ?>"><input type="hidden" name="cm_action" value="decide"><input type="hidden" name="import_id" value="<?= (int)$selectedImport['id'] ?>"><input type="hidden" name="item_id" value="<?= (int)$item['id'] ?>"><input type="hidden" name="program_decision" value="ListaEspera"><input type="hidden" name="return_search" value="<?= cm_h($reviewSearch) ?>"><input type="hidden" name="return_situation" value="<?= cm_h($reviewSituation) ?>"><input type="hidden" name="return_page" value="<?= (int)$review['page'] ?>">
+                                            <input type="hidden" name="_csrf" value="<?= cm_h(cm_csrf('comida_mesa_importar_decisao')) ?>"><input type="hidden" name="cm_action" value="decide"><input type="hidden" name="decision_scope" value="selected"><input type="hidden" name="import_id" value="<?= (int)$selectedImport['id'] ?>"><input type="hidden" name="item_id" value="<?= (int)$item['id'] ?>"><input type="hidden" name="program_decision" value="ListaEspera"><input type="hidden" name="return_search" value="<?= cm_h($reviewSearch) ?>"><input type="hidden" name="return_situation" value="<?= cm_h($reviewSituation) ?>"><input type="hidden" name="return_page" value="<?= (int)$review['page'] ?>">
                                             <button class="btn btn-warning btn-sm" type="submit" title="Enviar para lista de espera"><i class="bi bi-hourglass-split"></i></button>
                                         </form>
                                     </div>
@@ -365,6 +412,43 @@ ob_start();
             </tr><?php endforeach; ?></tbody></table></div>
         </div>
     <?php endif; ?>
+<style>
+.cm-import-bulkbar{display:flex;gap:16px;justify-content:space-between;align-items:stretch;flex-wrap:wrap;padding:14px 16px;background:#fff}.cm-import-bulkgroup{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.cm-import-bulkgroup--all{padding-left:16px;border-left:1px solid var(--bs-border-color,#dee2e6)}.cm-import-bulk-title{display:flex;flex-direction:column;min-width:145px}.cm-import-bulk-title small{color:#6c757d;font-size:.78rem}.cm-import-table tbody tr:has([data-review-check]:checked){background:rgba(13,110,253,.055)}@media(max-width:900px){.cm-import-bulkgroup--all{padding-left:0;border-left:0;border-top:1px solid var(--bs-border-color,#dee2e6);padding-top:12px;width:100%}}
+</style>
+<script>
+(function () {
+    const master = document.getElementById('reviewCheckAllPage');
+    const checks = Array.from(document.querySelectorAll('[data-review-check]'));
+    const count = document.getElementById('reviewSelectedCount');
+    const buttons = Array.from(document.querySelectorAll('[data-selected-action]'));
+
+    function refreshSelection() {
+        const selected = checks.filter(el => el.checked).length;
+        if (count) count.textContent = String(selected);
+        buttons.forEach(btn => btn.disabled = selected === 0);
+        if (master) {
+            master.checked = checks.length > 0 && selected === checks.length;
+            master.indeterminate = selected > 0 && selected < checks.length;
+        }
+    }
+
+    if (master) {
+        master.addEventListener('change', function () {
+            checks.forEach(el => { el.checked = master.checked; });
+            refreshSelection();
+        });
+    }
+    checks.forEach(el => el.addEventListener('change', refreshSelection));
+    refreshSelection();
+
+    window.confirmSelectedDecision = function (label) {
+        const selected = checks.filter(el => el.checked).length;
+        if (!selected) return false;
+        return window.confirm('Aplicar "' + label + '" somente aos ' + selected + ' registro(s) selecionado(s)?');
+    };
+})();
+</script>
+
 </section>
 <?php
 $pageCustomContent = (string) ob_get_clean();
