@@ -31,6 +31,47 @@ final class AnexoRepository
         return $this->fetchOne($sql, ['cpf' => Validator::onlyDigits($cpf)]);
     }
 
+    /** @param list<string> $cpfs @return list<array<string,mixed>> */
+    public function findSolicitantesSummaryByCpfs(array $cpfs): array
+    {
+        $normalized = [];
+        foreach ($cpfs as $cpf) {
+            $digits = Validator::onlyDigits((string) $cpf);
+            if (strlen($digits) === 11) {
+                $normalized[$digits] = $digits;
+            }
+        }
+        if ($normalized === []) {
+            return [];
+        }
+
+        $results = [];
+        foreach (array_chunk(array_values($normalized), 350) as $chunkIndex => $chunk) {
+            $placeholders = [];
+            $params = [];
+            foreach ($chunk as $index => $cpf) {
+                $key = 'cpf_' . $chunkIndex . '_' . $index;
+                $placeholders[] = ':' . $key;
+                $params[$key] = $cpf;
+            }
+
+            $sql = "SELECT s.id, s.nome, s.cpf,
+                        COUNT(DISTINCT sol.id) AS solicitacoes_count,
+                        GROUP_CONCAT(DISTINCT NULLIF(at.nome, '') ORDER BY at.nome SEPARATOR '||') AS beneficios
+                    FROM solicitantes s
+                    LEFT JOIN solicitacoes sol ON sol.solicitante_id = s.id
+                    LEFT JOIN ajudas_tipos at ON at.id = sol.ajuda_tipo_id
+                    WHERE s.cpf IN (" . implode(',', $placeholders) . ")
+                    GROUP BY s.id, s.nome, s.cpf";
+
+            foreach ($this->fetchAll($sql, $params) as $row) {
+                $results[] = $row;
+            }
+        }
+
+        return $results;
+    }
+
     /** @return list<array<string,mixed>> */
     public function familiares(int $solicitanteId): array
     {

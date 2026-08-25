@@ -32,6 +32,7 @@ $message = null;
 $selectedImportId = isset($_GET['import_id']) ? max(0, (int) $_GET['import_id']) : 0;
 $reviewSearch = trim((string) ($_GET['review_search'] ?? ''));
 $reviewSituation = trim((string) ($_GET['review_situation'] ?? 'Pendente'));
+$reviewRegistry = trim((string) ($_GET['review_registry'] ?? ''));
 $reviewPage = max(1, (int) ($_GET['review_page'] ?? 1));
 
 $options = [
@@ -46,7 +47,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string) ($_POST['cm_action'] ?? 'validate');
 
     try {
-        if ($action === 'reprocess_links') {
+        if ($action === 'crosscheck_registry') {
+            if (!$schemaReady) {
+                throw new RuntimeException('Execute as migrations da importação do Comida na Mesa antes de cruzar as bases.');
+            }
+            if (!Csrf::validateAndRotate($_POST['_csrf'] ?? null, 'comida_mesa_importar_decisao')) {
+                throw new RuntimeException('Sessão de segurança expirada. Atualize a página e tente novamente.');
+            }
+            $selectedImportId = max(0, (int) ($_POST['import_id'] ?? 0));
+            $reviewSearch = trim((string) ($_POST['return_search'] ?? ''));
+            $reviewSituation = trim((string) ($_POST['return_situation'] ?? ''));
+            $reviewRegistry = trim((string) ($_POST['return_registry'] ?? ''));
+            $reviewPage = max(1, (int) ($_POST['return_page'] ?? 1));
+
+            $cross = cm_import_crosscheck_registry($pdo, $selectedImportId);
+            $message = [
+                'type' => $cross['anexo_disponivel'] ? 'success' : 'warning',
+                'text' => sprintf(
+                    'Cruzamento concluído: %d registro(s) consultável(is) por CPF, %d encontrado(s) em alguma base, %d no SIGAS e %d no ANEXO. %d registro(s) ficaram sem cruzamento automático por CPF pendente.',
+                    $cross['consultaveis'], $cross['encontrados'], $cross['sigas'], $cross['anexo'], $cross['sem_cpf']
+                ),
+            ];
+            if (!$cross['anexo_disponivel']) {
+                $message['text'] .= ' A integração ANEXO estava indisponível; o cruzamento interno do SIGAS foi concluído normalmente.';
+            }
+        } elseif ($action === 'reprocess_links') {
             if (!$schemaReady) {
                 throw new RuntimeException('Execute a migration 20260825_005_comida_mesa_confirmacao_importacao.sql antes de reprocessar os vínculos.');
             }
@@ -57,6 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $selectedImportId = max(0, (int) ($_POST['import_id'] ?? 0));
             $reviewSearch = trim((string) ($_POST['return_search'] ?? ''));
             $reviewSituation = trim((string) ($_POST['return_situation'] ?? ''));
+            $reviewRegistry = trim((string) ($_POST['return_registry'] ?? ''));
             $reviewPage = max(1, (int) ($_POST['return_page'] ?? 1));
 
             $decisionResult = cm_import_reprocess_confirmed_unlinked(
@@ -89,6 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $selectedImportId = max(0, (int) ($_POST['import_id'] ?? 0));
             $reviewSearch = trim((string) ($_POST['return_search'] ?? ''));
             $reviewSituation = trim((string) ($_POST['return_situation'] ?? 'Pendente'));
+            $reviewRegistry = trim((string) ($_POST['return_registry'] ?? ''));
             $reviewPage = max(1, (int) ($_POST['return_page'] ?? 1));
             $decision = (string) ($_POST['program_decision'] ?? '');
             $decisionScope = (string) ($_POST['decision_scope'] ?? 'selected');
@@ -177,9 +204,10 @@ if ($selectedImportId < 1 && $history) {
 }
 $selectedImport = $selectedImportId > 0 && $schemaReady ? cm_import_history_item($pdo, $selectedImportId) : null;
 $review = $selectedImport !== null
-    ? cm_import_review_items($pdo, $selectedImportId, $reviewSearch, $reviewSituation, $reviewPage, 50)
+    ? cm_import_review_items($pdo, $selectedImportId, $reviewSearch, $reviewSituation, $reviewPage, 50, $reviewRegistry)
     : ['items'=>[], 'total'=>0, 'page'=>1, 'per_page'=>50, 'total_pages'=>1, 'counts'=>['Pendente'=>0,'Beneficiario'=>0,'ListaEspera'=>0]];
 $confirmedUnlinkedCount = $selectedImport !== null ? cm_import_confirmed_unlinked_count($pdo, $selectedImportId) : 0;
+$crossSummary = $selectedImport !== null ? cm_import_crosscheck_summary($pdo, $selectedImportId) : ['total'=>0,'verificados'=>0,'encontrados'=>0,'sigas'=>0,'anexo'=>0,'sem_cpf'=>0];
 
 $flattenIssues = static function (array $row): string {
     $items = [];
@@ -189,11 +217,12 @@ $flattenIssues = static function (array $row): string {
     return implode(' · ', $items);
 };
 
-$reviewUrl = static function (int $importId, string $search, string $situation, int $page = 1): string {
+$reviewUrl = static function (int $importId, string $search, string $situation, int $page = 1, string $registry = ''): string {
     $params = array_filter([
         'import_id'=>$importId,
         'review_search'=>$search,
         'review_situation'=>$situation,
+        'review_registry'=>$registry,
         'review_page'=>$page > 1 ? $page : null,
     ], static fn($v) => $v !== null && $v !== '');
     return 'comida-mesa/importar-beneficiarios.php?' . http_build_query($params) . '#lista-conferencia';
@@ -299,6 +328,16 @@ ob_start();
                 <div class="d-flex gap-2 flex-wrap">
                     <a class="btn btn-light btn-sm" href="comida-mesa/beneficiarios.php?program_status=ativa"><i class="bi bi-people-fill"></i> Beneficiários</a>
                     <a class="btn btn-light btn-sm" href="comida-mesa/beneficiarios.php?program_status=lista_espera"><i class="bi bi-hourglass-split"></i> Lista de espera</a>
+                    <form method="post" action="comida-mesa/importar-beneficiarios.php" class="m-0">
+                        <input type="hidden" name="_csrf" value="<?= cm_h(cm_csrf('comida_mesa_importar_decisao')) ?>">
+                        <input type="hidden" name="cm_action" value="crosscheck_registry">
+                        <input type="hidden" name="import_id" value="<?= (int)$selectedImport['id'] ?>">
+                        <input type="hidden" name="return_search" value="<?= cm_h($reviewSearch) ?>">
+                        <input type="hidden" name="return_situation" value="<?= cm_h($reviewSituation) ?>">
+                        <input type="hidden" name="return_registry" value="<?= cm_h($reviewRegistry) ?>">
+                        <input type="hidden" name="return_page" value="<?= (int)$review['page'] ?>">
+                        <button class="btn btn-outline-primary btn-sm" type="submit" onclick="return confirm('Cruzar todos os CPFs válidos desta carga com o SIGAS e o ANEXO? Nenhuma situação de benefício será alterada.')"><i class="bi bi-diagram-3"></i> Cruzar SIGAS / ANEXO</button>
+                    </form>
                 </div>
             </div>
 
@@ -308,6 +347,16 @@ ob_start();
                 ['label'=>'Lista de espera','value'=>$review['counts']['ListaEspera'],'hint'=>'Aguardam vaga/disponibilidade','tone'=>'info'],
                 ['label'=>'Total da carga','value'=>(int)$selectedImport['total_linhas'],'hint'=>'Pessoas importadas','tone'=>'neutral'],
             ]); ?>
+
+            <?php if ((int)$crossSummary['verificados'] > 0): ?>
+                <div class="cm-import-cross-summary mt-3">
+                    <span><strong><?= number_format((int)$crossSummary['encontrados'],0,',','.') ?></strong> encontrados em alguma base</span>
+                    <span><strong><?= number_format((int)$crossSummary['sigas'],0,',','.') ?></strong> no SIGAS</span>
+                    <span><strong><?= number_format((int)$crossSummary['anexo'],0,',','.') ?></strong> no ANEXO</span>
+                    <span><strong><?= number_format((int)$crossSummary['sem_cpf'],0,',','.') ?></strong> sem CPF consultável</span>
+                    <small>O cruzamento é informativo e não muda Beneficiário/Lista de espera.</small>
+                </div>
+            <?php endif; ?>
 
             <?php if ($confirmedUnlinkedCount > 0): ?>
                 <div class="alert alert-warning d-flex justify-content-between align-items-center gap-3 flex-wrap mt-3">
@@ -321,6 +370,7 @@ ob_start();
                         <input type="hidden" name="import_id" value="<?= (int)$selectedImport['id'] ?>">
                         <input type="hidden" name="return_search" value="<?= cm_h($reviewSearch) ?>">
                         <input type="hidden" name="return_situation" value="<?= cm_h($reviewSituation) ?>">
+                        <input type="hidden" name="return_registry" value="<?= cm_h($reviewRegistry) ?>">
                         <input type="hidden" name="return_page" value="<?= (int)$review['page'] ?>">
                         <button class="btn btn-warning" type="submit" onclick="return confirm('Reprocessar os vínculos dos registros já confirmados desta importação? A situação no programa não será alterada.')"><i class="bi bi-arrow-repeat"></i> Reprocessar vínculos</button>
                     </form>
@@ -331,8 +381,9 @@ ob_start();
                 <input type="hidden" name="import_id" value="<?= (int) $selectedImport['id'] ?>">
                 <label class="cm-filter-search"><span>Pesquisar na carga</span><div class="cm-input-icon"><i class="bi bi-search"></i><input class="form-control" name="review_search" value="<?= cm_h($reviewSearch) ?>" placeholder="Nome, CPF, telefone ou local"></div></label>
                 <label><span>Situação no programa</span><select class="form-select" name="review_situation"><option value=""<?= cm_selected($reviewSituation,'') ?>>Todas</option><option value="Pendente"<?= cm_selected($reviewSituation,'Pendente') ?>>Aguardando confirmação</option><option value="Beneficiario"<?= cm_selected($reviewSituation,'Beneficiario') ?>>Beneficiário</option><option value="ListaEspera"<?= cm_selected($reviewSituation,'ListaEspera') ?>>Lista de espera</option></select></label>
+                <label><span>Encontrado em</span><select class="form-select" name="review_registry"><option value=""<?= cm_selected($reviewRegistry,'') ?>>Todos</option><option value="found"<?= cm_selected($reviewRegistry,'found') ?>>Já cadastrado em alguma base</option><option value="not_found"<?= cm_selected($reviewRegistry,'not_found') ?>>Não localizado</option><option value="sigas"<?= cm_selected($reviewRegistry,'sigas') ?>>SIGAS</option><option value="anexo"<?= cm_selected($reviewRegistry,'anexo') ?>>ANEXO</option><option value="primeiro_emprego"<?= cm_selected($reviewRegistry,'primeiro_emprego') ?>>Primeiro Emprego</option><option value="comida_mesa"<?= cm_selected($reviewRegistry,'comida_mesa') ?>>Comida na Mesa</option><option value="unverified"<?= cm_selected($reviewRegistry,'unverified') ?>>Ainda não cruzado</option></select></label>
                 <button class="btn btn-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
-                <a class="btn btn-light" href="<?= cm_h($reviewUrl((int)$selectedImport['id'], '', 'Pendente', 1)) ?>"><i class="bi bi-x-lg"></i> Limpar</a>
+                <a class="btn btn-light" href="<?= cm_h($reviewUrl((int)$selectedImport['id'], '', 'Pendente', 1, '')) ?>"><i class="bi bi-x-lg"></i> Limpar</a>
             </form>
 
             <?php if ($review['items']): ?>
@@ -343,6 +394,7 @@ ob_start();
                     <input type="hidden" name="import_id" value="<?= (int)$selectedImport['id'] ?>">
                     <input type="hidden" name="return_search" value="<?= cm_h($reviewSearch) ?>">
                     <input type="hidden" name="return_situation" value="<?= cm_h($reviewSituation) ?>">
+                    <input type="hidden" name="return_registry" value="<?= cm_h($reviewRegistry) ?>">
                     <input type="hidden" name="return_page" value="<?= (int)$review['page'] ?>">
                 </form>
 
@@ -370,6 +422,7 @@ ob_start();
                                 <input type="hidden" name="program_decision" value="Beneficiario">
                                 <input type="hidden" name="return_search" value="<?= cm_h($reviewSearch) ?>">
                                 <input type="hidden" name="return_situation" value="<?= cm_h($reviewSituation) ?>">
+                                <input type="hidden" name="return_registry" value="<?= cm_h($reviewRegistry) ?>">
                                 <input type="hidden" name="return_page" value="<?= (int)$review['page'] ?>">
                                 <button class="btn btn-outline-success btn-sm" type="submit" onclick="return confirm('Confirmar TODOS os <?= number_format((int)$review['counts']['Pendente'],0,',','.') ?> registros que ainda aguardam nesta importação como BENEFICIÁRIOS? Os já classificados não serão alterados.')"><i class="bi bi-people-fill"></i> Todos como beneficiários</button>
                             </form>
@@ -381,6 +434,7 @@ ob_start();
                                 <input type="hidden" name="program_decision" value="ListaEspera">
                                 <input type="hidden" name="return_search" value="<?= cm_h($reviewSearch) ?>">
                                 <input type="hidden" name="return_situation" value="<?= cm_h($reviewSituation) ?>">
+                                <input type="hidden" name="return_registry" value="<?= cm_h($reviewRegistry) ?>">
                                 <input type="hidden" name="return_page" value="<?= (int)$review['page'] ?>">
                                 <button class="btn btn-outline-warning btn-sm" type="submit" onclick="return confirm('Enviar TODOS os <?= number_format((int)$review['counts']['Pendente'],0,',','.') ?> registros que ainda aguardam nesta importação para a LISTA DE ESPERA? Os já classificados não serão alterados.')"><i class="bi bi-hourglass-split"></i> Todos para lista de espera</button>
                             </form>
@@ -390,7 +444,7 @@ ob_start();
 
                 <div class="table-responsive">
                     <table class="cm-data-table cm-import-table">
-                        <thead><tr><th><input id="reviewCheckAllPage" type="checkbox" class="form-check-input" title="Selecionar todos desta página"></th><th>Ordem</th><th>Responsável</th><th>Documento / contato</th><th>Local</th><th>Cadastro</th><th>Situação no programa</th><th>Vínculo</th><th>Ações</th></tr></thead>
+                        <thead><tr><th><input id="reviewCheckAllPage" type="checkbox" class="form-check-input" title="Selecionar todos desta página"></th><th>Ordem</th><th>Responsável</th><th>Documento / contato</th><th>Local</th><th>Cadastro</th><th>Encontrado em</th><th>Situação no programa</th><th>Vínculo</th><th>Ações</th></tr></thead>
                         <tbody>
                         <?php foreach ($review['items'] as $item): ?>
                             <?php
@@ -404,6 +458,9 @@ ob_start();
                             $programTone = match ((string)$item['situacao_programa']) { 'Beneficiario'=>'success', 'ListaEspera'=>'info', default=>'warning' };
                             $linkLabel = match ((string)$item['efetivacao_status']) { 'Vinculado'=>'Cadastro oficial vinculado', 'CadastroPendente'=>'Cadastro pendente', 'Conflito'=>'Conflito de duplicidade', default=>'Aguardando decisão' };
                             $linkTone = match ((string)$item['efetivacao_status']) { 'Vinculado'=>'success', 'Conflito'=>'danger', 'CadastroPendente'=>'warning', default=>'muted' };
+                            $cross = is_array($item['cruzamento'] ?? null) ? $item['cruzamento'] : null;
+                            $crossPrograms = is_array($cross['sigas']['programas'] ?? null) ? $cross['sigas']['programas'] : [];
+                            $crossAnexoBenefits = is_array($cross['anexo']['beneficios'] ?? null) ? $cross['anexo']['beneficios'] : [];
                             ?>
                             <tr>
                                 <td><input data-review-check class="form-check-input" type="checkbox" name="item_ids[]" value="<?= (int)$item['id'] ?>" form="bulkDecisionForm"></td>
@@ -412,16 +469,38 @@ ob_start();
                                 <td><strong><?= cm_h($documentDisplay) ?></strong><small class="d-block text-muted"><?= cm_h($item['telefone_informado'] ?: 'Telefone não informado') ?></small></td>
                                 <td><?= cm_h($location ? implode(' · ', $location) : 'Não informado') ?></td>
                                 <td><span class="cm-status cm-status--<?= empty($item['motivos']) ? 'success' : 'warning' ?>"><?= cm_h($item['classificacao'] ?: 'Sem classificação') ?></span><?php if(!empty($item['motivos'])): ?><small class="d-block mt-1 text-muted"><?= cm_h($item['motivos']) ?></small><?php endif; ?></td>
+                                <td class="cm-cross-cell">
+                                    <?php if ($cross === null): ?>
+                                        <span class="cm-status cm-status--muted">Não cruzado</span>
+                                    <?php elseif (($cross['consultavel'] ?? 'nao') !== 'sim'): ?>
+                                        <span class="cm-status cm-status--warning">CPF pendente</span><small class="d-block text-muted mt-1">Sem comparação automática por nome.</small>
+                                    <?php elseif (($cross['encontrado'] ?? 'nao') !== 'sim'): ?>
+                                        <span class="cm-status cm-status--success">Não localizado</span>
+                                    <?php else: ?>
+                                        <div class="cm-cross-badges">
+                                            <?php foreach ($crossPrograms as $program): ?>
+                                                <?php $isCurrent = ($program['codigo'] ?? '') === 'comida_mesa' && ($program['vinculo_carga_atual'] ?? 'nao') === 'sim'; ?>
+                                                <span class="cm-status cm-status--<?= $isCurrent ? 'muted' : 'info' ?>"><?= cm_h((string)($program['nome'] ?? 'Programa SIGAS')) ?></span>
+                                                <?php if (!empty($program['situacao'])): ?><small><?= cm_h((string)$program['situacao']) ?><?= $isCurrent ? ' · vínculo desta carga' : '' ?></small><?php endif; ?>
+                                            <?php endforeach; ?>
+                                            <?php if (($cross['sigas']['cadastro_geral'] ?? false) && !$crossPrograms): ?><span class="cm-status cm-status--info">Cadastro SIGAS</span><?php endif; ?>
+                                            <?php if (($cross['anexo']['encontrado'] ?? 'nao') === 'sim'): ?>
+                                                <span class="cm-status cm-status--warning">ANEXO</span>
+                                                <?php if ($crossAnexoBenefits): ?><small><?= cm_h(implode(' · ', array_slice($crossAnexoBenefits,0,3))) ?><?= count($crossAnexoBenefits)>3 ? ' +' . (count($crossAnexoBenefits)-3) : '' ?></small><?php elseif ((int)($cross['anexo']['solicitacoes'] ?? 0) > 0): ?><small><?= (int)$cross['anexo']['solicitacoes'] ?> solicitação(ões)</small><?php endif; ?>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </td>
                                 <td><span class="cm-status cm-status--<?= cm_h($programTone) ?>"><?= cm_h($programLabel) ?></span><?php if(!empty($item['decisor_nome'])): ?><small class="d-block text-muted"><?= cm_h($item['decisor_nome']) ?> · <?= cm_h(cm_date($item['decidido_em'], true)) ?></small><?php endif; ?></td>
                                 <td><span class="cm-status cm-status--<?= cm_h($linkTone) ?>"><?= cm_h($linkLabel) ?></span><?php if(!empty($item['efetivacao_motivo'])): ?><small class="d-block mt-1 text-muted"><?= cm_h($item['efetivacao_motivo']) ?></small><?php endif; ?></td>
                                 <td>
                                     <div class="d-flex gap-1 flex-wrap">
                                         <form method="post" action="comida-mesa/importar-beneficiarios.php">
-                                            <input type="hidden" name="_csrf" value="<?= cm_h(cm_csrf('comida_mesa_importar_decisao')) ?>"><input type="hidden" name="cm_action" value="decide"><input type="hidden" name="decision_scope" value="selected"><input type="hidden" name="import_id" value="<?= (int)$selectedImport['id'] ?>"><input type="hidden" name="item_id" value="<?= (int)$item['id'] ?>"><input type="hidden" name="program_decision" value="Beneficiario"><input type="hidden" name="return_search" value="<?= cm_h($reviewSearch) ?>"><input type="hidden" name="return_situation" value="<?= cm_h($reviewSituation) ?>"><input type="hidden" name="return_page" value="<?= (int)$review['page'] ?>">
+                                            <input type="hidden" name="_csrf" value="<?= cm_h(cm_csrf('comida_mesa_importar_decisao')) ?>"><input type="hidden" name="cm_action" value="decide"><input type="hidden" name="decision_scope" value="selected"><input type="hidden" name="import_id" value="<?= (int)$selectedImport['id'] ?>"><input type="hidden" name="item_id" value="<?= (int)$item['id'] ?>"><input type="hidden" name="program_decision" value="Beneficiario"><input type="hidden" name="return_search" value="<?= cm_h($reviewSearch) ?>"><input type="hidden" name="return_situation" value="<?= cm_h($reviewSituation) ?>"><input type="hidden" name="return_registry" value="<?= cm_h($reviewRegistry) ?>"><input type="hidden" name="return_page" value="<?= (int)$review['page'] ?>">
                                             <button class="btn btn-success btn-sm" type="submit" title="Confirmar como beneficiário"><i class="bi bi-check-lg"></i></button>
                                         </form>
                                         <form method="post" action="comida-mesa/importar-beneficiarios.php">
-                                            <input type="hidden" name="_csrf" value="<?= cm_h(cm_csrf('comida_mesa_importar_decisao')) ?>"><input type="hidden" name="cm_action" value="decide"><input type="hidden" name="decision_scope" value="selected"><input type="hidden" name="import_id" value="<?= (int)$selectedImport['id'] ?>"><input type="hidden" name="item_id" value="<?= (int)$item['id'] ?>"><input type="hidden" name="program_decision" value="ListaEspera"><input type="hidden" name="return_search" value="<?= cm_h($reviewSearch) ?>"><input type="hidden" name="return_situation" value="<?= cm_h($reviewSituation) ?>"><input type="hidden" name="return_page" value="<?= (int)$review['page'] ?>">
+                                            <input type="hidden" name="_csrf" value="<?= cm_h(cm_csrf('comida_mesa_importar_decisao')) ?>"><input type="hidden" name="cm_action" value="decide"><input type="hidden" name="decision_scope" value="selected"><input type="hidden" name="import_id" value="<?= (int)$selectedImport['id'] ?>"><input type="hidden" name="item_id" value="<?= (int)$item['id'] ?>"><input type="hidden" name="program_decision" value="ListaEspera"><input type="hidden" name="return_search" value="<?= cm_h($reviewSearch) ?>"><input type="hidden" name="return_situation" value="<?= cm_h($reviewSituation) ?>"><input type="hidden" name="return_registry" value="<?= cm_h($reviewRegistry) ?>"><input type="hidden" name="return_page" value="<?= (int)$review['page'] ?>">
                                             <button class="btn btn-warning btn-sm" type="submit" title="Enviar para lista de espera"><i class="bi bi-hourglass-split"></i></button>
                                         </form>
                                     </div>
@@ -435,9 +514,9 @@ ob_start();
                 <div class="cm-pagination">
                     <span>Exibindo <?= count($review['items']) ?> de <?= number_format((int)$review['total'],0,',','.') ?> · Página <?= (int)$review['page'] ?> de <?= (int)$review['total_pages'] ?></span>
                     <nav>
-                        <?php if($review['page']>1): ?><a href="<?= cm_h($reviewUrl((int)$selectedImport['id'],$reviewSearch,$reviewSituation,(int)$review['page']-1)) ?>"><i class="bi bi-chevron-left"></i></a><?php endif; ?>
-                        <?php for($p=max(1,(int)$review['page']-2);$p<=min((int)$review['total_pages'],(int)$review['page']+2);$p++): ?><a class="<?= $p===(int)$review['page']?'active':'' ?>" href="<?= cm_h($reviewUrl((int)$selectedImport['id'],$reviewSearch,$reviewSituation,$p)) ?>"><?= $p ?></a><?php endfor; ?>
-                        <?php if($review['page']<$review['total_pages']): ?><a href="<?= cm_h($reviewUrl((int)$selectedImport['id'],$reviewSearch,$reviewSituation,(int)$review['page']+1)) ?>"><i class="bi bi-chevron-right"></i></a><?php endif; ?>
+                        <?php if($review['page']>1): ?><a href="<?= cm_h($reviewUrl((int)$selectedImport['id'],$reviewSearch,$reviewSituation,(int)$review['page']-1,$reviewRegistry)) ?>"><i class="bi bi-chevron-left"></i></a><?php endif; ?>
+                        <?php for($p=max(1,(int)$review['page']-2);$p<=min((int)$review['total_pages'],(int)$review['page']+2);$p++): ?><a class="<?= $p===(int)$review['page']?'active':'' ?>" href="<?= cm_h($reviewUrl((int)$selectedImport['id'],$reviewSearch,$reviewSituation,$p,$reviewRegistry)) ?>"><?= $p ?></a><?php endfor; ?>
+                        <?php if($review['page']<$review['total_pages']): ?><a href="<?= cm_h($reviewUrl((int)$selectedImport['id'],$reviewSearch,$reviewSituation,(int)$review['page']+1,$reviewRegistry)) ?>"><i class="bi bi-chevron-right"></i></a><?php endif; ?>
                     </nav>
                 </div>
             <?php else: ?>
@@ -464,7 +543,7 @@ ob_start();
         </div>
     <?php endif; ?>
 <style>
-.cm-import-bulkbar{display:flex;gap:16px;justify-content:space-between;align-items:stretch;flex-wrap:wrap;padding:14px 16px;background:#fff}.cm-import-bulkgroup{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.cm-import-bulkgroup--all{padding-left:16px;border-left:1px solid var(--bs-border-color,#dee2e6)}.cm-import-bulk-title{display:flex;flex-direction:column;min-width:145px}.cm-import-bulk-title small{color:#6c757d;font-size:.78rem}.cm-import-table tbody tr:has([data-review-check]:checked){background:rgba(13,110,253,.055)}@media(max-width:900px){.cm-import-bulkgroup--all{padding-left:0;border-left:0;border-top:1px solid var(--bs-border-color,#dee2e6);padding-top:12px;width:100%}}
+.cm-import-bulkbar{display:flex;gap:16px;justify-content:space-between;align-items:stretch;flex-wrap:wrap;padding:14px 16px;background:#fff}.cm-import-bulkgroup{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.cm-import-bulkgroup--all{padding-left:16px;border-left:1px solid var(--bs-border-color,#dee2e6)}.cm-import-bulk-title{display:flex;flex-direction:column;min-width:145px}.cm-import-bulk-title small{color:#6c757d;font-size:.78rem}.cm-import-table tbody tr:has([data-review-check]:checked){background:rgba(13,110,253,.055)}.cm-import-cross-summary{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px;border:1px solid #dbe7df;border-radius:12px;background:#f8fbf9}.cm-import-cross-summary span{padding:5px 9px;border-radius:8px;background:#fff;border:1px solid #e5ece7;font-size:.84rem}.cm-import-cross-summary small{color:#6b7a70}.cm-cross-badges{display:flex;flex-direction:column;gap:4px;align-items:flex-start}.cm-cross-badges small{font-size:.74rem;color:#6c757d;max-width:230px}.cm-cross-cell{min-width:190px}@media(max-width:900px){.cm-import-bulkgroup--all{padding-left:0;border-left:0;border-top:1px solid var(--bs-border-color,#dee2e6);padding-top:12px;width:100%}}
 </style>
 <script>
 (function () {

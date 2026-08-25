@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Core\Validator;
 use App\DTO\ComidaMesaCadastroData;
+use App\Integrations\Anexo\AnexoIntegrationService;
 
 require_once __DIR__ . '/spreadsheet.php';
 
@@ -61,6 +62,7 @@ function cm_import_decode_item(array $item): array
     $item['local_origem'] = trim((string) ($source['local_origem'] ?? $source['polo_informado'] ?? $item['polo_informado'] ?? ''));
     $item['data_nascimento_origem'] = trim((string) ($source['data_nascimento'] ?? ''));
     $item['conjuge_origem'] = trim((string) ($source['conjuge_origem'] ?? ''));
+    $item['cruzamento'] = isset($source['_cruzamento']) && is_array($source['_cruzamento']) ? $source['_cruzamento'] : null;
     return $item;
 }
 
@@ -73,7 +75,8 @@ function cm_import_review_items(
     string $search = '',
     string $situation = '',
     int $page = 1,
-    int $perPage = 50
+    int $perPage = 50,
+    string $registry = ''
 ): array {
     if (!cm_import_schema_ready($pdo) || $importId < 1) {
         return ['items'=>[], 'total'=>0, 'page'=>1, 'per_page'=>$perPage, 'total_pages'=>1,
@@ -104,6 +107,20 @@ function cm_import_review_items(
             OR item.dados_json LIKE :search
         )";
         $params['search'] = '%' . $search . '%';
+    }
+
+    $registry = trim($registry);
+    $registryFilters = [
+        'found' => "JSON_VALID(item.dados_json) = 1 AND JSON_UNQUOTE(JSON_EXTRACT(item.dados_json, '$._cruzamento.encontrado')) = 'sim'",
+        'not_found' => "JSON_VALID(item.dados_json) = 1 AND JSON_UNQUOTE(JSON_EXTRACT(item.dados_json, '$._cruzamento.encontrado')) = 'nao'",
+        'sigas' => "JSON_VALID(item.dados_json) = 1 AND JSON_UNQUOTE(JSON_EXTRACT(item.dados_json, '$._cruzamento.sigas.encontrado')) = 'sim'",
+        'anexo' => "JSON_VALID(item.dados_json) = 1 AND JSON_UNQUOTE(JSON_EXTRACT(item.dados_json, '$._cruzamento.anexo.encontrado')) = 'sim'",
+        'primeiro_emprego' => "item.dados_json LIKE '%\"codigo\":\"primeiro_emprego\"%'",
+        'comida_mesa' => "item.dados_json LIKE '%\"codigo\":\"comida_mesa\"%'",
+        'unverified' => "(item.dados_json IS NULL OR JSON_VALID(item.dados_json) = 0 OR JSON_EXTRACT(item.dados_json, '$._cruzamento') IS NULL)",
+    ];
+    if (isset($registryFilters[$registry])) {
+        $where .= ' AND (' . $registryFilters[$registry] . ')';
     }
 
     $countStmt = $pdo->prepare("SELECT COUNT(*) FROM comida_mesa_importacao_itens item WHERE {$where}");
@@ -673,6 +690,215 @@ function cm_import_confirmed_unlinked_count(PDO $pdo, int $importId): int
           AND inscricao_id IS NULL");
     $stmt->execute(['importacao_id'=>$importId]);
     return (int) $stmt->fetchColumn();
+}
+
+
+/** @return array{total:int,verificados:int,encontrados:int,sigas:int,anexo:int,sem_cpf:int} */
+function cm_import_crosscheck_summary(PDO $pdo, int $importId): array
+{
+    $empty = ['total'=>0,'verificados'=>0,'encontrados'=>0,'sigas'=>0,'anexo'=>0,'sem_cpf'=>0];
+    if ($importId < 1) return $empty;
+
+    try {
+        $stmt = $pdo->prepare("SELECT
+            COUNT(*) total,
+            SUM(JSON_VALID(dados_json) = 1 AND JSON_EXTRACT(dados_json, '$._cruzamento') IS NOT NULL) verificados,
+            SUM(JSON_VALID(dados_json) = 1 AND JSON_UNQUOTE(JSON_EXTRACT(dados_json, '$._cruzamento.encontrado')) = 'sim') encontrados,
+            SUM(JSON_VALID(dados_json) = 1 AND JSON_UNQUOTE(JSON_EXTRACT(dados_json, '$._cruzamento.sigas.encontrado')) = 'sim') sigas,
+            SUM(JSON_VALID(dados_json) = 1 AND JSON_UNQUOTE(JSON_EXTRACT(dados_json, '$._cruzamento.anexo.encontrado')) = 'sim') anexo,
+            SUM(JSON_VALID(dados_json) = 1 AND JSON_UNQUOTE(JSON_EXTRACT(dados_json, '$._cruzamento.consultavel')) = 'nao') sem_cpf
+            FROM comida_mesa_importacao_itens
+            WHERE importacao_id = :importacao_id");
+        $stmt->execute(['importacao_id'=>$importId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        foreach ($empty as $key => $_) $empty[$key] = (int)($row[$key] ?? 0);
+        return $empty;
+    } catch (Throwable) {
+        return $empty;
+    }
+}
+
+/**
+ * Cruza uma carga inteira por CPF exato com as bases que possuem dados operacionais reais.
+ * Não altera a decisão do programa e não cria/vincula cadastros.
+ *
+ * @return array{total:int,consultaveis:int,encontrados:int,sigas:int,anexo:int,sem_cpf:int,anexo_disponivel:bool}
+ */
+function cm_import_crosscheck_registry(PDO $pdo, int $importId): array
+{
+    if ($importId < 1) throw new InvalidArgumentException('Importação inválida para cruzamento.');
+    if (function_exists('set_time_limit')) @set_time_limit(180);
+
+    $impStmt = $pdo->prepare('SELECT id, criado_em FROM comida_mesa_importacoes WHERE id = :id LIMIT 1');
+    $impStmt->execute(['id'=>$importId]);
+    $import = $impStmt->fetch(PDO::FETCH_ASSOC);
+    if (!is_array($import)) throw new RuntimeException('Importação não encontrada.');
+
+    $stmt = $pdo->prepare('SELECT id, cpf_validado, cpf_informado, pessoa_id, familia_id, inscricao_id, dados_json
+        FROM comida_mesa_importacao_itens WHERE importacao_id = :id ORDER BY id');
+    $stmt->execute(['id'=>$importId]);
+    $items = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    $cpfs = [];
+    foreach ($items as $item) {
+        $cpf = preg_replace('/\D+/', '', (string)($item['cpf_validado'] ?? '')) ?: '';
+        if ($cpf !== '' && strlen($cpf) === 11 && Validator::cpf($cpf)) $cpfs[$cpf] = $cpf;
+    }
+    $cpfList = array_values($cpfs);
+
+    $people = [];
+    $comida = [];
+    $primeiroEmprego = [];
+
+    $chunks = array_chunk($cpfList, 350);
+    foreach ($chunks as $chunkIndex => $chunk) {
+        $placeholders = [];
+        $params = [];
+        foreach ($chunk as $i => $cpf) {
+            $key = 'c' . $chunkIndex . '_' . $i;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $cpf;
+        }
+        if (!$placeholders) continue;
+        $in = implode(',', $placeholders);
+
+        $q = $pdo->prepare("SELECT id, cpf, nome, criado_em FROM pessoas WHERE cpf IN ({$in})");
+        $q->execute($params);
+        foreach ($q->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            $people[(string)$row['cpf']] = $row;
+        }
+
+        $q = $pdo->prepare("SELECT p.cpf, i.id AS inscricao_id, i.status, i.criado_em
+            FROM pessoas p
+            INNER JOIN familias f ON f.responsavel_pessoa_id = p.id
+            INNER JOIN comida_mesa_inscricoes i ON i.familia_id = f.id
+            WHERE p.cpf IN ({$in})");
+        $q->execute($params);
+        foreach ($q->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            $cpf = (string)$row['cpf'];
+            $comida[$cpf][] = $row;
+        }
+
+        $q = $pdo->prepare("SELECT p.cpf, i.id AS inscricao_id, i.status, i.criado_em
+            FROM pessoas p
+            INNER JOIN familia_membros fm ON fm.pessoa_id = p.id
+            INNER JOIN comida_mesa_inscricoes i ON i.familia_id = fm.familia_id
+            WHERE p.cpf IN ({$in})");
+        $q->execute($params);
+        foreach ($q->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            $cpf = (string)$row['cpf'];
+            $comida[$cpf][] = $row;
+        }
+
+        try {
+            $q = $pdo->prepare("SELECT id, cpf, status, created_at FROM pe_candidatos WHERE cpf IN ({$in})");
+            $q->execute($params);
+            foreach ($q->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+                $cpf = (string)$row['cpf'];
+                $primeiroEmprego[$cpf][] = $row;
+            }
+        } catch (Throwable) {
+            // Primeiro Emprego pode ainda não ter sido instalado nesta hospedagem.
+        }
+    }
+
+    $anexoResponse = (new AnexoIntegrationService())->consultCpfsBasic($cpfList);
+    $anexoAvailable = (bool)($anexoResponse['available'] ?? false);
+    $anexoMatches = is_array($anexoResponse['matches'] ?? null) ? $anexoResponse['matches'] : [];
+
+    $now = date('Y-m-d H:i:s');
+    $payloads = [];
+    $stats = ['total'=>count($items),'consultaveis'=>0,'encontrados'=>0,'sigas'=>0,'anexo'=>0,'sem_cpf'=>0,'anexo_disponivel'=>$anexoAvailable];
+
+    foreach ($items as $item) {
+        $source = json_decode((string)($item['dados_json'] ?? ''), true);
+        if (!is_array($source)) $source = [];
+        $cpf = preg_replace('/\D+/', '', (string)($item['cpf_validado'] ?? '')) ?: '';
+        $consultavel = $cpf !== '' && strlen($cpf) === 11 && Validator::cpf($cpf);
+
+        $cross = [
+            'consultado_em'=>$now,
+            'consultavel'=>$consultavel ? 'sim' : 'nao',
+            'encontrado'=>'nao',
+            'cpf'=>$consultavel ? $cpf : null,
+            'sigas'=>['encontrado'=>'nao','cadastro_geral'=>false,'programas'=>[]],
+            'anexo'=>['disponivel'=>$anexoAvailable ? 'sim' : 'nao','encontrado'=>'nao','beneficios'=>[],'solicitacoes'=>0],
+        ];
+
+        if (!$consultavel) {
+            $stats['sem_cpf']++;
+            $source['_cruzamento'] = $cross;
+            $payloads[(int)$item['id']] = json_encode($source, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            continue;
+        }
+
+        $stats['consultaveis']++;
+        $localFound = isset($people[$cpf]) || isset($comida[$cpf]) || isset($primeiroEmprego[$cpf]);
+        if (isset($people[$cpf])) $cross['sigas']['cadastro_geral'] = true;
+
+        if (!empty($comida[$cpf])) {
+            $statuses = [];
+            $sameImportLink = false;
+            foreach ($comida[$cpf] as $row) {
+                $statuses[] = (string)($row['status'] ?? '');
+                if (!empty($item['inscricao_id']) && (int)$item['inscricao_id'] === (int)($row['inscricao_id'] ?? 0)) $sameImportLink = true;
+            }
+            $statuses = array_values(array_unique(array_filter($statuses)));
+            $cross['sigas']['programas'][] = [
+                'codigo'=>'comida_mesa',
+                'nome'=>'Comida na Mesa',
+                'situacao'=>$statuses ? implode(', ', $statuses) : null,
+                'vinculo_carga_atual'=>$sameImportLink ? 'sim' : 'nao',
+            ];
+        }
+
+        if (!empty($primeiroEmprego[$cpf])) {
+            $statuses = array_values(array_unique(array_filter(array_map(static fn($r)=>(string)($r['status'] ?? ''), $primeiroEmprego[$cpf]))));
+            $cross['sigas']['programas'][] = [
+                'codigo'=>'primeiro_emprego',
+                'nome'=>'Primeiro Emprego',
+                'situacao'=>$statuses ? implode(', ', $statuses) : null,
+                'vinculo_carga_atual'=>'nao',
+            ];
+        }
+
+        if ($localFound) {
+            $cross['sigas']['encontrado'] = 'sim';
+            $stats['sigas']++;
+        }
+
+        $anexo = $anexoMatches[$cpf] ?? null;
+        if (is_array($anexo)) {
+            $cross['anexo']['encontrado'] = 'sim';
+            $cross['anexo']['beneficios'] = array_values(array_filter(array_map('strval', (array)($anexo['beneficios'] ?? []))));
+            $cross['anexo']['solicitacoes'] = (int)($anexo['solicitacoes'] ?? 0);
+            $cross['anexo']['nome'] = (string)($anexo['nome'] ?? '');
+            $stats['anexo']++;
+        }
+
+        if ($localFound || is_array($anexo)) {
+            $cross['encontrado'] = 'sim';
+            $stats['encontrados']++;
+        }
+
+        $source['_cruzamento'] = $cross;
+        $payloads[(int)$item['id']] = json_encode($source, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    $started = !$pdo->inTransaction();
+    if ($started) $pdo->beginTransaction();
+    try {
+        $update = $pdo->prepare('UPDATE comida_mesa_importacao_itens SET dados_json = :dados_json WHERE id = :id AND importacao_id = :importacao_id');
+        foreach ($payloads as $id => $json) {
+            $update->execute(['dados_json'=>$json, 'id'=>$id, 'importacao_id'=>$importId]);
+        }
+        if ($started) $pdo->commit();
+    } catch (Throwable $e) {
+        if ($started && $pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
+
+    return $stats;
 }
 
 /** @return array<string,mixed>|null */
