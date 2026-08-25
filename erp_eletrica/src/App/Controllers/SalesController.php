@@ -35,6 +35,8 @@ class SalesController extends BaseController {
         $results = [];
 
         try {
+            (new Product())->repairMissingBranchStockRows((int)$filialId);
+
             // Detect available columns to prevent "Unknown column" errors
             $stmtCols = $db->query("DESCRIBE produtos");
             $columns = $stmtCols->fetchAll(\PDO::FETCH_COLUMN);

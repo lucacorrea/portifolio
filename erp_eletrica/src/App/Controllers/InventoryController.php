@@ -13,11 +13,38 @@ class InventoryController extends BaseController {
 
     private function productUploadDir(): string {
         $appRoot = dirname(__DIR__, 3);
-        $dir = getenv('ERP_PRODUCT_UPLOAD_DIR');
-        if (!$dir) {
-            $dir = dirname(dirname($appRoot)) . DIRECTORY_SEPARATOR . 'erp_eletrica_uploads' . DIRECTORY_SEPARATOR . 'produtos';
+        $candidates = [];
+
+        $envDir = getenv('ERP_PRODUCT_UPLOAD_DIR');
+        if ($envDir) {
+            $candidates[] = $envDir;
         }
-        return rtrim($dir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+
+        $candidates[] = dirname(dirname($appRoot)) . DIRECTORY_SEPARATOR . 'erp_eletrica_uploads' . DIRECTORY_SEPARATOR . 'produtos';
+        $candidates[] = $appRoot . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'produtos';
+
+        foreach ($candidates as $dir) {
+            $dir = rtrim($dir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+            if (!is_dir($dir)) {
+                @mkdir($dir, 0777, true);
+            }
+            if (is_dir($dir) && is_writable($dir)) {
+                return $dir;
+            }
+        }
+
+        return rtrim($candidates[0], DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+    }
+
+    private function uploadErrorMessage(int $error): string {
+        return match ($error) {
+            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'A foto enviada ultrapassa o tamanho permitido pelo servidor.',
+            UPLOAD_ERR_PARTIAL => 'A foto foi enviada incompleta. Tente novamente.',
+            UPLOAD_ERR_NO_TMP_DIR => 'O servidor esta sem pasta temporaria para receber a foto.',
+            UPLOAD_ERR_CANT_WRITE => 'O servidor nao conseguiu gravar a foto enviada.',
+            UPLOAD_ERR_EXTENSION => 'Uma extensao do servidor bloqueou o envio da foto.',
+            default => 'Nao foi possivel receber a foto do produto.'
+        };
     }
 
     public function index() {
@@ -92,9 +119,18 @@ class InventoryController extends BaseController {
             }
 
             // LEITURA INTELIGENTE DE IMAGEM (Qualquer formato válido)
-            if (isset($_FILES['foto']) && $_FILES['foto']['error'] == 0) {
+            if (isset($_FILES['foto']) && $_FILES['foto']['error'] !== UPLOAD_ERR_NO_FILE) {
+                if ($_FILES['foto']['error'] !== UPLOAD_ERR_OK) {
+                    $this->redirect('estoque.php?error=' . urlencode($this->uploadErrorMessage((int)$_FILES['foto']['error'])));
+                }
+
                 $dir = $this->productUploadDir();
-                if (!is_dir($dir)) mkdir($dir, 0777, true);
+                if (!is_dir($dir) && !mkdir($dir, 0777, true)) {
+                    $this->redirect('estoque.php?error=' . urlencode('Nao foi possivel criar a pasta de fotos dos produtos.'));
+                }
+                if (!is_writable($dir)) {
+                    $this->redirect('estoque.php?error=' . urlencode('A pasta de fotos dos produtos nao tem permissao de gravacao.'));
+                }
 
                 $tmpName = $_FILES['foto']['tmp_name'];
 
@@ -103,9 +139,15 @@ class InventoryController extends BaseController {
                 $mimeType = finfo_file($finfo, $tmpName);
                 finfo_close($finfo);
 
+                if (!$mimeType && function_exists('getimagesize')) {
+                    $imageInfo = @getimagesize($tmpName);
+                    $mimeType = is_array($imageInfo) ? ($imageInfo['mime'] ?? null) : null;
+                }
+
                 // Mapeamento dos tipos de imagens mais comuns do mercado (incluindo modernos como WebP e AVIF)
                 $allowedMimeTypes = [
                     'image/jpeg' => 'jpg',
+                    'image/pjpeg' => 'jpg',
                     'image/png'  => 'png',
                     'image/gif'  => 'gif',
                     'image/webp' => 'webp',
@@ -129,10 +171,11 @@ class InventoryController extends BaseController {
                     
                     if (move_uploaded_file($tmpName, $dir . $filename)) {
                         $data['imagens'] = $filename;
+                    } else {
+                        $this->redirect('estoque.php?error=' . urlencode('Nao foi possivel salvar a foto do produto na pasta de uploads.'));
                     }
                 } else {
-                    // Caso queira abortar se não for imagem, descomente a linha abaixo:
-                    // $this->redirect('estoque.php?error=' . urlencode('O arquivo enviado não é uma imagem válida.'));
+                    $this->redirect('estoque.php?error=' . urlencode('O arquivo enviado nao foi reconhecido como imagem valida. Use JPG, PNG, GIF, WebP, AVIF ou BMP.'));
                 }
             }
 

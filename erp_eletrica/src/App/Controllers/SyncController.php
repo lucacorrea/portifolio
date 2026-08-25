@@ -18,7 +18,15 @@ class SyncController extends BaseController {
         $join = $isMatriz ? "LEFT JOIN" : "INNER JOIN";
 
         try {
+            (new \App\Models\Product())->repairMissingBranchStockRows((int)$filialId);
+
+            $columns = $db->query("DESCRIBE produtos")->fetchAll(\PDO::FETCH_COLUMN);
+            $hasCean = in_array('cean', $columns, true);
+            $hasQrCode = in_array('qrcode', $columns, true);
+
             $sql = "SELECT p.id, p.nome, p.preco_venda, p.unidade, p.imagens, p.codigo,
+                           " . ($hasCean ? "p.cean" : "'' as cean") . ",
+                           " . ($hasQrCode ? "p.qrcode" : "'' as qrcode") . ",
                            COALESCE(ef.quantidade, 0) as stock_qty
                     FROM produtos p
                     $join estoque_filiais ef ON p.id = ef.produto_id AND ef.filial_id = ?

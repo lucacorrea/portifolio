@@ -58,6 +58,29 @@ class Product extends BaseModel {
         return $this->query($sql, [$filialId])->fetchAll();
     }
 
+    public function repairMissingBranchStockRows(?int $filialId = null): void {
+        $filialId = (int)($filialId ?: ($_SESSION['filial_id'] ?? 1));
+        if ($filialId <= 0) {
+            return;
+        }
+
+        try {
+            $stmt = $this->db->prepare(
+                "INSERT INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo)
+                 SELECT p.id, p.filial_id, COALESCE(p.quantidade, 0), COALESCE(p.estoque_minimo, 0)
+                 FROM {$this->table} p
+                 LEFT JOIN estoque_filiais ef ON ef.produto_id = p.id AND ef.filial_id = p.filial_id
+                 WHERE p.filial_id = ? AND ef.produto_id IS NULL
+                 ON DUPLICATE KEY UPDATE
+                    quantidade = VALUES(quantidade),
+                    estoque_minimo = VALUES(estoque_minimo)"
+            );
+            $stmt->execute([$filialId]);
+        } catch (\Throwable $e) {
+            error_log("Erro ao reparar estoque_filiais da filial {$filialId}: " . $e->getMessage());
+        }
+    }
+
     public function paginate($perPage = 15, $currentPage = 1, $order = "id DESC", $filters = []) {
         $filialId = $_SESSION['filial_id'] ?? 1;
         $offset = ($currentPage - 1) * $perPage;
@@ -359,7 +382,7 @@ class Product extends BaseModel {
         return $res;
     }
 
-    public function hasEnoughStock($id, $requiredQty, $filialId = null) {
+    public function getAvailableStock($id, $filialId = null): float {
         if (!$filialId) $filialId = $_SESSION['filial_id'] ?? 1;
         
         $stmt = $this->db->prepare("SELECT quantidade FROM estoque_filiais WHERE produto_id = ? AND filial_id = ?");
@@ -373,7 +396,70 @@ class Product extends BaseModel {
             $currentQty = $stmtM->fetchColumn();
         }
 
-        return ($currentQty !== false && $currentQty >= $requiredQty);
+        return $currentQty !== false ? (float)$currentQty : 0.0;
+    }
+
+    public function hasEnoughStock($id, $requiredQty, $filialId = null) {
+        return $this->getAvailableStock($id, $filialId) >= (float)$requiredQty;
+    }
+
+    private function ensureBranchStockRow(int $productId, int $filialId, float $quantidade, float $estoqueMinimo): void {
+        if ($productId <= 0 || $filialId <= 0) {
+            return;
+        }
+
+        try {
+            $stmt = $this->db->prepare(
+                "INSERT INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo)
+                 VALUES (?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE
+                    quantidade = VALUES(quantidade),
+                    estoque_minimo = VALUES(estoque_minimo)"
+            );
+            $stmt->execute([$productId, $filialId, $quantidade, $estoqueMinimo]);
+        } catch (\Throwable $e) {
+            error_log("Erro ao inicializar estoque_filial do produto {$productId}: " . $e->getMessage());
+        }
+    }
+
+    public function create($data) {
+        if (!is_array($data)) {
+            $data = [];
+        }
+
+        if (!isset($data['quantidade']) && isset($data['estoque_atual'])) {
+            $data['quantidade'] = $data['estoque_atual'];
+        }
+
+        $filialId = (int)($data['filial_id'] ?? ($_SESSION['filial_id'] ?? 1));
+        $data['filial_id'] = $filialId;
+
+        if (!isset($data['estoque_minimo']) || $data['estoque_minimo'] === '') {
+            $data['estoque_minimo'] = 0;
+        }
+        if (empty($data['categoria'])) {
+            $data['categoria'] = 'Lançamentos';
+        }
+        if (empty($data['unidade'])) {
+            $data['unidade'] = 'UN';
+        }
+        if (!isset($data['preco_custo']) || $data['preco_custo'] === '') {
+            $data['preco_custo'] = 0;
+        }
+        if (!isset($data['preco_venda']) || $data['preco_venda'] === '') {
+            $data['preco_venda'] = 0;
+        }
+
+        $this->prepareProductCodes($data);
+        $productId = (int)parent::create($data);
+        $this->ensureBranchStockRow(
+            $productId,
+            $filialId,
+            (float)($data['quantidade'] ?? 0),
+            (float)($data['estoque_minimo'] ?? 0)
+        );
+
+        return $productId;
     }
 
     public function save($data) {
@@ -392,6 +478,7 @@ class Product extends BaseModel {
         $hasPrecoVenda3   = $this->columnExists('preco_venda_3');
         $hasPrecoAtacado  = $this->columnExists('preco_venda_atacado');
         $hasImagens       = $this->columnExists('imagens');
+        $hasQrCode        = $this->columnExists('qrcode');
         
         // Ensure columns exist (self-healing)
         if (!$this->columnExists('preco_variavel')) {
@@ -403,16 +490,26 @@ class Product extends BaseModel {
         if (!$this->columnExists('qrcode')) {
             try { $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN qrcode VARCHAR(150) DEFAULT NULL"); } catch (\Exception $e) {}
         }
+        if (!$this->columnExists('imagens')) {
+            try { $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN imagens TEXT DEFAULT NULL"); } catch (\Exception $e) {}
+        }
 
         $hasPrecoVariavel = true;
         $hasCean = true;
+        $hasQrCode = $this->columnExists('qrcode');
+        $hasImagens = $this->columnExists('imagens');
         
         if (!$this->columnExists('fornecedor_id')) {
             try { $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN fornecedor_id INT NULL"); } catch (\Exception $e) {}
         }
         $hasFornecedor    = true;
 
-        $filialId = $_SESSION['filial_id'] ?? 1;
+        $filialId = (int)($_SESSION['filial_id'] ?? 1);
+        $targetFilialId = (int)($data['filial_id'] ?? $filialId);
+        if ($targetFilialId <= 0) {
+            $targetFilialId = $filialId;
+        }
+        $data['filial_id'] = $targetFilialId;
         $this->prepareProductCodes($data);
 
         if (!empty($data['id'])) {
@@ -440,6 +537,7 @@ class Product extends BaseModel {
             if ($hasPrecoAtacado){ $sets[] = 'preco_venda_atacado = ?'; $params[] = ($data['preco_venda_atacado'] ?? '') === '' ? null : $data['preco_venda_atacado']; }
             if ($hasPrecoVariavel){ $sets[] = 'preco_variavel = ?'; $params[] = (int)($data['preco_variavel'] ?? 0); }
             if ($hasImagens && isset($data['imagens'])) { $sets[] = 'imagens = ?'; $params[] = $data['imagens']; }
+            if ($hasQrCode)      { $sets[] = 'qrcode = ?';       $params[] = ($data['qrcode'] ?? '') === '' ? null : $data['qrcode']; }
 
             if ($hasFornecedor)  { $sets[] = 'fornecedor_id = ?'; $params[] = ($data['fornecedor_id'] ?? '') === '' ? null : $data['fornecedor_id']; }
             if ($this->columnExists('descricao')) { $sets[] = 'descricao = ?'; $params[] = $data['descricao'] ?? null; }
@@ -451,7 +549,7 @@ class Product extends BaseModel {
             $this->query("INSERT INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo) 
                           VALUES (?, ?, ?, ?) 
                           ON DUPLICATE KEY UPDATE quantidade = ?, estoque_minimo = ?", 
-                          [$data['id'], $filialId, $data['quantidade'] ?? 0, $data['estoque_minimo'], $data['quantidade'] ?? 0, $data['estoque_minimo']]);
+                          [$data['id'], $targetFilialId, $data['quantidade'] ?? 0, $data['estoque_minimo'], $data['quantidade'] ?? 0, $data['estoque_minimo']]);
 
             return $res;
 
@@ -478,7 +576,7 @@ class Product extends BaseModel {
             $params = [
                 $data['codigo'], $data['ncm'] ?? null, $data['nome'], $data['unidade'],
                 $data['categoria'], $data['preco_custo'], $data['preco_venda'],
-                $data['quantidade'] ?? 0, $data['estoque_minimo'], $data['filial_id'] ?? $filialId,
+                $data['quantidade'] ?? 0, $data['estoque_minimo'], $targetFilialId,
             ];
 
             if ($hasCean)        { $cols[] = 'cean';          $params[] = $data['cean'] ?? 'SEM GTIN'; }
@@ -496,6 +594,7 @@ class Product extends BaseModel {
             if ($hasPrecoAtacado){ $cols[] = 'preco_venda_atacado'; $params[] = ($data['preco_venda_atacado'] ?? '') === '' ? null : $data['preco_venda_atacado']; }
             if ($hasPrecoVariavel) { $cols[] = 'preco_variavel'; $params[] = (int)($data['preco_variavel'] ?? 0); }
             if ($hasImagens)     { $cols[] = 'imagens';       $params[] = $data['imagens'] ?? null; }
+            if ($hasQrCode)      { $cols[] = 'qrcode';        $params[] = ($data['qrcode'] ?? '') === '' ? null : $data['qrcode']; }
 
             if ($hasFornecedor)  { $cols[] = 'fornecedor_id'; $params[] = ($data['fornecedor_id'] ?? '') === '' ? null : $data['fornecedor_id']; }
             if ($this->columnExists('descricao')) { $cols[] = 'descricao'; $params[] = $data['descricao'] ?? null; }
@@ -509,7 +608,7 @@ class Product extends BaseModel {
             // TAMBÉM INICIALIZA NA TABELA DE FILIAIS
             $this->query("INSERT INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo) 
                           VALUES (?, ?, ?, ?)", 
-                          [$newId, $filialId, $data['quantidade'] ?? 0, $data['estoque_minimo']]);
+                          [$newId, $targetFilialId, $data['quantidade'] ?? 0, $data['estoque_minimo']]);
 
                 $this->db->commit();
             } catch (\Throwable $e) {

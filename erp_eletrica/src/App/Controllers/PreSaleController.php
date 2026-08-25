@@ -36,15 +36,46 @@ class PreSaleController extends BaseController {
             $model = new PreSale();
             $productModel = new Product();
             $clientModel = new Client();
+            $isOrcamento = !empty($data['is_orcamento']) || (!empty($data['codigo']) && str_starts_with((string)$data['codigo'], 'ORC-'));
+            $stockWarnings = [];
             
             // Validation: Stock Check
             if (!empty($data['items'])) {
+                $requestedByProduct = [];
+                $productNames = [];
+
                 foreach ($data['items'] as $item) {
-                    if (!$productModel->hasEnoughStock($item['id'], $item['qty'])) {
+                    $productId = (int)($item['id'] ?? 0);
+                    if ($productId <= 0) {
+                        continue;
+                    }
+                    $requestedByProduct[$productId] = ($requestedByProduct[$productId] ?? 0) + (float)($item['qty'] ?? 0);
+                    $productNames[$productId] = $item['nome'] ?? null;
+                }
+
+                foreach ($requestedByProduct as $productId => $requestedQty) {
+                    $availableQty = $productModel->getAvailableStock($productId);
+                    if ($availableQty >= $requestedQty) {
+                        continue;
+                    }
+
+                    $productName = $productNames[$productId] ?: null;
+                    if (!$productName) {
                         $stmtProd = \App\Config\Database::getInstance()->getConnection()->prepare("SELECT nome FROM produtos WHERE id = ?");
-                        $stmtProd->execute([$item['id']]);
-                        $productName = $stmtProd->fetchColumn();
-                        echo json_encode(['success' => false, 'error' => "Estoque insuficiente para a pré-venda: $productName."]);
+                        $stmtProd->execute([$productId]);
+                        $productName = $stmtProd->fetchColumn() ?: "Produto #{$productId}";
+                    }
+
+                    if ($isOrcamento) {
+                        $stockWarnings[] = [
+                            'produto_id' => $productId,
+                            'produto_nome' => $productName,
+                            'estoque_disponivel' => $availableQty,
+                            'quantidade_solicitada' => $requestedQty,
+                            'message' => "{$productName}: solicitado {$requestedQty}, estoque {$availableQty}"
+                        ];
+                    } else {
+                        echo json_encode(['success' => false, 'error' => "Estoque insuficiente para a pré-venda: {$productName}. Disponível: {$availableQty}; solicitado: {$requestedQty}."]);
                         exit;
                     }
                 }
@@ -125,11 +156,15 @@ class PreSaleController extends BaseController {
             try {
                 if (!empty($data['id'])) {
                     $model->update($data['id'], $data);
-                    echo json_encode(['success' => true, 'id' => $data['id'], 'codigo' => $data['codigo'] ?? 'PV-EDITED']);
+                    $response = ['success' => true, 'id' => $data['id'], 'codigo' => $data['codigo'] ?? 'PV-EDITED'];
                 } else {
                     $result = $model->create($data);
-                    echo json_encode(['success' => true, 'id' => $result['id'], 'codigo' => $result['codigo']]);
+                    $response = ['success' => true, 'id' => $result['id'], 'codigo' => $result['codigo']];
                 }
+                if (!empty($stockWarnings)) {
+                    $response['stock_warnings'] = $stockWarnings;
+                }
+                echo json_encode($response);
             } catch (\Exception $e) {
                 echo json_encode(['success' => false, 'error' => $e->getMessage()]);
             }
