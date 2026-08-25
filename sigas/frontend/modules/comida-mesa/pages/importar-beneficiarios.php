@@ -46,7 +46,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string) ($_POST['cm_action'] ?? 'validate');
 
     try {
-        if ($action === 'decide') {
+        if ($action === 'reprocess_links') {
+            if (!$schemaReady) {
+                throw new RuntimeException('Execute a migration 20260825_005_comida_mesa_confirmacao_importacao.sql antes de reprocessar os vínculos.');
+            }
+            if (!Csrf::validateAndRotate($_POST['_csrf'] ?? null, 'comida_mesa_importar_decisao')) {
+                throw new RuntimeException('Sessão de segurança expirada. Atualize a página e tente novamente.');
+            }
+
+            $selectedImportId = max(0, (int) ($_POST['import_id'] ?? 0));
+            $reviewSearch = trim((string) ($_POST['return_search'] ?? ''));
+            $reviewSituation = trim((string) ($_POST['return_situation'] ?? ''));
+            $reviewPage = max(1, (int) ($_POST['return_page'] ?? 1));
+
+            $decisionResult = cm_import_reprocess_confirmed_unlinked(
+                $pdo,
+                $selectedImportId,
+                (int) cm_app()['user']->id
+            );
+
+            $message = [
+                'type' => $decisionResult['errors'] || $decisionResult['conflitos'] > 0 ? 'warning' : 'success',
+                'text' => sprintf(
+                    'Vínculos reprocessados: %d registro(s) verificado(s), %d vinculado(s) ao cadastro oficial, %d realmente continuam com pendência cadastral e %d conflito(s).',
+                    $decisionResult['updated'],
+                    $decisionResult['vinculados'],
+                    $decisionResult['pendentes'],
+                    $decisionResult['conflitos']
+                ),
+            ];
+            if ($decisionResult['errors']) {
+                $message['text'] .= ' Ocorreram ' . count($decisionResult['errors']) . ' erro(s) pontual(is).';
+            }
+        } elseif ($action === 'decide') {
             if (!$schemaReady) {
                 throw new RuntimeException('Execute a migration 20260825_005_comida_mesa_confirmacao_importacao.sql antes de confirmar a lista.');
             }
@@ -147,6 +179,7 @@ $selectedImport = $selectedImportId > 0 && $schemaReady ? cm_import_history_item
 $review = $selectedImport !== null
     ? cm_import_review_items($pdo, $selectedImportId, $reviewSearch, $reviewSituation, $reviewPage, 50)
     : ['items'=>[], 'total'=>0, 'page'=>1, 'per_page'=>50, 'total_pages'=>1, 'counts'=>['Pendente'=>0,'Beneficiario'=>0,'ListaEspera'=>0]];
+$confirmedUnlinkedCount = $selectedImport !== null ? cm_import_confirmed_unlinked_count($pdo, $selectedImportId) : 0;
 
 $flattenIssues = static function (array $row): string {
     $items = [];
@@ -275,6 +308,24 @@ ob_start();
                 ['label'=>'Lista de espera','value'=>$review['counts']['ListaEspera'],'hint'=>'Aguardam vaga/disponibilidade','tone'=>'info'],
                 ['label'=>'Total da carga','value'=>(int)$selectedImport['total_linhas'],'hint'=>'Pessoas importadas','tone'=>'neutral'],
             ]); ?>
+
+            <?php if ($confirmedUnlinkedCount > 0): ?>
+                <div class="alert alert-warning d-flex justify-content-between align-items-center gap-3 flex-wrap mt-3">
+                    <div>
+                        <strong><?= number_format($confirmedUnlinkedCount, 0, ',', '.') ?> confirmado(s) ainda sem vínculo oficial.</strong><br>
+                        <span>Isso pode ter sido causado pela versão anterior da ação em lote. Reprocesse para criar/vincular automaticamente quem tiver dados suficientes. A decisão Beneficiário/Lista de espera será preservada.</span>
+                    </div>
+                    <form method="post" action="comida-mesa/importar-beneficiarios.php" class="m-0">
+                        <input type="hidden" name="_csrf" value="<?= cm_h(cm_csrf('comida_mesa_importar_decisao')) ?>">
+                        <input type="hidden" name="cm_action" value="reprocess_links">
+                        <input type="hidden" name="import_id" value="<?= (int)$selectedImport['id'] ?>">
+                        <input type="hidden" name="return_search" value="<?= cm_h($reviewSearch) ?>">
+                        <input type="hidden" name="return_situation" value="<?= cm_h($reviewSituation) ?>">
+                        <input type="hidden" name="return_page" value="<?= (int)$review['page'] ?>">
+                        <button class="btn btn-warning" type="submit" onclick="return confirm('Reprocessar os vínculos dos registros já confirmados desta importação? A situação no programa não será alterada.')"><i class="bi bi-arrow-repeat"></i> Reprocessar vínculos</button>
+                    </form>
+                </div>
+            <?php endif; ?>
 
             <form class="cm-filter-panel" method="get" action="comida-mesa/importar-beneficiarios.php">
                 <input type="hidden" name="import_id" value="<?= (int) $selectedImport['id'] ?>">

@@ -519,12 +519,9 @@ function cm_import_decide_items(PDO $pdo, array $itemIds, string $decision, int 
 }
 
 /**
- * Classifica, de uma vez, todos os registros ainda pendentes de uma importação.
- *
- * Esta operação é deliberadamente em lote: não tenta criar milhares de pessoas/famílias
- * no mesmo request. Os itens passam imediatamente para a lista correta e os vínculos
- * oficiais já existentes têm o status atualizado. Quem ainda não possui inscricao_id
- * permanece com efetivacao_status = CadastroPendente para regularização posterior.
+ * Classifica todos os registros ainda pendentes de uma importação usando o mesmo
+ * fluxo seguro da decisão individual. Isso garante que cada item tente criar/vincular
+ * pessoa, família e inscrição oficial antes de ser marcado como cadastro pendente.
  *
  * @return array{updated:int,vinculados:int,pendentes:int,conflitos:int,errors:list<string>}
  */
@@ -537,72 +534,25 @@ function cm_import_decide_all_pending(PDO $pdo, int $importId, string $decision,
         throw new InvalidArgumentException('Decisão do programa inválida.');
     }
 
-    $targetStatus = $decision === 'Beneficiario' ? 'ativa' : 'lista_espera';
-    $result = ['updated'=>0,'vinculados'=>0,'pendentes'=>0,'conflitos'=>0,'errors'=>[]];
-
-    $pdo->beginTransaction();
-    try {
-        $count = $pdo->prepare("SELECT
-            COUNT(*) total,
-            SUM(CASE WHEN inscricao_id IS NOT NULL THEN 1 ELSE 0 END) vinculados
-            FROM comida_mesa_importacao_itens
-            WHERE importacao_id = :importacao_id AND situacao_programa = 'Pendente'
-            FOR UPDATE");
-        $count->execute(['importacao_id'=>$importId]);
-        $row = $count->fetch(PDO::FETCH_ASSOC) ?: [];
-        $total = (int)($row['total'] ?? 0);
-        $linked = (int)($row['vinculados'] ?? 0);
-
-        if ($total < 1) {
-            $pdo->rollBack();
-            return $result;
-        }
-
-        // Atualiza inscrições que já possuem vínculo oficial.
-        $official = $pdo->prepare("UPDATE comida_mesa_inscricoes i
-            INNER JOIN comida_mesa_importacao_itens item ON item.inscricao_id = i.id
-            SET i.status = :status,
-                i.atualizado_por = :usuario,
-                i.atualizado_em = CURRENT_TIMESTAMP
-            WHERE item.importacao_id = :importacao_id
-              AND item.situacao_programa = 'Pendente'");
-        $official->execute([
-            'status'=>$targetStatus,
-            'usuario'=>$userId,
-            'importacao_id'=>$importId,
-        ]);
-
-        // A classificação da lista é feita em um único UPDATE para suportar cargas grandes.
-        $update = $pdo->prepare("UPDATE comida_mesa_importacao_itens
-            SET situacao_programa = :situacao_programa,
-                decidido_em = CURRENT_TIMESTAMP,
-                decidido_por = :decidido_por,
-                efetivacao_status = CASE
-                    WHEN inscricao_id IS NOT NULL THEN 'Vinculado'
-                    ELSE 'CadastroPendente'
-                END,
-                efetivacao_motivo = CASE
-                    WHEN inscricao_id IS NOT NULL THEN NULL
-                    ELSE 'Classificado em lote. Beneficiário consta na lista do programa, mas o vínculo ao cadastro central ainda precisa ser concluído.'
-                END
-            WHERE importacao_id = :importacao_id
-              AND situacao_programa = 'Pendente'");
-        $update->execute([
-            'situacao_programa'=>$decision,
-            'decidido_por'=>$userId,
-            'importacao_id'=>$importId,
-        ]);
-
-        $result['updated'] = $total;
-        $result['vinculados'] = $linked;
-        $result['pendentes'] = max(0, $total - $linked);
-
-        cm_import_refresh_counts($pdo, $importId);
-        $pdo->commit();
-    } catch (Throwable $e) {
-        if ($pdo->inTransaction()) $pdo->rollBack();
-        throw $e;
+    // Cargas do Comida na Mesa podem ter milhares de registros. O processamento
+    // precisa usar a regra completa por item, mas sem o limite padrão curto do PHP.
+    if (function_exists('set_time_limit')) {
+        @set_time_limit(0);
     }
+
+    $stmt = $pdo->prepare("SELECT id
+        FROM comida_mesa_importacao_itens
+        WHERE importacao_id = :importacao_id
+          AND situacao_programa = 'Pendente'
+        ORDER BY id");
+    $stmt->execute(['importacao_id'=>$importId]);
+    $ids = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []);
+
+    if ($ids === []) {
+        return ['updated'=>0,'vinculados'=>0,'pendentes'=>0,'conflitos'=>0,'errors'=>[]];
+    }
+
+    $result = cm_import_decide_items($pdo, $ids, $decision, $userId);
 
     try {
         $app = cm_app();
@@ -612,11 +562,73 @@ function cm_import_decide_all_pending(PDO $pdo, int $importId, string $decision,
             'quantidade'=>$result['updated'],
             'vinculados'=>$result['vinculados'],
             'cadastro_pendente'=>$result['pendentes'],
+            'conflitos'=>$result['conflitos'],
         ]);
     } catch (Throwable) {
     }
 
     return $result;
+}
+
+/**
+ * Reprocessa itens que já foram confirmados anteriormente, mas ficaram sem
+ * inscricao_id por causa da versão antiga da ação em lote. A decisão já tomada
+ * (Beneficiário ou Lista de espera) é preservada.
+ *
+ * @return array{updated:int,vinculados:int,pendentes:int,conflitos:int,errors:list<string>}
+ */
+function cm_import_reprocess_confirmed_unlinked(PDO $pdo, int $importId, int $userId): array
+{
+    if ($importId < 1) {
+        throw new InvalidArgumentException('Importação inválida.');
+    }
+
+    if (function_exists('set_time_limit')) {
+        @set_time_limit(0);
+    }
+
+    $result = ['updated'=>0,'vinculados'=>0,'pendentes'=>0,'conflitos'=>0,'errors'=>[]];
+
+    foreach (['Beneficiario', 'ListaEspera'] as $decision) {
+        $stmt = $pdo->prepare("SELECT id
+            FROM comida_mesa_importacao_itens
+            WHERE importacao_id = :importacao_id
+              AND situacao_programa = :situacao_programa
+              AND inscricao_id IS NULL
+            ORDER BY id");
+        $stmt->execute([
+            'importacao_id'=>$importId,
+            'situacao_programa'=>$decision,
+        ]);
+        $ids = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []);
+        if ($ids === []) {
+            continue;
+        }
+
+        $partial = cm_import_decide_items($pdo, $ids, $decision, $userId);
+        $result['updated'] += $partial['updated'];
+        $result['vinculados'] += $partial['vinculados'];
+        $result['pendentes'] += $partial['pendentes'];
+        $result['conflitos'] += $partial['conflitos'];
+        foreach ($partial['errors'] as $error) {
+            $result['errors'][] = $error;
+        }
+    }
+
+    return $result;
+}
+
+function cm_import_confirmed_unlinked_count(PDO $pdo, int $importId): int
+{
+    if ($importId < 1) return 0;
+
+    $stmt = $pdo->prepare("SELECT COUNT(*)
+        FROM comida_mesa_importacao_itens
+        WHERE importacao_id = :importacao_id
+          AND situacao_programa IN ('Beneficiario','ListaEspera')
+          AND inscricao_id IS NULL");
+    $stmt->execute(['importacao_id'=>$importId]);
+    return (int) $stmt->fetchColumn();
 }
 
 /** @return array<string,mixed>|null */
