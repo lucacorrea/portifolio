@@ -253,11 +253,35 @@ final class ComidaMesaService
         if ($data->startsAt !== null && $data->endsAt !== null && $data->startsAt > $data->endsAt) {
             $fields['fim_entregas'] = 'Fim das entregas não pode ser anterior ao início.';
         }
+
+        $today = $this->todayManaus();
+        if ($data->status === 'aberta') {
+            if ($data->startsAt === null) {
+                $fields['inicio_entregas'] = 'Competência aberta deve possuir data de início das entregas.';
+            }
+            if ($data->endsAt === null) {
+                $fields['fim_entregas'] = 'Competência aberta deve possuir data de fim das entregas.';
+            }
+            if ($data->startsAt !== null && $data->startsAt > $today) {
+                $fields['status'] = 'Competência futura deve permanecer como Planejada até o início do período.';
+            }
+            if ($data->endsAt !== null && $data->endsAt < $today) {
+                $fields['status'] = 'O período desta competência já terminou. Use a situação Encerrada.';
+            }
+        }
+
         if ($fields !== []) {
             throw $this->validation($fields);
         }
         if ($this->repository->findCompetenceByMonth($data->year, $data->month, $data->id) !== null) {
             throw $this->problem('Competência mensal já cadastrada.', 409);
+        }
+        if ($data->status === 'aberta') {
+            $otherOpen = $this->repository->findOtherOpenCompetence($data->id);
+            if ($otherOpen !== null) {
+                $label = $this->formatCompetence((int) $otherOpen['mes'], (int) $otherOpen['ano']);
+                throw $this->problem('Já existe outra competência aberta: ' . $label . '. Encerre-a antes de abrir uma nova competência.', 409);
+            }
         }
 
         $id = $this->repository->saveCompetence([
@@ -341,6 +365,10 @@ final class ComidaMesaService
             }
             if ($competence === null || (string) $competence['status'] !== 'aberta') {
                 throw $this->problem('A competência deve estar aberta para registrar entrega.', 409);
+            }
+            $windowProblem = $this->competenceDeliveryWindowProblem($competence);
+            if ($windowProblem !== null) {
+                throw $this->problem($windowProblem, 409);
             }
             if ((int) ($registration['polo_ativo'] ?? 0) !== 1 || empty($registration['polo_id'])) {
                 throw $this->problem('A inscrição precisa possuir polo ativo.', 409);
@@ -462,6 +490,10 @@ final class ComidaMesaService
         }
         if (($competence['status'] ?? null) !== 'aberta') {
             return ['allowed' => false, 'action' => 'none', 'reason' => 'Competência não está aberta.'];
+        }
+        $windowProblem = $this->competenceDeliveryWindowProblem($competence);
+        if ($windowProblem !== null) {
+            return ['allowed' => false, 'action' => 'none', 'reason' => $windowProblem];
         }
         if (empty($registration['polo_id'])) {
             return ['allowed' => false, 'action' => 'none', 'reason' => 'Inscrição sem polo definido.'];
@@ -675,6 +707,41 @@ final class ComidaMesaService
     private function nowManaus(): string
     {
         return (new DateTimeImmutable('now', new DateTimeZone('America/Manaus')))->format('Y-m-d H:i:s');
+    }
+
+    private function todayManaus(): string
+    {
+        return (new DateTimeImmutable('now', new DateTimeZone('America/Manaus')))->format('Y-m-d');
+    }
+
+    /** @param array<string,mixed> $competence */
+    private function competenceDeliveryWindowProblem(array $competence): ?string
+    {
+        $startsAt = trim((string) ($competence['inicio_entregas'] ?? ''));
+        $endsAt = trim((string) ($competence['fim_entregas'] ?? ''));
+
+        if ($startsAt === '' || $endsAt === '') {
+            return 'A competência está aberta, mas não possui período de entrega completo. Corrija a competência antes de registrar entregas.';
+        }
+
+        $today = $this->todayManaus();
+        if ($today < $startsAt) {
+            return 'As entregas desta competência começam em ' . $this->formatDateOnly($startsAt) . '.';
+        }
+        if ($today > $endsAt) {
+            return 'O período de entregas desta competência terminou em ' . $this->formatDateOnly($endsAt) . '. Encerre a competência e abra o período correto.';
+        }
+
+        return null;
+    }
+
+    private function formatDateOnly(string $value): string
+    {
+        try {
+            return (new DateTimeImmutable($value))->format('d/m/Y');
+        } catch (\Throwable) {
+            return $value;
+        }
     }
 
     private function normalizeVersion(mixed $value): ?string
