@@ -209,13 +209,15 @@
                 .filter(p => {
                     const nome = (p.nome || '').toLowerCase();
                     const codigo = (p.codigo || '').toLowerCase();
-                    return nome.includes(t) || codigo.includes(t) || String(p.id) === t;
+                    const cean = (p.cean || '').toLowerCase();
+                    const qrcode = (p.qrcode || '').toLowerCase();
+                    return nome.includes(t) || codigo.includes(t) || cean.includes(t) || qrcode.includes(t) || String(p.id) === t;
                 })
                 .slice(0, 20)
                 .map(p => ({
                     id: p.id, nome: p.nome, preco_venda: p.preco_venda,
                     unidade: p.unidade || 'UN', imagens: p.imagens || '',
-                    codigo: p.codigo || '', type: 'product',
+                    codigo: p.codigo || '', cean: p.cean || '', qrcode: p.qrcode || '', type: 'product',
                     stock_qty: p.stock_qty || 0, _offline: true
                 }));
 

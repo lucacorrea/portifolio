@@ -2106,6 +2106,19 @@ async function saveCurrentSaleAsPreSale() {
     }
 }
 
+function formatOrcamentoStockWarnings(warnings) {
+    if (!Array.isArray(warnings) || warnings.length === 0) return '';
+
+    const lines = warnings.map(w => {
+        const nome = w.produto_nome || `Produto #${w.produto_id}`;
+        const solicitada = Number(w.quantidade_solicitada || 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+        const disponivel = Number(w.estoque_disponivel || 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+        return `- ${nome}: solicitado ${solicitada}, em estoque ${disponivel}`;
+    });
+
+    return `\n\nAtenção: este orçamento foi salvo mesmo com quantidade acima do estoque:\n${lines.join('\n')}`;
+}
+
 async function saveCurrentSaleAsOrcamento() {
     if (cart.length === 0) {
         alert("O carrinho está vazio.");
@@ -2155,7 +2168,7 @@ async function saveCurrentSaleAsOrcamento() {
 
         const result = await res.json();
         if (result.success) {
-            alert(`Orçamento gerado com sucesso!\nCódigo: ${result.codigo}`);
+            alert(`Orçamento gerado com sucesso!\nCódigo: ${result.codigo}${formatOrcamentoStockWarnings(result.stock_warnings)}`);
             
             // Open print format choice modal
             chooseOrcamentoPrintFormat(result.codigo);

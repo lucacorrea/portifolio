@@ -36,6 +36,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
         $stmtUpdate = $db->prepare("
             UPDATE produtos SET nome = ?, categoria = ?, preco_custo = ?, preco_venda = ?, quantidade = quantidade + ?, unidade = ?, ncm = ? WHERE codigo = ? AND filial_id = ?
         ");
+        $stmtStock = $db->prepare("
+            INSERT INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo)
+            VALUES (?, ?, ?, 1)
+            ON DUPLICATE KEY UPDATE quantidade = quantidade + VALUES(quantidade), estoque_minimo = VALUES(estoque_minimo)
+        ");
 
         foreach ($produtos as $p) {
             $nome      = $p['nome'];
@@ -48,12 +53,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
             $ncm        = $p['ncm'] ?: '';
 
             $stmtCheck->execute([$codigo, $filialId]);
-            if ($stmtCheck->fetchColumn()) {
+            $produtoExistenteId = $stmtCheck->fetchColumn();
+            if ($produtoExistenteId) {
                 $stmtUpdate->execute([$nome, $categoria, $precoCusto, $precoVenda, $estoque, $unidade, $ncm, $codigo, $filialId]);
+                $stmtStock->execute([(int)$produtoExistenteId, $filialId, $estoque]);
                 $updated++;
             } else {
                 // filial_id, codigo, nome, unidade, categoria, preco_custo, preco_venda, quantidade, ncm, cean
                 $stmtInsert->execute([$filialId, $codigo, $nome, $unidade, $categoria, $precoCusto, $precoVenda, $estoque, $ncm, $codigo]);
+                $stmtStock->execute([(int)$db->lastInsertId(), $filialId, $estoque]);
                 $inserted++;
             }
         }
@@ -83,6 +91,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
             INSERT INTO produtos (filial_id, codigo, nome, unidade, categoria, preco_custo, preco_venda, quantidade, tipo_produto, preco_variavel, ncm, cean, cfop_interno, cfop_externo, csosn, origem)
             VALUES (?, '7423', 'DIVERSOS', 'UN', 'Diversos', 0.00, 0.00, 9999, 'simples', 1, '', '7423', '5102', '6102', '102', 0)
         ")->execute([$filialId]);
+        $produtoId = (int)$db->lastInsertId();
+        if ($produtoId > 0) {
+            $db->prepare("
+                INSERT INTO estoque_filiais (produto_id, filial_id, quantidade, estoque_minimo)
+                VALUES (?, ?, 9999, 1)
+                ON DUPLICATE KEY UPDATE quantidade = VALUES(quantidade), estoque_minimo = VALUES(estoque_minimo)
+            ")->execute([$produtoId, $filialId]);
+        }
         echo json_encode(['success' => true, 'msg' => 'Produto DIVERSOS (7423) recriado com sucesso!']);
     } catch (\Exception $e) {
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);

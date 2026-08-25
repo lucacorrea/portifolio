@@ -590,6 +590,19 @@ function removeFromPVCart(index) {
     renderPVCart();
 }
 
+function formatOrcamentoStockWarnings(warnings) {
+    if (!Array.isArray(warnings) || warnings.length === 0) return '';
+
+    const lines = warnings.map(w => {
+        const nome = w.produto_nome || `Produto #${w.produto_id}`;
+        const solicitada = Number(w.quantidade_solicitada || 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+        const disponivel = Number(w.estoque_disponivel || 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+        return `- ${nome}: solicitado ${solicitada}, em estoque ${disponivel}`;
+    });
+
+    return `\n\nAtenção: este orçamento foi salvo mesmo com quantidade acima do estoque:\n${lines.join('\n')}`;
+}
+
 async function generatePreSale(isOrcamento = false) {
     if (pvCart.length === 0) {
         alert("O carrinho está vazio.");
@@ -617,7 +630,7 @@ async function generatePreSale(isOrcamento = false) {
         const result = await res.json();
         if (result.success) {
             if (isOrcamento) {
-                alert(`Orçamento gerado com sucesso!\nCódigo: ${result.codigo}`);
+                alert(`Orçamento gerado com sucesso!\nCódigo: ${result.codigo}${formatOrcamentoStockWarnings(result.stock_warnings)}`);
                 chooseOrcamentoPrintFormat(result.codigo, true);
             } else {
                 document.getElementById('pv_generated_code').innerText = result.codigo;
