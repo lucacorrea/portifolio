@@ -370,10 +370,6 @@ final class ComidaMesaService
             if ($windowProblem !== null) {
                 throw $this->problem($windowProblem, 409);
             }
-            if ((int) ($registration['polo_ativo'] ?? 0) !== 1 || empty($registration['polo_id'])) {
-                throw $this->problem('A inscrição precisa possuir polo ativo.', 409);
-            }
-
             $delivery = $repo->lockDelivery($data->registrationId, $data->competenceId);
             if ($delivery !== null && (string) $delivery['status'] === 'entregue') {
                 throw $this->problem('Esta família já recebeu a cesta nesta competência.', 409);
@@ -385,7 +381,7 @@ final class ComidaMesaService
             $payload = [
                 'inscricao_id' => $data->registrationId,
                 'competencia_id' => $data->competenceId,
-                'polo_id' => (int) $registration['polo_id'],
+                'polo_id' => !empty($registration['polo_id']) ? (int) $registration['polo_id'] : null,
                 'recebedor_nome' => $data->receiverName,
                 'recebedor_cpf' => $data->receiverCpf,
                 'recebedor_parentesco' => $data->receiverKinship,
@@ -494,12 +490,6 @@ final class ComidaMesaService
         $windowProblem = $this->competenceDeliveryWindowProblem($competence);
         if ($windowProblem !== null) {
             return ['allowed' => false, 'action' => 'none', 'reason' => $windowProblem];
-        }
-        if (empty($registration['polo_id'])) {
-            return ['allowed' => false, 'action' => 'none', 'reason' => 'Inscrição sem polo definido.'];
-        }
-        if ((int) ($registration['polo_ativo'] ?? 1) !== 1) {
-            return ['allowed' => false, 'action' => 'none', 'reason' => 'Polo da inscrição está inativo.'];
         }
         if ($delivery === null || empty($delivery['status'])) {
             return ['allowed' => true, 'action' => 'register', 'reason' => null];
@@ -614,9 +604,6 @@ final class ComidaMesaService
         }
         if (!in_array($data->priority, self::PRIORITIES, true)) {
             $fields['prioridade'] = 'Prioridade inválida.';
-        }
-        if ($data->status === 'ativa' && $data->poleId === null) {
-            $fields['polo_id'] = 'Inscrição ativa deve possuir polo.';
         }
         if (in_array($data->status, ['suspensa', 'bloqueada'], true) && $data->suspensionReason === null) {
             $fields['motivo_suspensao'] = 'Informe o motivo.';

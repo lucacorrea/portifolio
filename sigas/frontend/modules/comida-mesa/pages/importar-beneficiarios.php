@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = [
                 'type' => $decisionResult['errors'] || $decisionResult['conflitos'] > 0 ? 'warning' : 'success',
                 'text' => sprintf(
-                    'Vínculos reprocessados: %d registro(s) verificado(s), %d vinculado(s) ao cadastro oficial, %d realmente continuam com pendência cadastral e %d conflito(s).',
+                    'Vínculos reprocessados: %d registro(s) verificado(s), %d vinculado(s) ao cadastro oficial, %d ainda sem vínculo e %d conflito(s). Pendências cadastrais comuns não bloqueiam o benefício.',
                     $decisionResult['updated'],
                     $decisionResult['vinculados'],
                     $decisionResult['pendentes'],
@@ -115,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = [
                 'type' => $decisionResult['errors'] || $decisionResult['conflitos'] > 0 ? 'warning' : 'success',
                 'text' => sprintf(
-                    '%d %s confirmado(s). %d vinculado(s) ao cadastro oficial, %d com cadastro pendente e %d conflito(s).',
+                    '%d %s confirmado(s). %d vinculado(s) ao cadastro oficial, %d ainda sem vínculo e %d conflito(s). Pendências cadastrais comuns não bloqueiam o benefício.',
                     $decisionResult['updated'],
                     $label,
                     $decisionResult['vinculados'],
@@ -256,7 +256,7 @@ ob_start();
             ['label'=>'Sem alerta crítico','value'=>$s['novos']+$s['ignorar']+$s['atualizar'],'hint'=>'Dados suficientes para análise','tone'=>'success'],
             ['label'=>'Com alerta cadastral','value'=>$s['revisar'],'hint'=>'Também entram na conferência','tone'=>'warning'],
             ['label'=>'CPF inconsistente','value'=>$s['cpf_invalidos'],'hint'=>'Não impede decidir a situação','tone'=>'danger'],
-            ['label'=>'Telefone inconsistente','value'=>$s['telefone_invalido'],'hint'=>'Permanece como pendência cadastral','tone'=>'warning'],
+            ['label'=>'Telefone inconsistente','value'=>$s['telefone_invalido'],'hint'=>'Alerta cadastral — não bloqueia benefício','tone'=>'warning'],
             ['label'=>'Cabeçalhos encontrados','value'=>$s['cabecalhos_detectados'] ?? 1,'hint'=>'Blocos reconhecidos automaticamente','tone'=>'info'],
         ]); ?>
 

@@ -268,33 +268,29 @@ function cm_import_sync_official(PDO $pdo, array $item, string $decision, int $u
 {
     $targetStatus = $decision === 'Beneficiario' ? 'ativa' : 'lista_espera';
     $cpf = preg_replace('/\D+/', '', (string) ($item['cpf_validado'] ?? '')) ?: '';
+    $cpfValid = $cpf !== '' && strlen($cpf) === 11 && Validator::cpf($cpf);
 
-    if ($cpf === '' || strlen($cpf) !== 11 || !Validator::cpf($cpf)) {
-        return [
-            'pessoa_id'=>null,'familia_id'=>null,'inscricao_id'=>null,
-            'status'=>'CadastroPendente',
-            'motivo'=>'Decisão registrada. CPF precisa ser regularizado para vincular ao cadastro central.',
-        ];
-    }
-
-    $conflict = $pdo->prepare("SELECT id, nome, situacao_programa
-        FROM comida_mesa_importacao_itens
-        WHERE id <> :id
-          AND cpf_validado = :cpf
-          AND situacao_programa IN ('Beneficiario','ListaEspera')
-          AND situacao_programa <> :decision
-        ORDER BY id
-        LIMIT 1");
-    $conflict->execute(['id'=>(int)$item['id'],'cpf'=>$cpf,'decision'=>$decision]);
-    $conflictRow = $conflict->fetch(PDO::FETCH_ASSOC);
-    if (is_array($conflictRow)) {
-        return [
-            'pessoa_id'=>isset($item['pessoa_id']) ? (int)$item['pessoa_id'] : null,
-            'familia_id'=>isset($item['familia_id']) ? (int)$item['familia_id'] : null,
-            'inscricao_id'=>isset($item['inscricao_id']) ? (int)$item['inscricao_id'] : null,
-            'status'=>'Conflito',
-            'motivo'=>'O mesmo CPF possui outra linha confirmada com decisão diferente. Revise a duplicidade antes de efetivar.',
-        ];
+    // Conflito de decisão só pode ser apurado por CPF quando existe um CPF válido.
+    if ($cpfValid) {
+        $conflict = $pdo->prepare("SELECT id, nome, situacao_programa
+            FROM comida_mesa_importacao_itens
+            WHERE id <> :id
+              AND cpf_validado = :cpf
+              AND situacao_programa IN ('Beneficiario','ListaEspera')
+              AND situacao_programa <> :decision
+            ORDER BY id
+            LIMIT 1");
+        $conflict->execute(['id'=>(int)$item['id'],'cpf'=>$cpf,'decision'=>$decision]);
+        $conflictRow = $conflict->fetch(PDO::FETCH_ASSOC);
+        if (is_array($conflictRow)) {
+            return [
+                'pessoa_id'=>isset($item['pessoa_id']) ? (int)$item['pessoa_id'] : null,
+                'familia_id'=>isset($item['familia_id']) ? (int)$item['familia_id'] : null,
+                'inscricao_id'=>isset($item['inscricao_id']) ? (int)$item['inscricao_id'] : null,
+                'status'=>'Conflito',
+                'motivo'=>'O mesmo CPF possui outra linha confirmada com decisão diferente. Revise a duplicidade antes de efetivar.',
+            ];
+        }
     }
 
     $decoded = cm_import_decode_item($item);
@@ -302,9 +298,22 @@ function cm_import_sync_official(PDO $pdo, array $item, string $decision, int $u
     $name = trim((string) ($item['nome'] ?? $source['nome'] ?? ''));
     $phone = preg_replace('/\D+/', '', (string) ($source['telefone'] ?? $item['telefone_informado'] ?? '')) ?: null;
 
-    $personStmt = $pdo->prepare('SELECT * FROM pessoas WHERE cpf = :cpf LIMIT 1 FOR UPDATE');
-    $personStmt->execute(['cpf'=>$cpf]);
-    $person = $personStmt->fetch(PDO::FETCH_ASSOC);
+    // Reprocessamentos devem reutilizar o vínculo já iniciado pelo próprio item.
+    $person = null;
+    if (!empty($item['pessoa_id'])) {
+        $personStmt = $pdo->prepare('SELECT * FROM pessoas WHERE id = :id LIMIT 1 FOR UPDATE');
+        $personStmt->execute(['id'=>(int)$item['pessoa_id']]);
+        $found = $personStmt->fetch(PDO::FETCH_ASSOC);
+        if (is_array($found)) $person = $found;
+    }
+
+    // CPF válido continua sendo a chave preferencial para localizar cadastro existente.
+    if (!is_array($person) && $cpfValid) {
+        $personStmt = $pdo->prepare('SELECT * FROM pessoas WHERE cpf = :cpf LIMIT 1 FOR UPDATE');
+        $personStmt->execute(['cpf'=>$cpf]);
+        $found = $personStmt->fetch(PDO::FETCH_ASSOC);
+        if (is_array($found)) $person = $found;
+    }
 
     if (!is_array($person)) {
         $insertPerson = $pdo->prepare('INSERT INTO pessoas
@@ -312,7 +321,8 @@ function cm_import_sync_official(PDO $pdo, array $item, string $decision, int $u
             VALUES (:nome,:cpf,:nis,:rg,:data_nascimento,:telefone,:email,:criado_por,:atualizado_por)');
         $insertPerson->execute([
             'nome'=>$name !== '' ? $name : 'Cadastro importado',
-            'cpf'=>$cpf,
+            // Pendência de CPF não impede a criação do cadastro oficial da importação.
+            'cpf'=>$cpfValid ? $cpf : null,
             'nis'=>$source['nis'] ?? null,
             'rg'=>$source['rg'] ?? null,
             'data_nascimento'=>!empty($source['data_nascimento']) ? $source['data_nascimento'] : null,
@@ -322,8 +332,36 @@ function cm_import_sync_official(PDO $pdo, array $item, string $decision, int $u
             'atualizado_por'=>$userId,
         ]);
         $personId = (int) $pdo->lastInsertId();
+        $person = ['id'=>$personId,'cpf'=>$cpfValid ? $cpf : null];
     } else {
         $personId = (int) $person['id'];
+
+        // Se o cadastro provisório ainda não tinha CPF e a revisão agora trouxe um CPF válido,
+        // preenche sem criar outro beneficiário.
+        if ($cpfValid && empty($person['cpf'])) {
+            $ownerStmt = $pdo->prepare('SELECT id FROM pessoas WHERE cpf = :cpf AND id <> :id LIMIT 1 FOR UPDATE');
+            $ownerStmt->execute(['cpf'=>$cpf,'id'=>$personId]);
+            if ($ownerStmt->fetch(PDO::FETCH_ASSOC)) {
+                return [
+                    'pessoa_id'=>$personId,
+                    'familia_id'=>isset($item['familia_id']) ? (int)$item['familia_id'] : null,
+                    'inscricao_id'=>isset($item['inscricao_id']) ? (int)$item['inscricao_id'] : null,
+                    'status'=>'Conflito',
+                    'motivo'=>'O CPF regularizado já pertence a outro cadastro. Faça a conferência antes de unificar os registros.',
+                ];
+            }
+            $pdo->prepare('UPDATE pessoas SET cpf = :cpf, atualizado_por = :usuario WHERE id = :id')
+                ->execute(['cpf'=>$cpf,'usuario'=>$userId,'id'=>$personId]);
+        } elseif ($cpfValid && !empty($person['cpf']) && (string)$person['cpf'] !== $cpf) {
+            return [
+                'pessoa_id'=>$personId,
+                'familia_id'=>isset($item['familia_id']) ? (int)$item['familia_id'] : null,
+                'inscricao_id'=>isset($item['inscricao_id']) ? (int)$item['inscricao_id'] : null,
+                'status'=>'Conflito',
+                'motivo'=>'O item está vinculado a uma pessoa com CPF diferente. Revise antes de alterar o vínculo.',
+            ];
+        }
+
         $fill = $pdo->prepare("UPDATE pessoas SET
             telefone = CASE WHEN (telefone IS NULL OR telefone = '') AND :telefone <> '' THEN :telefone2 ELSE telefone END,
             nis = CASE WHEN (nis IS NULL OR nis = '') AND :nis <> '' THEN :nis2 ELSE nis END,
@@ -344,8 +382,8 @@ function cm_import_sync_official(PDO $pdo, array $item, string $decision, int $u
     if (is_array($family) && ($family['vinculo'] ?? '') === 'integrante') {
         return [
             'pessoa_id'=>$personId,'familia_id'=>(int)$family['id'],'inscricao_id'=>null,
-            'status'=>'CadastroPendente',
-            'motivo'=>'CPF pertence a integrante de outra família. A decisão foi salva, mas o vínculo familiar precisa ser conferido.',
+            'status'=>'Conflito',
+            'motivo'=>'A pessoa já está vinculada como integrante de outra família. Este é um conflito de vínculo, não uma simples pendência cadastral.',
         ];
     }
 
@@ -389,7 +427,7 @@ function cm_import_sync_official(PDO $pdo, array $item, string $decision, int $u
         $insertReg->execute([
             'familia_id'=>$familyId,'polo_id'=>$poleId,'status'=>$targetStatus,'prioridade'=>$priority,
             'data_inscricao'=>$registrationDate,'data_aprovacao'=>$approvedAt,'aprovado_por'=>$approvedBy,
-            'observacao'=>'Cadastro efetivado a partir da importação do Comida na Mesa.',
+            'observacao'=>'Cadastro efetivado a partir da importação do Comida na Mesa. Pendências cadastrais não bloqueiam o benefício.',
             'criado_por'=>$userId,'atualizado_por'=>$userId,
         ]);
         $registrationId = (int) $pdo->lastInsertId();
@@ -411,17 +449,23 @@ function cm_import_sync_official(PDO $pdo, array $item, string $decision, int $u
         ]);
     }
 
-    $reason = null;
-    if ($targetStatus === 'ativa' && empty($registrationPoleId)) {
-        $reason = 'Beneficiário confirmado e vinculado. Defina o polo antes de registrar a entrega.';
-    }
+    $warnings = [];
+    if (!$cpfValid) $warnings[] = 'CPF/documento pendente';
+    if ($phone === null || strlen($phone) < 10 || strlen($phone) > 11) $warnings[] = 'telefone pendente';
+    if ($targetStatus === 'ativa' && empty($registrationPoleId)) $warnings[] = 'polo não definido';
+    $classification = trim((string)($item['classificacao'] ?? ''));
+    if ($classification !== '' && str_starts_with($classification, 'Revisar')) $warnings[] = $classification;
+    $warnings = array_values(array_unique($warnings));
+
+    $reason = $warnings
+        ? 'Vinculado como ' . ($targetStatus === 'ativa' ? 'beneficiário ativo' : 'lista de espera') . '. Pendências cadastrais não bloqueiam o benefício: ' . implode(', ', $warnings) . '.'
+        : null;
 
     return [
         'pessoa_id'=>$personId,'familia_id'=>$familyId,'inscricao_id'=>$registrationId,
         'status'=>'Vinculado','motivo'=>$reason,
     ];
 }
-
 function cm_import_refresh_counts(PDO $pdo, int $importId): void
 {
     $stmt = $pdo->prepare("SELECT

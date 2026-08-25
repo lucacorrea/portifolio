@@ -209,9 +209,9 @@ ob_start();
             <div class="cm-table-toolbar">
                 <div>
                     <h3><?= cm_h($importTitle) ?></h3>
-                    <p>Já estão na lista definida na conferência, mas ainda não possuem <code>inscricao_id</code> por alguma pendência de vínculo cadastral.</p>
+                    <p>Já estão na lista definida na conferência. Pendências cadastrais comuns não bloqueiam o benefício; aqui permanecem apenas registros que ainda não puderam ser vinculados por conflito estrutural.</p>
                 </div>
-                <span><i class="bi bi-shield-exclamation"></i> Entrega bloqueada até concluir o vínculo</span>
+                <span><i class="bi bi-shield-exclamation"></i> Somente conflitos de vínculo impedem a entrega</span>
             </div>
             <div class="table-responsive">
                 <table class="cm-data-table">
@@ -236,7 +236,7 @@ ob_start();
                             <td><?= cm_h($locationParts ? implode(' · ', $locationParts) : 'Não informado') ?></td>
                             <td><strong><?= cm_h($pending['arquivo_nome']) ?></strong><small class="d-block text-muted">Linha <?= (int)$pending['linha'] ?></small></td>
                             <td><span class="cm-status cm-status--<?= $isBeneficiary ? 'success' : 'info' ?>"><?= $isBeneficiary ? 'Beneficiária ativa' : 'Lista de espera' ?></span></td>
-                            <td><span class="cm-status cm-status--warning">Cadastro pendente</span><small class="d-block mt-1 text-muted"><?= cm_h($pending['efetivacao_motivo'] ?: $pending['motivos'] ?: 'Necessário concluir o vínculo ao cadastro central.') ?></small></td>
+                            <td><span class="cm-status cm-status--warning">Conflito de vínculo</span><small class="d-block mt-1 text-muted"><?= cm_h($pending['efetivacao_motivo'] ?: $pending['motivos'] ?: 'Necessário concluir o vínculo ao cadastro central.') ?></small></td>
                             <td><?= cm_h(cm_date($pending['decidido_em'], true)) ?><small class="d-block text-muted"><?= cm_h($pending['decisor_nome'] ?: 'Não informado') ?></small></td>
                         </tr>
                     <?php endforeach; ?>
