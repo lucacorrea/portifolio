@@ -8,10 +8,15 @@ use App\Config\ModuleRegistry;
 use App\Repositories\AccessLevelRepository;
 use App\Repositories\AuditLogRepository;
 use App\Repositories\SectorRepository;
+use App\Repositories\PermissionRepository;
+use App\Repositories\ModuleAccessRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\UserSessionRepository;
 use App\Services\AuditService;
 use App\Services\AuthService;
+use App\Services\PermissionService;
+use App\Services\AuthorizationService;
+use App\Services\ModuleAccessService;
 
 final class PageContext
 {
@@ -29,6 +34,13 @@ final class PageContext
         $user = $authService->requireUser();
         $level = $user->nivelId === null ? null : $accessLevelRepository->findById($user->nivelId);
         $sector = $user->setorId === null ? null : (new SectorRepository($pdo))->findById($user->setorId);
+        $permissionRepository = new PermissionRepository($pdo);
+        $authorization = new AuthorizationService(
+            new PermissionService($permissionRepository),
+            $accessLevelRepository
+        );
+        $moduleAccess = new ModuleAccessService(new ModuleAccessRepository($pdo), $authorization);
+        $navigation = $moduleAccess->filterNavigation($user, ModuleRegistry::all());
 
         return [
             'user' => [
@@ -45,7 +57,7 @@ final class PageContext
                 'logout' => Csrf::token('logout'),
             ],
             // Estrutura visual única; não substitui a autorização de cada rota.
-            'navigation' => ModuleRegistry::all(),
+            'navigation' => $navigation,
         ];
     }
 

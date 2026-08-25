@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Propostas | Urbanix ERP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" rel="stylesheet">
+<link href="assets/css/app.css" rel="stylesheet">
+</head>
+<body data-page="propostas">
+<div class="app-shell">
+<aside class="sidebar">
+  <div class="brand"><div class="brand-mark">U</div><div><strong>URBANIX</strong><small>Construtora & Imobiliária</small></div></div>
+  <div class="sidebar-scroll"><div class="nav-section">GERAL</div>
+<a class="nav-link" href="index.html"><i class="bi bi-grid-1x2-fill"></i><span>Dashboard</span></a>
+<div class="nav-section">EMPREENDIMENTOS</div>
+<a class="nav-link" href="empreendimentos.html"><i class="bi bi-buildings"></i><span>Empreendimentos</span></a>
+<a class="nav-link" href="mapa-unidades.html"><i class="bi bi-map"></i><span>Mapa de unidades</span></a>
+<a class="nav-link" href="tabela-precos.html"><i class="bi bi-tags"></i><span>Tabela de preços</span></a>
+<div class="nav-section">COMERCIAL</div>
+<a class="nav-link" href="crm.html"><i class="bi bi-kanban"></i><span>CRM / Leads</span></a>
+<a class="nav-link" href="clientes.html"><i class="bi bi-people"></i><span>Clientes</span></a>
+<a class="nav-link active" href="propostas.html"><i class="bi bi-file-earmark-text"></i><span>Propostas</span></a>
+<a class="nav-link" href="reservas.html"><i class="bi bi-bookmark-check"></i><span>Reservas</span></a>
+<a class="nav-link" href="vendas.html"><i class="bi bi-bag-check"></i><span>Vendas</span></a>
+<div class="nav-section">GESTÃO</div>
+<a class="nav-link" href="contratos.html"><i class="bi bi-file-earmark-signature"></i><span>Contratos</span></a>
+<a class="nav-link" href="financeiro.html"><i class="bi bi-cash-stack"></i><span>Financeiro</span></a>
+<a class="nav-link" href="engenharia.html"><i class="bi bi-hammer"></i><span>Engenharia / Obras</span></a>
+<a class="nav-link" href="compras.html"><i class="bi bi-cart3"></i><span>Compras / Estoque</span></a>
+<a class="nav-link" href="relatorios.html"><i class="bi bi-bar-chart"></i><span>Relatórios</span></a>
+<div class="nav-section">PORTAIS</div>
+<a class="nav-link" href="portal-cliente.html"><i class="bi bi-person-badge"></i><span>Portal do cliente</span></a>
+<a class="nav-link" href="configuracoes.html"><i class="bi bi-gear"></i><span>Configurações</span></a></div>
+</aside>
+<main class="main">
+<header class="topbar">
+ <div class="topbar-left"><button class="menu-btn" data-menu-toggle><i class="bi bi-list"></i></button><div><h1 class="page-title">Propostas</h1><div class="page-kicker">Negociação comercial</div></div></div>
+ <div class="top-actions"><button class="icon-btn" title="Busca"><i class="bi bi-search"></i></button><button class="icon-btn" title="Notificações"><i class="bi bi-bell"></i></button><div class="user-chip"><div class="avatar">LS</div><div class="user-text"><strong>Lucas Souza</strong><small>Administrador</small></div><i class="bi bi-chevron-down small text-secondary"></i></div></div>
+</header>
+<section class="content"><div class="section-head"><div><h2>Propostas</h2><p>Negociações, condições de pagamento e validade comercial.</p></div><button class="btn btn-primary-app" data-demo-toast>Nova proposta</button></div><div class="row g-3 mb-3"><div class="col-md-4"><div class="card-app metric"><div class="label">Em negociação</div><div class="value">22</div><div class="delta">R$ 2,1 mi</div></div></div><div class="col-md-4"><div class="card-app metric gold"><div class="label">Aguardando cliente</div><div class="value">8</div><div class="delta">Validade média: 3 dias</div></div></div><div class="col-md-4"><div class="card-app metric blue"><div class="label">Aprovadas no mês</div><div class="value">14</div><div class="delta">63,6% de aprovação</div></div></div></div><div class="card-app"><div class="table-responsive"><table class="table table-app"><thead><tr><th>Proposta</th><th>Cliente</th><th>Unidade</th><th>Valor</th><th>Condição</th><th>Validade</th><th>Status</th></tr></thead><tbody><tr><td>#P-2026-0142</td><td>Maria Oliveira</td><td>A-14</td><td><strong>R$ 97.000</strong></td><td>R$ 10 mil + 120x</td><td>22/08/2026</td><td><span class="badge-soft soft-warning">Em análise</span></td></tr><tr><td>#P-2026-0141</td><td>Rafael Costa</td><td>C-09</td><td><strong>R$ 145.000</strong></td><td>20% + 96x</td><td>21/08/2026</td><td><span class="badge-soft soft-info">Enviada</span></td></tr><tr><td>#P-2026-0137</td><td>Fernanda Melo</td><td>B-18</td><td><strong>R$ 105.000</strong></td><td>R$ 15 mil + 100x</td><td>20/08/2026</td><td><span class="badge-soft soft-success">Aprovada</span></td></tr></tbody></table></div></div></section>
+</main></div>
+<div class="toast-container position-fixed bottom-0 end-0 p-3"><div id="demoToast" class="toast" role="alert"><div class="toast-header"><strong class="me-auto">Demonstração</strong><small>agora</small><button type="button" class="btn-close" data-bs-dismiss="toast"></button></div><div class="toast-body">Ação registrada no protótipo. A integração real entra na etapa PHP/MySQL.</div></div></div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+<script src="assets/js/data.js"></script><script src="assets/js/storage.js"></script><script src="assets/js/ui.js"></script><script src="assets/js/commercial.js"></script><script src="assets/js/app.js"></script><script src="assets/js/charts.js"></script>
+</body></html>

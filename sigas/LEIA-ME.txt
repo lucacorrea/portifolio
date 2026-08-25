@@ -1,0 +1,68 @@
+SIGAS — COARI MEU PRIMEIRO EMPREGO
+PADRÃO OPERACIONAL UNIFICADO 2026
+
+OBJETIVO
+Este pacote padroniza o módulo Meu Primeiro Emprego usando a página Candidatos como referência:
+- indicadores objetivos no topo;
+- filtros adequados a cada fluxo;
+- listagens/tabelas brancas e responsivas;
+- cores somente em textos, indicadores e estados (sem pintar a linha inteira);
+- clique na linha abre ações em modal;
+- cadastrar, visualizar, editar e encerrar/excluir em modal quando a regra da página permitir;
+- regras de negócio preservadas por página.
+
+INSTALAÇÃO NA HOSPEDAGEM
+1. Faça backup dos arquivos e do banco.
+2. Extraia este pacote diretamente dentro de /sigas/ e substitua os arquivos correspondentes.
+3. Se a tabela pe_lotacoes ainda não existir, execute:
+   database/primeiroEmprego/0004-primeiroEmprego-lotacoes.sql
+4. Execute uma vez:
+   database/primeiroEmprego/0005-primeiroEmprego-padrao-operacional.sql
+   Esse arquivo adiciona a coluna sigla em pe_parceiros sem inventar valores.
+5. Após o upload, use Ctrl+F5.
+
+ASSETS OFICIAIS
+O padrão visual/comportamental fica centralizado em:
+- assets/css/modules/primeiro-emprego.css
+- assets/js/modules/primeiro-emprego.js
+- frontend/modules/primeiro-emprego/lib/list-ui.php
+
+PÁGINAS OPERACIONAIS PADRONIZADAS
+- Candidatos
+- Órgãos e instituições parceiras
+- Vagas e oportunidades
+- Lotações
+- Encaminhamentos
+- Documentação
+- Frequência
+- Bolsas
+- Capacitações
+- Acompanhamentos / visitas sociais
+- Relatórios (consulta/exportação com o mesmo padrão visual)
+
+PÁGINAS DE FLUXO ESPECIAL
+- Painel: visão executiva, sem forçar filtros de tabela.
+- Importação: upload, validação, prévia e histórico; mantém o fluxo específico de importação.
+- Novo candidato: formulário dedicado de triagem/cadastro.
+- Configurações: formulário administrativo, sem listagem artificial.
+
+LOTAÇÕES
+pe_lotacoes é a fonte oficial do vínculo atual/histórico.
+A tela de Lotações passa a mostrar TODOS os candidatos, inclusive quem não possui vínculo ativo.
+Estados visuais:
+- Lotado: verde
+- Não lotado: laranja
+- Revisar lotação: vermelho
+- Pronto para importar: azul
+- Lotação encerrada: cinza
+
+Informações suspeitas da planilha, como "não veio da sara" ou instruções do tipo "procurar crachá", são exibidas para revisão e não devem ser tratadas como órgão válido.
+
+CANDIDATOS
+As pendências cadastrais continuam independentes da lotação.
+Exemplo: um candidato pode estar "Revisar Telefone" e, ao mesmo tempo, "Não lotado".
+As linhas permanecem brancas; a cor é aplicada apenas ao texto/estado.
+
+PARCEIROS
+A tabela pe_parceiros passa a aceitar uma sigla própria em coluna separada.
+O sistema não cria siglas automaticamente: os valores oficiais devem ser informados/confirmados pela equipe.

@@ -209,6 +209,235 @@ function weekly_team_name(
     : implode(' / ', $names);
 }
 
+/**
+ * Normaliza o nome do funcionário para exibição no quadro.
+ */
+function weekly_employee_name(
+  string $value
+): string {
+  $value = trim($value);
+
+  if ($value === '') {
+    return '';
+  }
+
+  /*
+   * Remove o código visual "FUN-000001 —" quando o valor
+   * vier da entidade de OS. O quadro precisa priorizar o nome.
+   */
+  $clean = preg_replace(
+    '/^[^—]+—\\s*/u',
+    '',
+    $value
+  );
+
+  $cleanName = is_string($clean)
+    ? trim($clean)
+    : $value;
+
+  /*
+   * No quadro semanal o cabeçalho deve ser curto.
+   * Exibe somente primeiro e segundo nome, mantendo o nome
+   * completo disponível nos cadastros e filtros do sistema.
+   */
+  $parts = preg_split('/\s+/u', $cleanName) ?: [];
+  $parts = array_values(array_filter(
+    array_map('trim', $parts),
+    static fn(string $part): bool => $part !== ''
+  ));
+
+  return implode(' ', array_slice($parts, 0, 2));
+}
+
+/**
+ * Cria uma chave estável para a equipe/dupla.
+ * A composição da equipe é o que define a coluna do quadro.
+ * A ordem dos IDs não cria colunas duplicadas.
+ *
+ * @param int[] $employeeIds
+ */
+function weekly_team_key(
+  array $employeeIds
+): string {
+  $ids = array_values(
+    array_unique(
+      array_filter(
+        array_map('intval', $employeeIds),
+        static fn(int $id): bool => $id > 0
+      )
+    )
+  );
+
+  sort($ids, SORT_NUMERIC);
+
+  return $ids === []
+    ? 'team:unassigned'
+    : 'team:' . implode('-', $ids);
+}
+
+/**
+ * @param array<int,array{id:int,name:string}> $members
+ * @return array{key:string,label:string,employee_ids:array<int,int>}
+ */
+function weekly_team_descriptor(
+  array $members
+): array {
+  $ids = [];
+  $names = [];
+
+  foreach ($members as $member) {
+    $id = (int) ($member['id'] ?? 0);
+    $name = weekly_employee_name(
+      (string) ($member['name'] ?? '')
+    );
+
+    if ($id > 0) {
+      $ids[] = $id;
+    }
+
+    if ($name !== '' && !in_array($name, $names, true)) {
+      $names[] = $name;
+    }
+  }
+
+  return [
+    'key' => weekly_team_key($ids),
+    'label' => $names === []
+      ? 'Sem equipe definida'
+      : implode(' / ', $names),
+    'employee_ids' => array_values(
+      array_unique(
+        array_filter(
+          array_map('intval', $ids),
+          static fn(int $id): bool => $id > 0
+        )
+      )
+    ),
+  ];
+}
+
+function weekly_planning_team_descriptor(
+  array $planning
+): array {
+  return weekly_team_descriptor([
+    [
+      'id' => (int) weekly_value(
+        $planning,
+        'funcionario_principal_id',
+        '0'
+      ),
+      'name' => weekly_value(
+        $planning,
+        'funcionario_principal_nome'
+      ),
+    ],
+    [
+      'id' => (int) weekly_value(
+        $planning,
+        'funcionario_apoio_id',
+        '0'
+      ),
+      'name' => weekly_value(
+        $planning,
+        'funcionario_apoio_nome'
+      ),
+    ],
+  ]);
+}
+
+/**
+ * @param array<int,object> $members
+ */
+function weekly_order_team_descriptor(
+  object $order,
+  array $members
+): array {
+  $team = [];
+
+  foreach ($members as $member) {
+    if (
+      !method_exists($member, 'employeeId')
+      || !method_exists($member, 'employeeName')
+    ) {
+      continue;
+    }
+
+    $team[] = [
+      'id' => (int) $member->employeeId(),
+      'name' => (string) $member->employeeName(),
+      'primary' => method_exists($member, 'primary')
+        ? (bool) $member->primary()
+        : false,
+    ];
+  }
+
+  if ($team !== []) {
+    usort(
+      $team,
+      static fn(array $a, array $b): int =>
+        ((int) ($b['primary'] ?? 0))
+        <=> ((int) ($a['primary'] ?? 0))
+    );
+
+    return weekly_team_descriptor($team);
+  }
+
+  $primaryId = method_exists($order, 'primaryEmployeeId')
+    ? $order->primaryEmployeeId()
+    : null;
+
+  $supportId = method_exists($order, 'supportEmployeeId')
+    ? $order->supportEmployeeId()
+    : null;
+
+  $primaryName = method_exists($order, 'displayPrimaryEmployee')
+    ? (string) ($order->displayPrimaryEmployee() ?? '')
+    : '';
+
+  $supportName = method_exists($order, 'displaySupportEmployee')
+    ? (string) ($order->displaySupportEmployee() ?? '')
+    : '';
+
+  return weekly_team_descriptor([
+    [
+      'id' => (int) ($primaryId ?? 0),
+      'name' => $primaryName,
+    ],
+    [
+      'id' => (int) ($supportId ?? 0),
+      'name' => $supportName,
+    ],
+  ]);
+}
+
+/**
+ * Indica se o atendimento está acontecendo neste momento.
+ */
+function weekly_is_current_slot(
+  ?string $start,
+  ?string $end
+): bool {
+  if (
+    $start === null
+    || $end === null
+    || trim($start) === ''
+    || trim($end) === ''
+  ) {
+    return false;
+  }
+
+  try {
+    $now = new DateTimeImmutable('now');
+    $startAt = new DateTimeImmutable($start);
+    $endAt = new DateTimeImmutable($end);
+
+    return $now >= $startAt
+      && $now < $endAt;
+  } catch (Throwable) {
+    return false;
+  }
+}
+
 function weekly_client_options(
   array $clients,
   string $selected = ''
@@ -496,6 +725,15 @@ foreach ($orderWeekGroups as $dayOrders) {
 }
 
 /*
+ * Carrega os membros reais das equipes das OS em uma única consulta.
+ * Isso evita N+1 e mantém a coluna correta mesmo quando a OS possui
+ * mais de um técnico de apoio.
+ */
+$teamsByOrder = $orders === []
+  ? []
+  : $orderService->teamMembersForOrders($orders);
+
+/*
  * Registros unificados do calendário.
  *
  * Cada entrada informa sua origem para que o HTML
@@ -517,10 +755,19 @@ foreach ($plannings as $planning) {
     continue;
   }
 
+  $teamDescriptor =
+    weekly_planning_team_descriptor(
+      $planning
+    );
+
   $weekGroups[$dateKey][] = [
     'kind' => 'planning',
     'start' => $start,
     'planning' => $planning,
+    'team_key' => $teamDescriptor['key'],
+    'team_label' => $teamDescriptor['label'],
+    'team_employee_ids' =>
+      $teamDescriptor['employee_ids'],
   ];
 }
 
@@ -534,10 +781,20 @@ foreach ($orderWeekGroups as $dateKey => $dayOrders) {
       continue;
     }
 
+    $teamDescriptor =
+      weekly_order_team_descriptor(
+        $order,
+        $teamsByOrder[$order->id()] ?? []
+      );
+
     $weekGroups[$dateKey][] = [
       'kind' => 'order',
       'start' => $order->scheduledStart(),
       'order' => $order,
+      'team_key' => $teamDescriptor['key'],
+      'team_label' => $teamDescriptor['label'],
+      'team_employee_ids' =>
+        $teamDescriptor['employee_ids'],
     ];
   }
 }
@@ -569,6 +826,91 @@ foreach ($weekGroups as &$dayRecords) {
 unset($dayRecords);
 
 /*
+ * Matriz visual da semana.
+ *
+ * Linhas: dias da semana.
+ * Colunas: funcionário/equipe (dupla ou equipe completa).
+ *
+ * Um registro aparece uma única vez na coluna da composição real
+ * da equipe. Isso reproduz o modelo operacional usado pela empresa
+ * sem duplicar a mesma OS em várias colunas.
+ */
+$teamColumns = [];
+$weeklyTeamMatrix = [];
+
+foreach ($weekGroups as $dateKey => $dayRecords) {
+  foreach ($dayRecords as $record) {
+    $teamKey = (string) (
+      $record['team_key']
+      ?? 'team:unassigned'
+    );
+
+    $teamLabel = trim(
+      (string) (
+        $record['team_label']
+        ?? 'Sem equipe definida'
+      )
+    );
+
+    if ($teamLabel === '') {
+      $teamLabel = 'Sem equipe definida';
+    }
+
+    if (!isset($teamColumns[$teamKey])) {
+      $teamColumns[$teamKey] = [
+        'key' => $teamKey,
+        'label' => $teamLabel,
+        'employee_ids' => array_values(
+          array_filter(
+            array_map(
+              'intval',
+              (array) (
+                $record['team_employee_ids']
+                ?? []
+              )
+            ),
+            static fn(int $id): bool => $id > 0
+          )
+        ),
+        'appointments' => 0,
+      ];
+    }
+
+    $teamColumns[$teamKey]['appointments']++;
+    $weeklyTeamMatrix[$dateKey][$teamKey][] = $record;
+  }
+}
+
+uasort(
+  $teamColumns,
+  static function (array $left, array $right): int {
+    if (
+      $left['key'] === 'team:unassigned'
+      && $right['key'] === 'team:unassigned'
+    ) {
+      return 0;
+    }
+
+    if ($left['key'] === 'team:unassigned') {
+      return 1;
+    }
+
+    if ($right['key'] === 'team:unassigned') {
+      return -1;
+    }
+
+    return strnatcasecmp(
+      (string) $left['label'],
+      (string) $right['label']
+    );
+  }
+);
+
+$visibleTeamCount = count($teamColumns);
+$boardColumnCount = max(1, $visibleTeamCount);
+$boardMinWidth = 108 + ($boardColumnCount * 232);
+
+/*
  * Indicadores.
  */
 $summary = [
@@ -592,6 +934,19 @@ foreach ($plannings as $planning) {
       'prioridade',
       'media'
     ) === 'urgente'
+  ) {
+    $summary['urgent']++;
+  }
+}
+
+foreach ($orders as $order) {
+  if (
+    $order->priority() === 'urgente'
+    && !in_array(
+      $order->status(),
+      ['finalizada', 'cancelada'],
+      true
+    )
   ) {
     $summary['urgent']++;
   }
@@ -673,162 +1028,449 @@ $pageData = json_encode(
 
 <style>
   .weekly-planning-page {
-    --weekly-border: #e5e7eb;
+    --weekly-border: #dfe6ee;
     --weekly-muted: #64748b;
     --weekly-surface: #ffffff;
-    --weekly-soft: #f8fafc;
+    --weekly-soft: #f7f9fc;
+    --weekly-blue: #0b63ce;
+    --weekly-blue-soft: #eef6ff;
+    --weekly-green: #15803d;
+  }
+
+  /* Painel em modo operacional: mais área útil e menos altura desperdiçada. */
+  body.weekly-panel-shell.sidebar-collapsed .os-sidebar {
+    width: 0;
+    min-width: 0;
+    border-right: 0;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  body.weekly-panel-shell .topbar {
+    min-height: 60px;
+    padding: 8px 18px;
+  }
+
+  body.weekly-panel-shell .page-body.weekly-planning-page {
+    padding: 12px 16px 18px;
+  }
+
+  .weekly-planning-page .metrics-grid {
+    gap: 9px;
+    margin-bottom: 10px;
+  }
+
+  .weekly-planning-page .metric-card {
+    min-height: 82px;
+    padding: 10px 12px;
+    border-radius: 10px;
+  }
+
+  .weekly-planning-page .metric-card::before {
+    width: 3px;
+  }
+
+  .weekly-planning-page .metric-label {
+    font-size: 9px;
+  }
+
+  .weekly-planning-page .metric-icon-wrap {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+  }
+
+  .weekly-planning-page .metric-value {
+    margin-top: 6px;
+    font-size: 21px;
+  }
+
+  .weekly-planning-page .metric-footer {
+    margin-top: 4px;
+    gap: 4px;
+    font-size: 10px;
+  }
+
+  .weekly-planning-page .filter-bar {
+    gap: 7px;
+    margin-bottom: 10px;
+    padding: 8px;
+    border-radius: 10px;
+  }
+
+  .weekly-planning-page .search-input,
+  .weekly-planning-page .filter-select {
+    min-height: 34px;
+    border-radius: 9px;
+    font-size: 12px;
+  }
+
+  .weekly-planning-page .btn-filter {
+    min-height: 32px;
+    padding-block: 5px;
+    font-size: 11px;
+  }
+
+  .weekly-planning-page .panel {
+    border-radius: 10px;
+  }
+
+  .weekly-planning-page .panel-header {
+    min-height: 48px;
+    padding: 8px 11px;
+  }
+
+  .weekly-planning-page .panel-title {
+    font-size: 13px;
+  }
+
+  .weekly-panel-subtitle {
+    font-size: .66rem;
+  }
+
+  .weekly-card-badges .badge-soft {
+    padding: 2px 5px;
+    font-size: .55rem;
   }
 
   .weekly-navigation {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
     flex-wrap: wrap;
   }
 
-  .weekly-planning-board {
+  .weekly-panel-title-wrap {
     display: grid;
-    grid-template-columns:
-      repeat(7, minmax(245px, 1fr));
-    gap: 12px;
-    min-width: 1780px;
-    padding: 14px;
+    gap: 1px;
+  }
+
+  .weekly-panel-subtitle {
+    color: var(--weekly-muted);
+    font-size: .74rem;
+    font-weight: 600;
+  }
+
+  .weekly-board-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--weekly-border);
+    background: #fbfdff;
+  }
+
+  .weekly-board-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 24px;
+    padding: 3px 7px;
+    border: 1px solid #dbe5f0;
+    border-radius: 999px;
+    background: #fff;
+    color: #475569;
+    font-size: .63rem;
+    font-weight: 800;
+  }
+
+  .weekly-board-chip i {
+    color: var(--weekly-blue);
   }
 
   .weekly-planning-scroll {
-    overflow-x: auto;
+    position: relative;
+    overflow: auto;
+    max-width: 100%;
     overscroll-behavior-inline: contain;
+    scrollbar-gutter: stable;
   }
 
-  .weekly-day-column {
-    min-height: 300px;
-    border: 1px solid var(--weekly-border);
-    border-radius: 14px;
-    background: var(--weekly-soft);
-    overflow: hidden;
+  .weekly-resource-grid {
+    display: grid;
+    grid-template-columns: 108px repeat(var(--weekly-team-count), minmax(220px, 1fr));
+    align-items: stretch;
+    background: var(--weekly-border);
+    gap: 1px;
   }
 
-  .weekly-day-column.is-today {
-    border-color: #2563eb;
-    box-shadow:
-      0 0 0 2px rgba(37, 99, 235, 0.1);
+  .weekly-resource-corner,
+  .weekly-team-column-header {
+    position: sticky;
+    top: 0;
+    z-index: 12;
+    min-height: 54px;
+    background: #f8fbff;
+    border-bottom: 1px solid #cfd9e5;
   }
 
-  .weekly-day-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 12px 14px;
-    background: var(--weekly-surface);
-    border-bottom: 1px solid var(--weekly-border);
+  .weekly-resource-corner {
+    left: 0;
+    z-index: 14;
+    display: grid;
+    place-items: center;
+    padding: 7px;
+    color: #475569;
+    text-align: center;
   }
 
-  .weekly-day-header strong {
+  .weekly-resource-corner strong {
     color: #0f172a;
-    font-size: 0.88rem;
+    font-size: .6rem;
+    letter-spacing: .06em;
+    text-transform: uppercase;
   }
 
-  .weekly-day-header span {
-    color: var(--weekly-muted);
-    font-size: 0.78rem;
+  .weekly-resource-corner span {
+    color: #94a3b8;
+    font-size: .6rem;
     font-weight: 700;
   }
 
-  .weekly-day-body {
-    display: grid;
-    gap: 10px;
-    padding: 10px;
+  .weekly-team-column-header {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 9px;
   }
 
-  .weekly-empty {
-    padding: 30px 12px;
-    color: #94a3b8;
+  .weekly-team-avatar {
+    display: grid;
+    place-items: center;
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    background: #e8f2ff;
+    color: #0b63ce;
+    font-size: .66rem;
+    font-weight: 900;
+    letter-spacing: .02em;
+  }
+
+  .weekly-team-header-text {
+    min-width: 0;
+    display: grid;
+    gap: 1px;
+  }
+
+  .weekly-team-header-text strong {
+    overflow: hidden;
+    color: #10233f;
+    font-size: .69rem;
+    font-weight: 900;
+    line-height: 1.16;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+  }
+
+  .weekly-team-header-text span {
+    color: #64748b;
+    font-size: .6rem;
+    font-weight: 700;
+  }
+
+  .weekly-day-label {
+    position: sticky;
+    left: 0;
+    z-index: 9;
+    display: flex;
+    min-height: 92px;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 1px;
+    padding: 14px 10px;
+    background: linear-gradient(160deg, #0d65c8, #1678e6);
+    color: #fff;
     text-align: center;
-    font-size: 0.8rem;
+  }
+
+  .weekly-day-label.is-today {
+    background: linear-gradient(160deg, #0754ad, #0d6fdb);
+    box-shadow: inset -4px 0 0 #fbbf24;
+  }
+
+  .weekly-day-label strong {
+    font-size: .74rem;
+    font-weight: 900;
+    letter-spacing: .025em;
+    text-transform: uppercase;
+  }
+
+  .weekly-day-label .weekly-day-date {
+    font-size: .68rem;
+    font-weight: 800;
+  }
+
+  .weekly-today-badge {
+    margin-top: 2px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: #fbbf24;
+    color: #713f12;
+    font-size: .52rem;
+    font-weight: 900;
+    letter-spacing: .04em;
+  }
+
+  .weekly-team-cell {
+    min-width: 0;
+    min-height: 92px;
+    padding: 8px;
+    background: #fff;
+  }
+
+  .weekly-team-cell.is-today {
+    background: #fbfdff;
+  }
+
+  .weekly-team-cell-content {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 4px;
+    align-items: start;
+  }
+
+  .weekly-cell-empty {
+    display: flex;
+    min-height: 80px;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    border: 1px dashed #d9e2ec;
+    border-radius: 10px;
+    background: #fafcfe;
+    color: #94a3b8;
+    font-size: .62rem;
+    font-weight: 700;
+  }
+
+  .weekly-cell-empty i {
+    color: #22a06b;
   }
 
   .weekly-planning-card {
     position: relative;
     display: grid;
-    gap: 9px;
-    padding: 13px;
-    border: 1px solid var(--weekly-border);
-    border-radius: 12px;
-    background: var(--weekly-surface);
-    box-shadow:
-      0 3px 10px rgba(15, 23, 42, 0.04);
+    gap: 3px;
+    min-width: 0;
+    padding: 7px 8px;
+    border: 1px solid #dfe6ee;
+    border-left: 3px solid #2563eb;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 3px 10px rgba(15, 23, 42, .055);
+    transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+  }
+
+  .weekly-planning-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 7px 17px rgba(15, 23, 42, .09);
   }
 
   .weekly-planning-card.is-awaiting {
-    border-left: 4px solid #f59e0b;
+    border-left-color: #f59e0b;
   }
 
-  .weekly-planning-card.is-confirmed {
-    border-left: 4px solid #16a34a;
-  }
-.weekly-planning-card.is-order {
-    border-left: 4px solid #2563eb;
-}
-
-.weekly-planning-card.is-order-finalized {
+  .weekly-planning-card.is-confirmed,
+  .weekly-planning-card.is-order-finalized {
     border-left-color: #16a34a;
-}
+  }
 
-.weekly-planning-card.is-order-canceled {
+  .weekly-planning-card.is-order-canceled {
     border-left-color: #94a3b8;
-    opacity: 0.82;
-}
+    opacity: .78;
+  }
+
   .weekly-planning-card.is-urgent {
-    box-shadow:
-      0 0 0 2px rgba(220, 38, 38, 0.1);
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, .1);
+  }
+
+  .weekly-planning-card.is-current {
+    border-color: #22a06b;
+    border-left-color: #16a34a;
+    box-shadow: 0 0 0 2px rgba(22, 163, 74, .11);
   }
 
   .weekly-card-header {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 10px;
+    gap: 4px;
   }
 
-  .weekly-card-code {
-    display: block;
-    margin-bottom: 2px;
-    color: #0f172a;
-    font-size: 0.8rem;
-    font-weight: 800;
+  .weekly-card-time-block {
+    min-width: 0;
+    display: grid;
+    gap: 1px;
   }
 
   .weekly-card-time {
-    color: #475569;
-    font-size: 0.75rem;
-    font-weight: 700;
+    color: #0b63ce;
+    font-size: .76rem;
+    font-weight: 900;
+    line-height: 1.15;
+  }
+
+  .weekly-card-code {
+    color: #64748b;
+    font-size: .57rem;
+    font-weight: 800;
+    letter-spacing: .025em;
+  }
+
+  .weekly-card-badges {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 3px;
+    flex-wrap: wrap;
+  }
+
+  .weekly-now-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 17px;
+    padding: 2px 5px;
+    border-radius: 999px;
+    background: #dcfce7;
+    color: #166534;
+    font-size: .52rem;
+    font-weight: 900;
+    letter-spacing: .04em;
   }
 
   .weekly-card-client {
+    overflow: hidden;
     color: #0f172a;
-    font-size: 0.88rem;
-    font-weight: 800;
-    line-height: 1.35;
+    font-size: .72rem;
+    font-weight: 900;
+    line-height: 1.3;
+    text-overflow: ellipsis;
   }
 
   .weekly-card-service {
     color: #334155;
-    font-size: 0.8rem;
-    line-height: 1.4;
+    font-size: .65rem;
+    font-weight: 650;
+    line-height: 1.35;
   }
 
   .weekly-card-info {
     display: grid;
-    gap: 5px;
+    gap: 1px;
     color: #64748b;
-    font-size: 0.73rem;
+    font-size: .6rem;
   }
 
   .weekly-card-info span {
     display: flex;
     align-items: flex-start;
-    gap: 6px;
+    gap: 4px;
+    min-width: 0;
   }
 
   .weekly-card-info i {
@@ -840,36 +1482,31 @@ $pageData = json_encode(
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: 4px;
     flex-wrap: wrap;
-    padding-top: 8px;
+    padding-top: 4px;
     border-top: 1px solid #eef2f7;
   }
 
   .weekly-card-actions {
     display: flex;
-    gap: 6px;
+    gap: 4px;
     flex-wrap: wrap;
   }
 
-  .weekly-confirm-button {
-    min-height: 34px;
-    padding: 7px 10px;
-    font-size: 0.73rem;
-  }
-
+  .weekly-confirm-button,
   .weekly-order-link {
-    min-height: 34px;
-    padding: 7px 10px;
-    font-size: 0.73rem;
+    min-height: 30px;
+    padding: 5px 8px;
+    font-size: .6rem;
   }
 
   .weekly-priority {
     color: #64748b;
-    font-size: 0.68rem;
-    font-weight: 800;
+    font-size: .56rem;
+    font-weight: 900;
     text-transform: uppercase;
-    letter-spacing: 0.03em;
+    letter-spacing: .035em;
   }
 
   .weekly-priority.is-urgent {
@@ -883,7 +1520,7 @@ $pageData = json_encode(
 
   .weekly-confirm-item {
     display: grid;
-    gap: 3px;
+    gap: 1px;
     padding: 10px 12px;
     border: 1px solid #e5e7eb;
     border-radius: 10px;
@@ -892,14 +1529,24 @@ $pageData = json_encode(
 
   .weekly-confirm-item span {
     color: #64748b;
-    font-size: 0.7rem;
+    font-size: .62rem;
     font-weight: 700;
     text-transform: uppercase;
   }
 
   .weekly-confirm-item strong {
     color: #0f172a;
-    font-size: 0.86rem;
+    font-size: .76rem;
+  }
+
+  @media (max-width: 991.98px) {
+    .weekly-resource-grid {
+      grid-template-columns: 96px repeat(var(--weekly-team-count), minmax(214px, 1fr));
+    }
+
+    .weekly-day-label {
+      min-height: 88px;
+    }
   }
 
   @media (max-width: 767.98px) {
@@ -907,14 +1554,47 @@ $pageData = json_encode(
       width: 100%;
     }
 
-    .weekly-navigation>* {
+    .weekly-navigation > * {
       flex: 1 1 auto;
       text-align: center;
     }
 
-    .weekly-planning-board {
-      grid-template-columns:
-        repeat(7, minmax(285px, 1fr));
+    .weekly-resource-grid {
+      grid-template-columns: 82px repeat(var(--weekly-team-count), minmax(205px, 1fr));
+    }
+
+    .weekly-resource-corner {
+      padding: 8px 5px;
+    }
+
+    .weekly-resource-corner span {
+      display: none;
+    }
+
+    .weekly-day-label {
+      min-height: 84px;
+      padding-inline: 6px;
+    }
+
+    .weekly-day-label strong {
+      font-size: .72rem;
+    }
+
+    .weekly-team-column-header {
+      min-height: 50px;
+      padding: 6px;
+    }
+
+    .weekly-team-avatar {
+      flex-basis: 27px;
+      width: 27px;
+      height: 27px;
+      border-radius: 8px;
+    }
+
+    .weekly-team-cell {
+      min-height: 84px;
+      padding: 6px;
     }
   }
 </style>
@@ -1083,19 +1763,17 @@ $pageData = json_encode(
     class="panel"
     data-live-region="results">
     <div class="panel-header">
-      <div class="panel-title">
-        <i class="bi bi-calendar-week"></i>
-
-        Semana de
-        <?= h(
-          $weekStart->format('d/m/Y')
-        ) ?>
-        a
-        <?= h(
-          $weekEnd
-            ->modify('-1 day')
-            ->format('d/m/Y')
-        ) ?>
+      <div class="weekly-panel-title-wrap">
+        <div class="panel-title">
+          <i class="bi bi-calendar-week"></i>
+          Serviços da semana —
+          <?= h($weekStart->format('d/m/Y')) ?>
+          a
+          <?= h($weekEnd->modify('-1 day')->format('d/m/Y')) ?>
+        </div>
+        <span class="weekly-panel-subtitle">
+          Cada coluna representa a equipe responsável; os serviços ficam organizados pelo horário.
+        </span>
       </div>
 
       <nav
@@ -1129,321 +1807,343 @@ $pageData = json_encode(
       </nav>
     </div>
 
-    <div class="weekly-planning-scroll">
-      <div class="weekly-planning-board">
-        <?php for ($dayIndex = 0; $dayIndex < 7; $dayIndex++): ?>
-          <?php
-          $day = $weekStart->modify(
-            '+' . $dayIndex . ' days'
-          );
+    <div class="weekly-board-meta" aria-label="Resumo do quadro semanal">
+      <span class="weekly-board-chip">
+        <i class="bi bi-people-fill"></i>
+        <?= h((string) $visibleTeamCount) ?>
+        <?= $visibleTeamCount === 1 ? 'equipe na agenda' : 'equipes na agenda' ?>
+      </span>
 
-          $dateKey = $day->format(
-            'Y-m-d'
-          );
+      <span class="weekly-board-chip">
+        <i class="bi bi-clock-history"></i>
+        Horários por equipe
+      </span>
 
-         $dayRecords =
-    $weekGroups[$dateKey]
-    ?? [];
-          ?>
+      <span class="weekly-board-chip">
+        <i class="bi bi-check-circle"></i>
+        Livre = sem atendimento
+      </span>
+    </div>
 
-          <section
-            class="weekly-day-column<?= $dateKey === date('Y-m-d') ? ' is-today' : '' ?>">
-            <header class="weekly-day-header">
+    <?php if ($teamColumns === []): ?>
+      <div class="weekly-empty py-5">
+        Nenhum atendimento encontrado para os filtros desta semana.
+      </div>
+    <?php else: ?>
+      <div
+        class="weekly-planning-scroll"
+        role="region"
+        aria-label="Quadro semanal separado por funcionário e equipe"
+        tabindex="0">
+        <div
+          class="weekly-resource-grid"
+          style="--weekly-team-count: <?= h((string) $boardColumnCount) ?>; min-width: <?= h((string) $boardMinWidth) ?>px;">
+          <div class="weekly-resource-corner">
+            <strong>Dia</strong>
+            <span>Semana</span>
+          </div>
+
+          <?php foreach ($teamColumns as $teamColumn): ?>
+            <?php
+            $teamLabel = (string) $teamColumn['label'];
+            $teamNames = array_values(
+              array_filter(
+                array_map(
+                  'trim',
+                  explode('/', $teamLabel)
+                ),
+                static fn(string $name): bool => $name !== ''
+              )
+            );
+
+            $initials = '';
+            foreach (array_slice($teamNames, 0, 2) as $name) {
+              $parts = preg_split('/\\s+/u', trim($name)) ?: [];
+              $initials .= mb_strtoupper(
+                mb_substr(
+                  (string) ($parts[0] ?? ''),
+                  0,
+                  1,
+                  'UTF-8'
+                ),
+                'UTF-8'
+              );
+            }
+            if ($initials === '') {
+              $initials = '—';
+            }
+            ?>
+
+            <header class="weekly-team-column-header">
+              <span class="weekly-team-avatar" aria-hidden="true">
+                <?= h($initials) ?>
+              </span>
+
+              <div class="weekly-team-header-text">
+                <strong title="<?= h($teamLabel) ?>">
+                  <?= h($teamLabel) ?>
+                </strong>
+
+                <span>
+                  <?= h((string) $teamColumn['appointments']) ?>
+                  <?= (int) $teamColumn['appointments'] === 1 ? 'atendimento' : 'atendimentos' ?>
+                </span>
+              </div>
+            </header>
+          <?php endforeach; ?>
+
+          <?php for ($dayIndex = 0; $dayIndex < 7; $dayIndex++): ?>
+            <?php
+            $day = $weekStart->modify(
+              '+' . $dayIndex . ' days'
+            );
+            $dateKey = $day->format('Y-m-d');
+            $isToday = $dateKey === date('Y-m-d');
+            ?>
+
+            <div class="weekly-day-label<?= $isToday ? ' is-today' : '' ?>">
               <strong>
-                <?= h(
-                  $days[$day->format('l')]
-                ) ?>
+                <?= h($days[$day->format('l')]) ?>
               </strong>
 
-              <span>
-                <?= h(
-                  $day->format('d/m')
-                ) ?>
+              <span class="weekly-day-date">
+                <?= h($day->format('d/m')) ?>
               </span>
-            </header>
 
-            <div class="weekly-day-body">
-             <?php if ($dayRecords === []): ?>
-    <div class="weekly-empty">
-        Nenhum atendimento
-    </div>
-<?php else: ?>
-    <?php foreach ($dayRecords as $record): ?>
-        <?php if (($record['kind'] ?? '') === 'planning'): ?>
-            <?php
-            $planning = $record['planning'];
-
-            $planningId = weekly_value(
-                $planning,
-                'id'
-            );
-
-            $planningCode = weekly_value(
-                $planning,
-                'codigo',
-                'SEM'
-            );
-
-            $priority = weekly_value(
-                $planning,
-                'prioridade',
-                'media'
-            );
-
-            $clientName = weekly_value(
-                $planning,
-                'cliente_nome',
-                'Cliente não informado'
-            );
-
-            $serviceName = weekly_value(
-                $planning,
-                'servico_nome',
-                'Serviço não informado'
-            );
-
-            $start = weekly_value(
-                $planning,
-                'agendado_inicio'
-            );
-
-            $end = weekly_value(
-                $planning,
-                'agendado_fim'
-            );
-
-            $location = weekly_value(
-                $planning,
-                'local_servico'
-            );
-
-            $teamName =
-                weekly_team_name(
-                    $planning
-                );
-            ?>
-
-            <article
-                class="weekly-planning-card is-awaiting<?= $priority === 'urgente' ? ' is-urgent' : '' ?>"
-            >
-                <div class="weekly-card-header">
-                    <div>
-                        <strong class="weekly-card-code">
-                            <?= h($planningCode) ?>
-                        </strong>
-
-                        <span class="weekly-card-time">
-                            <?= h(
-                                weekly_time_range(
-                                    $start,
-                                    $end
-                                )
-                            ) ?>
-                        </span>
-                    </div>
-
-                    <span class="badge-soft badge-amber">
-                        Aguardando confirmação
-                    </span>
-                </div>
-
-                <div class="weekly-card-client">
-                    <?= h($clientName) ?>
-                </div>
-
-                <div class="weekly-card-service">
-                    <?= h($serviceName) ?>
-                </div>
-
-                <div class="weekly-card-info">
-                    <span>
-                        <i class="bi bi-people"></i>
-                        <?= h($teamName) ?>
-                    </span>
-
-                    <?php if ($location !== ''): ?>
-                        <span>
-                            <i class="bi bi-geo-alt"></i>
-                            <?= h($location) ?>
-                        </span>
-                    <?php endif; ?>
-                </div>
-
-                <div class="weekly-card-footer">
-                    <span
-                        class="weekly-priority<?= $priority === 'urgente' ? ' is-urgent' : '' ?>"
-                    >
-                        <?= h(
-                            weekly_priority_label(
-                                $priority
-                            )
-                        ) ?>
-                    </span>
-
-                    <?php if ($canConfirm): ?>
-                        <button
-                            class="btn-filter btn-filter-primary weekly-confirm-button js-weekly-confirm"
-                            type="button"
-                            data-planning-id="<?= h($planningId) ?>"
-                            data-planning-code="<?= h($planningCode) ?>"
-                            data-client-name="<?= h($clientName) ?>"
-                            data-service-name="<?= h($serviceName) ?>"
-                            data-scheduled-start="<?= h($start) ?>"
-                            data-scheduled-end="<?= h($end) ?>"
-                            data-team-name="<?= h($teamName) ?>"
-                            data-bs-toggle="modal"
-                            data-bs-target="#modal-week-confirm"
-                        >
-                            <i class="bi bi-check2-circle"></i>
-                            Confirmar
-                        </button>
-                    <?php endif; ?>
-                </div>
-            </article>
-        <?php elseif (($record['kind'] ?? '') === 'order'): ?>
-            <?php
-            $order = $record['order'];
-
-            $orderStatus =
-                $order->status();
-
-            $orderPriority =
-                $order->priority();
-
-            $orderCardClass =
-                'weekly-planning-card is-order';
-
-            if (
-                $orderStatus === 'finalizada'
-            ) {
-                $orderCardClass .=
-                    ' is-order-finalized';
-            }
-
-            if (
-                $orderStatus === 'cancelada'
-            ) {
-                $orderCardClass .=
-                    ' is-order-canceled';
-            }
-            ?>
-
-            <article
-                class="<?= h($orderCardClass) ?><?= $orderPriority === 'urgente' ? ' is-urgent' : '' ?>"
-            >
-                <div class="weekly-card-header">
-                    <div>
-                        <strong class="weekly-card-code">
-                            <?= h(
-                                $order->displayNumber()
-                            ) ?>
-                        </strong>
-
-                        <span class="weekly-card-time">
-                            <?= h(
-                                weekly_time_range(
-                                    $order->scheduledStart(),
-                                    $order->scheduledEnd()
-                                )
-                            ) ?>
-                        </span>
-                    </div>
-
-                    <span
-                        class="badge-soft badge-<?= h(
-                            weekly_order_status_badge(
-                                $orderStatus
-                            )
-                        ) ?>"
-                    >
-                        <?= h(
-                            weekly_order_status_label(
-                                $orderStatus
-                            )
-                        ) ?>
-                    </span>
-                </div>
-
-                <div class="weekly-card-client">
-                    <?= h(
-                        $order->clientName()
-                    ) ?>
-                </div>
-
-                <div class="weekly-card-service">
-                    <?= h(
-                        $order->mainService()
-                        ?? 'Serviço não informado'
-                    ) ?>
-                </div>
-
-                <div class="weekly-card-info">
-                    <span>
-                        <i class="bi bi-people"></i>
-
-                        <?= h(
-                            $order->displayTeam()
-                        ) ?>
-                    </span>
-
-                    <?php
-                    if (
-                        $order->equipmentLocation()
-                        !== null
-                        && trim(
-                            $order->equipmentLocation()
-                        ) !== ''
-                    ):
-                    ?>
-                        <span>
-                            <i class="bi bi-geo-alt"></i>
-
-                            <?= h(
-                                $order->equipmentLocation()
-                            ) ?>
-                        </span>
-                    <?php endif; ?>
-
-                    <span>
-                        <i class="bi bi-cash-coin"></i>
-
-                        <?= money(
-                            $order->total()
-                        ) ?>
-                    </span>
-                </div>
-
-                <div class="weekly-card-footer">
-                    <span
-                        class="weekly-priority<?= $orderPriority === 'urgente' ? ' is-urgent' : '' ?>"
-                    >
-                        <?= h(
-                            $order->displayPriority()
-                        ) ?>
-                    </span>
-
-                    <?php if ($canViewOrder): ?>
-                        <a
-                            class="btn-filter btn-filter-ghost weekly-order-link"
-                            href="ordens-servico.php?search=<?= h(
-                                rawurlencode(
-                                    $order->displayNumber()
-                                )
-                            ) ?>"
-                        >
-                            <i class="bi bi-box-arrow-up-right"></i>
-                            Abrir OS
-                        </a>
-                    <?php endif; ?>
-                </div>
-            </article>
-        <?php endif; ?>
-    <?php endforeach; ?>
-<?php endif; ?>
+              <?php if ($isToday): ?>
+                <span class="weekly-today-badge">HOJE</span>
+              <?php endif; ?>
             </div>
-          </section>
-        <?php endfor; ?>
+
+            <?php foreach ($teamColumns as $teamKey => $teamColumn): ?>
+              <?php
+              $cellRecords =
+                $weeklyTeamMatrix[$dateKey][$teamKey]
+                ?? [];
+              ?>
+
+              <div class="weekly-team-cell<?= $isToday ? ' is-today' : '' ?>">
+                <?php if ($cellRecords === []): ?>
+                  <div class="weekly-cell-empty">
+                    <i class="bi bi-check2-circle"></i>
+                    Livre na agenda
+                  </div>
+                <?php else: ?>
+                  <div class="weekly-team-cell-content">
+                    <?php foreach ($cellRecords as $record): ?>
+                      <?php if (($record['kind'] ?? '') === 'planning'): ?>
+                        <?php
+                        $planning = $record['planning'];
+                        $planningId = weekly_value(
+                          $planning,
+                          'id'
+                        );
+                        $planningCode = weekly_value(
+                          $planning,
+                          'codigo',
+                          'SEM'
+                        );
+                        $priority = weekly_value(
+                          $planning,
+                          'prioridade',
+                          'media'
+                        );
+                        $clientName = weekly_value(
+                          $planning,
+                          'cliente_nome',
+                          'Cliente não informado'
+                        );
+                        $serviceName = weekly_value(
+                          $planning,
+                          'servico_nome',
+                          'Serviço não informado'
+                        );
+                        $start = weekly_value(
+                          $planning,
+                          'agendado_inicio'
+                        );
+                        $end = weekly_value(
+                          $planning,
+                          'agendado_fim'
+                        );
+                        $location = weekly_value(
+                          $planning,
+                          'local_servico'
+                        );
+                        $teamName = (string) (
+                          $record['team_label']
+                          ?? weekly_team_name($planning)
+                        );
+                        $isCurrent = weekly_is_current_slot(
+                          $start,
+                          $end
+                        );
+                        ?>
+
+                        <article class="weekly-planning-card is-awaiting<?= $priority === 'urgente' ? ' is-urgent' : '' ?><?= $isCurrent ? ' is-current' : '' ?>">
+                          <div class="weekly-card-header">
+                            <div class="weekly-card-time-block">
+                              <span class="weekly-card-time">
+                                <?= h(weekly_time_range($start, $end)) ?>
+                              </span>
+                              <strong class="weekly-card-code">
+                                <?= h($planningCode) ?>
+                              </strong>
+                            </div>
+
+                            <div class="weekly-card-badges">
+                              <?php if ($isCurrent): ?>
+                                <span class="weekly-now-badge">AGORA</span>
+                              <?php endif; ?>
+                              <span class="badge-soft badge-amber">
+                                Pendente
+                              </span>
+                            </div>
+                          </div>
+
+                          <div class="weekly-card-client">
+                            <?= h($clientName) ?>
+                          </div>
+
+                          <div class="weekly-card-service">
+                            <?= h($serviceName) ?>
+                          </div>
+
+                          <div class="weekly-card-info">
+                            <?php if ($location !== ''): ?>
+                              <span>
+                                <i class="bi bi-geo-alt"></i>
+                                <?= h($location) ?>
+                              </span>
+                            <?php endif; ?>
+
+                          </div>
+
+                          <div class="weekly-card-footer">
+                            <span class="weekly-priority<?= $priority === 'urgente' ? ' is-urgent' : '' ?>">
+                              <?= h(weekly_priority_label($priority)) ?>
+                            </span>
+
+                            <?php if ($canConfirm): ?>
+                              <button
+                                class="btn-filter btn-filter-primary weekly-confirm-button js-weekly-confirm"
+                                type="button"
+                                data-planning-id="<?= h($planningId) ?>"
+                                data-planning-code="<?= h($planningCode) ?>"
+                                data-client-name="<?= h($clientName) ?>"
+                                data-service-name="<?= h($serviceName) ?>"
+                                data-scheduled-start="<?= h($start) ?>"
+                                data-scheduled-end="<?= h($end) ?>"
+                                data-team-name="<?= h($teamName) ?>"
+                                data-bs-toggle="modal"
+                                data-bs-target="#modal-week-confirm">
+                                <i class="bi bi-check2-circle"></i>
+                                Confirmar
+                              </button>
+                            <?php endif; ?>
+                          </div>
+                        </article>
+                      <?php elseif (($record['kind'] ?? '') === 'order'): ?>
+                        <?php
+                        $order = $record['order'];
+                        $orderStatus = $order->status();
+                        $orderPriority = $order->priority();
+                        $orderCardClass =
+                          'weekly-planning-card is-order';
+
+                        if ($orderStatus === 'finalizada') {
+                          $orderCardClass .=
+                            ' is-order-finalized';
+                        }
+
+                        if ($orderStatus === 'cancelada') {
+                          $orderCardClass .=
+                            ' is-order-canceled';
+                        }
+
+                        $orderStart = $order->scheduledStart();
+                        $orderEnd = $order->scheduledEnd();
+                        $isCurrent = weekly_is_current_slot(
+                          $orderStart,
+                          $orderEnd
+                        );
+                        ?>
+
+                        <article class="<?= h($orderCardClass) ?><?= $orderPriority === 'urgente' ? ' is-urgent' : '' ?><?= $isCurrent ? ' is-current' : '' ?>">
+                          <div class="weekly-card-header">
+                            <div class="weekly-card-time-block">
+                              <span class="weekly-card-time">
+                                <?= h(weekly_time_range($orderStart, $orderEnd)) ?>
+                              </span>
+                              <strong class="weekly-card-code">
+                                <?= h($order->displayNumber()) ?>
+                              </strong>
+                            </div>
+
+                            <div class="weekly-card-badges">
+                              <?php if ($isCurrent): ?>
+                                <span class="weekly-now-badge">AGORA</span>
+                              <?php endif; ?>
+
+                              <span class="badge-soft badge-<?= h(weekly_order_status_badge($orderStatus)) ?>">
+                                <?= h(weekly_order_status_label($orderStatus)) ?>
+                              </span>
+                            </div>
+                          </div>
+
+                          <div class="weekly-card-client">
+                            <?= h($order->clientName()) ?>
+                          </div>
+
+                          <div class="weekly-card-service">
+                            <?= h(
+                              $order->mainService()
+                              ?? 'Serviço não informado'
+                            ) ?>
+                          </div>
+
+                          <div class="weekly-card-info">
+                            <?php if (
+                              $order->equipmentLocation() !== null
+                              && trim($order->equipmentLocation()) !== ''
+                            ): ?>
+                              <span>
+                                <i class="bi bi-geo-alt"></i>
+                                <?= h($order->equipmentLocation()) ?>
+                              </span>
+                            <?php endif; ?>
+
+                            <span>
+                              <i class="bi bi-cash-coin"></i>
+                              <?= money($order->total()) ?>
+                            </span>
+                          </div>
+
+                          <div class="weekly-card-footer">
+                            <span class="weekly-priority<?= $orderPriority === 'urgente' ? ' is-urgent' : '' ?>">
+                              <?= h($order->displayPriority()) ?>
+                            </span>
+
+                            <?php if ($canViewOrder): ?>
+                              <a
+                                class="btn-filter btn-filter-ghost weekly-order-link"
+                                href="ordens-servico.php?search=<?= h(rawurlencode($order->displayNumber())) ?>">
+                                <i class="bi bi-box-arrow-up-right"></i>
+                                Abrir
+                              </a>
+                            <?php endif; ?>
+                          </div>
+                        </article>
+                      <?php endif; ?>
+                    <?php endforeach; ?>
+                  </div>
+                <?php endif; ?>
+              </div>
+            <?php endforeach; ?>
+          <?php endfor; ?>
+        </div>
       </div>
+    <?php endif; ?>
     </div>
   </section>
 </div>

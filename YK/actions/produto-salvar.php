@@ -7,6 +7,46 @@ use App\Catalog\DTO\ProductFormData;
 require __DIR__
     . '/produto-action-common.php';
 
+/**
+ * Registra falhas de cadastro/edição de produto em arquivo próprio.
+ * Não envia dados sensíveis para o navegador.
+ */
+function product_save_log(
+    Throwable $exception
+): void {
+    $logDirectory =
+        dirname(__DIR__)
+        . '/storage/logs';
+
+    if (!is_dir($logDirectory)) {
+        @mkdir(
+            $logDirectory,
+            0755,
+            true
+        );
+    }
+
+    $logFile =
+        $logDirectory
+        . '/product-save.log';
+
+    $message = sprintf(
+        "[%s] %s: %s | %s:%d%s",
+        date('Y-m-d H:i:s'),
+        get_class($exception),
+        $exception->getMessage(),
+        $exception->getFile(),
+        $exception->getLine(),
+        PHP_EOL
+    );
+
+    @file_put_contents(
+        $logFile,
+        $message,
+        FILE_APPEND | LOCK_EX
+    );
+}
+
 product_require_post_request();
 
 $rawProductId = trim(
@@ -29,20 +69,21 @@ $requiredPermission =
         $requiredPermission
     );
 
-$authorization =
-    $application->authorization();
-
-$canCost =
-    $authorization->can(
-        'produto.visualizar_preco_custo'
-    );
-
-$canSale =
-    $authorization->can(
-        'produto.visualizar_preco_venda'
-    );
-
 try {
+    $authorization =
+        $application
+            ->authorization();
+
+    $canCost =
+        $authorization->can(
+            'produto.visualizar_preco_custo'
+        );
+
+    $canSale =
+        $authorization->can(
+            'produto.visualizar_preco_venda'
+        );
+
     $productId =
         $isEditing
             ? product_posted_positive_int(
@@ -83,6 +124,9 @@ try {
                 $_POST['unit']
                 ?? 'UN',
 
+            /*
+             * Dados fiscais
+             */
             'ncm' =>
                 $_POST['ncm']
                 ?? '',
@@ -145,6 +189,9 @@ try {
                 ]
                 ?? '',
 
+            /*
+             * Dados comerciais
+             */
             'barcode' =>
                 $_POST['barcode']
                 ?? '',
@@ -155,7 +202,11 @@ try {
                         $_POST['cost_price']
                         ?? '0'
                     )
-                    : '0',
+                    : (
+                        $existing !== null
+                            ? $existing->costPrice()
+                            : '0'
+                    ),
 
             'sale_price' =>
                 $canSale
@@ -163,7 +214,11 @@ try {
                         $_POST['sale_price']
                         ?? '0'
                     )
-                    : '0',
+                    : (
+                        $existing !== null
+                            ? $existing->salePrice()
+                            : '0'
+                    ),
 
             'stock' =>
                 $_POST['stock']
@@ -182,6 +237,9 @@ try {
                 ?? 'ativo',
         ]);
 
+    /*
+     * EDIÇÃO
+     */
     if ($existing !== null) {
         $data =
             $data->withPrices(
@@ -203,22 +261,58 @@ try {
             'success',
             'Produto atualizado com sucesso.'
         );
-    } else {
-        $product =
-            $service->createProduct(
-                $data
-            );
 
-        $session->flash(
-            'success',
-            'Produto cadastrado com o código '
-            . $product->displayCode()
-            . '.'
+        product_redirect(
+            $application,
+            'produtos.php'
         );
     }
+
+    /*
+     * NOVO PRODUTO
+     */
+    $product =
+        $service->createProduct(
+            $data
+        );
+
+    $session->flash(
+        'success',
+        'Produto cadastrado com o código '
+        . $product->displayCode()
+        . '.'
+    );
+
+    product_redirect(
+        $application,
+        'produtos.php'
+    );
 } catch (InvalidArgumentException $exception) {
+    product_save_log(
+        $exception
+    );
+
+    /*
+     * Recalcula permissões somente para recuperação
+     * dos campos protegidos.
+     */
+    $authorization =
+        $application
+            ->authorization();
+
+    $canCost =
+        $authorization->can(
+            'produto.visualizar_preco_custo'
+        );
+
+    $canSale =
+        $authorization->can(
+            'produto.visualizar_preco_venda'
+        );
+
     $recovery = [
-        'id' => $rawProductId,
+        'id' =>
+            $rawProductId,
 
         'name' =>
             $_POST['name']
@@ -359,18 +453,18 @@ try {
         )
     );
 } catch (Throwable $exception) {
-    error_log(
-        'Product save failed: '
-        . $exception->getMessage()
+    product_save_log(
+        $exception
     );
 
     $session->flash(
         'danger',
-        'Não foi possível salvar o produto.'
+        'Não foi possível salvar o produto. '
+        . 'O erro técnico foi registrado.'
+    );
+
+    product_redirect(
+        $application,
+        'produtos.php'
     );
 }
-
-product_redirect(
-    $application,
-    'produtos.php'
-);

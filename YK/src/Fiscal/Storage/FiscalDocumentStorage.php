@@ -36,7 +36,10 @@ final class FiscalDocumentStorage
         if (!in_array($environment, ['homologacao', 'producao'], true)
             || !in_array($model, ['55', '65'], true)
             || $documentId <= 0
-            || !in_array($type, ['assinado', 'resposta', 'autorizado', 'cancelamento'], true)
+            || !in_array($type, [
+                'gerado', 'assinado', 'resposta', 'autorizado', 'cancelamento',
+                'inutilizacao_pedido', 'inutilizacao_resposta',
+            ], true)
         ) {
             throw new InvalidArgumentException('Identificação do artefato fiscal inválida.');
         }
@@ -68,7 +71,7 @@ final class FiscalDocumentStorage
 
     public function read(string $reference, string $expectedSha256): string
     {
-        if (preg_match('#^(homologacao|producao)/(55|65)/[1-9]\d*/[a-z]+-[a-f0-9]{16}\.xml$#', $reference) !== 1
+        if (preg_match('#^(homologacao|producao)/(55|65)/[1-9]\d*/[a-z_]+-[a-f0-9]{16}\.xml$#', $reference) !== 1
             || preg_match('/^[a-f0-9]{64}$/', $expectedSha256) !== 1
         ) {
             throw new InvalidArgumentException('Referência do XML fiscal inválida.');

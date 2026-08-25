@@ -1,0 +1,1752 @@
+/*
+ * SIGAS Operational UI v2 — piloto Primeiro Emprego
+ * --------------------------------------------------
+ * Objetivo: combinar a organização de filtros/KPIs do Primeiro Emprego
+ * com a densidade, tabela, toolbar e paginação do Comida na Mesa.
+ *
+ * IMPORTANTE:
+ * - Não altera regras de negócio.
+ * - Não altera JavaScript.
+ * - Não remove modais nem CRUD.
+ * - Cores semânticas continuam independentes da cor do módulo.
+ * - O piloto fica restrito a body[data-module="primeiro-emprego"].
+ */
+
+body[data-module="primeiro-emprego"] {
+    --sigas-accent: #176b85;
+    --sigas-accent-strong: #12485b;
+    --sigas-accent-soft: #eef8fb;
+    --sigas-accent-soft-2: #f6fbfd;
+    --sigas-accent-border: #cfe4eb;
+
+    --sigas-ink: #17342d;
+    --sigas-text: #344b44;
+    --sigas-muted: #74877f;
+    --sigas-border: #dfe8e4;
+    --sigas-border-strong: #ccd9d4;
+    --sigas-surface: #ffffff;
+    --sigas-surface-soft: #f7faf9;
+    --sigas-surface-table-head: #f2f6f4;
+    --sigas-shadow: 0 10px 28px rgba(28, 61, 50, .06);
+    --sigas-shadow-sm: 0 4px 14px rgba(28, 61, 50, .045);
+
+    --sigas-success: #147a4b;
+    --sigas-success-soft: #eef8f2;
+    --sigas-warning: #b06c00;
+    --sigas-warning-soft: #fff8e9;
+    --sigas-danger: #c52d3c;
+    --sigas-danger-soft: #fff3f4;
+    --sigas-info: #246c98;
+    --sigas-info-soft: #eef7fc;
+}
+
+/* ================================================================
+   1. ESTRUTURA / DENSIDADE
+   ================================================================ */
+
+body[data-module="primeiro-emprego"] .frontend-module-content {
+    padding-bottom: 2rem;
+}
+
+body[data-module="primeiro-emprego"] .content-card,
+body[data-module="primeiro-emprego"] .pe-page,
+body[data-module="primeiro-emprego"] .pe-list-section,
+body[data-module="primeiro-emprego"] .pe-table-wrap,
+body[data-module="primeiro-emprego"] .pe-report-filter-panel,
+body[data-module="primeiro-emprego"] .pe-report-executive-card,
+body[data-module="primeiro-emprego"] .pe-chart-card,
+body[data-module="primeiro-emprego"] .pe-report-chart-card {
+    border-color: var(--sigas-border);
+    box-shadow: var(--sigas-shadow-sm);
+}
+
+body[data-module="primeiro-emprego"] .pe-page,
+body[data-module="primeiro-emprego"] .pe-list-page,
+body[data-module="primeiro-emprego"] .pe-report-page {
+    color: var(--sigas-text);
+}
+
+/* ================================================================
+   2. HERO / CABEÇALHO DA ÁREA DE TRABALHO
+   ---------------------------------------------------------------
+   Mantém a clareza do Primeiro Emprego, mas com acabamento mais
+   compacto e institucional do Comida na Mesa.
+   ================================================================ */
+
+body[data-module="primeiro-emprego"] .pe-page-hero,
+body[data-module="primeiro-emprego"] .pe-candidates-hero,
+body[data-module="primeiro-emprego"] .pe-list-hero {
+    position: relative;
+    overflow: hidden;
+    padding: 18px 20px;
+    border: 1px solid var(--sigas-accent-border);
+    border-radius: 16px;
+    background:
+        linear-gradient(135deg, var(--sigas-accent-soft-2) 0%, #fff 58%, var(--sigas-accent-soft) 100%);
+    box-shadow: var(--sigas-shadow-sm);
+}
+
+body[data-module="primeiro-emprego"] .pe-page-hero::after,
+body[data-module="primeiro-emprego"] .pe-candidates-hero::after,
+body[data-module="primeiro-emprego"] .pe-list-hero::after {
+    content: "";
+    position: absolute;
+    right: -54px;
+    top: -78px;
+    width: 190px;
+    height: 190px;
+    border: 28px solid rgba(23, 107, 133, .055);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+body[data-module="primeiro-emprego"] .pe-page-hero > *,
+body[data-module="primeiro-emprego"] .pe-candidates-hero > *,
+body[data-module="primeiro-emprego"] .pe-list-hero > * {
+    position: relative;
+    z-index: 1;
+}
+
+body[data-module="primeiro-emprego"] .pe-page-hero h2,
+body[data-module="primeiro-emprego"] .pe-candidates-hero h2,
+body[data-module="primeiro-emprego"] .pe-list-hero h2 {
+    margin-bottom: 5px;
+    color: var(--sigas-accent-strong);
+    letter-spacing: -.035em;
+}
+
+body[data-module="primeiro-emprego"] .pe-page-hero p,
+body[data-module="primeiro-emprego"] .pe-candidates-hero p,
+body[data-module="primeiro-emprego"] .pe-list-hero p {
+    margin-bottom: 0;
+    color: var(--sigas-muted);
+}
+
+/* ================================================================
+   3. KPIs — compactos como Comida na Mesa, hierarquia do Emprego
+   ================================================================ */
+
+body[data-module="primeiro-emprego"] .pe-kpi-grid,
+body[data-module="primeiro-emprego"] .pe-operational-kpis,
+body[data-module="primeiro-emprego"] .pe-report-kpi-grid {
+    gap: 10px;
+}
+
+body[data-module="primeiro-emprego"] .pe-kpi,
+body[data-module="primeiro-emprego"] .pe-report-kpi {
+    position: relative;
+    min-height: 90px;
+    padding: 13px 14px;
+    overflow: hidden;
+    border: 1px solid var(--sigas-border) !important;
+    border-radius: 13px;
+    background: var(--sigas-surface) !important;
+    box-shadow: none;
+}
+
+body[data-module="primeiro-emprego"] .pe-kpi::before,
+body[data-module="primeiro-emprego"] .pe-report-kpi::before {
+    width: 3px !important;
+    height: auto !important;
+    top: 11px !important;
+    bottom: 11px !important;
+    left: 0 !important;
+    border-radius: 0 8px 8px 0 !important;
+    background: var(--sigas-accent) !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-kpi span,
+body[data-module="primeiro-emprego"] .pe-report-kpi span {
+    color: var(--sigas-muted);
+    font-size: .68rem;
+    font-weight: 650;
+}
+
+body[data-module="primeiro-emprego"] .pe-kpi strong,
+body[data-module="primeiro-emprego"] .pe-report-kpi strong {
+    margin-top: 4px;
+    color: var(--sigas-accent-strong) !important;
+    font-size: 1.35rem;
+    line-height: 1.05;
+    letter-spacing: -.04em;
+}
+
+body[data-module="primeiro-emprego"] .pe-kpi small,
+body[data-module="primeiro-emprego"] .pe-report-kpi small {
+    margin-top: 5px;
+    color: #8a9994;
+    font-size: .62rem;
+}
+
+body[data-module="primeiro-emprego"] .pe-kpi--warning::before,
+body[data-module="primeiro-emprego"] .pe-kpi--orange::before,
+body[data-module="primeiro-emprego"] .pe-report-kpi--warning::before {
+    background: #d88a10 !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-kpi--danger::before,
+body[data-module="primeiro-emprego"] .pe-report-kpi--danger::before {
+    background: #d43a48 !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-kpi--success::before,
+body[data-module="primeiro-emprego"] .pe-report-kpi--success::before {
+    background: #198754 !important;
+}
+
+/* ================================================================
+   4. LEGENDA — discreta, não compete com a tabela
+   ================================================================ */
+
+body[data-module="primeiro-emprego"] .pe-legend,
+body[data-module="primeiro-emprego"] .pe-review-legend {
+    gap: 6px;
+}
+
+body[data-module="primeiro-emprego"] .pe-legend > span,
+body[data-module="primeiro-emprego"] .pe-review-legend > span {
+    min-height: 29px;
+    padding: 5px 9px;
+    border: 1px solid var(--sigas-border);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--sigas-muted);
+    font-size: .67rem;
+}
+
+/* ================================================================
+   5. FILTROS — organização do Emprego + acabamento do Comida
+   ================================================================ */
+
+body[data-module="primeiro-emprego"] .pe-filter-panel,
+body[data-module="primeiro-emprego"] .pe-operational-filters,
+body[data-module="primeiro-emprego"] .pe-report-filter-panel {
+    gap: 10px;
+    padding: 14px;
+    border: 1px solid var(--sigas-border) !important;
+    border-radius: 15px;
+    background: #fff;
+    box-shadow: var(--sigas-shadow-sm);
+}
+
+body[data-module="primeiro-emprego"] .pe-operational-filter-field > span,
+body[data-module="primeiro-emprego"] .pe-report-filter-panel label,
+body[data-module="primeiro-emprego"] .pe-report-filter-grid label {
+    display: block;
+    margin-bottom: 5px;
+    color: #4a5e57;
+    font-size: .68rem;
+    font-weight: 750;
+}
+
+body[data-module="primeiro-emprego"] .pe-filter-panel .form-control,
+body[data-module="primeiro-emprego"] .pe-filter-panel .form-select,
+body[data-module="primeiro-emprego"] .pe-operational-filters .form-control,
+body[data-module="primeiro-emprego"] .pe-operational-filters .form-select,
+body[data-module="primeiro-emprego"] .pe-report-filter-panel .form-control,
+body[data-module="primeiro-emprego"] .pe-report-filter-panel .form-select {
+    min-height: 44px;
+    border-color: var(--sigas-border-strong);
+    border-radius: 11px;
+    background-color: #fff;
+    color: #30463f;
+    font-size: .78rem;
+    box-shadow: none;
+}
+
+body[data-module="primeiro-emprego"] .pe-filter-panel .form-control:focus,
+body[data-module="primeiro-emprego"] .pe-filter-panel .form-select:focus,
+body[data-module="primeiro-emprego"] .pe-operational-filters .form-control:focus,
+body[data-module="primeiro-emprego"] .pe-operational-filters .form-select:focus,
+body[data-module="primeiro-emprego"] .pe-report-filter-panel .form-control:focus,
+body[data-module="primeiro-emprego"] .pe-report-filter-panel .form-select:focus {
+    border-color: var(--sigas-accent);
+    box-shadow: 0 0 0 3px rgba(23, 107, 133, .09);
+}
+
+body[data-module="primeiro-emprego"] .pe-filter-search,
+body[data-module="primeiro-emprego"] .pe-operational-search,
+body[data-module="primeiro-emprego"] .pe-report-filter-search {
+    position: relative;
+}
+
+body[data-module="primeiro-emprego"] .pe-filter-search > i,
+body[data-module="primeiro-emprego"] .pe-operational-search > i,
+body[data-module="primeiro-emprego"] .pe-report-filter-search > i {
+    color: #7d918a;
+}
+
+body[data-module="primeiro-emprego"] .pe-filter-submit,
+body[data-module="primeiro-emprego"] .pe-report-filter-actions .btn-primary,
+body[data-module="primeiro-emprego"] .pe-operational-filter-actions .btn-primary {
+    min-height: 44px;
+    border-color: var(--sigas-accent) !important;
+    border-radius: 11px;
+    background: var(--sigas-accent) !important;
+    color: #fff !important;
+    font-size: .77rem;
+    font-weight: 750;
+}
+
+body[data-module="primeiro-emprego"] .pe-filter-clear,
+body[data-module="primeiro-emprego"] .pe-operational-filter-actions .pe-filter-clear,
+body[data-module="primeiro-emprego"] .pe-report-filter-actions .btn-light {
+    min-height: 44px;
+    border: 1px solid var(--sigas-border-strong) !important;
+    border-radius: 11px;
+    background: #fff !important;
+    color: #60736c !important;
+}
+
+/* ================================================================
+   6. TABELA — principal ganho visual vindo do Comida na Mesa
+   ================================================================ */
+
+body[data-module="primeiro-emprego"] .pe-table-wrap,
+body[data-module="primeiro-emprego"] .pe-list-section,
+body[data-module="primeiro-emprego"] .pe-report-detail-section {
+    overflow: hidden;
+    border: 1px solid var(--sigas-border) !important;
+    border-radius: 15px;
+    background: #fff;
+    box-shadow: var(--sigas-shadow-sm);
+}
+
+body[data-module="primeiro-emprego"] .pe-table-toolbar,
+body[data-module="primeiro-emprego"] .pe-list-section__head,
+body[data-module="primeiro-emprego"] .pe-report-detail-head {
+    min-height: 56px;
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--sigas-border);
+    background: #fff;
+}
+
+body[data-module="primeiro-emprego"] .pe-table-toolbar strong,
+body[data-module="primeiro-emprego"] .pe-list-section__head h3,
+body[data-module="primeiro-emprego"] .pe-report-detail-head h2,
+body[data-module="primeiro-emprego"] .pe-report-detail-head h3 {
+    color: var(--sigas-ink);
+    font-weight: 750;
+}
+
+body[data-module="primeiro-emprego"] .pe-table-toolbar small,
+body[data-module="primeiro-emprego"] .pe-list-section__head p,
+body[data-module="primeiro-emprego"] .pe-report-detail-head p {
+    color: var(--sigas-muted) !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-data-table,
+body[data-module="primeiro-emprego"] .pe-table,
+body[data-module="primeiro-emprego"] .pe-list-table,
+body[data-module="primeiro-emprego"] .pe-report-table {
+    width: 100%;
+    margin: 0;
+    border-collapse: collapse;
+    background: #fff;
+}
+
+body[data-module="primeiro-emprego"] .pe-data-table thead th,
+body[data-module="primeiro-emprego"] .pe-table thead th,
+body[data-module="primeiro-emprego"] .pe-list-table thead th,
+body[data-module="primeiro-emprego"] .pe-report-table thead th {
+    padding: 11px 12px !important;
+    border-top: 0 !important;
+    border-bottom: 1px solid var(--sigas-border-strong) !important;
+    background: var(--sigas-surface-table-head) !important;
+    color: #5d7169 !important;
+    font-size: .68rem !important;
+    font-weight: 800 !important;
+    letter-spacing: .045em !important;
+    line-height: 1.25;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+body[data-module="primeiro-emprego"] .pe-data-table tbody td,
+body[data-module="primeiro-emprego"] .pe-table tbody td,
+body[data-module="primeiro-emprego"] .pe-list-table tbody td,
+body[data-module="primeiro-emprego"] .pe-report-table tbody td {
+    padding: 12px !important;
+    border-bottom: 1px solid #e6ece9 !important;
+    background: #fff !important;
+    color: #40534c;
+    font-size: .73rem;
+    line-height: 1.4;
+    vertical-align: middle;
+}
+
+body[data-module="primeiro-emprego"] .pe-data-table tbody tr:last-child td,
+body[data-module="primeiro-emprego"] .pe-table tbody tr:last-child td,
+body[data-module="primeiro-emprego"] .pe-list-table tbody tr:last-child td,
+body[data-module="primeiro-emprego"] .pe-report-table tbody tr:last-child td {
+    border-bottom: 0 !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-table-row,
+body[data-module="primeiro-emprego"] .pe-list-row,
+body[data-module="primeiro-emprego"] [data-pe-candidate-row] {
+    cursor: pointer;
+    transition: background .14s ease, box-shadow .14s ease;
+}
+
+body[data-module="primeiro-emprego"] .pe-table-row:hover > td,
+body[data-module="primeiro-emprego"] .pe-list-row:hover > td,
+body[data-module="primeiro-emprego"] [data-pe-candidate-row]:hover > td,
+body[data-module="primeiro-emprego"] .pe-table-row:focus > td,
+body[data-module="primeiro-emprego"] .pe-list-row:focus > td,
+body[data-module="primeiro-emprego"] [data-pe-candidate-row]:focus > td {
+    background: #f9fbfa !important;
+}
+
+/* nunca usar fundo colorido de pendência na linha */
+body[data-module="primeiro-emprego"] .pe-review-warning > td,
+body[data-module="primeiro-emprego"] .pe-review-multiple > td,
+body[data-module="primeiro-emprego"] .pe-review-critical > td,
+body[data-module="primeiro-emprego"] tr[class*="pe-review-"] > td {
+    background: #fff !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-review-warning:hover > td,
+body[data-module="primeiro-emprego"] .pe-review-multiple:hover > td,
+body[data-module="primeiro-emprego"] .pe-review-critical:hover > td,
+body[data-module="primeiro-emprego"] tr[class*="pe-review-"]:hover > td {
+    background: #f9fbfa !important;
+}
+
+/* pessoa / primeira coluna */
+body[data-module="primeiro-emprego"] .pe-candidate-name,
+body[data-module="primeiro-emprego"] .pe-candidate-name-cell strong {
+    color: #18382e;
+    font-size: .77rem;
+    font-weight: 780;
+    line-height: 1.28;
+}
+
+body[data-module="primeiro-emprego"] .pe-candidate-avatar {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    border: 1px solid var(--sigas-accent-border);
+    border-radius: 11px;
+    background: var(--sigas-accent-soft);
+    color: var(--sigas-accent-strong);
+}
+
+/* ================================================================
+   7. STATUS — cor na informação, não no fundo da linha
+   ================================================================ */
+
+body[data-module="primeiro-emprego"] .pe-status-text,
+body[data-module="primeiro-emprego"] .pe-status-font {
+    font-size: .69rem;
+    font-weight: 780;
+}
+
+body[data-module="primeiro-emprego"] .pe-status-text.is-success,
+body[data-module="primeiro-emprego"] .pe-status-font--success,
+body[data-module="primeiro-emprego"] .pe-badge-ok {
+    color: var(--sigas-success) !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-status-text.is-warning,
+body[data-module="primeiro-emprego"] .pe-status-font--warning {
+    color: var(--sigas-warning) !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-status-text.is-danger,
+body[data-module="primeiro-emprego"] .pe-status-font--danger {
+    color: var(--sigas-danger) !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-status-text.is-info,
+body[data-module="primeiro-emprego"] .pe-status-font--info {
+    color: var(--sigas-info) !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-status-badge,
+body[data-module="primeiro-emprego"] .pe-inline-badge {
+    min-height: 24px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: .62rem;
+    font-weight: 780;
+}
+
+/* ================================================================
+   8. PAGINAÇÃO — integrada à tabela como Comida na Mesa
+   ================================================================ */
+
+body[data-module="primeiro-emprego"] .pe-table-wrap + nav,
+body[data-module="primeiro-emprego"] .pe-list-section + nav,
+body[data-module="primeiro-emprego"] .pe-report-pagination {
+    margin-top: 0 !important;
+    padding: 11px 14px;
+    border: 1px solid var(--sigas-border);
+    border-top: 0;
+    border-radius: 0 0 15px 15px;
+    background: #fff;
+}
+
+body[data-module="primeiro-emprego"] .pagination {
+    margin-bottom: 0;
+    gap: 4px;
+}
+
+body[data-module="primeiro-emprego"] .pagination .page-link {
+    min-width: 34px;
+    min-height: 32px;
+    display: grid;
+    place-items: center;
+    padding: 5px 9px;
+    border: 1px solid var(--sigas-border);
+    border-radius: 8px !important;
+    background: #fff;
+    color: #536961;
+    font-size: .69rem;
+    font-weight: 650;
+}
+
+body[data-module="primeiro-emprego"] .pagination .page-item.active .page-link {
+    border-color: var(--sigas-accent);
+    background: var(--sigas-accent);
+    color: #fff;
+}
+
+/* ================================================================
+   9. MODAIS / CRUD — preservados, só refinamento visual
+   ================================================================ */
+
+body[data-module="primeiro-emprego"] dialog.pe-modal,
+body[data-module="primeiro-emprego"] dialog.pe-candidate-modal {
+    border: 0;
+    border-radius: 18px;
+    box-shadow: 0 28px 80px rgba(18, 52, 43, .22);
+}
+
+body[data-module="primeiro-emprego"] dialog.pe-modal::backdrop,
+body[data-module="primeiro-emprego"] dialog.pe-candidate-modal::backdrop {
+    background: rgba(15, 31, 26, .5);
+    backdrop-filter: blur(3px);
+}
+
+body[data-module="primeiro-emprego"] .pe-modal__header,
+body[data-module="primeiro-emprego"] .pe-candidate-modal__header {
+    padding: 17px 19px;
+    border-bottom: 1px solid var(--sigas-border);
+    background: linear-gradient(180deg, #fbfdfd 0%, #fff 100%);
+}
+
+body[data-module="primeiro-emprego"] .pe-modal__header::before,
+body[data-module="primeiro-emprego"] .pe-candidate-modal__header::before {
+    background: var(--sigas-accent) !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-modal__header h2,
+body[data-module="primeiro-emprego"] .pe-candidate-modal__header h2 {
+    color: var(--sigas-accent-strong);
+    letter-spacing: -.025em;
+}
+
+body[data-module="primeiro-emprego"] .pe-modal__body,
+body[data-module="primeiro-emprego"] .pe-candidate-modal__body {
+    padding: 16px 18px 18px;
+    background: #fff;
+}
+
+body[data-module="primeiro-emprego"] .pe-modal-details > div,
+body[data-module="primeiro-emprego"] .pe-action-field-card,
+body[data-module="primeiro-emprego"] .pe-profile-summary,
+body[data-module="primeiro-emprego"] .pe-view-note {
+    border-color: var(--sigas-border) !important;
+    border-radius: 12px;
+    background: var(--sigas-surface-soft) !important;
+    box-shadow: none;
+}
+
+body[data-module="primeiro-emprego"] .pe-modal-action {
+    min-height: 58px;
+    border-color: var(--sigas-border) !important;
+    border-radius: 12px;
+    background: #fff !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-modal-action:hover {
+    border-color: var(--sigas-accent-border) !important;
+    background: var(--sigas-accent-soft-2) !important;
+    transform: translateX(2px);
+}
+
+body[data-module="primeiro-emprego"] .pe-modal-action__icon {
+    border-radius: 10px;
+    background: var(--sigas-accent-soft) !important;
+    color: var(--sigas-accent-strong) !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-action-modal-footer {
+    border-top: 1px solid var(--sigas-border);
+    background: #fbfcfc;
+}
+
+/* ================================================================
+   10. BOTÕES — mesma forma, só accent do módulo
+   ================================================================ */
+
+body[data-module="primeiro-emprego"] .btn-primary,
+body[data-module="primeiro-emprego"] .pe-page-actions .btn-primary {
+    border-color: var(--sigas-accent) !important;
+    background: var(--sigas-accent) !important;
+    color: #fff !important;
+}
+
+body[data-module="primeiro-emprego"] .btn-primary:hover,
+body[data-module="primeiro-emprego"] .pe-page-actions .btn-primary:hover {
+    border-color: var(--sigas-accent-strong) !important;
+    background: var(--sigas-accent-strong) !important;
+}
+
+body[data-module="primeiro-emprego"] .btn-light {
+    border-color: var(--sigas-border) !important;
+    background: #fff !important;
+    color: #425850 !important;
+}
+
+/* ================================================================
+   11. RESPONSIVIDADE
+   ================================================================ */
+
+@media (max-width: 1199.98px) {
+    body[data-module="primeiro-emprego"] .pe-kpi-grid,
+    body[data-module="primeiro-emprego"] .pe-report-kpi-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 991.98px) {
+    body[data-module="primeiro-emprego"] .pe-page-hero,
+    body[data-module="primeiro-emprego"] .pe-candidates-hero,
+    body[data-module="primeiro-emprego"] .pe-list-hero {
+        padding: 16px;
+    }
+
+    body[data-module="primeiro-emprego"] .pe-kpi-grid,
+    body[data-module="primeiro-emprego"] .pe-report-kpi-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767.98px) {
+    body[data-module="primeiro-emprego"] .pe-kpi,
+    body[data-module="primeiro-emprego"] .pe-report-kpi {
+        min-height: 78px;
+        padding: 11px 12px;
+    }
+
+    body[data-module="primeiro-emprego"] .pe-kpi strong,
+    body[data-module="primeiro-emprego"] .pe-report-kpi strong {
+        font-size: 1.15rem;
+    }
+
+    body[data-module="primeiro-emprego"] .pe-filter-panel,
+    body[data-module="primeiro-emprego"] .pe-operational-filters,
+    body[data-module="primeiro-emprego"] .pe-report-filter-panel {
+        padding: 11px;
+    }
+
+    body[data-module="primeiro-emprego"] .pe-data-table tbody td,
+    body[data-module="primeiro-emprego"] .pe-table tbody td,
+    body[data-module="primeiro-emprego"] .pe-list-table tbody td,
+    body[data-module="primeiro-emprego"] .pe-report-table tbody td {
+        font-size: .72rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    body[data-module="primeiro-emprego"] .pe-kpi-grid,
+    body[data-module="primeiro-emprego"] .pe-report-kpi-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 7px;
+    }
+
+    body[data-module="primeiro-emprego"] .pe-page-hero,
+    body[data-module="primeiro-emprego"] .pe-candidates-hero,
+    body[data-module="primeiro-emprego"] .pe-list-hero {
+        border-radius: 13px;
+    }
+}
+
+/* ==================================================================
+   SIGAS Operational UI v2 — Comida na Mesa
+   Mesmo padrão estrutural do Primeiro Emprego, identidade verde.
+   ================================================================== */
+
+body[data-module="comida-mesa"] {
+    --sigas-accent: #176b3a;
+    --sigas-accent-strong: #0f4f2b;
+    --sigas-accent-soft: #eef8f2;
+    --sigas-accent-soft-2: #f6fbf8;
+    --sigas-accent-border: #cfe6d7;
+
+    --sigas-ink: #17342d;
+    --sigas-text: #344b44;
+    --sigas-muted: #74877f;
+    --sigas-border: #dfe8e4;
+    --sigas-border-strong: #ccd9d4;
+    --sigas-surface: #ffffff;
+    --sigas-surface-soft: #f7faf9;
+    --sigas-surface-table-head: #f2f6f4;
+    --sigas-shadow: 0 10px 28px rgba(28, 61, 50, .06);
+    --sigas-shadow-sm: 0 4px 14px rgba(28, 61, 50, .045);
+
+    --sigas-success: #147a4b;
+    --sigas-success-soft: #eef8f2;
+    --sigas-warning: #b06c00;
+    --sigas-warning-soft: #fff8e9;
+    --sigas-danger: #c52d3c;
+    --sigas-danger-soft: #fff3f4;
+    --sigas-info: #246c98;
+    --sigas-info-soft: #eef7fc;
+}
+
+body[data-module="comida-mesa"] .app-content {
+    color: var(--sigas-text);
+}
+
+/* Cabeçalho do módulo: mesma geometria dos demais módulos, muda a cor */
+body[data-module="comida-mesa"] .module-hero {
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 16px;
+    padding: 18px 20px;
+    border: 1px solid var(--sigas-accent-border);
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--sigas-accent-soft-2) 0%, #fff 58%, var(--sigas-accent-soft) 100%);
+    color: var(--sigas-text);
+    box-shadow: var(--sigas-shadow-sm);
+}
+
+body[data-module="comida-mesa"] .module-hero::after {
+    right: -54px;
+    top: -78px;
+    width: 190px;
+    height: 190px;
+    border: 28px solid rgba(23, 107, 58, .055);
+    background: transparent;
+}
+
+body[data-module="comida-mesa"] .module-hero h1 {
+    margin: 3px 0 5px;
+    color: var(--sigas-accent-strong);
+    font-size: clamp(1.45rem, 2vw, 1.8rem);
+}
+
+body[data-module="comida-mesa"] .module-hero p {
+    max-width: 760px;
+    color: var(--sigas-muted);
+    font-size: .8rem;
+}
+
+body[data-module="comida-mesa"] .module-hero .eyebrow {
+    color: var(--sigas-accent) !important;
+}
+
+body[data-module="comida-mesa"] .module-hero .btn-light,
+body[data-module="comida-mesa"] .module-hero .btn-warning {
+    min-height: 42px;
+    border-radius: 11px;
+    font-size: .78rem;
+    font-weight: 750;
+}
+
+body[data-module="comida-mesa"] .module-hero .btn-warning {
+    border-color: var(--sigas-accent);
+    background: var(--sigas-accent);
+    color: #fff;
+}
+
+body[data-module="comida-mesa"] .module-hero .btn-warning:hover {
+    border-color: var(--sigas-accent-strong);
+    background: var(--sigas-accent-strong);
+    color: #fff;
+}
+
+/* KPIs compactos e neutros; cor serve como destaque, não como fundo inteiro */
+body[data-module="comida-mesa"] .module-tabs {
+    border: 1px solid var(--sigas-border);
+    border-bottom: 0;
+    border-radius: 15px 15px 0 0;
+    background: #fff;
+    box-shadow: var(--sigas-shadow-sm);
+}
+
+body[data-module="comida-mesa"] .module-tab {
+    color: var(--sigas-text);
+}
+
+body[data-module="comida-mesa"] .module-tab.active {
+    color: var(--sigas-accent-strong);
+}
+
+body[data-module="comida-mesa"] .module-tab.active::after {
+    background: var(--sigas-accent);
+}
+
+body[data-module="comida-mesa"] .compact-stats {
+    gap: 10px;
+    padding: 12px;
+    border-color: var(--sigas-border);
+    border-radius: 0 0 15px 15px;
+    box-shadow: var(--sigas-shadow-sm);
+}
+
+body[data-module="comida-mesa"] .compact-stat {
+    position: relative;
+    min-height: 82px;
+    padding: 12px 13px;
+    overflow: hidden;
+    border: 1px solid var(--sigas-border);
+    border-radius: 12px;
+    background: #fff;
+}
+
+body[data-module="comida-mesa"] .compact-stat::before {
+    content: "";
+    position: absolute;
+    top: 10px;
+    bottom: 10px;
+    left: 0;
+    width: 3px;
+    border-radius: 0 8px 8px 0;
+    background: var(--sigas-accent);
+}
+
+body[data-module="comida-mesa"] .compact-stat span {
+    color: var(--sigas-muted);
+    font-size: .66rem;
+    font-weight: 650;
+}
+
+body[data-module="comida-mesa"] .compact-stat strong {
+    margin-top: 6px;
+    color: var(--sigas-accent-strong);
+    font-size: 1.25rem;
+    letter-spacing: -.03em;
+}
+
+/* Filtros: organização do Primeiro Emprego */
+body[data-module="comida-mesa"] .filter-bar {
+    padding: 14px;
+    border-color: var(--sigas-border);
+    border-radius: 15px;
+    background: #fff;
+    box-shadow: var(--sigas-shadow-sm);
+}
+
+body[data-module="comida-mesa"] .filter-row {
+    display: grid;
+    grid-template-columns: minmax(250px, 1.4fr) minmax(170px, .8fr) minmax(170px, .8fr) minmax(170px, .8fr) auto;
+    gap: 10px;
+    align-items: end;
+}
+
+body[data-module="comida-mesa"] .filter-bar .form-label {
+    margin-bottom: 5px;
+    color: #4a5e57;
+    font-size: .68rem;
+    font-weight: 750;
+}
+
+body[data-module="comida-mesa"] .filter-bar .form-control,
+body[data-module="comida-mesa"] .filter-bar .form-select,
+body[data-module="comida-mesa"] .filter-bar .input-group .btn {
+    min-height: 44px;
+    border-color: var(--sigas-border-strong);
+    border-radius: 11px;
+    background-color: #fff;
+    color: #30463f;
+    font-size: .78rem;
+    box-shadow: none;
+}
+
+body[data-module="comida-mesa"] .filter-bar .input-group > :first-child {
+    border-radius: 11px 0 0 11px;
+}
+
+body[data-module="comida-mesa"] .filter-bar .input-group > :last-child {
+    border-radius: 0 11px 11px 0;
+}
+
+body[data-module="comida-mesa"] .filter-bar .form-control:focus,
+body[data-module="comida-mesa"] .filter-bar .form-select:focus {
+    border-color: var(--sigas-accent);
+    box-shadow: 0 0 0 3px rgba(23, 107, 58, .09);
+}
+
+body[data-module="comida-mesa"] .filter-actions {
+    display: flex;
+    gap: 7px;
+    align-items: center;
+}
+
+body[data-module="comida-mesa"] .filter-actions .btn {
+    min-height: 44px;
+    border-radius: 11px;
+    font-size: .76rem;
+    font-weight: 750;
+}
+
+body[data-module="comida-mesa"] .filter-actions .btn-primary {
+    border-color: var(--sigas-accent);
+    background: var(--sigas-accent);
+}
+
+body[data-module="comida-mesa"] .filter-actions .btn-primary:hover {
+    border-color: var(--sigas-accent-strong);
+    background: var(--sigas-accent-strong);
+}
+
+body[data-module="comida-mesa"] .advanced-filters {
+    margin-top: 10px;
+    padding-top: 12px;
+    border-top: 1px solid var(--sigas-border);
+}
+
+body[data-module="comida-mesa"] .advanced-filters.show {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(150px, .7fr);
+    gap: 10px;
+}
+
+/* Tabela: mantém o melhor do Comida na Mesa e aproxima do padrão global */
+body[data-module="comida-mesa"] .table-card {
+    overflow: hidden;
+    border: 1px solid var(--sigas-border);
+    border-radius: 15px;
+    background: #fff;
+    box-shadow: var(--sigas-shadow-sm);
+}
+
+body[data-module="comida-mesa"] .table-toolbar {
+    min-height: 58px;
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--sigas-border);
+    background: #fff;
+}
+
+body[data-module="comida-mesa"] .table-toolbar h2 {
+    color: var(--sigas-accent-strong);
+    font-weight: 800;
+}
+
+body[data-module="comida-mesa"] .table-toolbar-info,
+body[data-module="comida-mesa"] .sigas-row-hint {
+    color: var(--sigas-muted);
+    font-size: .68rem;
+}
+
+body[data-module="comida-mesa"] .sigas-row-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border: 1px solid var(--sigas-border);
+    border-radius: 999px;
+    background: #fff;
+    white-space: nowrap;
+}
+
+body[data-module="comida-mesa"] .data-table {
+    min-width: 920px;
+}
+
+body[data-module="comida-mesa"] .data-table th {
+    padding: 11px 13px;
+    border-color: var(--sigas-border);
+    background: var(--sigas-surface-table-head);
+    color: #5f716a;
+    font-size: .61rem;
+    letter-spacing: .045em;
+}
+
+body[data-module="comida-mesa"] .data-table td {
+    padding: 12px 13px;
+    border-color: var(--sigas-border);
+    color: #344b44;
+    font-size: .72rem;
+}
+
+body[data-module="comida-mesa"] .data-table tbody tr.sigas-action-row {
+    cursor: pointer;
+    transition: background .15s ease, box-shadow .15s ease;
+}
+
+body[data-module="comida-mesa"] .data-table tbody tr.sigas-action-row:hover,
+body[data-module="comida-mesa"] .data-table tbody tr.sigas-action-row:focus {
+    outline: none;
+    background: var(--sigas-accent-soft-2);
+    box-shadow: inset 3px 0 0 var(--sigas-accent);
+}
+
+body[data-module="comida-mesa"] .record-person strong {
+    color: #1f3f35;
+    font-size: .75rem;
+}
+
+body[data-module="comida-mesa"] .record-person span:not(.mini-avatar) {
+    color: var(--sigas-muted);
+    font-size: .64rem;
+}
+
+body[data-module="comida-mesa"] .mini-avatar {
+    background: var(--sigas-accent-soft);
+    color: var(--sigas-accent-strong);
+    border: 1px solid var(--sigas-accent-border);
+}
+
+body[data-module="comida-mesa"] .pagination-wrap {
+    min-height: 58px;
+    padding: 11px 15px;
+    border-top: 1px solid var(--sigas-border);
+    background: #fff;
+}
+
+body[data-module="comida-mesa"] .pagination .page-link {
+    min-width: 34px;
+    min-height: 34px;
+    display: grid;
+    place-items: center;
+    border-color: var(--sigas-border);
+    color: var(--sigas-text);
+    font-size: .7rem;
+}
+
+body[data-module="comida-mesa"] .pagination .page-item.active .page-link {
+    border-color: var(--sigas-accent);
+    background: var(--sigas-accent);
+    color: #fff;
+}
+
+/* Modal de ações: passa a ser a porta de entrada do CRUD */
+.sigas-action-modal .modal-content {
+    overflow: hidden;
+    border: 1px solid var(--sigas-border, #dfe8e4);
+    border-radius: 18px;
+    box-shadow: 0 24px 80px rgba(23, 52, 45, .18);
+}
+
+.sigas-action-modal .modal-header,
+.sigas-action-modal .modal-footer {
+    border-color: var(--sigas-border, #dfe8e4);
+}
+
+.sigas-action-modal .modal-subtitle {
+    margin-top: 3px;
+    color: var(--sigas-muted, #74877f);
+    font-size: .74rem;
+}
+
+.sigas-action-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.sigas-action-summary > div {
+    padding: 10px 12px;
+    border: 1px solid var(--sigas-border, #dfe8e4);
+    border-radius: 12px;
+    background: var(--sigas-surface-soft, #f7faf9);
+}
+
+.sigas-action-summary span,
+.sigas-action-summary strong {
+    display: block;
+}
+
+.sigas-action-summary span {
+    margin-bottom: 3px;
+    color: var(--sigas-muted, #74877f);
+    font-size: .65rem;
+}
+
+.sigas-action-summary strong {
+    color: var(--sigas-accent-strong, #17342d);
+    font-size: .78rem;
+}
+
+.sigas-action-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.sigas-action-button {
+    display: flex;
+    min-height: 76px;
+    align-items: center;
+    gap: 11px;
+    padding: 12px;
+    text-align: left;
+    border: 1px solid var(--sigas-border, #dfe8e4);
+    border-radius: 13px;
+    background: #fff;
+    color: var(--sigas-text, #344b44);
+    transition: border-color .15s ease, background .15s ease, transform .15s ease;
+}
+
+.sigas-action-button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    border-color: var(--sigas-accent, #176b3a);
+    background: var(--sigas-accent-soft-2, #f6fbf8);
+}
+
+.sigas-action-button > i {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    place-items: center;
+    border-radius: 10px;
+    background: var(--sigas-accent-soft, #eef8f2);
+    color: var(--sigas-accent, #176b3a);
+    font-size: .95rem;
+}
+
+.sigas-action-button span,
+.sigas-action-button strong,
+.sigas-action-button small {
+    display: block;
+}
+
+.sigas-action-button strong {
+    color: var(--sigas-accent-strong, #0f4f2b);
+    font-size: .76rem;
+}
+
+.sigas-action-button small {
+    margin-top: 2px;
+    color: var(--sigas-muted, #74877f);
+    font-size: .63rem;
+    line-height: 1.3;
+}
+
+.sigas-action-button--danger > i {
+    background: var(--sigas-danger-soft, #fff3f4);
+    color: var(--sigas-danger, #c52d3c);
+}
+
+.sigas-action-button--danger:hover:not(:disabled) {
+    border-color: #efc5ca;
+    background: #fff7f8;
+}
+
+.sigas-action-button:disabled,
+.sigas-action-button.is-disabled {
+    cursor: not-allowed;
+    opacity: .48;
+}
+
+/* Responsividade */
+@media (max-width: 1199.98px) {
+    body[data-module="comida-mesa"] .filter-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body[data-module="comida-mesa"] .filter-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-end;
+    }
+
+    body[data-module="comida-mesa"] .advanced-filters.show {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767.98px) {
+    body[data-module="comida-mesa"] .module-hero {
+        padding: 16px;
+    }
+
+    body[data-module="comida-mesa"] .module-hero-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        width: 100%;
+    }
+
+    body[data-module="comida-mesa"] .module-hero-actions .btn:last-child {
+        grid-column: 1 / -1;
+    }
+
+    .sigas-action-grid,
+    .sigas-action-summary {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ==================================================================
+   SIGAS Operational UI v3 — Comida na Mesa
+   Correção completa de carregamento + padronização de modais,
+   páginas genéricas, filtros e tabelas do módulo.
+   ================================================================== */
+
+body[data-module="comida-mesa"] {
+    --sigas-accent: #176b3a;
+    --sigas-accent-strong: #0f4f2b;
+    --sigas-accent-soft: #eef8f2;
+    --sigas-accent-soft-2: #f7fcf8;
+    --sigas-accent-border: #cfe6d7;
+    --sigas-text: #2f463d;
+    --sigas-muted: #71847b;
+    --sigas-border: #dde7e1;
+    --sigas-border-strong: #cbd9d1;
+    --sigas-table-head: #f2f6f4;
+    --sigas-card-radius: 16px;
+    --sigas-input-radius: 11px;
+    --sigas-shadow-sm: 0 5px 18px rgba(28, 61, 50, .05);
+    --sigas-shadow-md: 0 16px 42px rgba(28, 61, 50, .10);
+}
+
+/* ----------------------------
+   Páginas genéricas do módulo
+   ---------------------------- */
+body[data-module="comida-mesa"].frontend-module-page .frontend-module-content {
+    gap: 14px;
+}
+
+body[data-module="comida-mesa"] .frontend-page-header {
+    padding: 0;
+}
+
+body[data-module="comida-mesa"] .frontend-page-header h1 {
+    color: var(--sigas-accent-strong);
+    letter-spacing: -.035em;
+}
+
+body[data-module="comida-mesa"] .frontend-page-header p {
+    color: var(--sigas-muted);
+}
+
+body[data-module="comida-mesa"] .frontend-stat-grid {
+    gap: 10px;
+}
+
+body[data-module="comida-mesa"] .frontend-stat-card {
+    position: relative;
+    min-height: 92px;
+    padding: 13px 14px;
+    overflow: hidden;
+    border-color: var(--sigas-border);
+    border-radius: 13px;
+    box-shadow: none;
+}
+
+body[data-module="comida-mesa"] .frontend-stat-card::before {
+    content: "";
+    position: absolute;
+    top: 10px;
+    bottom: 10px;
+    left: 0;
+    width: 3px;
+    border-radius: 0 8px 8px 0;
+    background: var(--sigas-accent);
+}
+
+body[data-module="comida-mesa"] .frontend-stat-card > i {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: var(--sigas-accent-soft);
+    color: var(--sigas-accent);
+    font-size: 15px;
+}
+
+body[data-module="comida-mesa"] .frontend-stat-card span,
+body[data-module="comida-mesa"] .frontend-stat-card small {
+    color: var(--sigas-muted);
+    font-size: .68rem;
+}
+
+body[data-module="comida-mesa"] .frontend-stat-card strong {
+    margin: 4px 0;
+    color: var(--sigas-accent-strong);
+    font-size: 1.3rem;
+}
+
+body[data-module="comida-mesa"] .frontend-filter-bar {
+    grid-template-columns: minmax(240px, 1.35fr) repeat(3, minmax(150px, .75fr)) auto;
+    gap: 10px;
+    padding: 14px;
+    border-color: var(--sigas-border);
+    border-radius: 15px;
+    box-shadow: var(--sigas-shadow-sm);
+}
+
+body[data-module="comida-mesa"] .frontend-filter-bar .form-control,
+body[data-module="comida-mesa"] .frontend-filter-bar .form-select,
+body[data-module="comida-mesa"] .frontend-filter-bar .btn {
+    min-height: 44px;
+    border-color: var(--sigas-border-strong);
+    border-radius: var(--sigas-input-radius);
+    font-size: .78rem;
+    box-shadow: none;
+}
+
+body[data-module="comida-mesa"] .frontend-filter-bar .form-control:focus,
+body[data-module="comida-mesa"] .frontend-filter-bar .form-select:focus {
+    border-color: var(--sigas-accent);
+    box-shadow: 0 0 0 3px rgba(23, 107, 58, .09);
+}
+
+body[data-module="comida-mesa"] .frontend-data-card {
+    overflow: hidden;
+    border-color: var(--sigas-border);
+    border-radius: 15px;
+    box-shadow: var(--sigas-shadow-sm);
+}
+
+body[data-module="comida-mesa"] .frontend-data-card .card-heading {
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--sigas-border);
+}
+
+body[data-module="comida-mesa"] .frontend-desktop-table {
+    margin: 12px -16px -16px;
+}
+
+body[data-module="comida-mesa"] .frontend-desktop-table .table {
+    margin-bottom: 0;
+}
+
+body[data-module="comida-mesa"] .frontend-desktop-table thead th {
+    padding: 11px 13px;
+    border-color: var(--sigas-border);
+    background: var(--sigas-table-head);
+    color: #5d7067;
+    font-size: .64rem;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+body[data-module="comida-mesa"] .frontend-desktop-table tbody td {
+    padding: 12px 13px;
+    border-color: var(--sigas-border);
+    color: var(--sigas-text);
+    font-size: .74rem;
+}
+
+body[data-module="comida-mesa"] .frontend-desktop-table tbody tr {
+    transition: background .15s ease, box-shadow .15s ease;
+}
+
+body[data-module="comida-mesa"] .frontend-desktop-table tbody tr:hover {
+    background: var(--sigas-accent-soft-2);
+    box-shadow: inset 3px 0 0 var(--sigas-accent);
+}
+
+body[data-module="comida-mesa"] .frontend-pagination {
+    margin: 0 -16px -16px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--sigas-border);
+    background: #fff;
+}
+
+/* ----------------------------
+   Filtro funcional Beneficiários
+   ---------------------------- */
+body[data-module="comida-mesa"] .filter-bar {
+    margin-bottom: 14px;
+}
+
+body[data-module="comida-mesa"] .filter-bar::before {
+    content: "Filtros e consulta";
+    display: block;
+    margin-bottom: 10px;
+    color: var(--sigas-accent-strong);
+    font-size: .73rem;
+    font-weight: 800;
+    letter-spacing: .015em;
+}
+
+body[data-module="comida-mesa"] .search-field {
+    position: relative;
+}
+
+body[data-module="comida-mesa"] .search-field > i {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    left: 13px;
+    color: #7b9186;
+    transform: translateY(-50%);
+}
+
+body[data-module="comida-mesa"] .search-field .form-control {
+    padding-left: 38px;
+}
+
+body[data-module="comida-mesa"] .advanced-filters:not(.show) {
+    display: none;
+}
+
+/* ----------------------------
+   Tabela funcional Beneficiários
+   ---------------------------- */
+body[data-module="comida-mesa"] .table-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+body[data-module="comida-mesa"] .table-toolbar h2 {
+    margin: 0;
+    font-size: 1rem !important;
+}
+
+body[data-module="comida-mesa"] .data-table tbody tr.sigas-action-row td:first-child {
+    border-left: 3px solid transparent;
+}
+
+body[data-module="comida-mesa"] .data-table tbody tr.sigas-action-row:hover td:first-child,
+body[data-module="comida-mesa"] .data-table tbody tr.sigas-action-row:focus td:first-child {
+    border-left-color: var(--sigas-accent);
+}
+
+body[data-module="comida-mesa"] .status-badge,
+body[data-module="comida-mesa"] .badge-soft {
+    white-space: nowrap;
+}
+
+/* ----------------------------
+   TODAS AS MODAIS DO COMIDA NA MESA
+   ---------------------------- */
+body[data-module="comida-mesa"] .modal-content {
+    overflow: hidden;
+    border: 1px solid var(--sigas-border);
+    border-radius: 18px;
+    box-shadow: var(--sigas-shadow-md);
+}
+
+body[data-module="comida-mesa"] .modal-header {
+    align-items: flex-start;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--sigas-border);
+    background: #fff;
+}
+
+body[data-module="comida-mesa"] .modal-header .eyebrow {
+    color: var(--sigas-accent) !important;
+    font-size: .66rem;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+body[data-module="comida-mesa"] .modal-header .modal-title {
+    margin-top: 3px;
+    color: #1c2e28;
+    font-weight: 700;
+}
+
+body[data-module="comida-mesa"] .modal-subtitle {
+    margin: 4px 0 0;
+    color: var(--sigas-muted);
+    font-size: .75rem;
+}
+
+body[data-module="comida-mesa"] .modal-body {
+    padding: 18px;
+    background: #fff;
+}
+
+body[data-module="comida-mesa"] .modal-footer {
+    gap: 8px;
+    padding: 13px 18px;
+    border-top: 1px solid var(--sigas-border);
+    background: #fbfdfc;
+}
+
+body[data-module="comida-mesa"] .modal-footer .btn {
+    min-height: 40px;
+    padding-inline: 15px;
+    border-radius: 10px;
+    font-size: .76rem;
+    font-weight: 750;
+}
+
+body[data-module="comida-mesa"] .modal-footer .btn-primary {
+    border-color: var(--sigas-accent);
+    background: var(--sigas-accent);
+}
+
+body[data-module="comida-mesa"] .modal-footer .btn-primary:hover {
+    border-color: var(--sigas-accent-strong);
+    background: var(--sigas-accent-strong);
+}
+
+body[data-module="comida-mesa"] .modal-body .form-label {
+    margin-bottom: 5px;
+    color: #40584e;
+    font-size: .7rem;
+    font-weight: 750;
+}
+
+body[data-module="comida-mesa"] .modal-body .form-control,
+body[data-module="comida-mesa"] .modal-body .form-select {
+    min-height: 43px;
+    border-color: var(--sigas-border-strong);
+    border-radius: 10px;
+    font-size: .78rem;
+    box-shadow: none;
+}
+
+body[data-module="comida-mesa"] .modal-body textarea.form-control {
+    min-height: 88px;
+}
+
+body[data-module="comida-mesa"] .modal-body .form-control:focus,
+body[data-module="comida-mesa"] .modal-body .form-select:focus {
+    border-color: var(--sigas-accent);
+    box-shadow: 0 0 0 3px rgba(23, 107, 58, .09);
+}
+
+/* ----------------------------
+   Modal Hub de ações — CRUD
+   ---------------------------- */
+body[data-module="comida-mesa"] .sigas-action-modal .modal-dialog {
+    max-width: 690px;
+}
+
+body[data-module="comida-mesa"] .sigas-action-modal .modal-body {
+    padding: 16px 18px 18px;
+}
+
+body[data-module="comida-mesa"] .sigas-action-summary {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+body[data-module="comida-mesa"] .sigas-action-summary > div {
+    min-width: 0;
+    padding: 11px 12px;
+    border: 1px solid var(--sigas-border);
+    border-radius: 12px;
+    background: var(--sigas-accent-soft-2);
+}
+
+body[data-module="comida-mesa"] .sigas-action-summary span,
+body[data-module="comida-mesa"] .sigas-action-summary strong {
+    display: block !important;
+}
+
+body[data-module="comida-mesa"] .sigas-action-summary span {
+    margin-bottom: 3px;
+    color: var(--sigas-muted);
+    font-size: .66rem;
+}
+
+body[data-module="comida-mesa"] .sigas-action-summary strong {
+    overflow: hidden;
+    color: var(--sigas-accent-strong);
+    font-size: .79rem;
+    text-overflow: ellipsis;
+}
+
+body[data-module="comida-mesa"] .sigas-action-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+body[data-module="comida-mesa"] .sigas-action-button {
+    display: flex !important;
+    width: 100%;
+    min-height: 82px;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 13px;
+    appearance: none;
+    text-align: left;
+    border: 1px solid var(--sigas-border);
+    border-radius: 13px;
+    background: #fff;
+    color: var(--sigas-text);
+    box-shadow: none;
+    cursor: pointer;
+    transition: transform .15s ease, border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+
+body[data-module="comida-mesa"] .sigas-action-button:hover:not(:disabled),
+body[data-module="comida-mesa"] .sigas-action-button:focus-visible:not(:disabled) {
+    transform: translateY(-1px);
+    outline: none;
+    border-color: var(--sigas-accent);
+    background: var(--sigas-accent-soft-2);
+    box-shadow: 0 7px 20px rgba(23, 107, 58, .07);
+}
+
+body[data-module="comida-mesa"] .sigas-action-button > i {
+    display: grid !important;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    place-items: center;
+    border-radius: 11px;
+    background: var(--sigas-accent-soft);
+    color: var(--sigas-accent);
+    font-size: 1rem;
+}
+
+body[data-module="comida-mesa"] .sigas-action-button > span,
+body[data-module="comida-mesa"] .sigas-action-button strong,
+body[data-module="comida-mesa"] .sigas-action-button small {
+    display: block !important;
+    min-width: 0;
+}
+
+body[data-module="comida-mesa"] .sigas-action-button strong {
+    color: #20362d;
+    font-size: .79rem;
+    font-weight: 800;
+}
+
+body[data-module="comida-mesa"] .sigas-action-button small {
+    margin-top: 3px;
+    color: var(--sigas-muted);
+    font-size: .66rem;
+    line-height: 1.35;
+}
+
+body[data-module="comida-mesa"] .sigas-action-button--danger > i {
+    background: #fff1f2;
+    color: #b42334;
+}
+
+body[data-module="comida-mesa"] .sigas-action-button--danger:hover:not(:disabled) {
+    border-color: #edc3c8;
+    background: #fff8f8;
+}
+
+body[data-module="comida-mesa"] .sigas-action-button:disabled,
+body[data-module="comida-mesa"] .sigas-action-button.is-disabled {
+    cursor: not-allowed;
+    opacity: .45;
+    filter: grayscale(.12);
+}
+
+body[data-module="comida-mesa"] [data-cm-action-note] {
+    padding: 9px 11px;
+    border-radius: 10px;
+    background: #f7faf8;
+    color: var(--sigas-muted) !important;
+    font-size: .69rem !important;
+}
+
+/* ----------------------------
+   Consulta por CPF / Entrega
+   ---------------------------- */
+body[data-module="comida-mesa"] .scan-page-header,
+body[data-module="comida-mesa"] .page-header {
+    border-radius: 15px;
+}
+
+body[data-module="comida-mesa"] .scanner-capture-card,
+body[data-module="comida-mesa"] .manual-cpf-card,
+body[data-module="comida-mesa"] .consulta-result-card {
+    border-color: var(--sigas-border);
+    box-shadow: var(--sigas-shadow-sm);
+}
+
+/* ----------------------------
+   Responsividade
+   ---------------------------- */
+@media (max-width: 1199.98px) {
+    body[data-module="comida-mesa"] .frontend-filter-bar {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body[data-module="comida-mesa"] .frontend-search-field {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 991.98px) {
+    body[data-module="comida-mesa"] .filter-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body[data-module="comida-mesa"] .filter-row > :first-child {
+        grid-column: 1 / -1;
+    }
+
+    body[data-module="comida-mesa"] .filter-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-end;
+    }
+
+    body[data-module="comida-mesa"] .advanced-filters.show {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767.98px) {
+    body[data-module="comida-mesa"] .module-hero {
+        padding: 15px;
+    }
+
+    body[data-module="comida-mesa"] .module-hero-content,
+    body[data-module="comida-mesa"] .table-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    body[data-module="comida-mesa"] .module-hero-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        width: 100%;
+    }
+
+    body[data-module="comida-mesa"] .module-hero-actions .btn:last-child {
+        grid-column: 1 / -1;
+    }
+
+    body[data-module="comida-mesa"] .filter-row,
+    body[data-module="comida-mesa"] .advanced-filters.show,
+    body[data-module="comida-mesa"] .frontend-filter-bar,
+    body[data-module="comida-mesa"] .sigas-action-grid,
+    body[data-module="comida-mesa"] .sigas-action-summary {
+        grid-template-columns: 1fr;
+    }
+
+    body[data-module="comida-mesa"] .filter-row > :first-child,
+    body[data-module="comida-mesa"] .filter-actions,
+    body[data-module="comida-mesa"] .frontend-search-field {
+        grid-column: auto;
+    }
+
+    body[data-module="comida-mesa"] .filter-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+    }
+
+    body[data-module="comida-mesa"] .filter-actions .btn {
+        width: 100%;
+    }
+
+    body[data-module="comida-mesa"] .sigas-row-hint {
+        align-self: flex-start;
+    }
+
+    body[data-module="comida-mesa"] .sigas-action-modal .modal-dialog {
+        max-width: none;
+        margin: .75rem;
+        min-height: auto;
+    }
+
+    body[data-module="comida-mesa"] .sigas-action-modal .modal-content {
+        min-height: 0;
+        border: 1px solid var(--sigas-border);
+        border-radius: 16px;
+    }
+}

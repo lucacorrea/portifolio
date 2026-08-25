@@ -1,0 +1,47 @@
+SIGAS — MEU PRIMEIRO EMPREGO
+CONCILIAÇÃO DE PAGAMENTOS POR PDF
+
+1. BANCO
+Execute UMA VEZ:
+  database/primeiroEmprego/0006-primeiroEmprego-pagamentos-pdf.sql
+
+Em uma hospedagem que ainda não recebeu as atualizações anteriores, também pode ser usado o arquivo consolidado:
+  database/primeiroEmprego/ATUALIZAR_HOSPEDAGEM_PRIMEIRO_EMPREGO.sql
+
+2. TELA
+Acesse:
+  primeiro-emprego/importar-candidatos.php
+
+Escolha a aba "PDF de pagamentos".
+
+3. FLUXO
+- Selecione o Extrato de Lista de Pagamentos do Banco do Brasil.
+- Clique em "Analisar PDF".
+- O navegador extrai o texto com PDF.js; se o servidor possuir pdftotext, o SIGAS usa a extração do servidor como fonte preferencial.
+- O SIGAS exige que a quantidade de linhas e o valor somado confiram com o resumo do próprio PDF.
+- O CPF com menos de 11 dígitos é completado com zeros à esquerda e validado pelos dígitos verificadores.
+- CPF válido e único em pe_candidatos pode ser conciliado automaticamente.
+- CPF não localizado, inválido ou presente em mais de um cadastro não é aplicado automaticamente.
+- Divergência de nome é registrada como alerta, mas o CPF exato continua sendo o identificador da conciliação.
+
+4. O QUE O PDF PODE ALTERAR
+- pe_candidatos.status -> Contemplado (somente quando houver CPF exato e único)
+- pe_bolsas -> cria ou concilia o pagamento da competência selecionada
+
+5. O QUE O PDF NÃO ALTERA
+- nome
+- telefone
+- endereço
+- data de nascimento
+- RG
+- NIS
+- demais dados pessoais
+
+6. PROTEÇÕES
+- CSRF obrigatório
+- validação de assinatura e MIME do PDF
+- limite de 12 MB
+- hash SHA-256 para bloquear reimportação do mesmo PDF concluído
+- lista precisa estar marcada como PAGA
+- conflito de valor/data em bolsa existente não é sobrescrito
+- toda linha fica registrada em pe_pagamento_importacao_itens para auditoria

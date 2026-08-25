@@ -77,6 +77,35 @@ $canIssueReceipt = $authorization->can('recibo.emitir');
 $canReprintReceipt = $authorization->can('recibo.reimprimir');
 $canViewFiscal = $authorization->can('nota_fiscal.visualizar');
 $canIssueFiscal = $authorization->can('nota_fiscal.emitir');
+$canIssueNfse = $authorization->can('nfse.emitir');
+$fiscalHomologationReady = ['55' => false, '65' => false];
+$fiscalProductionReady = ['55' => false, '65' => false];
+
+if ($canIssueFiscal) {
+    foreach (['55', '65'] as $model) {
+        try {
+            $fiscalHomologationReady[$model] = (bool) (
+                $application
+                    ->fiscalConfiguration()
+                    ->readiness('homologacao', $model)['ready']
+                ?? false
+            );
+        } catch (Throwable) {
+            $fiscalHomologationReady[$model] = false;
+        }
+
+        try {
+            $fiscalProductionReady[$model] = (bool) (
+                $application
+                    ->fiscalConfiguration()
+                    ->readiness('producao', $model)['ready']
+                ?? false
+            );
+        } catch (Throwable) {
+            $fiscalProductionReady[$model] = false;
+        }
+    }
+}
 $fiscalDocumentsByOrder = [];
 if ($canViewFiscal || $canIssueFiscal) {
     try {
@@ -160,7 +189,14 @@ function os_money_fmt(string $value): string
 function os_payment_label(array $payment): string
 {
     $form = str_replace('_', ' ', (string) ($payment['forma_pagamento'] ?? 'pagamento'));
-    return ucfirst($form) . ' - ' . os_money_fmt((string) ($payment['valor'] ?? '0'));
+    $label = ucfirst($form) . ' - ' . os_money_fmt((string) ($payment['valor'] ?? '0'));
+    try {
+        if (!empty($payment['recebido_em'])) {
+            $label .= ' - ' . (new DateTimeImmutable((string) $payment['recebido_em']))->format('d/m/Y');
+        }
+    } catch (Throwable) {
+    }
+    return $label;
 }
 
 function os_location(ServiceOrder $order): string
@@ -236,7 +272,7 @@ function os_select_options(array $items, string $selected = '', bool $onlyActive
 
 $clientOptions = array_map(static fn(Client $client): array => ['id' => $client->id(), 'name' => $client->name(), 'active' => $client->status() === 'ativo'], $clients);
 $employeeOptions = array_map(static fn(Employee $employee): array => ['id' => $employee->id(), 'name' => $employee->displayCode() . ' - ' . $employee->name()], $employees);
-$serviceOptions = array_map(static fn(ServiceDefinition $service): array => ['id' => $service->id(), 'name' => $service->name(), 'description' => $service->description() ?? $service->name(), 'unit' => 'un', 'value' => $service->value()], $services);
+$serviceOptions = array_map(static fn(ServiceDefinition $service): array => ['id' => $service->id(), 'name' => $service->name(), 'description' => $service->description() ?? $service->name(), 'unit' => 'un', 'value' => $service->value(), 'duration_minutes' => $service->durationMinutes()], $services);
 $productOptions = array_map(static fn(Product $product): array => ['id' => $product->id(), 'name' => $product->name(), 'description' => $product->description() ?? $product->name(), 'unit' => $product->unit(), 'value' => $product->salePrice()], $products);
 ?>
 <style>
@@ -334,48 +370,56 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
         ['Finalizadas no mes', (string) ($summary['finished_month'] ?? 0), 'bi-check2-circle', '#15803D', 'concluidas'],
     ]); ?>
 
-    <form class="filter-bar" method="get" action="ordens-servico.php" data-live-filter="service-orders" data-live-regions="metrics results">
-        <div class="search-wrap"><i class="bi bi-search"></i><input class="search-input" type="search" name="search" value="<?= h($filters['search']) ?>" placeholder="Pesquisar OS, cliente, local ou funcionario"></div>
-        <input class="filter-select input-date" type="date" name="date_from" value="<?= h($filters['date_from']) ?>" aria-label="Data inicial">
-        <input class="filter-select input-date" type="date" name="date_to" value="<?= h($filters['date_to']) ?>" aria-label="Data final">
-        <select class="filter-select" name="client_id" aria-label="Cliente">
-            <option value="">Todos os clientes</option><?php foreach ($clients as $client): ?><option value="<?= h((string) $client->id()) ?>" <?= $filters['client_id'] === (string) $client->id() ? 'selected' : '' ?>><?= h($client->name()) ?></option><?php endforeach; ?>
-        </select>
-        <select class="filter-select" name="employee_id" aria-label="Técnico">
-            <option value="">Todos os técnicos</option><?php foreach ($employees as $employee): ?><option value="<?= h((string) $employee->id()) ?>" <?= $filters['employee_id'] === (string) $employee->id() ? 'selected' : '' ?>><?= h($employee->displayCode() . ' - ' . $employee->name()) ?></option><?php endforeach; ?>
-        </select>
-        <select class="filter-select" name="service_category" aria-label="Natureza do serviço">
-            <option value="">Todas as naturezas</option><?php foreach ($serviceCategories as $category): ?><option value="<?= h($category) ?>" <?= $filters['service_category'] === $category ? 'selected' : '' ?>><?= h($category) ?></option><?php endforeach; ?>
-        </select>
-        <select class="filter-select" name="service_id" aria-label="Serviço">
-            <option value="">Todos os serviços</option><?php foreach ($allServices as $service): ?><option value="<?= h((string) $service->id()) ?>" <?= $filters['service_id'] === (string) $service->id() ? 'selected' : '' ?>><?= h($service->displayCode() . ' - ' . $service->name()) ?></option><?php endforeach; ?>
-        </select>
-        <select class="filter-select" name="status" aria-label="Status">
-            <option value="">Todos os status</option>
-            <option value="exceto_canceladas" <?= $filters['status'] === 'exceto_canceladas' ? 'selected' : '' ?>>Todos exceto canceladas</option><?php foreach (['rascunho', 'aberta', 'aguardando_agendamento', 'agendada', 'em_deslocamento', 'em_execucao', 'aguardando_peca', 'finalizada', 'cancelada'] as $status): ?><option value="<?= h($status) ?>" <?= $filters['status'] === $status ? 'selected' : '' ?>><?= h(os_label_status($status)) ?></option><?php endforeach; ?>
-        </select>
-        <button class="btn-filter btn-filter-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
-        <a class="btn-filter btn-filter-ghost" href="ordens-servico.php" data-live-filter-clear><i class="bi bi-x-lg"></i> Limpar</a>
-    </form>
+    <div class="service-orders-sticky-controls">
+        <section class="service-orders-filter-card" aria-label="Pesquisa e filtros das ordens de serviço">
+            <div class="service-orders-filter-card-title"><i class="bi bi-funnel"></i><span>Pesquisa e filtros</span></div>
+            <form class="filter-bar service-orders-filter-bar" method="get" action="ordens-servico.php" data-live-filter="service-orders" data-live-regions="metrics status results">
+            <div class="search-wrap"><i class="bi bi-search"></i><input class="search-input" type="search" name="search" value="<?= h($filters['search']) ?>" placeholder="Pesquisar OS, cliente, local ou funcionario"></div>
+            <input class="filter-select input-date" type="date" name="date_from" value="<?= h($filters['date_from']) ?>" aria-label="Data inicial">
+            <input class="filter-select input-date" type="date" name="date_to" value="<?= h($filters['date_to']) ?>" aria-label="Data final">
+            <select class="filter-select" name="client_id" aria-label="Cliente">
+                <option value="">Todos os clientes</option><?php foreach ($clients as $client): ?><option value="<?= h((string) $client->id()) ?>" <?= $filters['client_id'] === (string) $client->id() ? 'selected' : '' ?>><?= h($client->name()) ?></option><?php endforeach; ?>
+            </select>
+            <select class="filter-select" name="employee_id" aria-label="Técnico">
+                <option value="">Todos os técnicos</option><?php foreach ($employees as $employee): ?><option value="<?= h((string) $employee->id()) ?>" <?= $filters['employee_id'] === (string) $employee->id() ? 'selected' : '' ?>><?= h($employee->displayCode() . ' - ' . $employee->name()) ?></option><?php endforeach; ?>
+            </select>
+            <select class="filter-select" name="service_category" aria-label="Natureza do serviço">
+                <option value="">Todas as naturezas</option><?php foreach ($serviceCategories as $category): ?><option value="<?= h($category) ?>" <?= $filters['service_category'] === $category ? 'selected' : '' ?>><?= h($category) ?></option><?php endforeach; ?>
+            </select>
+            <select class="filter-select" name="service_id" aria-label="Serviço">
+                <option value="">Todos os serviços</option><?php foreach ($allServices as $service): ?><option value="<?= h((string) $service->id()) ?>" <?= $filters['service_id'] === (string) $service->id() ? 'selected' : '' ?>><?= h($service->displayCode() . ' - ' . $service->name()) ?></option><?php endforeach; ?>
+            </select>
+            <select class="filter-select" name="status" aria-label="Status">
+                <option value="">Todos os status</option>
+                <option value="exceto_canceladas" <?= $filters['status'] === 'exceto_canceladas' ? 'selected' : '' ?>>Todos exceto canceladas</option><?php foreach (['rascunho', 'aberta', 'aguardando_agendamento', 'agendada', 'em_deslocamento', 'em_execucao', 'aguardando_peca', 'finalizada', 'cancelada'] as $status): ?><option value="<?= h($status) ?>" <?= $filters['status'] === $status ? 'selected' : '' ?>><?= h(os_label_status($status)) ?></option><?php endforeach; ?>
+            </select>
+            <button class="btn-filter btn-filter-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
+            <a class="btn-filter btn-filter-ghost" href="ordens-servico.php" data-live-filter-clear><i class="bi bi-x-lg"></i> Limpar</a>
+            </form>
+        </section>
 
-    <section class="panel" data-live-region="results">
-        <div class="panel-header budget-panel-header">
-            <div class="budget-panel-heading">
-                <div class="panel-title"><i class="bi bi-wrench-adjustable-circle"></i>Ordens de Serviço</div>
-                <nav class="budget-status-filters" aria-label="Filtrar ordens de serviço por status">
-                    <?php foreach ($statusFilterButtons as [$statusValue, $statusLabel, $statusClass, $statusStyle]): ?>
-                        <?php $isActiveStatus = $filters['status'] === $statusValue; ?>
-                        <a
-                            class="budget-status-filter budget-status-filter-<?= h($statusClass) ?> js-os-status-filter<?= $isActiveStatus ? ' active' : '' ?>"
-                            href="<?= h(os_status_filter_url($filters, $statusValue)) ?>"
-                            data-status="<?= h($statusValue) ?>"
-                            <?= $statusStyle !== '' ? 'style="' . h($statusStyle) . '"' : '' ?>
-                            <?= $isActiveStatus ? 'aria-current="true"' : '' ?>><?= h($statusLabel) ?></a>
-                    <?php endforeach; ?>
-                </nav>
+        <section class="panel service-orders-status-panel" data-live-region="status" aria-label="Atalhos de status das ordens de serviço">
+            <div class="panel-header budget-panel-header">
+                <div class="budget-panel-heading">
+                    <div class="panel-title"><i class="bi bi-wrench-adjustable-circle"></i>Ordens de Serviço</div>
+                    <nav class="budget-status-filters" aria-label="Filtrar ordens de serviço por status">
+                        <?php foreach ($statusFilterButtons as [$statusValue, $statusLabel, $statusClass, $statusStyle]): ?>
+                            <?php $isActiveStatus = $filters['status'] === $statusValue; ?>
+                            <a
+                                class="budget-status-filter budget-status-filter-<?= h($statusClass) ?> js-os-status-filter<?= $isActiveStatus ? ' active' : '' ?>"
+                                href="<?= h(os_status_filter_url($filters, $statusValue)) ?>"
+                                data-status="<?= h($statusValue) ?>"
+                                <?= $statusStyle !== '' ? 'style="' . h($statusStyle) . '"' : '' ?>
+                                <?= $isActiveStatus ? 'aria-current="true"' : '' ?>><?= h($statusLabel) ?></a>
+                        <?php endforeach; ?>
+                    </nav>
+                </div>
+                <?php if ($canCreate): ?><button class="btn-filter btn-filter-primary" type="button" data-bs-toggle="modal" data-bs-target="#modal-os"><i class="bi bi-plus-lg"></i> Nova OS</button><?php endif; ?>
             </div>
-            <?php if ($canCreate): ?><button class="btn-filter btn-filter-primary" type="button" data-bs-toggle="modal" data-bs-target="#modal-os"><i class="bi bi-plus-lg"></i> Nova OS</button><?php endif; ?>
-        </div>
+        </section>
+    </div>
+
+    <section class="panel service-orders-results-panel" data-live-region="results">
         <?php if ($orders === []): ?>
             <?php empty_state('Nenhuma OS encontrada', 'Cadastre uma OS ou ajuste os filtros.'); ?>
         <?php else: ?>
@@ -394,14 +438,78 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                     </thead>
                     <tbody>
                         <?php foreach ($orders as $order): ?>
-                            <?php $team = $teamsByOrder[$order->id()] ?? [];
+                            <?php
+                            $team = $teamsByOrder[$order->id()] ?? [];
                             $contactPhone = os_contact_phone($order);
                             $whatsappUrl = os_whatsapp_url($order);
                             $orderPayments = $paymentsByOrder[$order->id()] ?? [];
                             $receivable = $receivableBalances[$order->id()] ?? null;
                             $isOrderPaid = is_array($receivable) && (string) ($receivable['status'] ?? '') === 'paga';
+
+                            $orderHasProducts = (float) $order->productsSubtotal() > 0.00001;
+                            $orderHasServices = (float) $order->servicesSubtotal() > 0.00001;
+                            $orderHasOthers = (float) $order->othersSubtotal() > 0.00001;
+
                             $orderFiscalDocuments = $fiscalDocumentsByOrder[$order->id()] ?? [];
-                            $orderFiscalModels = array_map(static fn(array $document): string => (string) $document['modelo'], $orderFiscalDocuments); ?>
+
+                            /*
+                             * Documentos fiscais independentes por modelo.
+                             *
+                             * NF-e 55 e NFC-e 65 são documentos diferentes.
+                             * Uma NFC-e autorizada não deve bloquear a criação
+                             * de uma NF-e em homologação para teste.
+                             */
+                            $authorizedFiscalByModel = [
+                                '55' => null,
+                                '65' => null,
+                            ];
+
+                            $documentEnvironmentsByModel = [
+                                '55' => [],
+                                '65' => [],
+                            ];
+
+                            foreach ($orderFiscalDocuments as $fiscalDocument) {
+                                $documentModel = (string) ($fiscalDocument['modelo'] ?? '');
+                                $documentEnvironment = (string) ($fiscalDocument['ambiente'] ?? '');
+
+                                if (!isset($documentEnvironmentsByModel[$documentModel])) {
+                                    continue;
+                                }
+
+                                if (
+                                    $documentEnvironment !== ''
+                                    && !in_array(
+                                        $documentEnvironment,
+                                        $documentEnvironmentsByModel[$documentModel],
+                                        true
+                                    )
+                                ) {
+                                    $documentEnvironmentsByModel[$documentModel][] = $documentEnvironment;
+                                }
+
+                                if (
+                                    (string) ($fiscalDocument['processamento_status'] ?? '')
+                                    === 'autorizado'
+                                ) {
+                                    /*
+                                     * Se houver homologação e produção,
+                                     * prioriza produção para o botão principal.
+                                     */
+                                    $current = $authorizedFiscalByModel[$documentModel];
+
+                                    if (
+                                        $current === null
+                                        || $documentEnvironment === 'producao'
+                                    ) {
+                                        $authorizedFiscalByModel[$documentModel] = $fiscalDocument;
+                                    }
+                                }
+                            }
+
+                            $authorizedDanfeDocument = $authorizedFiscalByModel['55'];
+                            $authorizedDanfceDocument = $authorizedFiscalByModel['65'];
+                            ?>
                             <tr>
                                 <td>
                                     <strong><?= h($order->displayNumber()) ?></strong>
@@ -437,19 +545,216 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                                             <?php if ($canPrint): ?><li><a class="dropdown-item" href="ordem-servico-imprimir.php?id=<?= h((string) $order->id()) ?>&valores=<?= $canViewValues ? '1' : '0' ?>" target="_blank" rel="noopener"><i class="bi bi-printer"></i> Imprimir / reimprimir OS</a></li><?php endif; ?>
                                             <?php if ($canProof && $order->status() === 'finalizada'): ?><li><a class="dropdown-item" href="ordem-servico-comprovante.php?id=<?= h((string) $order->id()) ?>&valores=0" target="_blank" rel="noopener"><i class="bi bi-file-earmark-text"></i> Comprovante não fiscal sem valores</a></li><?php endif; ?>
                                             <?php if ($canProof && $canViewValues && $order->status() === 'finalizada'): ?><li><a class="dropdown-item" href="ordem-servico-comprovante.php?id=<?= h((string) $order->id()) ?>&valores=1" target="_blank" rel="noopener"><i class="bi bi-currency-dollar"></i> Comprovante não fiscal com valores</a></li><?php endif; ?>
-                                            <?php foreach ($orderFiscalDocuments as $fiscalDocument): ?>
-                                                <?php if (($fiscalDocument['processamento_status'] ?? '') === 'autorizado' && $canViewFiscal): ?>
-                                                    <li><a class="dropdown-item" href="nota-fiscal-imprimir.php?id=<?= h((string) $fiscalDocument['id']) ?>" target="_blank" rel="noopener"><i class="bi bi-printer"></i> Imprimir <?= ($fiscalDocument['modelo'] ?? '') === '55' ? 'DANFE' : 'DANFCE' ?> autorizada</a></li>
-                                                <?php else: ?>
-                                                    <li><span class="dropdown-item-text text-muted"><i class="bi bi-file-earmark-lock"></i> Modelo <?= h((string) ($fiscalDocument['modelo'] ?? '')) ?>: <?= h((string) ($fiscalDocument['processamento_status'] ?? 'rascunho')) ?></span></li>
+                                            <?php if ($canViewFiscal): ?>
+
+                                                <?php if (is_array($authorizedDanfeDocument)): ?>
+                                                    <li>
+                                                        <a
+                                                            class="dropdown-item"
+                                                            href="nota-fiscal-imprimir.php?id=<?= h((string) $authorizedDanfeDocument['id']) ?>"
+                                                            target="_blank"
+                                                            rel="noopener"
+                                                            title="DANFE padrão A4 da NF-e modelo 55 autorizada"
+                                                        >
+                                                            <i class="bi bi-file-earmark-pdf"></i>
+                                                            Imprimir DANFE
+                                                        </a>
+                                                    </li>
+                                                <?php elseif (
+                                                    $order->status() === 'finalizada'
+                                                    && $orderHasProducts
+                                                    && $canIssueFiscal
+                                                ): ?>
+                                                    <?php if ($fiscalHomologationReady['55']): ?>
+                                                        <li>
+                                                            <form
+                                                                method="post"
+                                                                action="actions/nota-fiscal-preparar.php"
+                                                            >
+                                                                <?= $csrf->field() ?>
+                                                                <?php return_to_field(); ?>
+
+                                                                <input
+                                                                    type="hidden"
+                                                                    name="ordem_servico_id"
+                                                                    value="<?= h((string) $order->id()) ?>">
+
+                                                                <input
+                                                                    type="hidden"
+                                                                    name="modelo"
+                                                                    value="55">
+
+                                                                <input
+                                                                    type="hidden"
+                                                                    name="ambiente"
+                                                                    value="homologacao">
+
+                                                                <input
+                                                                    type="hidden"
+                                                                    name="idempotency_key"
+                                                                    value="<?= h(bin2hex(random_bytes(32))) ?>">
+
+                                                                <button
+                                                                    class="dropdown-item"
+                                                                    type="submit"
+                                                                    title="Emitir uma NF-e 55 em homologação para liberar o DANFE"
+                                                                >
+                                                                    <i class="bi bi-file-earmark-check"></i>
+                                                                    Emitir NF-e 55 para DANFE
+                                                                </button>
+                                                            </form>
+                                                        </li>
+                                                    <?php else: ?>
+                                                        <li>
+                                                            <a
+                                                                class="dropdown-item"
+                                                                href="configuracoes-fiscais.php?ambiente=homologacao&amp;modelo=55"
+                                                                title="Configurar NF-e modelo 55"
+                                                            >
+                                                                <i class="bi bi-gear"></i>
+                                                                Configurar NF-e 55 para DANFE
+                                                            </a>
+                                                        </li>
+                                                    <?php endif; ?>
                                                 <?php endif; ?>
-                                            <?php endforeach; ?>
-                                            <?php if ($canIssueFiscal && $order->status() === 'finalizada'): ?>
-                                                <?php foreach (['55' => 'NF-e de peças', '65' => 'NFC-e de peças'] as $fiscalModel => $fiscalLabel): ?>
-                                                    <?php if ($orderFiscalDocuments === []): ?><li>
-                                                            <form method="post" action="actions/nota-fiscal-preparar.php"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="ordem_servico_id" value="<?= h((string) $order->id()) ?>"><input type="hidden" name="modelo" value="<?= h($fiscalModel) ?>"><input type="hidden" name="ambiente" value="homologacao"><input type="hidden" name="idempotency_key" value="<?= h(bin2hex(random_bytes(32))) ?>"><button class="dropdown-item" type="submit"><i class="bi bi-file-earmark-check"></i> Emitir <?= h($fiscalLabel) ?> em homologação</button></form>
-                                                        </li><?php endif; ?>
+
+                                                <?php if (is_array($authorizedDanfceDocument)): ?>
+                                                    <li>
+                                                        <a
+                                                            class="dropdown-item"
+                                                            href="nota-fiscal-imprimir.php?id=<?= h((string) $authorizedDanfceDocument['id']) ?>"
+                                                            target="_blank"
+                                                            rel="noopener"
+                                                            title="DANFC-e da NFC-e modelo 65 autorizada"
+                                                        >
+                                                            <i class="bi bi-receipt"></i>
+                                                            Imprimir DANFC-e
+                                                        </a>
+                                                    </li>
+                                                <?php endif; ?>
+
+                                                <?php foreach ($orderFiscalDocuments as $fiscalDocument): ?>
+                                                    <?php
+                                                    if (
+                                                        (string) ($fiscalDocument['processamento_status'] ?? '')
+                                                        === 'autorizado'
+                                                    ) {
+                                                        continue;
+                                                    }
+                                                    ?>
+                                                    <li>
+                                                        <span class="dropdown-item-text text-muted">
+                                                            <i class="bi bi-file-earmark-lock"></i>
+                                                            Modelo <?= h((string) ($fiscalDocument['modelo'] ?? '')) ?>:
+                                                            <?= h((string) ($fiscalDocument['processamento_status'] ?? 'rascunho')) ?>
+                                                        </span>
+                                                    </li>
                                                 <?php endforeach; ?>
+
+                                            <?php endif; ?>
+                                            <?php if ($order->status() === 'finalizada'): ?>
+
+                                                <?php if ($canIssueFiscal && $orderHasProducts): ?>
+                                                    <?php
+                                                    ?>
+
+                                                    <?php foreach (['55' => 'NF-e de peças', '65' => 'NFC-e de peças'] as $fiscalModel => $fiscalLabel): ?>
+                                                        <?php
+                                                        $modelEnvironments =
+                                                            $documentEnvironmentsByModel[$fiscalModel]
+                                                            ?? [];
+                                                        ?>
+
+                                                        <?php if (
+                                                            $fiscalHomologationReady[$fiscalModel]
+                                                            && !in_array(
+                                                                'homologacao',
+                                                                $modelEnvironments,
+                                                                true
+                                                            )
+                                                        ): ?>
+                                                            <li>
+                                                                <form method="post" action="actions/nota-fiscal-preparar.php">
+                                                                    <?= $csrf->field() ?>
+                                                                    <?php return_to_field(); ?>
+                                                                    <input type="hidden" name="ordem_servico_id" value="<?= h((string) $order->id()) ?>">
+                                                                    <input type="hidden" name="modelo" value="<?= h($fiscalModel) ?>">
+                                                                    <input type="hidden" name="ambiente" value="homologacao">
+                                                                    <input type="hidden" name="idempotency_key" value="<?= h(bin2hex(random_bytes(32))) ?>">
+                                                                    <button class="dropdown-item" type="submit">
+                                                                        <i class="bi bi-file-earmark-check"></i>
+                                                                        Emitir <?= h($fiscalLabel) ?> em homologação
+                                                                    </button>
+                                                                </form>
+                                                            </li>
+                                                        <?php endif; ?>
+
+                                                        <?php if (
+                                                            $fiscalProductionReady[$fiscalModel]
+                                                            && !in_array(
+                                                                'producao',
+                                                                $modelEnvironments,
+                                                                true
+                                                            )
+                                                        ): ?>
+                                                            <li>
+                                                                <form method="post" action="actions/nota-fiscal-preparar.php">
+                                                                    <?= $csrf->field() ?>
+                                                                    <?php return_to_field(); ?>
+                                                                    <input type="hidden" name="ordem_servico_id" value="<?= h((string) $order->id()) ?>">
+                                                                    <input type="hidden" name="modelo" value="<?= h($fiscalModel) ?>">
+                                                                    <input type="hidden" name="ambiente" value="producao">
+                                                                    <input type="hidden" name="idempotency_key" value="<?= h(bin2hex(random_bytes(32))) ?>">
+                                                                    <button class="dropdown-item text-danger" type="submit">
+                                                                        <i class="bi bi-cloud-check"></i>
+                                                                        Emitir <?= h($fiscalLabel) ?> em produção
+                                                                    </button>
+                                                                </form>
+                                                            </li>
+                                                        <?php endif; ?>
+                                                    <?php endforeach; ?>
+
+                                                <?php elseif ($canIssueFiscal && !$orderHasProducts): ?>
+                                                    <li>
+                                                        <span class="dropdown-item-text text-muted">
+                                                            <i class="bi bi-info-circle"></i>
+                                                            NF-e/NFC-e não se aplica: esta OS não possui peças/produtos.
+                                                        </span>
+                                                    </li>
+                                                <?php endif; ?>
+
+                                                <?php if ($canIssueNfse && $orderHasServices): ?>
+                                                    <li>
+                                                        <form method="post" action="actions/nfse-preparar.php">
+                                                            <?= $csrf->field() ?>
+                                                            <?php return_to_field(); ?>
+                                                            <input type="hidden" name="ordem_servico_id" value="<?= h((string) $order->id()) ?>">
+                                                            <input type="hidden" name="ambiente" value="homologacao">
+                                                            <input type="hidden" name="idempotency_key" value="<?= h(bin2hex(random_bytes(32))) ?>">
+                                                            <button class="dropdown-item" type="submit">
+                                                                <i class="bi bi-building-check"></i>
+                                                                Preparar NFS-e dos serviços
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                <?php elseif ($orderHasServices && !$canIssueNfse): ?>
+                                                    <li>
+                                                        <span class="dropdown-item-text text-muted">
+                                                            <i class="bi bi-info-circle"></i>
+                                                            Esta OS possui serviços; a emissão correspondente deve seguir o fluxo NFS-e.
+                                                        </span>
+                                                    </li>
+                                                <?php endif; ?>
+
+                                                <?php if ($orderHasOthers): ?>
+                                                    <li>
+                                                        <span class="dropdown-item-text text-warning">
+                                                            <i class="bi bi-exclamation-triangle"></i>
+                                                            Há itens “Outros”. Classifique-os como produto ou serviço antes da emissão fiscal.
+                                                        </span>
+                                                    </li>
+                                                <?php endif; ?>
+
                                             <?php endif; ?>
                                             <?php if ($isOrderPaid): ?>
                                                 <?php foreach ($orderPayments as $payment): ?>
@@ -548,23 +853,78 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                         </section>
                     </div>
                     <div class="tab-pane fade" id="os-tab-items">
-                        <section class="form-section">
-                            <h3 class="form-section-title">Servicos</h3>
-                            <div class="os-items" data-os-items="servico"></div><button class="btn-filter btn-filter-ghost js-os-add-item" type="button" data-type="servico"><i class="bi bi-plus-lg"></i> Adicionar servico</button>
+                        <section class="form-section item-category-card item-category-card--service">
+                            <div class="item-category-header">
+                                <div class="item-category-heading">
+                                    <span class="item-category-icon"><i class="bi bi-tools"></i></span>
+                                    <div>
+                                        <h3 class="form-section-title">Serviços</h3>
+                                        <p>Serviços executados e o local específico de cada atendimento.</p>
+                                    </div>
+                                </div>
+                                <span class="item-category-count" data-item-counter="servico">0 itens</span>
+                            </div>
+                            <div class="item-category-body">
+                                <div class="os-items item-category-items" data-os-items="servico" data-empty-label="Nenhum serviço adicionado."></div>
+                            </div>
+                            <div class="item-category-footer">
+                                <button class="btn-filter btn-filter-ghost js-os-add-item" type="button" data-type="servico"><i class="bi bi-plus-lg"></i> Adicionar serviço</button>
+                            </div>
                         </section>
-                        <section class="form-section">
-                            <h3 class="form-section-title">Produtos</h3>
-                            <div class="os-items" data-os-items="produto"></div><button class="btn-filter btn-filter-ghost js-os-add-item" type="button" data-type="produto"><i class="bi bi-plus-lg"></i> Adicionar produto</button>
+                        <section class="form-section item-category-card item-category-card--product">
+                            <div class="item-category-header">
+                                <div class="item-category-heading">
+                                    <span class="item-category-icon"><i class="bi bi-box-seam"></i></span>
+                                    <div>
+                                        <h3 class="form-section-title">Produtos / peças</h3>
+                                        <p>Materiais e peças utilizados nesta Ordem de Serviço.</p>
+                                    </div>
+                                </div>
+                                <span class="item-category-count" data-item-counter="produto">0 itens</span>
+                            </div>
+                            <div class="item-category-body">
+                                <div class="os-items item-category-items" data-os-items="produto" data-empty-label="Nenhum produto ou peça adicionado."></div>
+                            </div>
+                            <div class="item-category-footer">
+                                <button class="btn-filter btn-filter-ghost js-os-add-item" type="button" data-type="produto"><i class="bi bi-plus-lg"></i> Adicionar produto / peça</button>
+                            </div>
                         </section>
-                        <section class="form-section">
-                            <h3 class="form-section-title">Outros</h3>
-                            <div class="os-items" data-os-items="outro"></div><button class="btn-filter btn-filter-ghost js-os-add-item" type="button" data-type="outro"><i class="bi bi-plus-lg"></i> Adicionar outro item</button>
+                        <section class="form-section item-category-card item-category-card--other">
+                            <div class="item-category-header">
+                                <div class="item-category-heading">
+                                    <span class="item-category-icon"><i class="bi bi-plus-square"></i></span>
+                                    <div>
+                                        <h3 class="form-section-title">Outros itens</h3>
+                                        <p>Itens adicionais que não pertencem ao catálogo de serviços ou produtos.</p>
+                                    </div>
+                                </div>
+                                <span class="item-category-count" data-item-counter="outro">0 itens</span>
+                            </div>
+                            <div class="item-category-body">
+                                <div class="os-items item-category-items" data-os-items="outro" data-empty-label="Nenhum outro item adicionado."></div>
+                            </div>
+                            <div class="item-category-footer">
+                                <button class="btn-filter btn-filter-ghost js-os-add-item" type="button" data-type="outro"><i class="bi bi-plus-lg"></i> Adicionar outro item</button>
+                            </div>
                         </section>
                     </div>
                     <?php if ($canTeam || $canSchedule): ?><div class="tab-pane fade" id="os-tab-team">
                             <section class="form-section"><?php if ($canTeam): ?><input type="hidden" name="team_submitted" value="1"><?php endif; ?><div class="os-team-members" data-team-members data-team-editable="<?= $canTeam ? '1' : '0' ?>"></div><?php if ($canTeam): ?><button class="btn-filter btn-filter-ghost js-os-add-team-member" type="button"><i class="bi bi-plus-lg"></i> Adicionar funcionário</button><?php endif; ?><div class="form-row mt-3">
-                                    <div class="form-group"><label class="form-label">Início</label><input class="form-control-os" type="datetime-local" name="agendado_inicio" id="os-scheduled-start" <?= $canSchedule ? '' : 'disabled' ?>></div>
-                                    <div class="form-group"><label class="form-label">Fim</label><input class="form-control-os" type="datetime-local" name="agendado_fim" id="os-scheduled-end" <?= $canSchedule ? '' : 'disabled' ?>></div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="os-scheduled-start">Data e hora do serviço</label>
+                                        <input class="form-control-os" type="datetime-local" name="agendado_inicio" id="os-scheduled-start" data-os-schedule-start <?= $canSchedule ? '' : 'disabled' ?>>
+                                        <small class="text-muted">Este é o horário que realmente reserva o funcionário na agenda.</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="os-scheduled-duration">Duração prevista (minutos)</label>
+                                        <input class="form-control-os" type="number" name="agendamento_duracao_minutos" id="os-scheduled-duration" data-os-schedule-duration min="5" max="1440" step="5" inputmode="numeric" <?= $canSchedule ? '' : 'disabled' ?>>
+                                        <small class="text-muted">O sistema sugere a duração pelos serviços cadastrados; ajuste quando necessário.</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="os-scheduled-end">Término previsto</label>
+                                        <input class="form-control-os" type="datetime-local" name="agendado_fim" id="os-scheduled-end" data-os-schedule-end readonly <?= $canSchedule ? '' : 'disabled' ?>>
+                                        <small class="text-muted" data-os-schedule-summary>Somente este intervalo será protegido contra sobreposição.</small>
+                                    </div>
                                 </div>
                             </section>
                         </div><?php endif; ?>
@@ -590,8 +950,9 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
 
 <template id="os-item-template">
     <div class="form-row os-item-row"><input type="hidden" data-field="id"><input type="hidden" data-field="type"><input type="hidden" data-field="origin" value="manual"><input type="hidden" data-field="budget_item_id">
-        <div class="form-group os-reference-wrap"><label class="form-label">Referencia</label><select class="form-control-os" data-field="reference_id"></select></div>
-        <div class="form-group"><label class="form-label">Descricao</label><input class="form-control-os" data-field="description" required></div>
+        <div class="form-group os-reference-wrap"><label class="form-label" data-os-reference-label>Referência</label><select class="form-control-os" data-field="reference_id"></select></div>
+        <div class="form-group os-description-wrap"><label class="form-label" data-os-description-label>Descrição</label><input class="form-control-os" data-field="description" maxlength="255" required></div>
+        <div class="form-group os-execution-location-wrap d-none"><label class="form-label">Local / ambiente</label><input class="form-control-os" data-field="execution_location" maxlength="150" placeholder="Ex.: Recepção 2, Sala 03, Administração"></div>
         <div class="form-group"><label class="form-label">Unidade</label><input class="form-control-os" data-field="unit" value="un" required></div>
         <div class="form-group"><label class="form-label">Qtd.</label><input class="form-control-os" data-field="quantity" value="1" required></div>
         <div class="form-group"><label class="form-label">Valor unit.</label><input class="form-control-os" data-field="unit_price" value="0,00" required></div>
@@ -643,7 +1004,8 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                             <thead>
                                 <tr>
                                     <th>Tipo</th>
-                                    <th>Descricao</th>
+                                    <th>Descrição</th>
+                                    <th>Local / ambiente</th>
                                     <th>Qtd.</th>
                                     <th>Valor</th>
                                     <th>Subtotal</th>
@@ -665,8 +1027,19 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                 <h2 class="modal-title fs-5">Equipe e agendamento</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body"><?= $csrf->field() ?><?php return_to_field(); ?><input type="hidden" name="id" id="os-team-id"><?php if ($canTeam): ?><input type="hidden" name="team_submitted" value="1"><?php endif; ?><div class="os-team-members" data-team-members data-team-editable="<?= $canTeam ? '1' : '0' ?>"></div><?php if ($canTeam): ?><button class="btn-filter btn-filter-ghost js-os-add-team-member" type="button"><i class="bi bi-plus-lg"></i> Adicionar funcionário</button><?php endif; ?><div class="form-row mt-3">
-                    <div class="form-group"><label class="form-label">Início</label><input class="form-control-os" type="datetime-local" name="agendado_inicio" id="os-team-start" <?= $canSchedule ? '' : 'disabled' ?>></div>
-                    <div class="form-group"><label class="form-label">Fim</label><input class="form-control-os" type="datetime-local" name="agendado_fim" id="os-team-end" <?= $canSchedule ? '' : 'disabled' ?>></div>
+                    <div class="form-group">
+                        <label class="form-label" for="os-team-start">Data e hora do serviço</label>
+                        <input class="form-control-os" type="datetime-local" name="agendado_inicio" id="os-team-start" data-os-schedule-start <?= $canSchedule ? '' : 'disabled' ?>>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="os-team-duration">Duração prevista (minutos)</label>
+                        <input class="form-control-os" type="number" name="agendamento_duracao_minutos" id="os-team-duration" data-os-schedule-duration min="5" max="1440" step="5" inputmode="numeric" <?= $canSchedule ? '' : 'disabled' ?>>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="os-team-end">Término previsto</label>
+                        <input class="form-control-os" type="datetime-local" name="agendado_fim" id="os-team-end" data-os-schedule-end readonly <?= $canSchedule ? '' : 'disabled' ?>>
+                        <small class="text-muted" data-os-schedule-summary>Somente este intervalo será protegido contra sobreposição.</small>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer"><button class="btn-modal-cancel" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn-modal-save" type="submit">Salvar</button></div>
@@ -999,6 +1372,7 @@ $productOptions = array_map(static fn(Product $product): array => ['id' => $prod
                                     <option value="transferencia">Transferência</option>
                                     <option value="outro">Outro</option>
                                 </select></div>
+                            <div class="form-group"><label class="form-label" for="os-pay-date">Data do pagamento</label><input class="form-control-os" id="os-pay-date" name="data_pagamento" type="date" max="<?= h(date('Y-m-d')) ?>" required><small class="form-text text-muted">Informe manualmente a data em que o pagamento foi recebido.</small></div>
                             <div class="form-group" id="os-pay-installments-group" hidden><label class="form-label" for="os-pay-installments">Quantidade de parcelas</label><input class="form-control-os" id="os-pay-installments" name="quantidade_parcelas" type="number" min="1" max="60" value="1"></div>
                         </div>
                         <div class="alert alert-warning py-2" id="os-pay-boleto-warning" role="note" hidden><i class="bi bi-exclamation-triangle"></i> Registre boleto somente quando o pagamento já estiver compensado. Boleto emitido ou aguardando retorno deve permanecer como não pago.</div>

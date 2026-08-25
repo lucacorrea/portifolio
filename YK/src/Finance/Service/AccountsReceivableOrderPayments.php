@@ -14,6 +14,7 @@ trait AccountsReceivableOrderPayments
         string $value,
         string $form,
         int|string $installmentCount,
+        string $paymentDate,
         ?string $notes,
         string $paymentToken,
         int $userId
@@ -24,6 +25,7 @@ trait AccountsReceivableOrderPayments
         $paymentToken = $this->paymentToken($paymentToken);
         $form = $this->paymentForm($form);
         $installmentCount = $this->installmentCount($installmentCount, $form);
+        $receivedAt = $this->paymentDate($paymentDate);
         $notes = $this->paymentNotes($notes);
         $amount = $this->moneyToCents($value);
         if ($amount <= 0) {
@@ -46,6 +48,7 @@ trait AccountsReceivableOrderPayments
                     $this->moneyToCents((string) $existing['valor']) !== $amount
                     || (string) $existing['forma_pagamento'] !== $form
                     || (int) $existing['quantidade_parcelas'] !== $installmentCount
+                    || substr((string) $existing['recebido_em'], 0, 10) !== $receivedAt->format('Y-m-d')
                     || ($existing['observacao'] === null ? null : (string) $existing['observacao']) !== $notes
                 ) {
                     throw new InvalidArgumentException('O identificador já pertence a um pagamento com dados diferentes.');
@@ -74,6 +77,7 @@ trait AccountsReceivableOrderPayments
                 $amount,
                 $form,
                 $notes,
+                $receivedAt,
                 $userId,
                 $installmentCount,
                 $paymentToken,
@@ -116,7 +120,7 @@ trait AccountsReceivableOrderPayments
     {
         $statement = $this->connection->prepare(
             'SELECT id, ordem_servico_id, valor, forma_pagamento, quantidade_parcelas,
-                    observacao, status
+                    recebido_em, observacao, status
                FROM ordem_servico_pagamentos
               WHERE payment_token = :payment_token
               LIMIT 1

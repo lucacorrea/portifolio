@@ -11,7 +11,7 @@ require __DIR__ . '/head.php';
             <?php require __DIR__ . '/module-topbar.php'; ?>
             <main class="module-content frontend-module-content" id="mainContent">
                 <?php require dirname(__DIR__) . '/components/page-header.php'; ?>
-                <?php require dirname(__DIR__) . '/components/demo-notice.php'; ?>
+                <?php if (!empty($pageDefinition['demo'])): ?><?php require dirname(__DIR__) . '/components/demo-notice.php'; ?><?php endif; ?>
                 <?php require dirname(__DIR__) . '/components/page-content.php'; ?>
                 <?php if (!empty($pageCustomContent)): ?><?= $pageCustomContent ?><?php endif; ?>
             </main>
@@ -19,6 +19,7 @@ require __DIR__ . '/head.php';
         </div>
         <?php require __DIR__ . '/mobile-navigation.php'; ?>
     </div>
+    <?php require dirname(__DIR__) . '/components/row-actions-modal.php'; ?>
     <?php require dirname(__DIR__) . '/components/detail-modal.php'; ?>
     <?php require dirname(__DIR__) . '/components/confirmation-modal.php'; ?>
     <?php require __DIR__ . '/scripts.php'; ?>

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Fiscal\Service;
 
 use App\Fiscal\Repository\FiscalDocumentRepository;
+use App\Fiscal\Tax\FiscalIdentityValidator;
+use App\Fiscal\Tax\IbsCbsApplicabilityResolver;
 use InvalidArgumentException;
 
 final class FiscalDocumentService
@@ -12,11 +14,15 @@ final class FiscalDocumentService
     private const MODELS = ['55', '65'];
     private const ENVIRONMENTS = ['homologacao', 'producao'];
 
+    private readonly IbsCbsApplicabilityResolver $ibsCbsApplicability;
+
     public function __construct(
         private readonly FiscalDocumentRepository $documents,
         private readonly FiscalConfigurationService $configuration,
-        private readonly FiscalRuntimeReadiness $runtime
+        private readonly FiscalRuntimeReadiness $runtime,
+        ?IbsCbsApplicabilityResolver $ibsCbsApplicability = null
     ) {
+        $this->ibsCbsApplicability = $ibsCbsApplicability ?? new IbsCbsApplicabilityResolver();
     }
 
     /** @return array{id:int,created:bool,status:string} */
@@ -53,8 +59,19 @@ final class FiscalDocumentService
             ];
         }
 
-        $existingByOrigin = $this->documents->findNormalByOrder($orderId, $environment);
-        if ($existingByOrigin !== null) {
+        $existingByOrigin = $this->findNormalByOrderEnvironmentModel(
+            $orderId,
+            $environment,
+            $model
+        );
+
+        $this->assertRejectedRetryModel(
+            $existingByOrigin,
+            $model
+        );
+        if ($existingByOrigin !== null
+            && (string) $existingByOrigin['processamento_status'] !== 'rejeitado'
+        ) {
             return [
                 'id' => (int) $existingByOrigin['id'],
                 'created' => false,
@@ -92,8 +109,25 @@ final class FiscalDocumentService
                 ];
             }
 
-            $existingByOrigin = $this->documents->findNormalByOrder($orderId, $environment, true);
-            if ($existingByOrigin !== null) {
+            /*
+             * A origem fiscal é única por OS + ambiente + MODELO.
+             *
+             * Não reaproveitar NFC-e 65 quando a solicitação atual é
+             * NF-e 55, nem o contrário.
+             */
+            $existingByOrigin = $this->findNormalByOrderEnvironmentModel(
+                $orderId,
+                $environment,
+                $model
+            );
+
+            $this->assertRejectedRetryModel(
+                $existingByOrigin,
+                $model
+            );
+            if ($existingByOrigin !== null
+                && (string) $existingByOrigin['processamento_status'] !== 'rejeitado'
+            ) {
                 return [
                     'id' => (int) $existingByOrigin['id'],
                     'created' => false,
@@ -115,24 +149,73 @@ final class FiscalDocumentService
             $company = $this->documents->companySnapshot();
             $this->assertCompanySnapshot($company);
             $this->assertClientSnapshot($order, $model);
-            $this->assertItems($items, (int) $company['crt']);
+            $issueDate = date('Y-m-d');
+            $crt = (int) $company['crt'];
+            $applicability = $this->ibsCbsApplicability->resolve(
+                $issueDate,
+                $crt,
+                $model,
+                $environment,
+                strtoupper((string) $company['endereco_uf'])
+            );
+            $requiresIbsCbs = $applicability['required'];
+            $this->assertItems($items, $crt, $requiresIbsCbs);
+            $operation = $this->resolveOperation($company, $order, $items, $model);
+            if ($requiresIbsCbs) {
+                foreach ($items as $index => $item) {
+                    $rule = $this->documents->resolveIbsCbsRule(
+                        (string) $item['cst_ibs_cbs'],
+                        (string) $item['classificacao_tributaria_ibs_cbs'],
+                        $issueDate
+                    );
+                    if ($rule === null) {
+                        throw new InvalidArgumentException(
+                            'A combinação CST IBS/CBS + cClassTrib do produto ' . (string) $item['descricao']
+                            . ' não possui regra fiscal vigente cadastrada.'
+                        );
+                    }
+                    $this->ibsCbsApplicability->assertCatalogRuleSupports($rule, $model);
+                    $items[$index]['ibs_cbs_rule'] = $rule;
+                }
+            }
 
             $profile = $this->documents->lockActiveConfigurationAndSeries($environment, $model);
             $series = $profile['series'];
             $configuration = $profile['configuration'];
-            $number = (int) $series['proximo_numero'];
-            if ($number <= 0 || $number > 999999999) {
-                throw new InvalidArgumentException('A numeração da série fiscal é inválida.');
+            $exactReadiness = $this->configuration->readiness(
+                $environment,
+                $model,
+                (int) $configuration['id']
+            );
+            if (!$exactReadiness['ready']) {
+                throw new InvalidArgumentException(
+                    (string) ($exactReadiness['errors'][0] ?? 'A configuração fiscal ativa não está pronta.')
+                );
             }
-            $this->documents->reserveSeriesNumber((int) $series['id'], $number, $userId);
-            do {
-                $cnf = str_pad((string) random_int(1, 99999999), 8, '0', STR_PAD_LEFT);
-            } while ((int) $cnf === $number);
+            $isRetry = $existingByOrigin !== null;
+            if ($isRetry) {
+                $number = (int) $existingByOrigin['numero'];
+                $series = [
+                    'id' => (int) $existingByOrigin['serie_id'],
+                    'serie' => (int) $existingByOrigin['serie'],
+                ];
+                $cnf = (string) $existingByOrigin['cnf'];
+            } else {
+                $number = (int) $series['proximo_numero'];
+                if ($number <= 0 || $number > 999999999) {
+                    throw new InvalidArgumentException('A numeração da série fiscal é inválida.');
+                }
+                $this->documents->reserveSeriesNumber((int) $series['id'], $number, $userId);
+                do {
+                    $cnf = str_pad((string) random_int(1, 99999999), 8, '0', STR_PAD_LEFT);
+                } while ((int) $cnf === $number);
+            }
 
             $productsValue = $this->sumItemCents($items);
             if ($productsValue <= 0) {
                 throw new InvalidArgumentException('O valor fiscal das peças/produtos deve ser maior que zero.');
             }
+            $allocatedPayments = (new FiscalPaymentAllocator())->allocate($payments, 0, $productsValue);
             $snapshot = [
                 'schema' => 1,
                 'captured_at' => date(DATE_ATOM),
@@ -150,7 +233,9 @@ final class FiscalDocumentService
                 ],
                 'items' => array_map(fn(array $item): array => $this->sanitizeSnapshot($item), $items),
                 'services' => array_map(fn(array $item): array => $this->sanitizeSnapshot($item), $services),
-                'payments' => array_map(fn(array $payment): array => $this->sanitizeSnapshot($payment), $payments),
+                'payments' => array_map(fn(array $payment): array => $this->sanitizeSnapshot($payment), $allocatedPayments),
+                'operation' => $operation,
+                'tax_applicability' => ['ibs_cbs' => $applicability],
                 'totals' => [
                     'products' => $this->formatCents($productsValue),
                     'invoice' => $this->formatCents($productsValue),
@@ -164,10 +249,11 @@ final class FiscalDocumentService
                     'series' => (int) $series['serie'],
                     'number' => $number,
                     'cnf' => $cnf,
+                    'issued_at' => date(DATE_ATOM),
                 ],
             ];
 
-            $documentId = $this->documents->insertPrepared([
+            $preparedData = [
                 'order_id' => $orderId,
                 'receivable_id' => $order['conta_receber_id'],
                 'payment_id' => count($payments) === 1 ? (int) $payments[0]['id'] : null,
@@ -183,16 +269,28 @@ final class FiscalDocumentService
                 'invoice_value' => $this->formatCents($productsValue),
                 'snapshot_json' => json_encode($snapshot, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
                 'user_id' => $userId,
-            ]);
+            ];
+            if ($isRetry) {
+                $documentId = (int) $existingByOrigin['id'];
+                $this->documents->resetRejectedForRetry($documentId, $preparedData);
+            } else {
+                $documentId = $this->documents->insertPrepared($preparedData);
+            }
             $this->documents->addEvent(
                 $documentId,
-                'documento_preparado',
-                null,
+                $isRetry ? 'rejeicao_corrigida' : 'documento_preparado',
+                $isRetry ? 'rejeitado' : null,
                 'preparado',
                 $userId
             );
+            $this->documents->persistPaymentAllocations(
+                $orderId,
+                $model === '55' ? 'nfe' : 'nfce',
+                $documentId,
+                $allocatedPayments
+            );
 
-            return ['id' => $documentId, 'created' => true, 'status' => 'preparado'];
+            return ['id' => $documentId, 'created' => !$isRetry, 'status' => 'preparado'];
         });
     }
 
@@ -228,6 +326,62 @@ final class FiscalDocumentService
             $userId
         );
     }
+    /**
+     * Localiza somente o documento normal correspondente ao mesmo
+     * pedido fiscal: OS + ambiente + modelo.
+     *
+     * O código anterior usava apenas OS + ambiente e, por isso,
+     * uma NFC-e 65 já existente podia bloquear uma NF-e 55.
+     *
+     * @return array<string,mixed>|null
+     */
+    private function findNormalByOrderEnvironmentModel(
+        int $orderId,
+        string $environment,
+        string $model
+    ): ?array {
+        $grouped = $this->documents->listByOrderIds([$orderId]);
+        $documents = $grouped[$orderId] ?? [];
+
+        foreach ($documents as $document) {
+            if (
+                (int) ($document['ordem_servico_id'] ?? $orderId)
+                !== $orderId
+            ) {
+                continue;
+            }
+
+            if (
+                (string) ($document['ambiente'] ?? '')
+                !== $environment
+            ) {
+                continue;
+            }
+
+            if (
+                (string) ($document['modelo'] ?? '')
+                !== $model
+            ) {
+                continue;
+            }
+
+            /*
+             * Se o repositório devolver finalidade, respeita "normal".
+             * Se a coluna não vier no resumo, mantém compatibilidade.
+             */
+            if (
+                array_key_exists('finalidade', $document)
+                && (string) $document['finalidade'] !== 'normal'
+            ) {
+                continue;
+            }
+
+            return $document;
+        }
+
+        return null;
+    }
+
     /** @param array<string,mixed> $document */
     private function assertSameRequest(array $document, int $orderId, string $model, string $environment): void
     {
@@ -259,26 +413,162 @@ final class FiscalDocumentService
                 throw new InvalidArgumentException('Complete os dados fiscais da empresa antes da emissão.');
             }
         }
+        if (!FiscalIdentityValidator::isValidCnpj(
+            FiscalIdentityValidator::normalizeTaxId((string) ($company['documento'] ?? ''))
+        )) {
+            throw new InvalidArgumentException('O CNPJ da empresa é inválido para emissão fiscal.');
+        }
+        $state = strtoupper(trim((string) $company['endereco_uf']));
+        if (!FiscalConfigurationService::isValidIbgeCityCode((string) $company['codigo_municipio_ibge'], $state)
+            || !FiscalConfigurationService::isValidStateRegistration((string) $company['inscricao_estadual'], $state)
+            || preg_match('/^\d{8}$/', FiscalIdentityValidator::normalizeTaxId((string) $company['endereco_cep'])) !== 1
+        ) {
+            throw new InvalidArgumentException('CNPJ, IE, CEP ou município do emitente é incompatível com a emissão fiscal.');
+        }
     }
 
     /** @param array<string,mixed> $order */
     private function assertClientSnapshot(array $order, string $model): void
     {
+        $document = FiscalIdentityValidator::normalizeTaxId(
+            (string) ($order['cliente_documento'] ?? '')
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | NFC-e - modelo 65
+        |--------------------------------------------------------------------------
+        |
+        | O endereço do consumidor não deve bloquear a NFC-e.
+        |
+        | - consumidor não identificado continua permitido;
+        | - consumidor identificado exige CPF/CNPJ válido e nome;
+        | - endereço parcial/incompleto não bloqueia a emissão;
+        | - o builder só incluirá enderDest quando o endereço estiver
+        |   estruturalmente completo e válido.
+        |
+        */
         if ($model === '65') {
+            if ($document === '') {
+                return;
+            }
+
+            if (!FiscalIdentityValidator::isValidCpfOrCnpj($document)) {
+                throw new InvalidArgumentException(
+                    'O CPF/CNPJ do cliente é inválido para emissão da NFC-e.'
+                );
+            }
+
+            if (trim((string) ($order['cliente_nome'] ?? '')) === '') {
+                throw new InvalidArgumentException(
+                    'Consumidor identificado exige nome válido na NFC-e.'
+                );
+            }
+
+            $indicator = (string) ($order['indicador_ie'] ?? 'nao_contribuinte');
+
+            if ($indicator === 'contribuinte') {
+                $state = strtoupper(
+                    trim((string) ($order['uf'] ?? ''))
+                );
+
+                $ie = trim(
+                    (string) ($order['inscricao_estadual'] ?? '')
+                );
+
+                if (
+                    $state === ''
+                    || $ie === ''
+                    || !FiscalConfigurationService::isValidStateRegistration(
+                        $ie,
+                        $state
+                    )
+                ) {
+                    throw new InvalidArgumentException(
+                        'Cliente contribuinte exige UF e inscrição estadual válidas.'
+                    );
+                }
+            }
+
             return;
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | NF-e - modelo 55
+        |--------------------------------------------------------------------------
+        |
+        | A NF-e exige destinatário identificado e endereço fiscal completo.
+        |
+        */
+        if (!FiscalIdentityValidator::isValidCpfOrCnpj($document)) {
+            throw new InvalidArgumentException(
+                'O CPF/CNPJ do cliente é inválido para emissão fiscal.'
+            );
+        }
+
         foreach ([
-            'cliente_nome', 'cliente_documento', 'endereco', 'cliente_numero',
-            'bairro', 'cidade', 'uf', 'cep', 'cliente_codigo_municipio',
+            'cliente_nome',
+            'cliente_documento',
+            'endereco',
+            'cliente_numero',
+            'bairro',
+            'cidade',
+            'uf',
+            'cliente_codigo_municipio',
         ] as $field) {
             if (trim((string) ($order[$field] ?? '')) === '') {
-                throw new InvalidArgumentException('Complete a identificação e o endereço fiscal do cliente para emitir NF-e.');
+                throw new InvalidArgumentException(
+                    'Complete a identificação e o endereço fiscal do cliente para emitir NF-e.'
+                );
             }
+        }
+
+        $state = strtoupper(
+            trim((string) $order['uf'])
+        );
+
+        if (
+            !FiscalConfigurationService::isValidIbgeCityCode(
+                (string) $order['cliente_codigo_municipio'],
+                $state
+            )
+        ) {
+            throw new InvalidArgumentException(
+                'O município do cliente é incompatível com a UF informada.'
+            );
+        }
+
+        $cep = FiscalIdentityValidator::normalizeTaxId(
+            (string) ($order['cep'] ?? '')
+        );
+
+        if (
+            $cep !== ''
+            && preg_match('/^\d{8}$/', $cep) !== 1
+        ) {
+            throw new InvalidArgumentException(
+                'O CEP do cliente deve possuir 8 dígitos quando informado.'
+            );
+        }
+
+        $indicator = (string) ($order['indicador_ie'] ?? 'nao_contribuinte');
+
+        if (
+            $indicator === 'contribuinte'
+            && !FiscalConfigurationService::isValidStateRegistration(
+                (string) ($order['inscricao_estadual'] ?? ''),
+                $state
+            )
+        ) {
+            throw new InvalidArgumentException(
+                'Cliente contribuinte exige inscrição estadual válida.'
+            );
         }
     }
 
     /** @param array<int,array<string,mixed>> $items */
-    private function assertItems(array $items, int $crt): void
+    private function assertItems(array $items, int $crt, bool $requiresIbsCbs): void
     {
         foreach ($items as $item) {
             if (preg_match('/^\d{8}$/', (string) ($item['ncm'] ?? '')) !== 1
@@ -288,12 +578,154 @@ final class FiscalDocumentService
                 || preg_match('/^\d{2}$/', (string) ($item['cst_cofins'] ?? '')) !== 1
                 || trim((string) ($item['unidade_tributavel'] ?? '')) === ''
             ) {
-                throw new InvalidArgumentException('Complete NCM, CFOP, origem, PIS, COFINS e unidade tributável de todas as peças.');
+                throw new InvalidArgumentException('Complete NCM, CFOP, origem, PIS, COFINS, IBS/CBS, cClassTrib e unidade tributável de todas as peças.');
             }
             $icmsField = in_array($crt, [1, 2, 4], true) ? 'csosn' : 'cst_icms';
             if (trim((string) ($item[$icmsField] ?? '')) === '') {
                 throw new InvalidArgumentException('Complete o CST/CSOSN das peças utilizadas na OS.');
             }
+            if (in_array($crt, [1, 2, 4], true)) {
+                if (!in_array((string) $item['csosn'], ['102', '103', '300', '400'], true)) {
+                    throw new InvalidArgumentException('O CSOSN informado exige regra ainda não implementada.');
+                }
+            } elseif (!in_array($this->normalIcmsCst($item), ['00', '40', '41', '50'], true)) {
+                throw new InvalidArgumentException('O CST ICMS informado exige regra ainda não implementada.');
+            }
+            $this->assertPisCofinsItem($item, $crt);
+            if ($requiresIbsCbs && (
+                preg_match('/^\d{3}$/', (string) ($item['cst_ibs_cbs'] ?? '')) !== 1
+                || preg_match('/^\d{6}$/', (string) ($item['classificacao_tributaria_ibs_cbs'] ?? '')) !== 1
+            )) {
+                throw new InvalidArgumentException(
+                    'IBS/CBS é exigido para esta emissão. Complete CST IBS/CBS e cClassTrib '
+                    . 'das peças utilizadas na OS antes de transmitir para a SEFAZ.'
+                );
+            }
+        }
+    }
+
+    /**
+     * Validação centralizada de PIS/COFINS.
+     *
+     * Regras efetivamente suportadas por este emissor:
+     * - CST 01/02: tributação por alíquota percentual;
+     * - CST 04..09: grupos não tributados;
+     * - CST 99 no CRT 1: "Outras Operações", cálculo em valor zerado.
+     *
+     * CST 03 continua bloqueado porque exige qBCProd/vAliqProd reais.
+     *
+     * @param array<string,mixed> $item
+     */
+    private function assertPisCofinsItem(array $item, int $crt): void
+    {
+        $description = trim((string) ($item['descricao'] ?? ''));
+
+        if ($description === '') {
+            $description = trim((string) ($item['codigo'] ?? ''));
+        }
+
+        if ($description === '') {
+            $description = 'produto sem descrição';
+        }
+
+        foreach (
+            [
+                ['field' => 'cst_pis', 'rate' => 'aliquota_pis', 'label' => 'PIS'],
+                ['field' => 'cst_cofins', 'rate' => 'aliquota_cofins', 'label' => 'COFINS'],
+            ] as $rule
+        ) {
+            $field = (string) $rule['field'];
+            $rateField = (string) $rule['rate'];
+            $label = (string) $rule['label'];
+
+            $cst = trim((string) ($item[$field] ?? ''));
+            $rateRaw = trim((string) ($item[$rateField] ?? '0'));
+            $rate = is_numeric($rateRaw) ? (float) $rateRaw : 0.0;
+
+            if (in_array($cst, ['01', '02'], true)) {
+                continue;
+            }
+
+            if (in_array($cst, ['04', '05', '06', '07', '08', '09'], true)) {
+                continue;
+            }
+
+            if ($crt === 1 && $cst === '99') {
+                if (abs($rate) > 0.0000001) {
+                    throw new InvalidArgumentException(
+                        'Produto "' . $description . '": CST ' . $label
+                        . ' 99 no Simples Nacional está implementado com cálculo em valor zerado. '
+                        . 'A alíquota cadastrada deve ser 0,0000.'
+                    );
+                }
+
+                continue;
+            }
+
+            if ($cst === '03') {
+                throw new InvalidArgumentException(
+                    'Produto "' . $description . '": CST ' . $label
+                    . ' 03 exige tributação por quantidade (qBCProd/vAliqProd), '
+                    . 'ainda não suportada pelo cadastro atual.'
+                );
+            }
+
+            throw new InvalidArgumentException(
+                'Produto "' . $description . '": CST ' . $label . ' '
+                . ($cst !== '' ? $cst : '(vazio)')
+                . ' não possui regra segura implementada para o CRT ' . $crt . '.'
+            );
+        }
+    }
+
+    /**
+     * @param array<string,mixed> $company
+     * @param array<string,mixed> $order
+     * @param array<int,array<string,mixed>> $items
+     * @return array{nature:string,destination:int,final_consumer:int,presence:int}
+     */
+    private function resolveOperation(array $company, array $order, array $items, string $model): array
+    {
+        $issuerUf = strtoupper((string) $company['endereco_uf']);
+        $customerUf = strtoupper(trim((string) ($order['uf'] ?? '')));
+        if ($customerUf !== '' && $customerUf !== $issuerUf) {
+            throw new InvalidArgumentException(
+                'Operação interestadual ainda não possui regra CFOP/ICMS homologada neste emissor.'
+            );
+        }
+        foreach ($items as $item) {
+            if (!str_starts_with((string) $item['cfop_padrao'], '5')) {
+                throw new InvalidArgumentException('A operação interna exige CFOP iniciado por 5 em todas as peças.');
+            }
+        }
+        return [
+            'nature' => 'VENDA DE MERCADORIA',
+            'destination' => 1,
+            'final_consumer' => 1,
+            'presence' => $model === '65' ? 1 : 9,
+        ];
+    }
+
+    /** @param array<string,mixed> $item */
+    private function normalIcmsCst(array $item): string
+    {
+        $cst = trim((string) ($item['cst_icms'] ?? ''));
+        $origin = (string) ($item['origem_mercadoria'] ?? '');
+        return preg_match('/^\d{3}$/', $cst) === 1 && $cst[0] === $origin
+            ? substr($cst, 1)
+            : $cst;
+    }
+
+    /** @param array<string,mixed>|null $existing */
+    private function assertRejectedRetryModel(?array $existing, string $requestedModel): void
+    {
+        if ($existing !== null
+            && (string) $existing['processamento_status'] === 'rejeitado'
+            && (string) $existing['modelo'] !== $requestedModel
+        ) {
+            throw new InvalidArgumentException(
+                'Documento rejeitado deve ser corrigido e reenviado no mesmo modelo fiscal.'
+            );
         }
     }
 

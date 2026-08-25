@@ -539,6 +539,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
       descriptionCell.appendChild(description);
 
+      if (item.type === 'servico' && item.execution_location) {
+        const location = document.createElement('small');
+        location.className = 'd-block text-muted mt-1';
+        location.textContent = 'Local: ' + item.execution_location;
+        descriptionCell.appendChild(location);
+      }
+
       if (item.type === 'produto') {
         descriptionCell.appendChild(
           createStockBadge(item)

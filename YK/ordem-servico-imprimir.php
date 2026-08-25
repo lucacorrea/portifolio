@@ -155,18 +155,34 @@ function os_print_items(array $items, string $type, string $title, bool $withVal
         return;
     }
 
+    $withLocation = $type === 'servico';
+    $tableClasses = 'item-table ' . ($withValues ? 'with-values' : 'without-values') . ($withLocation ? ' with-location' : '');
+
     echo '<section class="document-section"><h2>' . h($title) . '</h2>';
-    echo '<table class="item-table ' . ($withValues ? 'with-values' : 'without-values') . '"><colgroup><col class="description-column"><col class="unit-column"><col class="quantity-column">';
+    echo '<table class="' . $tableClasses . '"><colgroup><col class="description-column">';
+    if ($withLocation) {
+        echo '<col class="location-column">';
+    }
+    echo '<col class="unit-column"><col class="quantity-column">';
     if ($withValues) {
         echo '<col class="money-column"><col class="money-column"><col class="money-column">';
     }
-    echo '</colgroup><thead><tr><th>Descrição</th><th>Un.</th><th>Qtd.</th>';
+    echo '</colgroup><thead><tr><th>' . ($withLocation ? 'Serviço realizado' : 'Descrição') . '</th>';
+    if ($withLocation) {
+        echo '<th>Local / ambiente</th>';
+    }
+    echo '<th>Un.</th><th>Qtd.</th>';
     if ($withValues) {
         echo '<th>Valor unit.</th><th>Desconto</th><th>Subtotal</th>';
     }
     echo '</tr></thead><tbody>';
+
     foreach ($filtered as $item) {
-        echo '<tr><td>' . h($item->description()) . '</td><td>' . h($item->unit()) . '</td><td class="numeric">' . h(number_format((float) $item->quantity(), 3, ',', '.')) . '</td>';
+        echo '<tr><td>' . h($item->displayDescription()) . '</td>';
+        if ($withLocation) {
+            echo '<td>' . h($item->executionLocation() ?? '-') . '</td>';
+        }
+        echo '<td>' . h($item->unit()) . '</td><td class="numeric">' . h(number_format((float) $item->quantity(), 3, ',', '.')) . '</td>';
         if ($withValues) {
             echo '<td class="numeric">' . h(os_print_money($item->unitPrice())) . '</td><td class="numeric">' . h(os_print_money($item->discount())) . '</td><td class="numeric">' . h(os_print_money($item->subtotal())) . '</td>';
         }
@@ -250,10 +266,20 @@ $operationalNotes = array_values(array_filter([
         .item-table th, .item-table td { padding: 3px 4px; border: 1px solid #dbe7ee; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
         .item-table th { background: #f3f8fb; color: #475569; font-size: 7.5px; letter-spacing: .02em; text-transform: uppercase; }
         .item-table .description-column { width: 40%; }
+        .item-table .location-column { width: 18%; }
         .item-table .unit-column { width: 7%; }
         .item-table .quantity-column { width: 9%; }
         .item-table .money-column { width: 14.66%; }
+        .item-table.with-location.with-values .description-column { width: 25%; }
+        .item-table.with-location.with-values .location-column { width: 17%; }
+        .item-table.with-location.with-values .unit-column { width: 6%; }
+        .item-table.with-location.with-values .quantity-column { width: 8%; }
+        .item-table.with-location.with-values .money-column { width: 14.66%; }
         .item-table.without-values .description-column { width: 84%; }
+        .item-table.with-location.without-values .description-column { width: 56%; }
+        .item-table.with-location.without-values .location-column { width: 28%; }
+        .item-table.with-location.without-values .unit-column { width: 7%; }
+        .item-table.with-location.without-values .quantity-column { width: 9%; }
         .numeric { text-align: right !important; white-space: nowrap; }
         .notes-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
         .note-card { min-width: 0; padding: 5px 6px; border: 1px solid #dbe7ee; border-radius: 4px; break-inside: avoid; }

@@ -1,0 +1,65 @@
+SIGAS COARI — MÓDULOS DE BENEFÍCIOS + GOVERNANÇA DE ACESSOS
+Data: 21/08/2026
+
+ESCOPO DESTA ENTREGA
+1. Novo módulo Kit Maternidade
+   - Painel
+   - Beneficiárias
+   - Cadastro e triagem
+   - Visitas
+   - Reuniões e atividades
+   - Avaliação
+   - Entregas
+   - Pós-parto
+   - Relatórios
+
+2. Novo módulo Aluguel Social
+   - Painel
+   - Beneficiários
+   - Solicitações
+   - Vistorias
+   - Pareceres
+   - Concessões
+   - Pagamentos
+   - Reavaliações
+   - Relatórios
+
+3. Novo módulo Benefícios Eventuais
+   - Painel
+   - Solicitações
+   - Triagem
+   - Análises e pareceres
+   - Concessões
+   - Entregas
+   - Tipos e regras
+   - Relatórios
+
+4. Novo módulo Governança e Acessos
+   - Painel
+   - Usuários
+   - Cargos
+   - Perfis e níveis
+   - Permissões
+   - Setores
+   - Matriz de acesso
+   - Auditoria
+   - Sessões
+
+ARQUITETURA DE ACESSO
+- Administrador e Suporte: acesso global.
+- Demais usuários: módulo visível conforme setor.
+- Perfil/Nível continua definindo permissões de ação.
+- Exceções individuais podem ser armazenadas em usuario_modulo_excecoes.
+- Enquanto a migration 0009 não for executada, a aplicação preserva o comportamento atual para evitar bloqueio acidental.
+- Após executar a migration, uma matriz inicial é criada para SEMAS Sede, CRAS 1, CRAS 2, CREAS, Casa do Cidadão, TI/Suporte e Administração.
+- Governança e Acessos não aparece para usuários comuns.
+
+INSTALAÇÃO
+1. Fazer backup dos arquivos e do banco.
+2. Substituir os arquivos respeitando as pastas.
+3. Executar database/0009-governanca-acessos-modulos.sql uma única vez.
+4. Fazer Ctrl+F5 no navegador.
+5. Entrar com Administrador/Suporte e revisar a matriz de acesso.
+
+OBSERVAÇÃO
+Os novos módulos de benefícios desta etapa são layouts operacionais estruturados e seguem o Design System do SIGAS. Os fluxos, telas e pontos de integração com cadastro central/ANEXO estão definidos visualmente. A persistência específica de Kit Maternidade, Aluguel Social e Benefícios Eventuais será implementada na etapa funcional, sem alterar a arquitetura visual desta entrega.

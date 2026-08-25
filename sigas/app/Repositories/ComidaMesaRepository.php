@@ -185,6 +185,45 @@ final class ComidaMesaRepository
         }
     }
 
+    /** @return list<array<string,mixed>> */
+    public function exportRegistrations(ComidaMesaFilter $filter, int $limit = 20000): array
+    {
+        $limit = max(1, min(50000, $limit));
+        [$where, $params] = $this->filterWhere($filter);
+        $deliveryJoin = $this->deliveryJoin($filter->competenceId, 'entrega_competencia_id');
+
+        if ($filter->competenceId !== null) {
+            $params['entrega_competencia_id'] = $filter->competenceId;
+        }
+
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT i.id AS inscricao_id, f.id AS familia_id, f.codigo AS familia_codigo,
+                    p.id AS pessoa_id, p.nome AS responsavel_nome, p.cpf, p.nis, p.rg, p.data_nascimento, p.telefone, p.email,
+                    f.zona, f.logradouro, f.numero, f.complemento, f.bairro, f.comunidade, f.ponto_referencia, f.cep,
+                    f.quantidade_membros, f.renda_familiar,
+                    i.polo_id, polo.nome AS polo_nome, polo.ativo AS polo_ativo, i.status AS inscricao_status, i.prioridade,
+                    i.data_inscricao, i.data_aprovacao, i.motivo_suspensao, i.observacao, i.atualizado_em,
+                    entrega.id AS entrega_id, entrega.status AS entrega_status, entrega.entregue_em AS entrega_data,
+                    entrega.recebedor_nome, entrega.motivo_cancelamento, entrega_operador.nome AS entrega_operador_nome
+                 FROM comida_mesa_inscricoes i
+                 INNER JOIN familias f ON f.id = i.familia_id
+                 INNER JOIN pessoas p ON p.id = f.responsavel_pessoa_id
+                 LEFT JOIN comida_mesa_polos polo ON polo.id = i.polo_id
+                 {$deliveryJoin}
+                 LEFT JOIN usuarios entrega_operador ON entrega_operador.id = entrega.entregue_por
+                 WHERE {$where}
+                 ORDER BY CASE i.prioridade WHEN 'alta' THEN 1 WHEN 'normal' THEN 2 WHEN 'baixa' THEN 3 ELSE 4 END, p.nome, i.id
+                 LIMIT {$limit}"
+            );
+            $this->bind($stmt, $params);
+            $stmt->execute();
+            return $stmt->fetchAll() ?: [];
+        } catch (PDOException $exception) {
+            throw $this->fail('exportRegistrations', 'Falha ao preparar a exportação das famílias.', $exception);
+        }
+    }
+
     /** @return array<string,mixed>|null */
     public function findByCpf(string $cpf, ?int $competenceId): ?array
     {
@@ -498,6 +537,96 @@ final class ComidaMesaRepository
              WHERE d.id = :id AND a.ativo = 1 LIMIT 1",
             ['id' => $documentId]
         );
+    }
+
+    /** @return list<array<string,mixed>> */
+    public function listPoles(bool $includeInactive = true): array
+    {
+        $where = $includeInactive ? '1 = 1' : 'p.ativo = 1';
+
+        return $this->fetchAll(
+            "SELECT
+                p.id,
+                p.nome,
+                p.slug,
+                p.endereco,
+                p.ativo,
+                p.criado_em,
+                p.atualizado_em,
+                COUNT(i.id) AS familias_vinculadas,
+                SUM(CASE WHEN i.status = 'ativa' THEN 1 ELSE 0 END) AS beneficiarias_ativas
+             FROM comida_mesa_polos p
+             LEFT JOIN comida_mesa_inscricoes i ON i.polo_id = p.id
+             WHERE {$where}
+             GROUP BY p.id, p.nome, p.slug, p.endereco, p.ativo, p.criado_em, p.atualizado_em
+             ORDER BY p.ativo DESC, p.nome ASC"
+        );
+    }
+
+    /** @return array<string,mixed>|null */
+    public function findPoleById(int $id): ?array
+    {
+        return $this->fetchOne(
+            'SELECT id, nome, slug, endereco, ativo, criado_em, atualizado_em
+             FROM comida_mesa_polos
+             WHERE id = :id
+             LIMIT 1',
+            ['id' => $id]
+        );
+    }
+
+    /** @return array<string,mixed>|null */
+    public function findPoleBySlug(string $slug, ?int $exceptId = null): ?array
+    {
+        $sql = 'SELECT id, nome, slug, endereco, ativo FROM comida_mesa_polos WHERE slug = :slug';
+        $params = ['slug' => $slug];
+        if ($exceptId !== null) {
+            $sql .= ' AND id <> :except_id';
+            $params['except_id'] = $exceptId;
+        }
+        $sql .= ' LIMIT 1';
+
+        return $this->fetchOne($sql, $params);
+    }
+
+    /** @param array<string,mixed> $data */
+    public function savePole(array $data): int
+    {
+        $id = isset($data['id']) && is_numeric($data['id']) ? (int) $data['id'] : 0;
+
+        if ($id > 0) {
+            $this->execute(
+                'UPDATE comida_mesa_polos
+                 SET nome = :nome,
+                     slug = :slug,
+                     endereco = :endereco,
+                     ativo = :ativo,
+                     atualizado_em = CURRENT_TIMESTAMP
+                 WHERE id = :id',
+                [
+                    'id' => $id,
+                    'nome' => $data['nome'],
+                    'slug' => $data['slug'],
+                    'endereco' => $data['endereco'],
+                    'ativo' => $data['ativo'],
+                ]
+            );
+
+            return $id;
+        }
+
+        $this->execute(
+            'INSERT INTO comida_mesa_polos (nome, slug, endereco, ativo)
+             VALUES (:nome, :slug, :endereco, :ativo)',
+            [
+                'nome' => $data['nome'],
+                'slug' => $data['slug'],
+                'endereco' => $data['endereco'],
+                'ativo' => $data['ativo'],
+            ]
+        );
+
+        return (int) $this->pdo->lastInsertId();
     }
 
     public function addHistory(int $registrationId, ?int $userId, string $action, ?string $description, ?array $before, ?array $after): int

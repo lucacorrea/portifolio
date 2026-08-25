@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use DateTimeImmutable;
+use DateTimeZone;
 use PDO;
 use PDOException;
 use RuntimeException;
+use Throwable;
 
 final class Database
 {
@@ -18,7 +21,8 @@ final class Database
         private readonly string $database,
         private readonly string $username,
         private readonly string $password,
-        private readonly string $charset = 'utf8mb4'
+        private readonly string $charset = 'utf8mb4',
+        private readonly ?string $timezone = null
     ) {
     }
 
@@ -69,6 +73,8 @@ final class Database
                 ]
             );
 
+            $this->configureSessionTimezone($this->connection);
+
             return $this->connection;
         } catch (PDOException $exception) {
             $this->logFailure();
@@ -79,6 +85,32 @@ final class Database
                 $exception
             );
         }
+    }
+
+    private function configureSessionTimezone(PDO $connection): void
+    {
+        $timezoneName = trim((string) ($this->timezone ?? ''));
+
+        if ($timezoneName === '') {
+            $timezoneName = date_default_timezone_get();
+        }
+
+        try {
+            $timezone = new DateTimeZone($timezoneName);
+            $offset = (new DateTimeImmutable('now', $timezone))->format('P');
+        } catch (Throwable $exception) {
+            throw new RuntimeException(
+                'Fuso horario da aplicacao invalido.',
+                0,
+                $exception
+            );
+        }
+
+        if (!preg_match('/^[+-](?:0\\d|1\\d|2[0-3]):[0-5]\\d$/', $offset)) {
+            throw new RuntimeException('Offset de fuso horario invalido.');
+        }
+
+        $connection->exec("SET SESSION time_zone = '" . $offset . "'");
     }
 
     private function requiredString(string $value): string

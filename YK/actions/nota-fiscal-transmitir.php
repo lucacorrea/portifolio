@@ -2,24 +2,78 @@
 
 declare(strict_types=1);
 
+use App\Fiscal\Service\FiscalSafeLogger;
+
 require __DIR__ . '/os-action-common.php';
 
 os_require_post_request();
-[$application, $session] = os_action_context('nota_fiscal.emitir');
+
+[$application, $session] =
+    os_action_context(
+        'nota_fiscal.emitir'
+    );
 
 try {
-    $user = $application->authorization()->requireLogin();
-    $result = $application->fiscalAuthorization()->transmit(
-        os_posted_positive_int('documento_fiscal_id'),
-        $user->id()
+    $user =
+        $application
+        ->authorization()
+        ->requireLogin();
+
+    $documentId =
+        os_posted_positive_int(
+            'documento_fiscal_id'
+        );
+
+    $result =
+        $application
+        ->fiscalAuthorization()
+        ->transmit(
+            $documentId,
+            $user->id()
+        );
+
+    $type =
+        $result['status'] === 'autorizado'
+        ? 'success'
+        : (
+            $result['status']
+            === 'pendente_reconsulta'
+            ? 'warning'
+            : 'danger'
+        );
+
+    $message =
+        (
+            $result['cstat'] === ''
+            ? ''
+            : 'SEFAZ '
+            . $result['cstat']
+            . ': '
+        )
+        . $result['reason'];
+
+    $session->flash(
+        $type,
+        $message
     );
-    $type = $result['status'] === 'autorizado' ? 'success' : ($result['status'] === 'pendente_reconsulta' ? 'warning' : 'danger');
-    $session->flash($type, ($result['cstat'] === '' ? '' : 'SEFAZ ' . $result['cstat'] . ': ') . $result['reason']);
-} catch (InvalidArgumentException $exception) {
-    $session->flash('danger', $exception->getMessage());
+} catch (
+    InvalidArgumentException $exception
+) {
+    $session->flash(
+        'danger',
+        $exception->getMessage()
+    );
 } catch (Throwable $exception) {
-    error_log('Fiscal transmission action failed [' . get_class($exception) . '].');
-    $session->flash('danger', 'Não foi possível transmitir o documento fiscal. Consulte o histórico antes de repetir.');
+    $correlationId = FiscalSafeLogger::record($exception, 'transmit');
+
+    $session->flash(
+        'danger',
+        'Não foi possível transmitir o documento fiscal. '
+            . 'Referência: ' . $correlationId . '.'
+    );
 }
 
-os_redirect_back($application, 'faturamento.php');
+os_redirect_back(
+    $application,
+    'faturamento.php'
+);

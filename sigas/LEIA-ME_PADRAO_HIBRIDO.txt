@@ -1,0 +1,65 @@
+SIGAS — PADRÃO VISUAL HÍBRIDO v2 (PILOTO NO PRIMEIRO EMPREGO)
+================================================================
+
+OBJETIVO
+-------
+Testar no módulo Coari Meu Primeiro Emprego um padrão visual que junta:
+
+DO COMIDA NA MESA
+- tabelas mais compactas e legíveis;
+- cabeçalho de tabela mais claro;
+- separação de linhas mais elegante;
+- toolbar/paginação mais integradas à tabela;
+- maior densidade de informação sem poluir a tela.
+
+DO PRIMEIRO EMPREGO
+- filtros mais completos e organizados;
+- KPIs com hierarquia de atenção;
+- cores semânticas para pendências;
+- clique na linha para abrir ações;
+- CRUD e ações em modais.
+
+REGRA IMPORTANTE
+----------------
+NENHUMA FUNÇÃO DE MODAL/CRUD FOI REMOVIDA.
+Este pacote não altera JavaScript nem regras de negócio.
+
+Continuam funcionando:
+- clique na linha;
+- modal de ações;
+- visualizar;
+- cadastrar;
+- editar;
+- revisar;
+- confirmar exclusão/encerramento;
+- demais ações específicas de cada página.
+
+ARQUIVOS
+--------
+1) assets/css/sigas-operational-ui.css
+   Novo design system visual piloto.
+
+2) frontend/layouts/head.php
+   Alteração mínima para carregar o novo CSS SOMENTE no Primeiro Emprego.
+
+COMO INSTALAR
+-------------
+Extraia o ZIP na raiz /sigas/, preservando os caminhos.
+Depois force Ctrl+F5 no navegador.
+
+BANCO DE DADOS
+--------------
+Não executar SQL.
+Não há mudança de banco.
+
+POR QUE FOI FEITO ASSIM
+-----------------------
+O piloto foi separado do CSS atual para ser fácil comparar e reverter.
+Se o padrão for aprovado, o próximo passo é transformar este arquivo em
+estilo global e cada módulo fornecer somente suas variáveis de tema:
+
+Primeiro Emprego -> azul/petróleo
+Comida na Mesa   -> verde
+Demais módulos   -> sua cor institucional
+
+A estrutura, tabelas, filtros, modais e densidade visual permanecem iguais.

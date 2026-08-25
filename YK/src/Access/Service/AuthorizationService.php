@@ -29,6 +29,12 @@ final class AuthorizationService
             return false;
         }
 
+        if ($permission === 'nota_fiscal.ativar_producao'
+            && $user->profileName() === 'Administrador'
+        ) {
+            return false;
+        }
+
         return in_array($permission, $user->permissions(), true);
     }
 

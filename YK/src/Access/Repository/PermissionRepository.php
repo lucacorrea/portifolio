@@ -96,6 +96,26 @@ final class PermissionRepository
     }
 
     /**
+     * O perfil protegido não recebe permissões cujo próprio domínio exige
+     * autorização humana mais restrita que a administração operacional.
+     *
+     * @return int[]
+     */
+    public function findProtectedProfileIds(): array
+    {
+        $statement = $this->connection->prepare(
+            "SELECT id
+               FROM permissoes
+              WHERE status = 'ativo'
+                AND codigo <> 'nota_fiscal.ativar_producao'
+              ORDER BY grupo ASC, modulo ASC, ordem ASC, nome ASC"
+        );
+        $statement->execute();
+
+        return array_map('intval', $statement->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    /**
      * @param int[] $ids
      */
     public function countActiveByIds(array $ids): int

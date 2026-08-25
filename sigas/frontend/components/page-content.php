@@ -20,4 +20,4 @@ require __DIR__ . '/filter-bar.php';
     ?>
 <?php endforeach; ?>
 </div>
-<?php require __DIR__ . '/state-gallery.php'; ?>
+<?php if (!empty($pageDefinition['show_states'])): ?><?php require __DIR__ . '/state-gallery.php'; ?><?php endif; ?>

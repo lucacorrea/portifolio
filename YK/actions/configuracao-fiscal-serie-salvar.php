@@ -6,8 +6,9 @@ require __DIR__ . '/os-action-common.php';
 
 os_require_post_request();
 
+$requestedEnvironment = trim((string) ($_POST['ambiente'] ?? 'homologacao'));
 [$application, $session] = os_action_context(
-    'nota_fiscal.configurar'
+    $requestedEnvironment === 'producao' ? 'nota_fiscal.ativar_producao' : 'nota_fiscal.configurar'
 );
 
 try {
@@ -24,29 +25,15 @@ try {
 
     $session->flash(
         'success',
-        'Série de homologação atualizada.'
+        'Série de ' . $requestedEnvironment . ' atualizada.'
     );
 } catch (InvalidArgumentException $exception) {
-    error_log(
-        'Fiscal series validation failed: '
-        . $exception->getMessage()
-    );
-
     $session->flash(
         'danger',
         $exception->getMessage()
     );
 } catch (Throwable $exception) {
-    error_log(
-        'Fiscal series save failed ['
-        . get_class($exception)
-        . ']: '
-        . $exception->getMessage()
-        . ' | File: '
-        . $exception->getFile()
-        . ':'
-        . $exception->getLine()
-    );
+    error_log('Fiscal series save failed [' . get_class($exception) . '].');
 
     $session->flash(
         'danger',

@@ -9,6 +9,7 @@ use App\DTO\ComidaMesaCadastroData;
 use App\DTO\ComidaMesaCompetenciaData;
 use App\DTO\ComidaMesaEntregaData;
 use App\DTO\ComidaMesaFilter;
+use App\DTO\ComidaMesaPoloData;
 use App\Repositories\ComidaMesaRepository;
 use App\Core\Logger;
 use DateTimeImmutable;
@@ -270,6 +271,55 @@ final class ComidaMesaService
             'criado_por' => $userId,
         ]);
         $audit->record($userId, null, 'competencia_salva', 'comida_mesa', $this->formatCompetence($data->month, $data->year));
+
+        return $id;
+    }
+
+    public function savePole(ComidaMesaPoloData $data, int $userId, AuditService $audit): int
+    {
+        $fields = $data->fieldErrors;
+        if (mb_strlen($data->name) < 3) {
+            $fields['nome'] = 'Informe um nome com pelo menos 3 caracteres.';
+        } elseif (mb_strlen($data->name) > 150) {
+            $fields['nome'] = 'Nome deve ter no máximo 150 caracteres.';
+        }
+        if ($data->address !== null && mb_strlen($data->address) > 255) {
+            $fields['endereco'] = 'Endereço deve ter no máximo 255 caracteres.';
+        }
+        if ($data->id !== null && $this->repository->findPoleById($data->id) === null) {
+            throw $this->problem('Polo não localizado.', 404);
+        }
+        if ($fields !== []) {
+            throw $this->validation($fields);
+        }
+
+        $slug = $this->slugify($data->name);
+        if ($slug === '') {
+            throw $this->problem('Não foi possível gerar a identificação do polo.', 422);
+        }
+        if ($this->repository->findPoleBySlug($slug, $data->id) !== null) {
+            throw $this->problem('Já existe um polo com este nome.', 409);
+        }
+
+        $before = $data->id === null ? null : $this->repository->findPoleById($data->id);
+        $id = $this->repository->savePole([
+            'id' => $data->id,
+            'nome' => $data->name,
+            'slug' => $slug,
+            'endereco' => $data->address,
+            'ativo' => $data->active ? 1 : 0,
+        ]);
+        $after = $this->repository->findPoleById($id);
+
+        $audit->record(
+            $userId,
+            null,
+            $data->id === null ? 'polo_criado' : 'polo_editado',
+            'comida_mesa',
+            $data->name,
+            $before,
+            $after
+        );
 
         return $id;
     }
@@ -772,6 +822,21 @@ final class ComidaMesaService
     private function problem(string $message, int $status): RuntimeException
     {
         return new RuntimeException($message, $status);
+    }
+
+    private function slugify(string $value): string
+    {
+        $value = trim(mb_strtolower($value, 'UTF-8'));
+        if ($value === '') {
+            return '';
+        }
+
+        $transliterated = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+        $normalized = is_string($transliterated) ? $transliterated : $value;
+        $normalized = strtolower($normalized);
+        $normalized = preg_replace('/[^a-z0-9]+/', '-', $normalized) ?? '';
+
+        return trim($normalized, '-');
     }
 
     private function stringValue(mixed $value): ?string

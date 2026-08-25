@@ -285,7 +285,7 @@ final class ServiceOrderFinalizationService
             }
 
             $description = $this->requiredText(
-                $storedItem->description(),
+                $storedItem->displayDescription(),
                 255
             );
 
