@@ -299,6 +299,18 @@
                         <span class="text-muted text-info">Taxa Maquininha</span>
                         <span class="fw-bold text-info" id="totalTax">+ R$ 0,00</span>
                     </div>
+                    <div class="mb-3 p-3 bg-white border rounded shadow-sm" style="border-left: 5px solid #16a34a !important;">
+                        <div class="d-flex justify-content-between align-items-center gap-3">
+                            <div>
+                                <span class="d-block fw-bold text-success">Total final do orçamento</span>
+                                <small class="text-muted extra-small">Opcional. Só altera o orçamento, não a venda.</small>
+                            </div>
+                            <div class="input-group" style="width: 170px;">
+                                <span class="input-group-text bg-success bg-opacity-10 border-success text-success fw-bold">R$</span>
+                                <input type="number" id="orcamentoTotalManual" class="form-control text-end fw-bold border-success" min="0" step="0.01" placeholder="Auto" onfocus="this.select()">
+                            </div>
+                        </div>
+                    </div>
                     <hr>
                     <div class="d-flex justify-content-between align-items-center">
                         <h4 class="mb-0 fw-bold">TOTAL</h4>
@@ -1595,6 +1607,7 @@ function renderCart() {
     if (cart.length === 0) {
         cartEmptyState.classList.remove('d-none');
         btnCheckout.disabled = true;
+        clearPdvManualOrcamentoTotal();
     } else {
         cartEmptyState.classList.add('d-none');
         btnCheckout.disabled = false;
@@ -2002,6 +2015,12 @@ async function importPreSale(code) {
         
         currentPvId = pv.id;
         currentPvCode = pv.codigo;
+        const manualTotalInput = document.getElementById('orcamentoTotalManual');
+        if (manualTotalInput) {
+            manualTotalInput.value = (pv.codigo && pv.codigo.startsWith('ORC-'))
+                ? parseFloat(pv.valor_total || 0).toFixed(2)
+                : '';
+        }
         
         // Auto-select customer if present in pre-sale
         if (pv.cliente_id) {
@@ -2091,6 +2110,7 @@ async function saveCurrentSaleAsPreSale() {
             currentPvId = null;
             currentPvCode = null;
             clearCustomer();
+            clearPdvManualOrcamentoTotal();
             document.getElementById('discountPercent').value = 0;
             renderCart();
             pdvSearch.focus();
@@ -2119,6 +2139,21 @@ function formatOrcamentoStockWarnings(warnings) {
     return `\n\nAtenção: este orçamento foi salvo mesmo com quantidade acima do estoque:\n${lines.join('\n')}`;
 }
 
+function getPdvManualOrcamentoTotal() {
+    const input = document.getElementById('orcamentoTotalManual');
+    if (!input || input.value.trim() === '') return null;
+    return Math.max(0, parseCurrencyToFloat(input.value));
+}
+
+function getPdvCalculatedOrcamentoTotal() {
+    return parseCurrencyToFloat(finalTotal.innerText || '0');
+}
+
+function clearPdvManualOrcamentoTotal() {
+    const input = document.getElementById('orcamentoTotalManual');
+    if (input) input.value = '';
+}
+
 async function saveCurrentSaleAsOrcamento() {
     if (cart.length === 0) {
         alert("O carrinho está vazio.");
@@ -2130,9 +2165,8 @@ async function saveCurrentSaleAsOrcamento() {
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
 
-    const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
-    const discountPercent = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
-    const total = subtotal * (1 - (discountPercent / 100));
+    const manualTotal = getPdvManualOrcamentoTotal();
+    const total = manualTotal !== null ? manualTotal : getPdvCalculatedOrcamentoTotal();
 
     let clientAvulso = selectedCustomerName;
     let clientCpf = selectedCustomerCPF;
@@ -2178,6 +2212,7 @@ async function saveCurrentSaleAsOrcamento() {
             currentPvId = null;
             currentPvCode = null;
             clearCustomer();
+            clearPdvManualOrcamentoTotal();
             document.getElementById('discountPercent').value = 0;
             renderCart();
             pdvSearch.focus();
@@ -3779,6 +3814,7 @@ async function processarCheckout() {
             showSuccessModal(result.sale_id, data.total, result.tipo_nota || data.tipo_nota, troco, valorRecebido);
             cart = [];
             currentPvId = null;
+            clearPdvManualOrcamentoTotal();
             isAuthorized = false;
             authSupervisorId = null;
             authSupervisorCredential = null;

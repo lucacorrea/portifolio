@@ -105,6 +105,18 @@
                         <span class="text-muted">Subtotal</span>
                         <span class="fw-bold" id="pv_subtotal">R$ 0,00</span>
                     </div>
+                    <div class="mb-3 p-3 bg-white border rounded shadow-sm" style="border-left: 5px solid #16a34a !important;">
+                        <div class="d-flex justify-content-between align-items-center gap-3">
+                            <div>
+                                <span class="d-block fw-bold text-success">Total final do orçamento</span>
+                                <small class="text-muted extra-small">Opcional. Só altera o orçamento, não a pré-venda.</small>
+                            </div>
+                            <div class="input-group" style="width: 170px;">
+                                <span class="input-group-text bg-success bg-opacity-10 border-success text-success fw-bold">R$</span>
+                                <input type="number" id="pv_orcamento_total_manual" class="form-control text-end fw-bold border-success" min="0" step="0.01" placeholder="Auto" onfocus="this.select()">
+                            </div>
+                        </div>
+                    </div>
                     <hr>
                     <div class="d-flex justify-content-between align-items-center">
                         <h4 class="mb-0 fw-bold">TOTAL</h4>
@@ -523,6 +535,7 @@ function renderPVCart() {
 
     if (pvCart.length === 0) {
         pvCartEmptyState.classList.remove('d-none');
+        clearPvManualOrcamentoTotal();
     } else {
         pvCartEmptyState.classList.add('d-none');
     }
@@ -603,12 +616,38 @@ function formatOrcamentoStockWarnings(warnings) {
     return `\n\nAtenção: este orçamento foi salvo mesmo com quantidade acima do estoque:\n${lines.join('\n')}`;
 }
 
+function parsePvCurrencyToFloat(valStr) {
+    if (valStr === undefined || valStr === null || valStr === '') return 0;
+    if (typeof valStr === 'number') return valStr;
+    valStr = valStr.toString();
+    if (valStr.includes(',')) {
+        valStr = valStr.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.');
+    }
+    return parseFloat(valStr) || 0;
+}
+
+function getPvCartTotal() {
+    return pvCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
+}
+
+function getPvManualOrcamentoTotal() {
+    const input = document.getElementById('pv_orcamento_total_manual');
+    if (!input || input.value.trim() === '') return null;
+    return Math.max(0, parsePvCurrencyToFloat(input.value));
+}
+
+function clearPvManualOrcamentoTotal() {
+    const input = document.getElementById('pv_orcamento_total_manual');
+    if (input) input.value = '';
+}
+
 async function generatePreSale(isOrcamento = false) {
     if (pvCart.length === 0) {
         alert("O carrinho está vazio.");
         return;
     }
     
+    const manualTotal = isOrcamento ? getPvManualOrcamentoTotal() : null;
     const data = {
         id: currentPvId,
         codigo: currentPvCode,
@@ -616,7 +655,7 @@ async function generatePreSale(isOrcamento = false) {
         nome_cliente_avulso: document.getElementById('pv_nome_cliente_avulso').value || null,
         cpf_cliente: document.getElementById('pv_cpf_cliente').value || null,
         items: pvCart,
-        valor_total: pvCart.reduce((acc, i) => acc + (i.price * i.qty), 0),
+        valor_total: manualTotal !== null ? manualTotal : getPvCartTotal(),
         is_orcamento: isOrcamento
     };
 
@@ -631,6 +670,7 @@ async function generatePreSale(isOrcamento = false) {
         if (result.success) {
             if (isOrcamento) {
                 alert(`Orçamento gerado com sucesso!\nCódigo: ${result.codigo}${formatOrcamentoStockWarnings(result.stock_warnings)}`);
+                clearPvManualOrcamentoTotal();
                 chooseOrcamentoPrintFormat(result.codigo, true);
             } else {
                 document.getElementById('pv_generated_code').innerText = result.codigo;
@@ -771,6 +811,12 @@ async function loadPreSaleInPreSaleScreen(code) {
         
         currentPvId = pv.id;
         currentPvCode = pv.codigo;
+        const manualTotalInput = document.getElementById('pv_orcamento_total_manual');
+        if (manualTotalInput) {
+            manualTotalInput.value = (pv.codigo && pv.codigo.startsWith('ORC-'))
+                ? parseFloat(pv.valor_total || 0).toFixed(2)
+                : '';
+        }
         
         // Load customer
         if (pv.cliente_id) {

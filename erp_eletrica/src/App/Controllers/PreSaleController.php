@@ -83,6 +83,7 @@ class PreSaleController extends BaseController {
 
             $data['usuario_id'] = $_SESSION['usuario_id'];
             $data['filial_id'] = $_SESSION['filial_id'] ?? 1;
+            $data['valor_total'] = isset($data['valor_total']) ? max(0, (float)$data['valor_total']) : 0;
 
             // Automated Client Registration/Selection / Intelligent Cross-Referencing
             if (empty($data['cliente_id'])) {
