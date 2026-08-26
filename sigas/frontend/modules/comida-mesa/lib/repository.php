@@ -9,13 +9,22 @@ final class ComidaMesaModuleRepository
     }
 
     /** @return array<string,mixed>|null */
-    public function defaultCompetence(): ?array
+    public function defaultCompetence(?string $today = null): ?array
     {
-        $stmt = $this->pdo->query("SELECT id, ano, mes, status, inicio_entregas, fim_entregas, observacao FROM comida_mesa_competencias WHERE status = 'aberta' ORDER BY ano DESC, mes DESC LIMIT 1");
+        $today ??= date('Y-m-d');
+        $stmt = $this->pdo->prepare(
+            "SELECT id, ano, mes, status, inicio_entregas, fim_entregas, observacao
+             FROM comida_mesa_competencias
+             WHERE status = 'aberta'
+               AND inicio_entregas IS NOT NULL
+               AND fim_entregas IS NOT NULL
+               AND :today BETWEEN inicio_entregas AND fim_entregas
+             ORDER BY ano DESC, mes DESC
+             LIMIT 1"
+        );
+        $stmt->execute(['today' => $today]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (is_array($row)) return $row;
-        $stmt = $this->pdo->query('SELECT id, ano, mes, status, inicio_entregas, fim_entregas, observacao FROM comida_mesa_competencias ORDER BY ano DESC, mes DESC LIMIT 1');
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
         return is_array($row) ? $row : null;
     }
 

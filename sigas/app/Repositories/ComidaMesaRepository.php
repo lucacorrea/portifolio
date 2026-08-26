@@ -92,10 +92,42 @@ final class ComidaMesaRepository
     }
 
     /** @return array<string,mixed>|null */
-    public function findDefaultCompetence(): ?array
+    public function findDefaultCompetence(?string $today = null): ?array
     {
-        return $this->fetchOne("SELECT id, ano, mes, status, inicio_entregas, fim_entregas, observacao FROM comida_mesa_competencias WHERE status = 'aberta' ORDER BY ano DESC, mes DESC LIMIT 1")
-            ?? $this->fetchOne('SELECT id, ano, mes, status, inicio_entregas, fim_entregas, observacao FROM comida_mesa_competencias ORDER BY ano DESC, mes DESC LIMIT 1');
+        $today ??= date('Y-m-d');
+
+        return $this->fetchOne(
+            "SELECT id, ano, mes, status, inicio_entregas, fim_entregas, observacao
+             FROM comida_mesa_competencias
+             WHERE status = 'aberta'
+               AND inicio_entregas IS NOT NULL
+               AND fim_entregas IS NOT NULL
+               AND :today BETWEEN inicio_entregas AND fim_entregas
+             ORDER BY ano DESC, mes DESC
+             LIMIT 1",
+            ['today' => $today]
+        );
+    }
+
+    /** @return array<string,mixed>|null */
+    public function findOtherOpenCompetence(?int $exceptId = null): ?array
+    {
+        $where = "status = 'aberta'";
+        $params = [];
+
+        if ($exceptId !== null) {
+            $where .= ' AND id <> :except_id';
+            $params['except_id'] = $exceptId;
+        }
+
+        return $this->fetchOne(
+            "SELECT id, ano, mes, status, inicio_entregas, fim_entregas, observacao
+             FROM comida_mesa_competencias
+             WHERE {$where}
+             ORDER BY ano DESC, mes DESC
+             LIMIT 1",
+            $params
+        );
     }
 
     /** @return array<string,int> */

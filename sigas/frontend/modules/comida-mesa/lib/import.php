@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 use App\Core\Validator;
 use App\DTO\ComidaMesaCadastroData;
+use App\Integrations\Anexo\AnexoIntegrationService;
 
 require_once __DIR__ . '/spreadsheet.php';
 
 function cm_import_schema_ready(PDO $pdo): bool
 {
     try {
-        foreach (['comida_mesa_importacoes', 'comida_mesa_importacao_itens'] as $table) {
-            $pdo->query('SELECT 1 FROM ' . $table . ' LIMIT 1');
-        }
+        $pdo->query('SELECT id, pendentes_confirmacao, beneficiarios_confirmados, lista_espera_confirmados FROM comida_mesa_importacoes LIMIT 1');
+        $pdo->query('SELECT id, situacao_programa, decidido_em, decidido_por, efetivacao_status, efetivacao_motivo FROM comida_mesa_importacao_itens LIMIT 1');
         return true;
     } catch (Throwable) {
         return false;
@@ -35,24 +35,66 @@ function cm_import_history(PDO $pdo, int $limit = 15): array
 }
 
 
-/**
- * Retorna registros da importação que ainda não viraram inscrição oficial.
- * Eles podem ser exibidos na lista de beneficiários sem liberar ações operacionais.
- *
- * @return array{items:list<array<string,mixed>>,total:int,page:int,per_page:int,total_pages:int}
- */
-function cm_import_pending_items(PDO $pdo, string $search = '', int $page = 1, int $perPage = 50): array
+
+/** @return array<string,mixed>|null */
+function cm_import_history_item(PDO $pdo, int $importId): ?array
 {
-    if (!cm_import_schema_ready($pdo)) {
-        return ['items'=>[], 'total'=>0, 'page'=>1, 'per_page'=>$perPage, 'total_pages'=>1];
+    if (!cm_import_schema_ready($pdo) || $importId < 1) return null;
+    $stmt = $pdo->prepare('SELECT imp.*, u.nome AS usuario_nome, polo.nome AS polo_padrao_nome
+        FROM comida_mesa_importacoes imp
+        LEFT JOIN usuarios u ON u.id = imp.criado_por
+        LEFT JOIN comida_mesa_polos polo ON polo.id = imp.polo_padrao_id
+        WHERE imp.id = :id LIMIT 1');
+    $stmt->execute(['id' => $importId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return is_array($row) ? $row : null;
+}
+
+/** @return array<string,mixed> */
+function cm_import_decode_item(array $item): array
+{
+    $source = json_decode((string) ($item['dados_json'] ?? ''), true);
+    if (!is_array($source)) $source = [];
+
+    $item['dados_origem'] = $source;
+    $item['bairro_origem'] = trim((string) ($source['bairro'] ?? ''));
+    $item['endereco_origem'] = trim((string) ($source['logradouro'] ?? $source['endereco'] ?? ''));
+    $item['local_origem'] = trim((string) ($source['local_origem'] ?? $source['polo_informado'] ?? $item['polo_informado'] ?? ''));
+    $item['data_nascimento_origem'] = trim((string) ($source['data_nascimento'] ?? ''));
+    $item['conjuge_origem'] = trim((string) ($source['conjuge_origem'] ?? ''));
+    $item['cruzamento'] = isset($source['_cruzamento']) && is_array($source['_cruzamento']) ? $source['_cruzamento'] : null;
+    return $item;
+}
+
+/**
+ * @return array{items:list<array<string,mixed>>,total:int,page:int,per_page:int,total_pages:int,counts:array<string,int>}
+ */
+function cm_import_review_items(
+    PDO $pdo,
+    int $importId,
+    string $search = '',
+    string $situation = '',
+    int $page = 1,
+    int $perPage = 50,
+    string $registry = ''
+): array {
+    if (!cm_import_schema_ready($pdo) || $importId < 1) {
+        return ['items'=>[], 'total'=>0, 'page'=>1, 'per_page'=>$perPage, 'total_pages'=>1,
+            'counts'=>['Pendente'=>0,'Beneficiario'=>0,'ListaEspera'=>0]];
     }
 
     $page = max(1, $page);
     $perPage = max(10, min(100, $perPage));
-    $where = "item.inscricao_id IS NULL AND item.status IN ('Revisar','Erro')";
-    $params = [];
-    $search = trim($search);
+    $allowed = ['Pendente', 'Beneficiario', 'ListaEspera'];
+    $where = 'item.importacao_id = :importacao_id';
+    $params = ['importacao_id' => $importId];
 
+    if (in_array($situation, $allowed, true)) {
+        $where .= ' AND item.situacao_programa = :situacao_programa';
+        $params['situacao_programa'] = $situation;
+    }
+
+    $search = trim($search);
     if ($search !== '') {
         $where .= " AND (
             item.nome LIKE :search
@@ -67,55 +109,60 @@ function cm_import_pending_items(PDO $pdo, string $search = '', int $page = 1, i
         $params['search'] = '%' . $search . '%';
     }
 
-    $count = $pdo->prepare("SELECT COUNT(*)
-        FROM comida_mesa_importacao_itens item
-        WHERE {$where}");
-    $count->execute($params);
-    $total = (int) $count->fetchColumn();
+    $registry = trim($registry);
+    $registryFilters = [
+        'found' => "JSON_VALID(item.dados_json) = 1 AND JSON_UNQUOTE(JSON_EXTRACT(item.dados_json, '$._cruzamento.encontrado')) = 'sim'",
+        'not_found' => "JSON_VALID(item.dados_json) = 1 AND JSON_UNQUOTE(JSON_EXTRACT(item.dados_json, '$._cruzamento.encontrado')) = 'nao'",
+        'sigas' => "JSON_VALID(item.dados_json) = 1 AND JSON_UNQUOTE(JSON_EXTRACT(item.dados_json, '$._cruzamento.sigas.encontrado')) = 'sim'",
+        'anexo' => "JSON_VALID(item.dados_json) = 1 AND JSON_UNQUOTE(JSON_EXTRACT(item.dados_json, '$._cruzamento.anexo.encontrado')) = 'sim'",
+        'primeiro_emprego' => "item.dados_json LIKE '%\"codigo\":\"primeiro_emprego\"%'",
+        'comida_mesa' => "item.dados_json LIKE '%\"codigo\":\"comida_mesa\"%'",
+        'unverified' => "(item.dados_json IS NULL OR JSON_VALID(item.dados_json) = 0 OR JSON_EXTRACT(item.dados_json, '$._cruzamento') IS NULL)",
+    ];
+    if (isset($registryFilters[$registry])) {
+        $where .= ' AND (' . $registryFilters[$registry] . ')';
+    }
+
+    $countStmt = $pdo->prepare("SELECT COUNT(*) FROM comida_mesa_importacao_itens item WHERE {$where}");
+    $countStmt->execute($params);
+    $total = (int) $countStmt->fetchColumn();
     $totalPages = max(1, (int) ceil($total / $perPage));
     $page = min($page, $totalPages);
     $offset = ($page - 1) * $perPage;
 
     $stmt = $pdo->prepare("SELECT
-            item.id,
-            item.importacao_id,
-            item.linha,
-            item.status,
-            item.nome,
-            item.cpf_informado,
-            item.cpf_validado,
-            item.telefone_informado,
-            item.polo_informado,
-            item.classificacao,
-            item.motivos,
-            item.dados_json,
-            item.criado_em,
+            item.*,
             imp.arquivo_nome,
-            imp.criado_em AS importado_em
+            imp.criado_em AS importado_em,
+            decisor.nome AS decisor_nome
         FROM comida_mesa_importacao_itens item
         INNER JOIN comida_mesa_importacoes imp ON imp.id = item.importacao_id
+        LEFT JOIN usuarios decisor ON decisor.id = item.decidido_por
         WHERE {$where}
-        ORDER BY item.id DESC
+        ORDER BY item.linha, item.id
         LIMIT :limit OFFSET :offset");
 
     foreach ($params as $key => $value) {
-        $stmt->bindValue(':' . $key, $value, PDO::PARAM_STR);
+        $stmt->bindValue(':' . $key, $value, $key === 'importacao_id' ? PDO::PARAM_INT : PDO::PARAM_STR);
     }
     $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
     $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();
 
     $items = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-    foreach ($items as &$item) {
-        $source = json_decode((string) ($item['dados_json'] ?? ''), true);
-        if (!is_array($source)) $source = [];
-        $item['bairro_origem'] = trim((string) ($source['bairro'] ?? ''));
-        $item['endereco_origem'] = trim((string) ($source['logradouro'] ?? $source['endereco'] ?? ''));
-        $item['local_origem'] = trim((string) ($source['local_origem'] ?? $source['polo_informado'] ?? $item['polo_informado'] ?? ''));
-        $item['data_nascimento_origem'] = trim((string) ($source['data_nascimento'] ?? ''));
-        $item['conjuge_origem'] = trim((string) ($source['conjuge_origem'] ?? ''));
-    }
+    foreach ($items as &$item) $item = cm_import_decode_item($item);
     unset($item);
+
+    $countByStatus = ['Pendente'=>0,'Beneficiario'=>0,'ListaEspera'=>0];
+    $group = $pdo->prepare('SELECT situacao_programa, COUNT(*) total
+        FROM comida_mesa_importacao_itens
+        WHERE importacao_id = :importacao_id
+        GROUP BY situacao_programa');
+    $group->execute(['importacao_id' => $importId]);
+    foreach ($group->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+        $key = (string) ($row['situacao_programa'] ?? '');
+        if (array_key_exists($key, $countByStatus)) $countByStatus[$key] = (int) $row['total'];
+    }
 
     return [
         'items' => $items,
@@ -123,7 +170,735 @@ function cm_import_pending_items(PDO $pdo, string $search = '', int $page = 1, i
         'page' => $page,
         'per_page' => $perPage,
         'total_pages' => $totalPages,
+        'counts' => $countByStatus,
     ];
+}
+
+/**
+ * @return array{items:list<array<string,mixed>>,total:int,page:int,per_page:int,total_pages:int}
+ */
+function cm_import_confirmed_unlinked(
+    PDO $pdo,
+    string $programStatus = '',
+    string $search = '',
+    int $page = 1,
+    int $perPage = 50
+): array {
+    if (!cm_import_schema_ready($pdo)) {
+        return ['items'=>[], 'total'=>0, 'page'=>1, 'per_page'=>$perPage, 'total_pages'=>1];
+    }
+
+    $situations = match ($programStatus) {
+        'ativa' => ['Beneficiario'],
+        'lista_espera' => ['ListaEspera'],
+        '' => ['Beneficiario', 'ListaEspera'],
+        default => [],
+    };
+    if ($situations === []) {
+        return ['items'=>[], 'total'=>0, 'page'=>1, 'per_page'=>$perPage, 'total_pages'=>1];
+    }
+
+    $page = max(1, $page);
+    $perPage = max(10, min(100, $perPage));
+    $placeholders = [];
+    $params = [];
+    foreach ($situations as $index => $value) {
+        $key = 's' . $index;
+        $placeholders[] = ':' . $key;
+        $params[$key] = $value;
+    }
+
+    $where = 'item.inscricao_id IS NULL AND item.situacao_programa IN (' . implode(',', $placeholders) . ')';
+    $search = trim($search);
+    if ($search !== '') {
+        $where .= " AND (
+            item.nome LIKE :search OR item.cpf_informado LIKE :search OR item.cpf_validado LIKE :search
+            OR item.telefone_informado LIKE :search OR item.polo_informado LIKE :search
+            OR item.classificacao LIKE :search OR item.motivos LIKE :search OR item.dados_json LIKE :search
+        )";
+        $params['search'] = '%' . $search . '%';
+    }
+
+    $count = $pdo->prepare("SELECT COUNT(*) FROM comida_mesa_importacao_itens item WHERE {$where}");
+    foreach ($params as $key => $value) $count->bindValue(':' . $key, $value, PDO::PARAM_STR);
+    $count->execute();
+    $total = (int) $count->fetchColumn();
+    $totalPages = max(1, (int) ceil($total / $perPage));
+    $page = min($page, $totalPages);
+    $offset = ($page - 1) * $perPage;
+
+    $stmt = $pdo->prepare("SELECT item.*, imp.arquivo_nome, imp.criado_em importado_em, u.nome decisor_nome
+        FROM comida_mesa_importacao_itens item
+        INNER JOIN comida_mesa_importacoes imp ON imp.id = item.importacao_id
+        LEFT JOIN usuarios u ON u.id = item.decidido_por
+        WHERE {$where}
+        ORDER BY item.nome, item.id
+        LIMIT :limit OFFSET :offset");
+    foreach ($params as $key => $value) $stmt->bindValue(':' . $key, $value, PDO::PARAM_STR);
+    $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
+
+    $items = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    foreach ($items as &$item) $item = cm_import_decode_item($item);
+    unset($item);
+
+    return ['items'=>$items,'total'=>$total,'page'=>$page,'per_page'=>$perPage,'total_pages'=>$totalPages];
+}
+
+/** @return array{beneficiarios:int,lista_espera:int} */
+function cm_import_confirmed_unlinked_counts(PDO $pdo): array
+{
+    if (!cm_import_schema_ready($pdo)) return ['beneficiarios'=>0,'lista_espera'=>0];
+
+    $stmt = $pdo->query("SELECT situacao_programa, COUNT(*) total
+        FROM comida_mesa_importacao_itens
+        WHERE inscricao_id IS NULL AND situacao_programa IN ('Beneficiario','ListaEspera')
+        GROUP BY situacao_programa");
+    $result = ['beneficiarios'=>0,'lista_espera'=>0];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+        if ($row['situacao_programa'] === 'Beneficiario') $result['beneficiarios'] = (int) $row['total'];
+        if ($row['situacao_programa'] === 'ListaEspera') $result['lista_espera'] = (int) $row['total'];
+    }
+    return $result;
+}
+
+/** @return array<string,mixed>|null */
+function cm_import_find_family_link(PDO $pdo, int $personId): ?array
+{
+    $stmt = $pdo->prepare("SELECT f.*,
+        CASE WHEN f.responsavel_pessoa_id = :person_a THEN 'responsavel' ELSE 'integrante' END vinculo
+        FROM familias f
+        LEFT JOIN familia_membros fm ON fm.familia_id = f.id AND fm.pessoa_id = :person_b
+        WHERE f.responsavel_pessoa_id = :person_c OR fm.pessoa_id = :person_d
+        ORDER BY CASE WHEN f.responsavel_pessoa_id = :person_e THEN 1 ELSE 2 END, f.id
+        LIMIT 1");
+    $stmt->execute([
+        'person_a'=>$personId,'person_b'=>$personId,'person_c'=>$personId,'person_d'=>$personId,'person_e'=>$personId
+    ]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return is_array($row) ? $row : null;
+}
+
+/** @return array{pessoa_id:?int,familia_id:?int,inscricao_id:?int,status:string,motivo:?string} */
+function cm_import_sync_official(PDO $pdo, array $item, string $decision, int $userId): array
+{
+    $targetStatus = $decision === 'Beneficiario' ? 'ativa' : 'lista_espera';
+    $cpf = preg_replace('/\D+/', '', (string) ($item['cpf_validado'] ?? '')) ?: '';
+    $cpfValid = $cpf !== '' && strlen($cpf) === 11 && Validator::cpf($cpf);
+
+    // Conflito de decisão só pode ser apurado por CPF quando existe um CPF válido.
+    if ($cpfValid) {
+        $conflict = $pdo->prepare("SELECT id, nome, situacao_programa
+            FROM comida_mesa_importacao_itens
+            WHERE id <> :id
+              AND cpf_validado = :cpf
+              AND situacao_programa IN ('Beneficiario','ListaEspera')
+              AND situacao_programa <> :decision
+            ORDER BY id
+            LIMIT 1");
+        $conflict->execute(['id'=>(int)$item['id'],'cpf'=>$cpf,'decision'=>$decision]);
+        $conflictRow = $conflict->fetch(PDO::FETCH_ASSOC);
+        if (is_array($conflictRow)) {
+            return [
+                'pessoa_id'=>isset($item['pessoa_id']) ? (int)$item['pessoa_id'] : null,
+                'familia_id'=>isset($item['familia_id']) ? (int)$item['familia_id'] : null,
+                'inscricao_id'=>isset($item['inscricao_id']) ? (int)$item['inscricao_id'] : null,
+                'status'=>'Conflito',
+                'motivo'=>'O mesmo CPF possui outra linha confirmada com decisão diferente. Revise a duplicidade antes de efetivar.',
+            ];
+        }
+    }
+
+    $decoded = cm_import_decode_item($item);
+    $source = $decoded['dados_origem'] ?? [];
+    $name = trim((string) ($item['nome'] ?? $source['nome'] ?? ''));
+    $phone = preg_replace('/\D+/', '', (string) ($source['telefone'] ?? $item['telefone_informado'] ?? '')) ?: null;
+
+    // Reprocessamentos devem reutilizar o vínculo já iniciado pelo próprio item.
+    $person = null;
+    if (!empty($item['pessoa_id'])) {
+        $personStmt = $pdo->prepare('SELECT * FROM pessoas WHERE id = :id LIMIT 1 FOR UPDATE');
+        $personStmt->execute(['id'=>(int)$item['pessoa_id']]);
+        $found = $personStmt->fetch(PDO::FETCH_ASSOC);
+        if (is_array($found)) $person = $found;
+    }
+
+    // CPF válido continua sendo a chave preferencial para localizar cadastro existente.
+    if (!is_array($person) && $cpfValid) {
+        $personStmt = $pdo->prepare('SELECT * FROM pessoas WHERE cpf = :cpf LIMIT 1 FOR UPDATE');
+        $personStmt->execute(['cpf'=>$cpf]);
+        $found = $personStmt->fetch(PDO::FETCH_ASSOC);
+        if (is_array($found)) $person = $found;
+    }
+
+    if (!is_array($person)) {
+        $insertPerson = $pdo->prepare('INSERT INTO pessoas
+            (nome, cpf, nis, rg, data_nascimento, telefone, email, criado_por, atualizado_por)
+            VALUES (:nome,:cpf,:nis,:rg,:data_nascimento,:telefone,:email,:criado_por,:atualizado_por)');
+        $insertPerson->execute([
+            'nome'=>$name !== '' ? $name : 'Cadastro importado',
+            // Pendência de CPF não impede a criação do cadastro oficial da importação.
+            'cpf'=>$cpfValid ? $cpf : null,
+            'nis'=>$source['nis'] ?? null,
+            'rg'=>$source['rg'] ?? null,
+            'data_nascimento'=>!empty($source['data_nascimento']) ? $source['data_nascimento'] : null,
+            'telefone'=>$phone,
+            'email'=>$source['email'] ?? null,
+            'criado_por'=>$userId,
+            'atualizado_por'=>$userId,
+        ]);
+        $personId = (int) $pdo->lastInsertId();
+        $person = ['id'=>$personId,'cpf'=>$cpfValid ? $cpf : null];
+    } else {
+        $personId = (int) $person['id'];
+
+        // Se o cadastro provisório ainda não tinha CPF e a revisão agora trouxe um CPF válido,
+        // preenche sem criar outro beneficiário.
+        if ($cpfValid && empty($person['cpf'])) {
+            $ownerStmt = $pdo->prepare('SELECT id FROM pessoas WHERE cpf = :cpf AND id <> :id LIMIT 1 FOR UPDATE');
+            $ownerStmt->execute(['cpf'=>$cpf,'id'=>$personId]);
+            if ($ownerStmt->fetch(PDO::FETCH_ASSOC)) {
+                return [
+                    'pessoa_id'=>$personId,
+                    'familia_id'=>isset($item['familia_id']) ? (int)$item['familia_id'] : null,
+                    'inscricao_id'=>isset($item['inscricao_id']) ? (int)$item['inscricao_id'] : null,
+                    'status'=>'Conflito',
+                    'motivo'=>'O CPF regularizado já pertence a outro cadastro. Faça a conferência antes de unificar os registros.',
+                ];
+            }
+            $pdo->prepare('UPDATE pessoas SET cpf = :cpf, atualizado_por = :usuario WHERE id = :id')
+                ->execute(['cpf'=>$cpf,'usuario'=>$userId,'id'=>$personId]);
+        } elseif ($cpfValid && !empty($person['cpf']) && (string)$person['cpf'] !== $cpf) {
+            return [
+                'pessoa_id'=>$personId,
+                'familia_id'=>isset($item['familia_id']) ? (int)$item['familia_id'] : null,
+                'inscricao_id'=>isset($item['inscricao_id']) ? (int)$item['inscricao_id'] : null,
+                'status'=>'Conflito',
+                'motivo'=>'O item está vinculado a uma pessoa com CPF diferente. Revise antes de alterar o vínculo.',
+            ];
+        }
+
+        $fill = $pdo->prepare("UPDATE pessoas SET
+            telefone = CASE WHEN (telefone IS NULL OR telefone = '') AND :telefone <> '' THEN :telefone2 ELSE telefone END,
+            nis = CASE WHEN (nis IS NULL OR nis = '') AND :nis <> '' THEN :nis2 ELSE nis END,
+            rg = CASE WHEN (rg IS NULL OR rg = '') AND :rg <> '' THEN :rg2 ELSE rg END,
+            data_nascimento = COALESCE(data_nascimento, :data_nascimento),
+            atualizado_por = :atualizado_por
+            WHERE id = :id");
+        $fill->execute([
+            'telefone'=>$phone ?? '', 'telefone2'=>$phone,
+            'nis'=>(string)($source['nis'] ?? ''), 'nis2'=>$source['nis'] ?? null,
+            'rg'=>(string)($source['rg'] ?? ''), 'rg2'=>$source['rg'] ?? null,
+            'data_nascimento'=>!empty($source['data_nascimento']) ? $source['data_nascimento'] : null,
+            'atualizado_por'=>$userId, 'id'=>$personId,
+        ]);
+    }
+
+    $family = cm_import_find_family_link($pdo, $personId);
+    if (is_array($family) && ($family['vinculo'] ?? '') === 'integrante') {
+        return [
+            'pessoa_id'=>$personId,'familia_id'=>(int)$family['id'],'inscricao_id'=>null,
+            'status'=>'Conflito',
+            'motivo'=>'A pessoa já está vinculada como integrante de outra família. Este é um conflito de vínculo, não uma simples pendência cadastral.',
+        ];
+    }
+
+    if (!is_array($family)) {
+        $tmpCode = 'TMP-' . bin2hex(random_bytes(8));
+        $insertFamily = $pdo->prepare('INSERT INTO familias
+            (codigo,responsavel_pessoa_id,zona,logradouro,numero,complemento,bairro,comunidade,ponto_referencia,cep,
+             quantidade_membros,renda_familiar,criado_por,atualizado_por)
+            VALUES (:codigo,:responsavel_pessoa_id,:zona,:logradouro,:numero,:complemento,:bairro,:comunidade,:ponto_referencia,:cep,
+                    :quantidade_membros,:renda_familiar,:criado_por,:atualizado_por)');
+        $insertFamily->execute([
+            'codigo'=>$tmpCode,'responsavel_pessoa_id'=>$personId,
+            'zona'=>$source['zona'] ?? null,'logradouro'=>$source['logradouro'] ?? null,'numero'=>$source['numero'] ?? null,
+            'complemento'=>$source['complemento'] ?? null,'bairro'=>$source['bairro'] ?? null,'comunidade'=>$source['comunidade'] ?? null,
+            'ponto_referencia'=>$source['ponto_referencia'] ?? null,'cep'=>$source['cep'] ?? null,
+            'quantidade_membros'=>max(1,(int)($source['quantidade_membros'] ?? 1)),
+            'renda_familiar'=>$source['renda_familiar'] ?? null,'criado_por'=>$userId,'atualizado_por'=>$userId,
+        ]);
+        $familyId = (int) $pdo->lastInsertId();
+        $code = sprintf('FAM-%06d', $familyId);
+        $pdo->prepare('UPDATE familias SET codigo = :codigo WHERE id = :id')->execute(['codigo'=>$code,'id'=>$familyId]);
+    } else {
+        $familyId = (int) $family['id'];
+    }
+
+    $regStmt = $pdo->prepare('SELECT * FROM comida_mesa_inscricoes WHERE familia_id = :familia_id LIMIT 1 FOR UPDATE');
+    $regStmt->execute(['familia_id'=>$familyId]);
+    $registration = $regStmt->fetch(PDO::FETCH_ASSOC);
+    $poleId = isset($source['polo_id']) && (int)$source['polo_id'] > 0 ? (int)$source['polo_id'] : null;
+    $priority = in_array((string)($source['prioridade'] ?? ''), ['alta','normal','baixa'], true)
+        ? (string)$source['prioridade'] : 'normal';
+    $registrationDate = trim((string)($source['data_inscricao'] ?? ''));
+    if ($registrationDate === '') $registrationDate = date('Y-m-d');
+    $approvedAt = $targetStatus === 'ativa' ? date('Y-m-d H:i:s') : null;
+    $approvedBy = $targetStatus === 'ativa' ? $userId : null;
+
+    if (!is_array($registration)) {
+        $insertReg = $pdo->prepare('INSERT INTO comida_mesa_inscricoes
+            (familia_id,polo_id,status,prioridade,data_inscricao,data_aprovacao,aprovado_por,motivo_suspensao,observacao,criado_por,atualizado_por)
+            VALUES (:familia_id,:polo_id,:status,:prioridade,:data_inscricao,:data_aprovacao,:aprovado_por,NULL,:observacao,:criado_por,:atualizado_por)');
+        $insertReg->execute([
+            'familia_id'=>$familyId,'polo_id'=>$poleId,'status'=>$targetStatus,'prioridade'=>$priority,
+            'data_inscricao'=>$registrationDate,'data_aprovacao'=>$approvedAt,'aprovado_por'=>$approvedBy,
+            'observacao'=>'Cadastro efetivado a partir da importação do Comida na Mesa. Pendências cadastrais não bloqueiam o benefício.',
+            'criado_por'=>$userId,'atualizado_por'=>$userId,
+        ]);
+        $registrationId = (int) $pdo->lastInsertId();
+        $registrationPoleId = $poleId;
+    } else {
+        $registrationId = (int) $registration['id'];
+        $registrationPoleId = !empty($registration['polo_id']) ? (int)$registration['polo_id'] : $poleId;
+        $update = $pdo->prepare('UPDATE comida_mesa_inscricoes SET
+            status = :status,
+            polo_id = COALESCE(polo_id, :polo_id),
+            data_aprovacao = :data_aprovacao,
+            aprovado_por = :aprovado_por,
+            motivo_suspensao = NULL,
+            atualizado_por = :atualizado_por
+            WHERE id = :id');
+        $update->execute([
+            'status'=>$targetStatus,'polo_id'=>$poleId,'data_aprovacao'=>$approvedAt,
+            'aprovado_por'=>$approvedBy,'atualizado_por'=>$userId,'id'=>$registrationId,
+        ]);
+    }
+
+    $warnings = [];
+    if (!$cpfValid) $warnings[] = 'CPF/documento pendente';
+    if ($phone === null || strlen($phone) < 10 || strlen($phone) > 11) $warnings[] = 'telefone pendente';
+    if ($targetStatus === 'ativa' && empty($registrationPoleId)) $warnings[] = 'polo não definido';
+    $classification = trim((string)($item['classificacao'] ?? ''));
+    if ($classification !== '' && str_starts_with($classification, 'Revisar')) $warnings[] = $classification;
+    $warnings = array_values(array_unique($warnings));
+
+    $reason = $warnings
+        ? 'Vinculado como ' . ($targetStatus === 'ativa' ? 'beneficiário ativo' : 'lista de espera') . '. Pendências cadastrais não bloqueiam o benefício: ' . implode(', ', $warnings) . '.'
+        : null;
+
+    return [
+        'pessoa_id'=>$personId,'familia_id'=>$familyId,'inscricao_id'=>$registrationId,
+        'status'=>'Vinculado','motivo'=>$reason,
+    ];
+}
+function cm_import_refresh_counts(PDO $pdo, int $importId): void
+{
+    $stmt = $pdo->prepare("SELECT
+        SUM(situacao_programa = 'Pendente') pendentes,
+        SUM(situacao_programa = 'Beneficiario') beneficiarios,
+        SUM(situacao_programa = 'ListaEspera') lista_espera
+        FROM comida_mesa_importacao_itens WHERE importacao_id = :id");
+    $stmt->execute(['id'=>$importId]);
+    $c = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+    $update = $pdo->prepare('UPDATE comida_mesa_importacoes SET
+        pendentes_confirmacao = :pendentes,
+        beneficiarios_confirmados = :beneficiarios,
+        lista_espera_confirmados = :lista_espera
+        WHERE id = :id');
+    $update->execute([
+        'pendentes'=>(int)($c['pendentes'] ?? 0),
+        'beneficiarios'=>(int)($c['beneficiarios'] ?? 0),
+        'lista_espera'=>(int)($c['lista_espera'] ?? 0),
+        'id'=>$importId,
+    ]);
+}
+
+/**
+ * @param list<int> $itemIds
+ * @return array{updated:int,vinculados:int,pendentes:int,conflitos:int,errors:list<string>}
+ */
+function cm_import_decide_items(PDO $pdo, array $itemIds, string $decision, int $userId): array
+{
+    if (!in_array($decision, ['Beneficiario','ListaEspera'], true)) {
+        throw new InvalidArgumentException('Decisão do programa inválida.');
+    }
+
+    $ids = array_values(array_unique(array_filter(array_map('intval', $itemIds), static fn($id) => $id > 0)));
+    if ($ids === []) throw new InvalidArgumentException('Selecione pelo menos uma pessoa da lista.');
+
+    $result = ['updated'=>0,'vinculados'=>0,'pendentes'=>0,'conflitos'=>0,'errors'=>[]];
+    $imports = [];
+
+    foreach ($ids as $itemId) {
+        try {
+            $pdo->beginTransaction();
+
+            $stmt = $pdo->prepare('SELECT * FROM comida_mesa_importacao_itens WHERE id = :id LIMIT 1 FOR UPDATE');
+            $stmt->execute(['id'=>$itemId]);
+            $item = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($item)) throw new RuntimeException('Item #' . $itemId . ' não localizado.');
+
+            $sync = cm_import_sync_official($pdo, $item, $decision, $userId);
+            $update = $pdo->prepare('UPDATE comida_mesa_importacao_itens SET
+                situacao_programa = :situacao_programa,
+                pessoa_id = :pessoa_id,
+                familia_id = :familia_id,
+                inscricao_id = :inscricao_id,
+                decidido_em = CURRENT_TIMESTAMP,
+                decidido_por = :decidido_por,
+                efetivacao_status = :efetivacao_status,
+                efetivacao_motivo = :efetivacao_motivo
+                WHERE id = :id');
+            $update->execute([
+                'situacao_programa'=>$decision,
+                'pessoa_id'=>$sync['pessoa_id'],
+                'familia_id'=>$sync['familia_id'],
+                'inscricao_id'=>$sync['inscricao_id'],
+                'decidido_por'=>$userId,
+                'efetivacao_status'=>$sync['status'],
+                'efetivacao_motivo'=>$sync['motivo'],
+                'id'=>$itemId,
+            ]);
+
+            $imports[(int)$item['importacao_id']] = true;
+            $pdo->commit();
+
+            $result['updated']++;
+            if ($sync['status'] === 'Vinculado') $result['vinculados']++;
+            elseif ($sync['status'] === 'Conflito') $result['conflitos']++;
+            else $result['pendentes']++;
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            $result['errors'][] = 'Item #' . $itemId . ': ' . $e->getMessage();
+        }
+    }
+
+    foreach (array_keys($imports) as $importId) cm_import_refresh_counts($pdo, (int)$importId);
+
+    try {
+        $app = cm_app();
+        $app['audit']->record($userId, null, 'confirmacao_importacao_comida_mesa', 'comida_mesa', null, null, [
+            'decisao'=>$decision,'quantidade'=>$result['updated'],'vinculados'=>$result['vinculados'],
+            'cadastro_pendente'=>$result['pendentes'],'conflitos'=>$result['conflitos'],
+        ]);
+    } catch (Throwable) {
+    }
+
+    return $result;
+}
+
+/**
+ * Classifica todos os registros ainda pendentes de uma importação usando o mesmo
+ * fluxo seguro da decisão individual. Isso garante que cada item tente criar/vincular
+ * pessoa, família e inscrição oficial antes de ser marcado como cadastro pendente.
+ *
+ * @return array{updated:int,vinculados:int,pendentes:int,conflitos:int,errors:list<string>}
+ */
+function cm_import_decide_all_pending(PDO $pdo, int $importId, string $decision, int $userId): array
+{
+    if ($importId < 1) {
+        throw new InvalidArgumentException('Importação inválida.');
+    }
+    if (!in_array($decision, ['Beneficiario', 'ListaEspera'], true)) {
+        throw new InvalidArgumentException('Decisão do programa inválida.');
+    }
+
+    // Cargas do Comida na Mesa podem ter milhares de registros. O processamento
+    // precisa usar a regra completa por item, mas sem o limite padrão curto do PHP.
+    if (function_exists('set_time_limit')) {
+        @set_time_limit(0);
+    }
+
+    $stmt = $pdo->prepare("SELECT id
+        FROM comida_mesa_importacao_itens
+        WHERE importacao_id = :importacao_id
+          AND situacao_programa = 'Pendente'
+        ORDER BY id");
+    $stmt->execute(['importacao_id'=>$importId]);
+    $ids = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []);
+
+    if ($ids === []) {
+        return ['updated'=>0,'vinculados'=>0,'pendentes'=>0,'conflitos'=>0,'errors'=>[]];
+    }
+
+    $result = cm_import_decide_items($pdo, $ids, $decision, $userId);
+
+    try {
+        $app = cm_app();
+        $app['audit']->record($userId, null, 'confirmacao_importacao_comida_mesa_lote_total', 'comida_mesa', null, null, [
+            'importacao_id'=>$importId,
+            'decisao'=>$decision,
+            'quantidade'=>$result['updated'],
+            'vinculados'=>$result['vinculados'],
+            'cadastro_pendente'=>$result['pendentes'],
+            'conflitos'=>$result['conflitos'],
+        ]);
+    } catch (Throwable) {
+    }
+
+    return $result;
+}
+
+/**
+ * Reprocessa itens que já foram confirmados anteriormente, mas ficaram sem
+ * inscricao_id por causa da versão antiga da ação em lote. A decisão já tomada
+ * (Beneficiário ou Lista de espera) é preservada.
+ *
+ * @return array{updated:int,vinculados:int,pendentes:int,conflitos:int,errors:list<string>}
+ */
+function cm_import_reprocess_confirmed_unlinked(PDO $pdo, int $importId, int $userId): array
+{
+    if ($importId < 1) {
+        throw new InvalidArgumentException('Importação inválida.');
+    }
+
+    if (function_exists('set_time_limit')) {
+        @set_time_limit(0);
+    }
+
+    $result = ['updated'=>0,'vinculados'=>0,'pendentes'=>0,'conflitos'=>0,'errors'=>[]];
+
+    foreach (['Beneficiario', 'ListaEspera'] as $decision) {
+        $stmt = $pdo->prepare("SELECT id
+            FROM comida_mesa_importacao_itens
+            WHERE importacao_id = :importacao_id
+              AND situacao_programa = :situacao_programa
+              AND inscricao_id IS NULL
+            ORDER BY id");
+        $stmt->execute([
+            'importacao_id'=>$importId,
+            'situacao_programa'=>$decision,
+        ]);
+        $ids = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []);
+        if ($ids === []) {
+            continue;
+        }
+
+        $partial = cm_import_decide_items($pdo, $ids, $decision, $userId);
+        $result['updated'] += $partial['updated'];
+        $result['vinculados'] += $partial['vinculados'];
+        $result['pendentes'] += $partial['pendentes'];
+        $result['conflitos'] += $partial['conflitos'];
+        foreach ($partial['errors'] as $error) {
+            $result['errors'][] = $error;
+        }
+    }
+
+    return $result;
+}
+
+function cm_import_confirmed_unlinked_count(PDO $pdo, int $importId): int
+{
+    if ($importId < 1) return 0;
+
+    $stmt = $pdo->prepare("SELECT COUNT(*)
+        FROM comida_mesa_importacao_itens
+        WHERE importacao_id = :importacao_id
+          AND situacao_programa IN ('Beneficiario','ListaEspera')
+          AND inscricao_id IS NULL");
+    $stmt->execute(['importacao_id'=>$importId]);
+    return (int) $stmt->fetchColumn();
+}
+
+
+/** @return array{total:int,verificados:int,encontrados:int,sigas:int,anexo:int,sem_cpf:int} */
+function cm_import_crosscheck_summary(PDO $pdo, int $importId): array
+{
+    $empty = ['total'=>0,'verificados'=>0,'encontrados'=>0,'sigas'=>0,'anexo'=>0,'sem_cpf'=>0];
+    if ($importId < 1) return $empty;
+
+    try {
+        $stmt = $pdo->prepare("SELECT
+            COUNT(*) total,
+            SUM(JSON_VALID(dados_json) = 1 AND JSON_EXTRACT(dados_json, '$._cruzamento') IS NOT NULL) verificados,
+            SUM(JSON_VALID(dados_json) = 1 AND JSON_UNQUOTE(JSON_EXTRACT(dados_json, '$._cruzamento.encontrado')) = 'sim') encontrados,
+            SUM(JSON_VALID(dados_json) = 1 AND JSON_UNQUOTE(JSON_EXTRACT(dados_json, '$._cruzamento.sigas.encontrado')) = 'sim') sigas,
+            SUM(JSON_VALID(dados_json) = 1 AND JSON_UNQUOTE(JSON_EXTRACT(dados_json, '$._cruzamento.anexo.encontrado')) = 'sim') anexo,
+            SUM(JSON_VALID(dados_json) = 1 AND JSON_UNQUOTE(JSON_EXTRACT(dados_json, '$._cruzamento.consultavel')) = 'nao') sem_cpf
+            FROM comida_mesa_importacao_itens
+            WHERE importacao_id = :importacao_id");
+        $stmt->execute(['importacao_id'=>$importId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        foreach ($empty as $key => $_) $empty[$key] = (int)($row[$key] ?? 0);
+        return $empty;
+    } catch (Throwable) {
+        return $empty;
+    }
+}
+
+/**
+ * Cruza uma carga inteira por CPF exato com as bases que possuem dados operacionais reais.
+ * Não altera a decisão do programa e não cria/vincula cadastros.
+ *
+ * @return array{total:int,consultaveis:int,encontrados:int,sigas:int,anexo:int,sem_cpf:int,anexo_disponivel:bool}
+ */
+function cm_import_crosscheck_registry(PDO $pdo, int $importId): array
+{
+    if ($importId < 1) throw new InvalidArgumentException('Importação inválida para cruzamento.');
+    if (function_exists('set_time_limit')) @set_time_limit(180);
+
+    $impStmt = $pdo->prepare('SELECT id, criado_em FROM comida_mesa_importacoes WHERE id = :id LIMIT 1');
+    $impStmt->execute(['id'=>$importId]);
+    $import = $impStmt->fetch(PDO::FETCH_ASSOC);
+    if (!is_array($import)) throw new RuntimeException('Importação não encontrada.');
+
+    $stmt = $pdo->prepare('SELECT id, cpf_validado, cpf_informado, pessoa_id, familia_id, inscricao_id, dados_json
+        FROM comida_mesa_importacao_itens WHERE importacao_id = :id ORDER BY id');
+    $stmt->execute(['id'=>$importId]);
+    $items = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    $cpfs = [];
+    foreach ($items as $item) {
+        $cpf = preg_replace('/\D+/', '', (string)($item['cpf_validado'] ?? '')) ?: '';
+        if ($cpf !== '' && strlen($cpf) === 11 && Validator::cpf($cpf)) $cpfs[$cpf] = $cpf;
+    }
+    $cpfList = array_values($cpfs);
+
+    $people = [];
+    $comida = [];
+    $primeiroEmprego = [];
+
+    $chunks = array_chunk($cpfList, 350);
+    foreach ($chunks as $chunkIndex => $chunk) {
+        $placeholders = [];
+        $params = [];
+        foreach ($chunk as $i => $cpf) {
+            $key = 'c' . $chunkIndex . '_' . $i;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $cpf;
+        }
+        if (!$placeholders) continue;
+        $in = implode(',', $placeholders);
+
+        $q = $pdo->prepare("SELECT id, cpf, nome, criado_em FROM pessoas WHERE cpf IN ({$in})");
+        $q->execute($params);
+        foreach ($q->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            $people[(string)$row['cpf']] = $row;
+        }
+
+        $q = $pdo->prepare("SELECT p.cpf, i.id AS inscricao_id, i.status, i.criado_em
+            FROM pessoas p
+            INNER JOIN familias f ON f.responsavel_pessoa_id = p.id
+            INNER JOIN comida_mesa_inscricoes i ON i.familia_id = f.id
+            WHERE p.cpf IN ({$in})");
+        $q->execute($params);
+        foreach ($q->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            $cpf = (string)$row['cpf'];
+            $comida[$cpf][] = $row;
+        }
+
+        $q = $pdo->prepare("SELECT p.cpf, i.id AS inscricao_id, i.status, i.criado_em
+            FROM pessoas p
+            INNER JOIN familia_membros fm ON fm.pessoa_id = p.id
+            INNER JOIN comida_mesa_inscricoes i ON i.familia_id = fm.familia_id
+            WHERE p.cpf IN ({$in})");
+        $q->execute($params);
+        foreach ($q->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            $cpf = (string)$row['cpf'];
+            $comida[$cpf][] = $row;
+        }
+
+        try {
+            $q = $pdo->prepare("SELECT id, cpf, status, created_at FROM pe_candidatos WHERE cpf IN ({$in})");
+            $q->execute($params);
+            foreach ($q->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+                $cpf = (string)$row['cpf'];
+                $primeiroEmprego[$cpf][] = $row;
+            }
+        } catch (Throwable) {
+            // Primeiro Emprego pode ainda não ter sido instalado nesta hospedagem.
+        }
+    }
+
+    $anexoResponse = (new AnexoIntegrationService())->consultCpfsBasic($cpfList);
+    $anexoAvailable = (bool)($anexoResponse['available'] ?? false);
+    $anexoMatches = is_array($anexoResponse['matches'] ?? null) ? $anexoResponse['matches'] : [];
+
+    $now = date('Y-m-d H:i:s');
+    $payloads = [];
+    $stats = ['total'=>count($items),'consultaveis'=>0,'encontrados'=>0,'sigas'=>0,'anexo'=>0,'sem_cpf'=>0,'anexo_disponivel'=>$anexoAvailable];
+
+    foreach ($items as $item) {
+        $source = json_decode((string)($item['dados_json'] ?? ''), true);
+        if (!is_array($source)) $source = [];
+        $cpf = preg_replace('/\D+/', '', (string)($item['cpf_validado'] ?? '')) ?: '';
+        $consultavel = $cpf !== '' && strlen($cpf) === 11 && Validator::cpf($cpf);
+
+        $cross = [
+            'consultado_em'=>$now,
+            'consultavel'=>$consultavel ? 'sim' : 'nao',
+            'encontrado'=>'nao',
+            'cpf'=>$consultavel ? $cpf : null,
+            'sigas'=>['encontrado'=>'nao','cadastro_geral'=>false,'programas'=>[]],
+            'anexo'=>['disponivel'=>$anexoAvailable ? 'sim' : 'nao','encontrado'=>'nao','beneficios'=>[],'solicitacoes'=>0],
+        ];
+
+        if (!$consultavel) {
+            $stats['sem_cpf']++;
+            $source['_cruzamento'] = $cross;
+            $payloads[(int)$item['id']] = json_encode($source, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            continue;
+        }
+
+        $stats['consultaveis']++;
+        $localFound = isset($people[$cpf]) || isset($comida[$cpf]) || isset($primeiroEmprego[$cpf]);
+        if (isset($people[$cpf])) $cross['sigas']['cadastro_geral'] = true;
+
+        if (!empty($comida[$cpf])) {
+            $statuses = [];
+            $sameImportLink = false;
+            foreach ($comida[$cpf] as $row) {
+                $statuses[] = (string)($row['status'] ?? '');
+                if (!empty($item['inscricao_id']) && (int)$item['inscricao_id'] === (int)($row['inscricao_id'] ?? 0)) $sameImportLink = true;
+            }
+            $statuses = array_values(array_unique(array_filter($statuses)));
+            $cross['sigas']['programas'][] = [
+                'codigo'=>'comida_mesa',
+                'nome'=>'Comida na Mesa',
+                'situacao'=>$statuses ? implode(', ', $statuses) : null,
+                'vinculo_carga_atual'=>$sameImportLink ? 'sim' : 'nao',
+            ];
+        }
+
+        if (!empty($primeiroEmprego[$cpf])) {
+            $statuses = array_values(array_unique(array_filter(array_map(static fn($r)=>(string)($r['status'] ?? ''), $primeiroEmprego[$cpf]))));
+            $cross['sigas']['programas'][] = [
+                'codigo'=>'primeiro_emprego',
+                'nome'=>'Primeiro Emprego',
+                'situacao'=>$statuses ? implode(', ', $statuses) : null,
+                'vinculo_carga_atual'=>'nao',
+            ];
+        }
+
+        if ($localFound) {
+            $cross['sigas']['encontrado'] = 'sim';
+            $stats['sigas']++;
+        }
+
+        $anexo = $anexoMatches[$cpf] ?? null;
+        if (is_array($anexo)) {
+            $cross['anexo']['encontrado'] = 'sim';
+            $cross['anexo']['beneficios'] = array_values(array_filter(array_map('strval', (array)($anexo['beneficios'] ?? []))));
+            $cross['anexo']['solicitacoes'] = (int)($anexo['solicitacoes'] ?? 0);
+            $cross['anexo']['nome'] = (string)($anexo['nome'] ?? '');
+            $stats['anexo']++;
+        }
+
+        if ($localFound || is_array($anexo)) {
+            $cross['encontrado'] = 'sim';
+            $stats['encontrados']++;
+        }
+
+        $source['_cruzamento'] = $cross;
+        $payloads[(int)$item['id']] = json_encode($source, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    $started = !$pdo->inTransaction();
+    if ($started) $pdo->beginTransaction();
+    try {
+        $update = $pdo->prepare('UPDATE comida_mesa_importacao_itens SET dados_json = :dados_json WHERE id = :id AND importacao_id = :importacao_id');
+        foreach ($payloads as $id => $json) {
+            $update->execute(['dados_json'=>$json, 'id'=>$id, 'importacao_id'=>$importId]);
+        }
+        if ($started) $pdo->commit();
+    } catch (Throwable $e) {
+        if ($started && $pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
+
+    return $stats;
 }
 
 /** @return array<string,mixed>|null */
@@ -592,10 +1367,10 @@ function cm_import_item_log(PDO $pdo, int $importId, array $row, string $status,
     if ($message !== null && $message !== '') $issues[] = $message;
 
     $stmt = $pdo->prepare('INSERT INTO comida_mesa_importacao_itens
-        (importacao_id, linha, status, pessoa_id, familia_id, inscricao_id, nome, cpf_informado, cpf_validado,
-         telefone_informado, polo_informado, classificacao, motivos, dados_json)
-        VALUES (:importacao_id, :linha, :status, :pessoa_id, :familia_id, :inscricao_id, :nome, :cpf_informado, :cpf_validado,
-                :telefone_informado, :polo_informado, :classificacao, :motivos, :dados_json)');
+        (importacao_id, linha, status, situacao_programa, pessoa_id, familia_id, inscricao_id, nome, cpf_informado, cpf_validado,
+         telefone_informado, polo_informado, classificacao, motivos, dados_json, efetivacao_status)
+        VALUES (:importacao_id, :linha, :status, "Pendente", :pessoa_id, :familia_id, :inscricao_id, :nome, :cpf_informado, :cpf_validado,
+                :telefone_informado, :polo_informado, :classificacao, :motivos, :dados_json, :efetivacao_status)');
     $stmt->execute([
         'importacao_id' => $importId,
         'linha' => (int) ($row['row'] ?? 0),
@@ -611,6 +1386,7 @@ function cm_import_item_log(PDO $pdo, int $importId, array $row, string $status,
         'classificacao' => (string) ($row['classification'] ?? ''),
         'motivos' => $issues ? implode(' | ', $issues) : null,
         'dados_json' => json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        'efetivacao_status' => !empty($ids['inscricao_id']) ? 'Vinculado' : 'Pendente',
     ]);
 }
 
@@ -618,89 +1394,77 @@ function cm_import_item_log(PDO $pdo, int $importId, array $row, string $status,
 function cm_import_execute(PDO $pdo, array $prepared, string $filename, string $fileHash, array $options = []): array
 {
     $app = cm_app();
-    $service = $app['service'];
     $audit = $app['audit'];
     $user = $app['user'];
-    $repository = $app['repository'];
     $userId = (int) $user->id;
 
     $stmt = $pdo->prepare('INSERT INTO comida_mesa_importacoes
         (arquivo_nome, arquivo_hash, status, total_linhas, polo_padrao_id, status_padrao, prioridade_padrao,
-         zona_padrao, atualizar_existentes, criado_por)
-        VALUES (:arquivo_nome, :arquivo_hash, "Processando", :total_linhas, :polo_padrao_id, :status_padrao,
-                :prioridade_padrao, :zona_padrao, :atualizar_existentes, :criado_por)');
+         zona_padrao, atualizar_existentes, pendentes_confirmacao, criado_por)
+        VALUES (:arquivo_nome, :arquivo_hash, "Processando", :total_linhas, :polo_padrao_id, "em_analise",
+                :prioridade_padrao, :zona_padrao, 0, :pendentes_confirmacao, :criado_por)');
     $stmt->execute([
         'arquivo_nome' => $filename,
         'arquivo_hash' => $fileHash,
         'total_linhas' => count($prepared),
         'polo_padrao_id' => !empty($options['polo_padrao_id']) ? (int) $options['polo_padrao_id'] : null,
-        'status_padrao' => (string) ($options['status_padrao'] ?? 'em_analise'),
         'prioridade_padrao' => (string) ($options['prioridade_padrao'] ?? 'normal'),
         'zona_padrao' => ($options['zona_padrao'] ?? '') !== '' ? (string) $options['zona_padrao'] : null,
-        'atualizar_existentes' => !empty($options['atualizar_existentes']) ? 1 : 0,
+        'pendentes_confirmacao' => count($prepared),
         'criado_por' => $userId,
     ]);
     $importId = (int) $pdo->lastInsertId();
 
-    $counts = ['novos'=>0,'atualizados'=>0,'ignorados'=>0,'revisar'=>0,'erros'=>0];
+    $counts = ['pendentes'=>0,'com_pendencia_cadastral'=>0,'localizados'=>0,'erros'=>0];
     $errors = [];
 
     foreach ($prepared as $row) {
-        if (($row['action'] ?? '') === 'Revisar') {
-            $counts['revisar']++;
-            cm_import_item_log($pdo, $importId, $row, 'Revisar');
-            continue;
-        }
-        if (($row['action'] ?? '') === 'Ignorar') {
-            $counts['ignorados']++;
-            cm_import_item_log($pdo, $importId, $row, 'Ignorado');
-            continue;
-        }
-
         try {
-            $payload = $row['data'];
-            if (($row['action'] ?? '') === 'Atualizar' && is_array($row['existing'] ?? null)) {
-                $payload = cm_import_merge_existing($payload, $row['existing'], $row['source_has'] ?? []);
+            $ids = null;
+            if (is_array($row['existing'] ?? null)) {
+                $existing = $row['existing'];
+                $ids = [
+                    'pessoa_id' => $existing['pessoa_id'] ?? null,
+                    'familia_id' => $existing['familia_id'] ?? null,
+                    'inscricao_id' => $existing['inscricao_id'] ?? null,
+                ];
+                if (!empty($ids['inscricao_id'])) $counts['localizados']++;
             }
 
-            $dto = ComidaMesaCadastroData::fromArray($payload);
-            $result = $service->saveRegistration($dto, $userId, $audit);
-            $detail = $repository->detail((int) $result['id'], false, false) ?: [];
-            $ids = [
-                'pessoa_id' => $detail['responsavel_pessoa_id'] ?? null,
-                'familia_id' => $detail['familia_id'] ?? null,
-                'inscricao_id' => $result['id'],
-            ];
-            $status = ($row['action'] ?? '') === 'Atualizar' ? 'Atualizado' : 'Importado';
-            $counts[$status === 'Atualizado' ? 'atualizados' : 'novos']++;
-            cm_import_item_log($pdo, $importId, $row, $status, $ids);
+            $hasIssues = false;
+            foreach (($row['issues'] ?? []) as $messages) {
+                if (!empty($messages)) { $hasIssues = true; break; }
+            }
+            if ($hasIssues) $counts['com_pendencia_cadastral']++;
+
+            cm_import_item_log($pdo, $importId, $row, 'Aguardando', $ids);
+            $counts['pendentes']++;
         } catch (Throwable $e) {
             $counts['erros']++;
-            $errors[] = ['row' => (int) ($row['row'] ?? 0), 'message' => $e->getMessage()];
-            cm_import_item_log($pdo, $importId, $row, 'Erro', null, $e->getMessage());
+            $errors[] = ['row'=>(int)($row['row'] ?? 0),'message'=>$e->getMessage()];
         }
     }
 
     $done = $pdo->prepare('UPDATE comida_mesa_importacoes SET
-        novos = :novos, atualizados = :atualizados, ignorados = :ignorados, revisar = :revisar,
-        erros = :erros, status = "Concluída", finalizado_em = CURRENT_TIMESTAMP
+        pendentes_confirmacao = :pendentes,
+        erros = :erros,
+        status = "Aguardando confirmação",
+        finalizado_em = CURRENT_TIMESTAMP
         WHERE id = :id');
     $done->execute([
-        'novos' => $counts['novos'],
-        'atualizados' => $counts['atualizados'],
-        'ignorados' => $counts['ignorados'],
-        'revisar' => $counts['revisar'],
-        'erros' => $counts['erros'],
-        'id' => $importId,
+        'pendentes'=>$counts['pendentes'],
+        'erros'=>$counts['erros'],
+        'id'=>$importId,
     ]);
 
     $audit->record($userId, null, 'importacao_comida_mesa', 'comida_mesa', $filename, null, [
-        'importacao_id' => $importId,
-        'novos' => $counts['novos'],
-        'atualizados' => $counts['atualizados'],
-        'revisar' => $counts['revisar'],
-        'erros' => $counts['erros'],
+        'importacao_id'=>$importId,
+        'pendentes_confirmacao'=>$counts['pendentes'],
+        'com_pendencia_cadastral'=>$counts['com_pendencia_cadastral'],
+        'cadastros_localizados'=>$counts['localizados'],
+        'erros'=>$counts['erros'],
     ]);
 
     return ['import_id'=>$importId,'counts'=>$counts,'errors'=>$errors];
 }
+

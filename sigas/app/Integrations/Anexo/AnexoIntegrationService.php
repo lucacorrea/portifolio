@@ -105,6 +105,55 @@ final class AnexoIntegrationService
         }
     }
 
+    /**
+     * Consulta vários CPFs em uma única passagem para telas de importação.
+     * @param list<string> $cpfs
+     * @return array{enabled:bool,available:bool,matches:array<string,array<string,mixed>>,state:string}
+     */
+    public function consultCpfsBasic(array $cpfs): array
+    {
+        $repository = $this->repository();
+        if ($repository === null) {
+            $state = $this->configurationState ?? 'not_configured';
+            return [
+                'enabled' => !in_array($state, ['disabled', 'not_configured'], true),
+                'available' => false,
+                'matches' => [],
+                'state' => $state,
+            ];
+        }
+
+        try {
+            if (!method_exists($repository, 'findSolicitantesSummaryByCpfs')) {
+                return ['enabled'=>true, 'available'=>false, 'matches'=>[], 'state'=>'unsupported'];
+            }
+
+            $rows = $repository->findSolicitantesSummaryByCpfs($cpfs);
+            $matches = [];
+            foreach ($rows as $row) {
+                $cpf = Validator::onlyDigits((string)($row['cpf'] ?? ''));
+                if ($cpf === '') continue;
+                $benefitsRaw = trim((string)($row['beneficios'] ?? ''));
+                $benefits = $benefitsRaw === '' ? [] : array_values(array_unique(array_filter(array_map('trim', explode('||', $benefitsRaw)))));
+                $matches[$cpf] = [
+                    'id'=>(int)($row['id'] ?? 0),
+                    'nome'=>(string)($row['nome'] ?? ''),
+                    'cpf'=>$cpf,
+                    'solicitacoes'=>(int)($row['solicitacoes_count'] ?? 0),
+                    'beneficios'=>$benefits,
+                ];
+            }
+
+            return ['enabled'=>true, 'available'=>true, 'matches'=>$matches, 'state'=>'available'];
+        } catch (Throwable $exception) {
+            Logger::application('ANEXO batch CPF consultation unavailable.', [
+                'type' => $exception::class,
+                'code' => $exception->getCode(),
+            ]);
+            return ['enabled'=>true, 'available'=>false, 'matches'=>[], 'state'=>'unavailable'];
+        }
+    }
+
     /** @return array<string,mixed> */
     public function summary(): array
     {
