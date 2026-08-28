@@ -106,7 +106,7 @@
                         <span class="fw-bold" id="pv_subtotal">R$ 0,00</span>
                     </div>
                     <div class="mb-3 p-3 bg-white border rounded shadow-sm" style="border-left: 5px solid #16a34a !important;">
-                        <div class="d-flex justify-content-between align-items-center gap-3">
+                        <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
                             <div>
                                 <span class="d-block fw-bold text-success">Total final do orçamento</span>
                                 <small class="text-muted extra-small">Opcional. Só altera o orçamento, não a pré-venda.</small>
@@ -114,6 +114,29 @@
                             <div class="input-group" style="width: 170px;">
                                 <span class="input-group-text bg-success bg-opacity-10 border-success text-success fw-bold">R$</span>
                                 <input type="number" id="pv_orcamento_total_manual" class="form-control text-end fw-bold border-success" min="0" step="0.01" placeholder="Auto" onfocus="this.select()">
+                            </div>
+                        </div>
+                        <div class="border-top mt-3 pt-3">
+                            <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2">
+                                <span class="fw-bold text-primary">Aplicar preço nos itens</span>
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Aplicar tabela de preço">
+                                    <button type="button" class="btn btn-outline-primary fw-bold" onclick="applyPVPriceTierToCart(1)">
+                                        <i class="fas fa-tag me-1"></i>Preço 1
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary fw-bold" onclick="applyPVPriceTierToCart(2)">
+                                        <i class="fas fa-tags me-1"></i>Preço 2
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary fw-bold" onclick="applyPVPriceTierToCart(3)">
+                                        <i class="fas fa-layer-group me-1"></i>Preço 3
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-primary bg-opacity-10 border-primary text-primary fw-bold">R$</span>
+                                <input type="number" id="pv_orcamento_bulk_unit_price" class="form-control text-end fw-bold border-primary" min="0" step="0.01" placeholder="Valor unitário" onfocus="this.select()">
+                                <button type="button" class="btn btn-primary fw-bold" onclick="applyPVManualUnitPriceToCart()">
+                                    <i class="fas fa-check me-1"></i>Aplicar
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -564,10 +587,7 @@ function renderPVCart() {
                 <input type="number" class="form-control form-control-sm text-center mx-auto" style="width: 70px" value="${item.qty}" min="1" step="any" onchange="updatePVQty(${index}, this.value)">
             </td>
             <td class="text-end">
-                ${item.preco_variavel ? 
-                    `<input type="number" class="form-control form-control-sm text-end d-inline-block border-primary fw-bold" style="width: 90px" value="${item.price.toFixed(2)}" step="0.01" onchange="updatePVPrice(${index}, this.value)">` : 
-                    `R$ ${item.price.toFixed(2).replace('.', ',')}`
-                }
+                <input type="number" class="form-control form-control-sm text-end d-inline-block border-primary fw-bold" style="width: 90px" value="${item.price.toFixed(2)}" step="0.01" onchange="updatePVPrice(${index}, this.value)">
             </td>
             <td class="text-end fw-bold">R$ ${subtotal.toFixed(2).replace('.', ',')}</td>
             <td class="text-center">
@@ -596,6 +616,70 @@ function changePVPriceTier(index, tier) {
     else if (tier == 3) item.price = item.price3;
     
     renderPVCart();
+}
+
+function getPVCartPriceByTier(item, tier) {
+    if (tier == 1) return parseFloat(item.price1) || 0;
+    if (tier == 2) return parseFloat(item.price2) || 0;
+    if (tier == 3) return parseFloat(item.price3) || 0;
+    return 0;
+}
+
+function applyPVPriceTierToCart(tier) {
+    if (pvCart.length === 0) {
+        alert('Adicione produtos ao orçamento antes de aplicar o preço.');
+        return;
+    }
+
+    let updated = 0;
+    let skipped = 0;
+    pvCart.forEach(item => {
+        if (item.preco_variavel) {
+            skipped++;
+            return;
+        }
+
+        const price = getPVCartPriceByTier(item, tier);
+        if (price <= 0) {
+            skipped++;
+            return;
+        }
+
+        item.price = price;
+        item.price_tier = parseInt(tier);
+        updated++;
+    });
+
+    renderPVCart();
+
+    let message = `Preço ${tier} aplicado em ${updated} item(ns).`;
+    if (skipped > 0) {
+        message += `\n${skipped} item(ns) foram mantidos porque não têm esse preço cadastrado ou são de preço manual.`;
+    }
+    alert(message);
+}
+
+function applyPVManualUnitPriceToCart() {
+    if (pvCart.length === 0) {
+        alert('Adicione produtos ao orçamento antes de aplicar o valor.');
+        return;
+    }
+
+    const input = document.getElementById('pv_orcamento_bulk_unit_price');
+    const price = input ? parsePvCurrencyToFloat(input.value) : 0;
+    if (price <= 0) {
+        alert('Informe um valor unitário maior que zero.');
+        if (input) input.focus();
+        return;
+    }
+
+    pvCart.forEach(item => {
+        item.price = price;
+    });
+
+    if (input) input.value = price.toFixed(2);
+    renderPVCart();
+    alert(`Valor unitário de R$ ${price.toFixed(2).replace('.', ',')} aplicado em ${pvCart.length} item(ns).`);
 }
 
 function removeFromPVCart(index) {
@@ -639,6 +723,8 @@ function getPvManualOrcamentoTotal() {
 function clearPvManualOrcamentoTotal() {
     const input = document.getElementById('pv_orcamento_total_manual');
     if (input) input.value = '';
+    const bulkInput = document.getElementById('pv_orcamento_bulk_unit_price');
+    if (bulkInput) bulkInput.value = '';
 }
 
 async function generatePreSale(isOrcamento = false) {

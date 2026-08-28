@@ -300,7 +300,7 @@
                         <span class="fw-bold text-info" id="totalTax">+ R$ 0,00</span>
                     </div>
                     <div class="mb-3 p-3 bg-white border rounded shadow-sm" style="border-left: 5px solid #16a34a !important;">
-                        <div class="d-flex justify-content-between align-items-center gap-3">
+                        <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
                             <div>
                                 <span class="d-block fw-bold text-success">Total final do orçamento</span>
                                 <small class="text-muted extra-small">Opcional. Só altera o orçamento, não a venda.</small>
@@ -308,6 +308,29 @@
                             <div class="input-group" style="width: 170px;">
                                 <span class="input-group-text bg-success bg-opacity-10 border-success text-success fw-bold">R$</span>
                                 <input type="number" id="orcamentoTotalManual" class="form-control text-end fw-bold border-success" min="0" step="0.01" placeholder="Auto" onfocus="this.select()">
+                            </div>
+                        </div>
+                        <div class="border-top mt-3 pt-3">
+                            <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2">
+                                <span class="fw-bold text-primary">Aplicar preço nos itens</span>
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Aplicar tabela de preço">
+                                    <button type="button" class="btn btn-outline-primary fw-bold" onclick="applyPriceTierToCart(1)">
+                                        <i class="fas fa-tag me-1"></i>Preço 1
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary fw-bold" onclick="applyPriceTierToCart(2)">
+                                        <i class="fas fa-tags me-1"></i>Preço 2
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary fw-bold" onclick="applyPriceTierToCart(3)">
+                                        <i class="fas fa-layer-group me-1"></i>Preço 3
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-primary bg-opacity-10 border-primary text-primary fw-bold">R$</span>
+                                <input type="number" id="orcamentoBulkUnitPrice" class="form-control text-end fw-bold border-primary" min="0" step="0.01" placeholder="Valor unitário" onfocus="this.select()">
+                                <button type="button" class="btn btn-primary fw-bold" onclick="applyManualUnitPriceToCart()">
+                                    <i class="fas fa-check me-1"></i>Aplicar
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -1637,13 +1660,10 @@ function renderCart() {
                 <input type="number" class="form-control form-control-sm text-center mx-auto" style="width: 70px" value="${item.qty}" min="1" step="any" onchange="updateQty(${index}, this.value)">
             </td>
             <td class="text-end">
-                ${item.preco_variavel ? 
-                    `<div class="input-group input-group-sm justify-content-end">
-                        <span class="input-group-text bg-white border-0 extra-small px-1">R$</span>
-                        <input type="number" class="form-control form-control-sm text-end border-primary fw-bold price-variable-input" style="width: 90px" value="${item.price.toFixed(2)}" step="0.01" onchange="updateItemPrice(${index}, this.value)">
-                    </div>` : 
-                    `R$ ${item.price.toFixed(2).replace('.', ',')}`
-                }
+                <div class="input-group input-group-sm justify-content-end">
+                    <span class="input-group-text bg-white border-0 extra-small px-1">R$</span>
+                    <input type="number" class="form-control form-control-sm text-end border-primary fw-bold price-variable-input" style="width: 90px" value="${item.price.toFixed(2)}" step="0.01" onchange="updateItemPrice(${index}, this.value)">
+                </div>
             </td>
             <td class="text-end fw-bold">R$ ${subtotal.toFixed(2).replace('.', ',')}</td>
 
@@ -1711,6 +1731,70 @@ function updatePriceTier(index, tier) {
     else if (tier == 2) item.price = item.price2;
     else if (tier == 3) item.price = item.price3;
     renderCart();
+}
+
+function getCartPriceByTier(item, tier) {
+    if (tier == 1) return parseFloat(item.price1) || 0;
+    if (tier == 2) return parseFloat(item.price2) || 0;
+    if (tier == 3) return parseFloat(item.price3) || 0;
+    return 0;
+}
+
+function applyPriceTierToCart(tier) {
+    if (cart.length === 0) {
+        alert('Adicione produtos ao orçamento antes de aplicar o preço.');
+        return;
+    }
+
+    let updated = 0;
+    let skipped = 0;
+    cart.forEach(item => {
+        if (item.preco_variavel) {
+            skipped++;
+            return;
+        }
+
+        const price = getCartPriceByTier(item, tier);
+        if (price <= 0) {
+            skipped++;
+            return;
+        }
+
+        item.price = price;
+        item.price_tier = parseInt(tier);
+        updated++;
+    });
+
+    renderCart();
+
+    let message = `Preço ${tier} aplicado em ${updated} item(ns).`;
+    if (skipped > 0) {
+        message += `\n${skipped} item(ns) foram mantidos porque não têm esse preço cadastrado ou são de preço manual.`;
+    }
+    alert(message);
+}
+
+function applyManualUnitPriceToCart() {
+    if (cart.length === 0) {
+        alert('Adicione produtos ao orçamento antes de aplicar o valor.');
+        return;
+    }
+
+    const input = document.getElementById('orcamentoBulkUnitPrice');
+    const price = input ? parseCurrencyToFloat(input.value) : 0;
+    if (price <= 0) {
+        alert('Informe um valor unitário maior que zero.');
+        if (input) input.focus();
+        return;
+    }
+
+    cart.forEach(item => {
+        item.price = price;
+    });
+
+    if (input) input.value = price.toFixed(2);
+    renderCart();
+    alert(`Valor unitário de R$ ${price.toFixed(2).replace('.', ',')} aplicado em ${cart.length} item(ns).`);
 }
 
 function updateQty(index, val) {
@@ -2008,6 +2092,7 @@ async function importPreSale(code) {
             price1: parseFloat(i.preco_venda || 0),
             price2: parseFloat(i.preco_venda_2 || 0),
             price3: parseFloat(i.preco_venda_3 || 0),
+            preco_variavel: parseInt(i.preco_variavel || 0) === 1,
             price_tier: parseInt(i.preco_tier || 1),
             qty: parseFloat(i.quantidade),
             imagens: i.imagens
@@ -2152,6 +2237,8 @@ function getPdvCalculatedOrcamentoTotal() {
 function clearPdvManualOrcamentoTotal() {
     const input = document.getElementById('orcamentoTotalManual');
     if (input) input.value = '';
+    const bulkInput = document.getElementById('orcamentoBulkUnitPrice');
+    if (bulkInput) bulkInput.value = '';
 }
 
 async function saveCurrentSaleAsOrcamento() {
