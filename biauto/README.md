@@ -1,20 +1,38 @@
-# Bianka Oficina — Layout de referência
+# Bianka Oficina — versão melhorada
 
-Nova versão visual baseada no dashboard enviado como referência: interface clara, minimalista, monocromática, sidebar lateral clara, navegação com item ativo preto, busca global no topo, cards compactos e gráficos discretos.
+Esta versão corrige e melhora o layout anterior com foco em qualidade visual e robustez técnica.
 
-## Principais pontos
-- Dashboard redesenhado
-- Sidebar clara e minimalista
-- Topbar com busca global
-- Perfil e notificações
-- Modo claro/escuro persistente via localStorage
-- Layout responsivo
-- Tabelas no desktop e estrutura compatível com cards no mobile
-- Sem alterar a estrutura funcional das páginas PHP existentes
+## Melhorias aplicadas
+- Ícones em SVG inline (não dependem mais de fonte externa)
+- Dashboard redesenhado e muito mais próximo do visual profissional desejado
+- Topbar alinhada corretamente
+- Sidebar profissional com identidade consistente
+- Cards, tabelas e formulários padronizados
+- Gráfico de barras e gráfico de distribuição renderizados só com CSS
+- Modo claro/escuro salvo no navegador
+- Melhor responsividade para notebook, tablet e celular
+
+## Estrutura
+- `includes/header.php`
+- `includes/sidebar.php`
+- `includes/footer.php`
+- `includes/ui.php`
+- `assets/css/app.css`
+- `assets/js/app.js`
 
 ## Executar localmente
 ```bash
 php -S localhost:8000
 ```
 
-Acesse `http://localhost:8000`.
+Depois acesse:
+http://localhost:8000
+
+## Próximo passo recomendado
+Conectar com banco MySQL e transformar os módulos em CRUD real com:
+- autenticação
+- permissões
+- CSRF
+- validação server-side
+- paginação
+- filtros reais

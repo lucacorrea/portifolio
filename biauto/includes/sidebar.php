@@ -1,40 +1,40 @@
 <?php
-function navItem(string $href, string $icon, string $label, string $page, string $currentPage): string {
-    $active = $page === $currentPage ? ' active' : '';
-    return '<a class="nav-item'.$active.'" href="'.$href.'"><i class="icon '.$icon.'"></i><span>'.$label.'</span></a>';
+function nav_item(string $href, string $icon, string $label, string $key, string $currentPage): string {
+    $active = $key === $currentPage ? ' active' : '';
+    return '<a class="nav-item' . $active . '" href="' . h($href) . '">' . ui_icon($icon, 'nav-item-icon') . '<span>' . h($label) . '</span></a>';
 }
 ?>
 <aside class="sidebar" id="sidebar">
-    <div class="brand">
-        <a href="index.php" class="brand-symbol" aria-label="Bianka Oficina">B</a>
-        <button class="sidebar-collapse" id="sidebarCollapse" type="button" aria-label="Recolher menu">
-            <i class="icon icon-panel-left-close"></i>
-        </button>
+    <div class="sidebar-top">
+        <a href="index.php" class="brand-mark" aria-label="Bianka Oficina">B</a>
+        <div class="brand-meta">
+            <strong>Bianka</strong>
+            <span>Oficina Mecânica</span>
+        </div>
     </div>
 
     <nav class="sidebar-nav">
-        <?= navItem('index.php', 'icon-house', 'Dashboard', 'dashboard', $currentPage) ?>
-        <?= navItem('ordens.php', 'icon-clipboard-list', 'Ordens de Serviço', 'ordens', $currentPage) ?>
-        <?= navItem('orcamentos.php', 'icon-file-text', 'Orçamentos', 'orcamentos', $currentPage) ?>
+        <?= nav_item('index.php', 'dashboard', 'Dashboard', 'dashboard', $currentPage) ?>
+        <?= nav_item('ordens.php', 'os', 'Ordens de Serviço', 'ordens', $currentPage) ?>
+        <?= nav_item('orcamentos.php', 'budget', 'Orçamentos', 'orcamentos', $currentPage) ?>
 
-        <div class="nav-divider"></div>
-        <div class="nav-label">CADASTROS</div>
-        <?= navItem('clientes.php', 'icon-users', 'Clientes', 'clientes', $currentPage) ?>
-        <?= navItem('veiculos.php', 'icon-car-front', 'Veículos', 'veiculos', $currentPage) ?>
-        <?= navItem('mecanicos.php', 'icon-wrench', 'Mecânicos', 'mecanicos', $currentPage) ?>
-        <?= navItem('servicos.php', 'icon-list-checks', 'Serviços', 'servicos', $currentPage) ?>
-        <?= navItem('pecas.php', 'icon-package', 'Peças', 'pecas', $currentPage) ?>
+        <div class="nav-section">Cadastros</div>
+        <?= nav_item('clientes.php', 'clients', 'Clientes', 'clientes', $currentPage) ?>
+        <?= nav_item('veiculos.php', 'vehicle', 'Veículos', 'veiculos', $currentPage) ?>
+        <?= nav_item('mecanicos.php', 'mechanic', 'Mecânicos', 'mecanicos', $currentPage) ?>
+        <?= nav_item('servicos.php', 'service', 'Serviços', 'servicos', $currentPage) ?>
+        <?= nav_item('pecas.php', 'parts', 'Peças', 'pecas', $currentPage) ?>
 
-        <div class="nav-divider"></div>
-        <?= navItem('relatorios.php', 'icon-chart-column', 'Relatórios', 'relatorios', $currentPage) ?>
-        <?= navItem('configuracoes.php', 'icon-settings', 'Configurações', 'configuracoes', $currentPage) ?>
+        <div class="nav-section">Gestão</div>
+        <?= nav_item('relatorios.php', 'report', 'Relatórios', 'relatorios', $currentPage) ?>
+        <?= nav_item('configuracoes.php', 'settings', 'Configurações', 'configuracoes', $currentPage) ?>
     </nav>
 
-    <div class="sidebar-footer">
-        <button class="theme-toggle" id="themeToggle" type="button">
-            <i class="icon icon-sun" id="themeIcon"></i>
+    <div class="sidebar-bottom">
+        <button class="theme-switch" id="themeToggle" type="button">
+            <?= ui_icon('sun', 'theme-icon') ?>
             <span id="themeLabel">Modo claro</span>
-            <span class="switch"><span></span></span>
+            <span class="theme-toggle-ui"><span></span></span>
         </button>
     </div>
 </aside>
@@ -43,26 +43,29 @@ function navItem(string $href, string $icon, string $label, string $page, string
     <header class="topbar">
         <div class="topbar-left">
             <button class="mobile-menu-btn" id="menuToggle" type="button" aria-label="Abrir menu">
-                <i class="icon icon-menu"></i>
+                <?= ui_icon('menu') ?>
             </button>
-            <div class="global-search">
-                <i class="icon icon-search"></i>
-                <input type="search" placeholder="Buscar OS, cliente, veículo..." aria-label="Busca geral">
-            </div>
+            <label class="searchbar" for="mainSearch">
+                <?= ui_icon('search') ?>
+                <input id="mainSearch" type="search" placeholder="Buscar OS, cliente, veículo ou peça">
+            </label>
         </div>
 
-        <div class="topbar-actions">
-            <button class="top-icon-btn" type="button" aria-label="Notificações">
-                <i class="icon icon-bell"></i>
+        <div class="topbar-right">
+            <button class="icon-btn" type="button" aria-label="Notificações">
+                <?= ui_icon('bell') ?>
                 <span class="notification-dot"></span>
             </button>
-            <div class="profile-box">
-                <div class="profile-avatar">AD</div>
-                <div class="profile-text">
+
+            <div class="profile-card">
+                <div class="avatar">AD</div>
+                <div class="profile-meta">
                     <strong>Administrador</strong>
                     <span>Bianka Oficina</span>
                 </div>
-                <button class="profile-more" type="button" aria-label="Mais opções"><i class="icon icon-ellipsis-vertical"></i></button>
+                <button class="icon-btn ghost-btn" type="button" aria-label="Mais opções">
+                    <?= ui_icon('ellipsis') ?>
+                </button>
             </div>
         </div>
     </header>
