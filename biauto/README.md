@@ -17,7 +17,7 @@ Esta versão corrige e melhora o layout anterior com foco em qualidade visual e 
 - `includes/sidebar.php`
 - `includes/footer.php`
 - `includes/ui.php`
-- `assets/css/app.css`
+- `assets/css/bianka.css`
 - `assets/js/app.js`
 
 ## Executar localmente
