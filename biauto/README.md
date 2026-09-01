@@ -1,33 +1,20 @@
-# Bianka Oficina - Layout PHP
+# Bianka Oficina — Layout de referência
 
-Pacote inicial de layout responsivo em PHP puro.
+Nova versão visual baseada no dashboard enviado como referência: interface clara, minimalista, monocromática, sidebar lateral clara, navegação com item ativo preto, busca global no topo, cards compactos e gráficos discretos.
 
-## Requisitos
-- PHP 8.1 ou superior recomendado
-- Servidor Apache/Nginx ou `php -S`
+## Principais pontos
+- Dashboard redesenhado
+- Sidebar clara e minimalista
+- Topbar com busca global
+- Perfil e notificações
+- Modo claro/escuro persistente via localStorage
+- Layout responsivo
+- Tabelas no desktop e estrutura compatível com cards no mobile
+- Sem alterar a estrutura funcional das páginas PHP existentes
 
 ## Executar localmente
 ```bash
 php -S localhost:8000
 ```
 
-Depois acesse:
-http://localhost:8000
-
-## Páginas incluídas
-- Dashboard
-- Clientes
-- Veículos
-- Mecânicos
-- Serviços
-- Peças
-- Ordens de Serviço
-- Nova Ordem de Serviço
-- Detalhes da OS
-- Orçamentos
-- Relatórios
-- Configurações
-
-## Observação
-Esta versão é o layout visual e a estrutura de navegação. Os dados exibidos são demonstrativos.
-O próximo passo é conectar autenticação, banco de dados, CRUDs, validação CSRF, permissões e regras de negócio.
+Acesse `http://localhost:8000`.
