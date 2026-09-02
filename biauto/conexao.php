@@ -2,13 +2,6 @@
 
 declare(strict_types=1);
 
-/**
- * Conexão com o banco de dados do BIAUTO.
- *
- * Trabalho acadêmico: as configurações ficam neste arquivo para facilitar
- * a instalação e apresentação do projeto em ambiente local/XAMPP.
- */
-
 $host = 'localhost';
 $porta = 3306;
 $banco = 'biauto';
