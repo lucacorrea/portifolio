@@ -18,9 +18,14 @@ require_once dirname(__DIR__) . '/conexao.php';
 require_once __DIR__ . '/funcoes.php';
 
 $paginaAtual = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
-$paginasPublicas = ['login.php', 'cadastro.php'];
+$paginaPublica = $paginaAtual === 'login.php';
 
-if (!in_array($paginaAtual, $paginasPublicas, true)) {
+if ($paginaAtual === 'cadastro.php') {
+    $totalUsuarios = (int) $pdo->query('SELECT COUNT(*) FROM usuarios WHERE deleted_at IS NULL')->fetchColumn();
+    $paginaPublica = $totalUsuarios === 0;
+}
+
+if (!$paginaPublica) {
     if (!usuario_logado()) {
         redirect('login.php');
     }
