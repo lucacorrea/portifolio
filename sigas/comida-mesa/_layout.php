@@ -103,6 +103,7 @@ $extraScripts = array_values(array_unique(array_merge([
     'assets/js/comida-mesa.js',
     'assets/js/modules/comida-mesa-conflicts.js',
     'assets/js/modules/comida-mesa-import-review.js',
+    'assets/js/modules/comida-mesa-beneficiary-review.js',
 ], $pageExtraScripts)));
 
 /*
