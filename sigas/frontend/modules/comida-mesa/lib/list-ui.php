@@ -84,5 +84,62 @@ function cm_action_modal(): void
             </div>
         </div>
     </div>
+
+    <div class="modal fade" id="beneficiaryConflictModal" tabindex="-1" aria-labelledby="beneficiaryConflictModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable cm-action-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <div class="eyebrow"><i class="bi bi-shield-exclamation"></i> Regularização de vínculo</div>
+                        <h2 class="modal-title" id="beneficiaryConflictModalTitle" data-cm-conflict-name>Beneficiário com conflito</h2>
+                        <p class="cm-modal-subtitle"><span data-cm-conflict-code>Sem código</span> · <span data-cm-conflict-location>Localidade não informada</span></p>
+                    </div>
+                    <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="cm-action-status-grid">
+                        <div><span>Situação no programa</span><strong data-cm-conflict-program>—</strong></div>
+                        <div><span>Situação da entrega</span><strong data-cm-conflict-delivery>Bloqueada</strong></div>
+                    </div>
+
+                    <div class="alert alert-warning mt-3 mb-3" role="alert">
+                        <div class="d-flex gap-2 align-items-start">
+                            <i class="bi bi-exclamation-triangle-fill mt-1" aria-hidden="true"></i>
+                            <div>
+                                <strong>O que está bloqueando este registro?</strong>
+                                <div class="mt-1" data-cm-conflict-reason>O vínculo ao cadastro central precisa ser revisado.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border rounded-3 p-3 mb-3">
+                        <div class="d-flex gap-2 align-items-start mb-2">
+                            <i class="bi bi-tools" aria-hidden="true"></i>
+                            <div>
+                                <strong data-cm-conflict-resolution-title>Como desbloquear</strong>
+                                <small class="d-block text-muted">Corrija o vínculo antes de liberar operações que dependem da inscrição oficial.</small>
+                            </div>
+                        </div>
+                        <ol class="mb-0 ps-3" data-cm-conflict-steps>
+                            <li>Abra a conferência da importação.</li>
+                            <li>Revise o vínculo indicado pelo sistema.</li>
+                            <li>Após corrigir, reprocessar os vínculos da importação.</li>
+                        </ol>
+                    </div>
+
+                    <div class="alert alert-light border mb-0">
+                        <strong><i class="bi bi-info-circle"></i> Regra de segurança</strong>
+                        <div class="mt-1">A pessoa continua visível na lista e mantém a decisão do programa. A entrega só é liberada quando existir um vínculo oficial consistente, evitando duplicidade de pessoa, família ou benefício.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-light" type="button" data-bs-dismiss="modal">Fechar</button>
+                    <a class="btn btn-primary" href="#" data-cm-conflict-review>
+                        <i class="bi bi-search"></i> Abrir conferência da importação
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
     <?php
 }
