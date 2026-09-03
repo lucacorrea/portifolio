@@ -79,6 +79,23 @@
         };
     };
 
+    const reviewHrefFor = (href, search) => {
+        if (!href) return "";
+
+        try {
+            const url = new URL(href, window.location.href);
+            // O padrão da tela é "Pendente". Conflitos já foram confirmados,
+            // portanto o acesso vindo da lista principal precisa pesquisar em TODAS as situações.
+            url.searchParams.set("review_situation", "");
+            url.searchParams.set("review_search", String(search || "").trim());
+            url.searchParams.delete("review_page");
+            url.hash = "lista-conferencia";
+            return url.href;
+        } catch (_) {
+            return href;
+        }
+    };
+
     const prepareRows = () => {
         qsa(".cm-data-table tbody tr").forEach((row) => {
             const cells = row.querySelectorAll("td");
@@ -87,10 +104,17 @@
             const conflict = qsa(".cm-status", cells[5]).some((status) => text(status) === "Conflito de vínculo");
             if (!conflict) return;
 
+            const name = text(cells[1].querySelector("strong")) || "";
+            const reviewLink = cells[5].querySelector('a[href*="importar-beneficiarios.php"]');
+            if (reviewLink) {
+                const correctedHref = reviewHrefFor(reviewLink.getAttribute("href") || "", name);
+                if (correctedHref) reviewLink.href = correctedHref;
+            }
+
             row.dataset.cmConflictRow = "1";
             row.tabIndex = 0;
             row.setAttribute("role", "button");
-            row.setAttribute("aria-label", `Ver como regularizar ${text(cells[1].querySelector("strong")) || "beneficiário"}`);
+            row.setAttribute("aria-label", `Ver como regularizar ${name || "beneficiário"}`);
         });
     };
 
@@ -135,8 +159,9 @@
         const reviewButton = qs("[data-cm-conflict-review]", root);
         if (reviewButton) {
             if (reviewLink) {
+                const correctedHref = reviewHrefFor(reviewLink.getAttribute("href") || "", name);
                 reviewButton.hidden = false;
-                reviewButton.href = reviewLink.getAttribute("href") || "#";
+                reviewButton.href = correctedHref || reviewLink.href;
             } else {
                 reviewButton.hidden = true;
                 reviewButton.removeAttribute("href");
