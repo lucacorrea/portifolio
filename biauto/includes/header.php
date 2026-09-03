@@ -1,8 +1,8 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+
+require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/ui.php';
+
 $pageTitle = $pageTitle ?? 'Bianka Oficina';
 $currentPage = $currentPage ?? 'dashboard';
 $cssPath = dirname(__DIR__) . '/assets/css/bianka.css';
