@@ -60,28 +60,95 @@ $importOnlyError = null;
 try {
     $importOnlyCounts = cm_import_confirmed_unlinked_counts(cm_db());
 
-    // Confirmados da importação sem inscrição oficial fazem parte da lista principal.
-    // Mantemos o conflito visível e bloqueamos ações que dependem de inscricao_id.
+    // Registros confirmados na importação continuam visíveis na lista principal.
+    // Pendência cadastral não é suspensão do benefício. Filtros explícitos de entrega
+    // usam apenas inscrições oficiais para não classificar incorretamente registros em revisão.
     $canShowImportOnly = $filter->zone === null
         && $filter->district === null
         && $filter->community === null
         && $filter->poleId === null
         && in_array($filter->programStatus, [null, 'ativa', 'lista_espera'], true)
-        && in_array($filter->deliveryStatus, [null, 'bloqueada', 'indisponivel'], true);
+        && $filter->deliveryStatus === null;
 
     if ($canShowImportOnly) {
         $importProgramStatus = (string) ($filter->programStatus ?? '');
-        if ($importProgramStatus === '' && $filter->deliveryStatus === 'bloqueada') {
-            $importProgramStatus = 'ativa';
-        } elseif ($importProgramStatus === '' && $filter->deliveryStatus === 'indisponivel') {
-            $importProgramStatus = 'lista_espera';
-        }
-
         $importOnlyPage = max(1, (int) ($_GET['import_page'] ?? 1));
         $importOnly = cm_import_confirmed_unlinked(cm_db(), $importProgramStatus, (string) $filter->search, $importOnlyPage, 50);
     }
 } catch (Throwable $e) {
-    $importOnlyError = 'Não foi possível carregar os confirmados da importação que ainda aguardam vínculo cadastral.';
+    $importOnlyError = 'Não foi possível carregar os confirmados da importação que ainda aguardam regularização cadastral.';
+}
+
+// Para CPF duplicado ou vínculo incompleto, localizar em lote o cadastro oficial já
+// existente daquele CPF. Esse cadastro é o único usado para entrega, evitando benefício
+// duplicado enquanto o erro humano é corrigido individualmente.
+$officialByCpf = [];
+if (!empty($importOnly['items'])) {
+    try {
+        $cpfs = [];
+        foreach ($importOnly['items'] as $pendingItem) {
+            $cpf = preg_replace('/\D+/', '', (string) ($pendingItem['cpf_validado'] ?? '')) ?: '';
+            if (strlen($cpf) === 11) {
+                $cpfs[$cpf] = $cpf;
+            }
+        }
+
+        if ($cpfs) {
+            $params = [];
+            $placeholders = [];
+            foreach (array_values($cpfs) as $index => $cpf) {
+                $key = 'cpf_' . $index;
+                $placeholders[] = ':' . $key;
+                $params[$key] = $cpf;
+            }
+
+            if ($currentCompetenceId !== null) {
+                $deliveryJoin = 'LEFT JOIN comida_mesa_entregas entrega ON entrega.inscricao_id = i.id AND entrega.competencia_id = :canonical_competencia_id';
+                $params['canonical_competencia_id'] = $currentCompetenceId;
+            } else {
+                $deliveryJoin = 'LEFT JOIN comida_mesa_entregas entrega ON 1 = 0';
+            }
+
+            $sql = "SELECT
+                    p.cpf,
+                    p.nome AS responsavel_nome,
+                    f.id AS familia_id,
+                    f.codigo AS familia_codigo,
+                    i.id AS inscricao_id,
+                    i.status AS inscricao_status,
+                    i.polo_id,
+                    i.data_inscricao,
+                    i.atualizado_em,
+                    polo.nome AS polo_nome,
+                    polo.ativo AS polo_ativo,
+                    entrega.id AS entrega_id,
+                    entrega.status AS entrega_status,
+                    entrega.entregue_em AS entrega_data,
+                    entrega_operador.nome AS entrega_operador_nome
+                FROM pessoas p
+                INNER JOIN familias f ON f.responsavel_pessoa_id = p.id
+                INNER JOIN comida_mesa_inscricoes i ON i.familia_id = f.id
+                LEFT JOIN comida_mesa_polos polo ON polo.id = i.polo_id
+                {$deliveryJoin}
+                LEFT JOIN usuarios entrega_operador ON entrega_operador.id = entrega.entregue_por
+                WHERE p.cpf IN (" . implode(',', $placeholders) . ")";
+
+            $stmt = cm_db()->prepare($sql);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue(':' . $key, $value, $key === 'canonical_competencia_id' ? PDO::PARAM_INT : PDO::PARAM_STR);
+            }
+            $stmt->execute();
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $officialRow) {
+                $cpf = preg_replace('/\D+/', '', (string) ($officialRow['cpf'] ?? '')) ?: '';
+                if ($cpf !== '') {
+                    $officialByCpf[$cpf] = $officialRow;
+                }
+            }
+        }
+    } catch (Throwable $e) {
+        // A lista continua funcionando; apenas o atalho operacional pelo cadastro oficial fica indisponível.
+        $officialByCpf = [];
+    }
 }
 
 $statistics['beneficiarias_ativas'] += $importOnlyCounts['beneficiarios'];
@@ -126,7 +193,7 @@ $queryForImportPage = static function (int $pageNumber) use ($filter, $currentPa
 ob_start();
 ?>
 <section class="content-card cm-list-card">
-    <?php cm_list_header('Gestão do benefício', 'Famílias beneficiárias', 'Consulte, filtre e acompanhe as famílias. Clique em uma linha regular para abrir a central de ações.'); ?>
+    <?php cm_list_header('Gestão do benefício', 'Famílias beneficiárias', 'Consulte, filtre e acompanhe as famílias. Pendências cadastrais são corrigidas sem suspender quem já recebe.'); ?>
     <?php cm_metrics([
         ['label'=>'Famílias cadastradas','value'=>$statistics['familias_cadastradas'],'hint'=>'Base do programa','tone'=>'neutral'],
         ['label'=>'Beneficiárias ativas','value'=>$statistics['beneficiarias_ativas'],'hint'=>'Aptas no programa','tone'=>'success'],
@@ -140,6 +207,11 @@ ob_start();
 
     <?php if ($loadError): ?><div class="alert alert-danger mt-3 mb-0"><?= cm_h($loadError) ?></div><?php endif; ?>
     <?php if ($importOnlyError): ?><div class="alert alert-warning mt-3 mb-0"><?= cm_h($importOnlyError) ?></div><?php endif; ?>
+
+    <div class="alert alert-warning mt-3 mb-0" role="alert">
+        <strong><i class="bi bi-exclamation-triangle"></i> Regularização pendente não suspende o benefício.</strong>
+        <div class="mt-1">CPF duplicado, dados incompletos ou vínculo de importação ficam sinalizados para correção individual. Quando o CPF já possui cadastro oficial, somente esse cadastro é usado para entrega, evitando pagamento/benefício em duplicidade.</div>
+    </div>
 
     <div class="d-flex gap-2 flex-wrap mt-3">
         <a class="btn <?= $filter->programStatus === 'ativa' ? 'btn-success' : 'btn-light' ?>" href="comida-mesa/beneficiarios.php?program_status=ativa"><i class="bi bi-people-fill"></i> Beneficiários ativos</a>
@@ -172,7 +244,7 @@ ob_start();
                 <h3>Famílias beneficiárias</h3>
                 <p>Exibindo <?= number_format($mainVisibleCount,0,',','.') ?> de <?= number_format($mainVisibleTotal,0,',','.') ?> registro(s) · <?= cm_h($competenceLabel) ?></p>
             </div>
-            <span><i class="bi bi-shield-check"></i> Conflitos permanecem visíveis e sem entrega até regularização</span>
+            <span><i class="bi bi-shield-check"></i> Pendência cadastral é aviso de regularização, não bloqueio do benefício</span>
         </div>
 
         <?php if ($items || !empty($importOnly['items'])): ?>
@@ -241,12 +313,54 @@ ob_start();
                         ], static fn($v) => trim((string)$v) !== ''));
                         $isBeneficiary = (string)$pending['situacao_programa'] === 'Beneficiario';
                         $programLabel = $isBeneficiary ? 'Beneficiária ativa' : 'Lista de espera';
-                        $deliveryLabel = $isBeneficiary ? 'Bloqueada' : 'Não disponível';
+                        $official = strlen($digits) === 11 ? ($officialByCpf[$digits] ?? null) : null;
+                        $hasOfficial = is_array($official) && !empty($official['inscricao_id']);
+                        $reasonText = trim((string)($pending['efetivacao_motivo'] ?? '') . ' ' . (string)($pending['motivos'] ?? '') . ' ' . (string)($pending['classificacao'] ?? ''));
+                        $reasonNormalized = mb_strtolower($reasonText, 'UTF-8');
+                        $isDuplicateCpf = str_contains($reasonNormalized, 'duplic') || str_contains($reasonNormalized, 'mesmo cpf');
+                        $registrationNotice = $isDuplicateCpf ? 'CPF duplicado · regularizar' : 'Regularização pendente';
+
+                        $pendingDelivery = null;
+                        $pendingEligibility = ['allowed'=>false,'action'=>'none','reason'=>'Regularize o cadastro para concluir o vínculo oficial.'];
+                        $pendingCanDeliver = false;
+                        $pendingCanCancel = false;
+                        if ($hasOfficial) {
+                            $pendingDelivery = $service->deliveryStatusForRow($official, $competence);
+                            $pendingEligibility = $service->deliveryEligibility([
+                                'status'=>(string)$official['inscricao_status'],
+                                'polo_id'=>$official['polo_id']??null,
+                                'polo_ativo'=>$official['polo_ativo']??null,
+                            ], $competence, empty($official['entrega_id']) ? null : ['status'=>(string)$official['entrega_status']]);
+                            $pendingDeliveryAction = (string)$pendingEligibility['action'];
+                            $pendingCanDeliver = cm_can('comida_mesa.entregar') && (bool)$pendingEligibility['allowed'] && in_array($pendingDeliveryAction,['register','reactivate'],true);
+                            $pendingCanCancel = cm_can('comida_mesa.cancelar_entrega') && (bool)$pendingEligibility['allowed'] && $pendingDeliveryAction === 'cancel';
+                        } else {
+                            $pendingDeliveryAction = 'none';
+                        }
                         ?>
-                        <tr title="<?= cm_h($pending['efetivacao_motivo'] ?: $pending['motivos'] ?: 'Conflito de vínculo pendente de regularização.') ?>">
+                        <tr class="table-warning"<?= $hasOfficial ? ' tabindex="0" data-cm-action-row' : '' ?>
+                            <?php if ($hasOfficial): ?>
+                            data-registration-id="<?= (int)$official['inscricao_id'] ?>"
+                            data-registration-name="<?= cm_h($official['responsavel_nome'] ?: $pending['nome']) ?>"
+                            data-family-code="<?= cm_h($official['familia_codigo'] ?: ('IMP-' . (int)$pending['id'])) ?>"
+                            data-pole-name="<?= cm_h($official['polo_nome'] ?: 'Sem polo') ?>"
+                            data-program-status="<?= cm_h($service->programStatusLabel((string)$official['inscricao_status'])) ?>"
+                            data-delivery-label="<?= cm_h($pendingDelivery['label'] ?? 'Não informado') ?>"
+                            data-delivery-action="<?= cm_h($pendingDeliveryAction) ?>"
+                            data-delivery-title="<?= cm_h($pendingEligibility['reason'] ?? '') ?>"
+                            data-delivery-date="<?= cm_h(cm_date($pendingDelivery['delivered_at'] ?? null,true)) ?>"
+                            data-delivery-operator="<?= cm_h($official['entrega_operador_nome'] ?: 'Não informado') ?>"
+                            data-can-edit="<?= cm_can('comida_mesa.editar')?'1':'0' ?>"
+                            data-can-deliver="<?= $pendingCanDeliver?'1':'0' ?>"
+                            data-can-cancel="<?= $pendingCanCancel?'1':'0' ?>"
+                            data-can-document="<?= cm_can('comida_mesa.documentos_enviar')?'1':'0' ?>"
+                            data-can-history="<?= cm_can('comida_mesa.historico_visualizar')?'1':'0' ?>"
+                            <?php endif; ?>
+                            title="<?= cm_h($pending['efetivacao_motivo'] ?: $pending['motivos'] ?: 'Regularização cadastral pendente. O benefício permanece confirmado.') ?>">
                             <td>
                                 <strong>IMP-<?= (int)$pending['id'] ?></strong>
                                 <small class="d-block text-muted">Carga #<?= (int)$pending['importacao_id'] ?> · Linha <?= (int)$pending['linha'] ?></small>
+                                <?php if ($hasOfficial): ?><small class="d-block text-success">Usa <?= cm_h((string)$official['familia_codigo']) ?> para operações</small><?php endif; ?>
                             </td>
                             <td>
                                 <div class="cm-person-cell">
@@ -258,16 +372,33 @@ ob_start();
                                 </div>
                             </td>
                             <td><?= cm_h($locationParts ? implode(' · ', $locationParts) : 'Não informado') ?></td>
-                            <td><?= cm_h($pending['polo_informado'] ?: ($source['polo_informado'] ?? 'Sem polo')) ?></td>
-                            <td><span class="cm-status cm-status--<?= $isBeneficiary ? 'success' : 'info' ?>"><?= cm_h($programLabel) ?></span></td>
+                            <td><?= cm_h($hasOfficial ? ($official['polo_nome'] ?: 'Sem polo') : ($pending['polo_informado'] ?: ($source['polo_informado'] ?? 'Sem polo'))) ?></td>
                             <td>
-                                <span class="cm-status cm-status--warning">Conflito de vínculo</span>
-                                <small class="d-block mt-1 text-muted"><?= cm_h($pending['efetivacao_motivo'] ?: $pending['motivos'] ?: 'Necessário concluir o vínculo ao cadastro central.') ?></small>
+                                <span class="cm-status cm-status--<?= $isBeneficiary ? 'success' : 'info' ?>"><?= cm_h($programLabel) ?></span>
+                                <?php if ($isBeneficiary): ?><small class="d-block mt-1 text-success">Benefício mantido durante a regularização</small><?php endif; ?>
+                            </td>
+                            <td>
+                                <span class="cm-status cm-status--warning"><?= cm_h($registrationNotice) ?></span>
+                                <?php if ($hasOfficial): ?>
+                                    <small class="d-block mt-1 text-muted">Cadastro oficial localizado pelo CPF: <?= cm_h((string)$official['familia_codigo']) ?>. A pendência não cria uma segunda entrega.</small>
+                                <?php else: ?>
+                                    <small class="d-block mt-1 text-muted"><?= cm_h($pending['efetivacao_motivo'] ?: $pending['motivos'] ?: 'Corrija os dados sem suspender a situação no programa.') ?></small>
+                                <?php endif; ?>
                                 <?php if (cm_can('comida_mesa.importar') || cm_can('comida_mesa.cadastrar')): ?>
-                                    <small class="d-block mt-1"><a href="comida-mesa/importar-beneficiarios.php?import_id=<?= (int)$pending['importacao_id'] ?>#lista-conferencia">Revisar vínculo</a></small>
+                                    <small class="d-block mt-1"><a href="comida-mesa/importar-beneficiarios.php?import_id=<?= (int)$pending['importacao_id'] ?>#lista-conferencia"><i class="bi bi-tools"></i> Corrigir cadastro</a></small>
                                 <?php endif; ?>
                             </td>
-                            <td><span class="cm-status cm-status--warning"><?= cm_h($deliveryLabel) ?></span></td>
+                            <td>
+                                <?php if ($hasOfficial && $pendingDelivery): ?>
+                                    <?= cm_status((string)$pendingDelivery['label']) ?>
+                                    <small class="d-block mt-1 text-muted">Operação vinculada ao cadastro oficial do CPF</small>
+                                <?php elseif ($isBeneficiary): ?>
+                                    <span class="cm-status cm-status--success">Benefício mantido</span>
+                                    <small class="d-block mt-1 text-muted">Regularize o cadastro para registrar novas operações digitais.</small>
+                                <?php else: ?>
+                                    <span class="cm-status cm-status--muted">Não disponível</span>
+                                <?php endif; ?>
+                            </td>
                             <td>
                                 <?= cm_h(cm_date($pending['decidido_em'] ?: $pending['importado_em'], true)) ?>
                                 <small class="d-block text-muted"><?= cm_h($pending['decisor_nome'] ?: 'Importação') ?></small>
@@ -287,7 +418,7 @@ ob_start();
 
             <?php if ((int)$importOnly['total_pages'] > 1): ?>
                 <div class="cm-pagination">
-                    <span>Importados com conflito · Página <?= (int)$importOnly['page'] ?> de <?= (int)$importOnly['total_pages'] ?></span>
+                    <span>Regularizações da importação · Página <?= (int)$importOnly['page'] ?> de <?= (int)$importOnly['total_pages'] ?></span>
                     <nav>
                         <?php if($importOnly['page']>1): ?><a href="<?= cm_h($queryForImportPage((int)$importOnly['page']-1)) ?>"><i class="bi bi-chevron-left"></i></a><?php endif; ?>
                         <?php for($p=max(1,(int)$importOnly['page']-2);$p<=min((int)$importOnly['total_pages'],(int)$importOnly['page']+2);$p++): ?><a class="<?= $p===(int)$importOnly['page']?'active':'' ?>" href="<?= cm_h($queryForImportPage($p)) ?>"><?= $p ?></a><?php endfor; ?>
