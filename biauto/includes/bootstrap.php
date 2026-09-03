@@ -64,4 +64,51 @@ if (!$paginaPublica) {
         flash('warning', 'Seu usuário possui acesso somente para consulta nesta área.');
         redirect('index.php');
     }
+
+    $configPermitirDesconto = config_bool($pdo, 'os.permitir_desconto', true);
+    $configExigirMecanico = config_bool($pdo, 'os.exigir_mecanico', false);
+    $configControlarEstoqueMinimo = config_bool($pdo, 'estoque.controlar_minimo', true);
+    $configPermitirEstoqueNegativo = config_bool($pdo, 'estoque.permitir_negativo', false);
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $acaoAtual = (string) ($_POST['acao'] ?? '');
+
+        if (!$configPermitirDesconto && in_array($paginaAtual, ['ordem_detalhe.php', 'orcamento_detalhe.php'], true)) {
+            $_POST['desconto'] = '0';
+        }
+
+        if ($configExigirMecanico && $paginaAtual === 'ordem_nova.php') {
+            $mecanicoId = (int) ($_POST['mecanico_responsavel_id'] ?? 0);
+            if ($mecanicoId <= 0) {
+                flash('warning', 'Selecione o mecânico responsável para criar a ordem de serviço.');
+                redirect('ordem_nova.php');
+            }
+        }
+
+        if ($configExigirMecanico && $paginaAtual === 'ordem_detalhe.php' && $acaoAtual === 'atualizar_ordem') {
+            $mecanicoId = (int) ($_POST['mecanico_responsavel_id'] ?? 0);
+            $ordemId = (int) ($_POST['ordem_id'] ?? $_GET['id'] ?? 0);
+            if ($mecanicoId <= 0) {
+                flash('warning', 'A configuração do sistema exige um mecânico responsável na OS.');
+                redirect('ordem_detalhe.php?id=' . $ordemId);
+            }
+        }
+
+        if ($configExigirMecanico && $paginaAtual === 'ordem_detalhe.php' && $acaoAtual === 'alterar_status') {
+            $novoStatus = (string) ($_POST['status'] ?? '');
+            $statusQueExigemMecanico = ['em_servico', 'aguardando_peca', 'aguardando_retirada', 'finalizada'];
+
+            if (in_array($novoStatus, $statusQueExigemMecanico, true)) {
+                $ordemId = (int) ($_POST['ordem_id'] ?? $_GET['id'] ?? 0);
+                $stmt = $pdo->prepare('SELECT mecanico_responsavel_id FROM ordens_servico WHERE id = ? LIMIT 1');
+                $stmt->execute([$ordemId]);
+                $mecanicoId = (int) ($stmt->fetchColumn() ?: 0);
+
+                if ($mecanicoId <= 0) {
+                    flash('warning', 'Defina o mecânico responsável antes de avançar o status da OS.');
+                    redirect('ordem_detalhe.php?id=' . $ordemId);
+                }
+            }
+        }
+    }
 }
