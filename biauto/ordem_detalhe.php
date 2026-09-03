@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Peça inválida.');
             }
 
-            if ((float) $peca['estoque_atual'] < $quantidade) {
+            if (!$configPermitirEstoqueNegativo && (float) $peca['estoque_atual'] < $quantidade) {
                 throw new RuntimeException('Estoque insuficiente para adicionar esta peça.');
             }
 
@@ -161,10 +161,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $kmSaida = ($_POST['km_saida'] ?? '') !== '' ? max(0, (int) $_POST['km_saida']) : null;
         $previsao = trim((string) ($_POST['previsao_entrega'] ?? ''));
         $previsaoSql = $previsao !== '' ? date('Y-m-d H:i:s', strtotime($previsao)) : null;
-        $desconto = max(0, decimal_value($_POST['desconto'] ?? 0));
+        $desconto = $configPermitirDesconto ? max(0, decimal_value($_POST['desconto'] ?? 0)) : 0;
         $acrescimo = max(0, decimal_value($_POST['acrescimo'] ?? 0));
         $diagnostico = nullable_string($_POST['diagnostico'] ?? null);
         $observacoes = nullable_string($_POST['observacoes'] ?? null);
+
+        if ($configExigirMecanico && $mecanicoId <= 0) {
+            flash('danger', 'Selecione o mecânico responsável.');
+            redirect('ordem_detalhe.php?id=' . $ordemId);
+        }
+
         $stmt = $pdo->prepare('UPDATE ordens_servico SET mecanico_responsavel_id = ?, km_saida = ?, previsao_entrega = ?, desconto = ?, acrescimo = ?, diagnostico = ?, observacoes = ? WHERE id = ?');
         $stmt->execute([$mecanicoId > 0 ? $mecanicoId : null, $kmSaida, $previsaoSql, $desconto, $acrescimo, $diagnostico, $observacoes, $ordemId]);
         recalcular_ordem($pdo, $ordemId);
@@ -378,7 +384,7 @@ require __DIR__ . '/includes/sidebar.php';
         </div>
 
         <div class="card section-card">
-            <div class="section-title"><div><h2>Peças</h2><p>A inclusão baixa automaticamente a quantidade do estoque.</p></div></div>
+            <div class="section-title"><div><h2>Peças</h2><p><?= $configPermitirEstoqueNegativo ? 'A inclusão baixa o estoque e pode deixá-lo negativo conforme a configuração.' : 'A inclusão baixa automaticamente a quantidade do estoque.' ?></p></div></div>
             <form method="post" class="filters">
                 <?= csrf_field() ?>
                 <input type="hidden" name="acao" value="adicionar_peca">
@@ -429,7 +435,7 @@ require __DIR__ . '/includes/sidebar.php';
             <div class="summary-box">
                 <div class="summary-line"><span>Serviços</span><strong><?= money_br($ordem['subtotal_servicos']) ?></strong></div>
                 <div class="summary-line"><span>Peças</span><strong><?= money_br($ordem['subtotal_pecas']) ?></strong></div>
-                <div class="summary-line"><span>Desconto</span><strong>- <?= money_br($ordem['desconto']) ?></strong></div>
+                <?php if ($configPermitirDesconto): ?><div class="summary-line"><span>Desconto</span><strong>- <?= money_br($ordem['desconto']) ?></strong></div><?php endif; ?>
                 <div class="summary-line"><span>Acréscimo</span><strong><?= money_br($ordem['acrescimo']) ?></strong></div>
                 <div class="summary-total"><span>Total</span><span><?= money_br($ordem['total']) ?></span></div>
                 <div class="summary-line"><span>Pago</span><strong><?= money_br($totalPago) ?></strong></div>
@@ -445,15 +451,15 @@ require __DIR__ . '/includes/sidebar.php';
                 <input type="hidden" name="ordem_id" value="<?= $ordemId ?>">
                 <div class="form-row" style="grid-template-columns:1fr">
                     <div class="form-group">
-                        <label>Mecânico responsável</label>
-                        <select class="select" name="mecanico_responsavel_id">
-                            <option value="0">Não definido</option>
+                        <label>Mecânico responsável<?= $configExigirMecanico ? ' *' : '' ?></label>
+                        <select class="select" name="mecanico_responsavel_id" <?= $configExigirMecanico ? 'required' : '' ?>>
+                            <option value="0"><?= $configExigirMecanico ? 'Selecione o mecânico' : 'Não definido' ?></option>
                             <?php foreach ($mecanicos as $mecanico): ?><option value="<?= (int) $mecanico['id'] ?>" <?= (int) $ordem['mecanico_responsavel_id'] === (int) $mecanico['id'] ? 'selected' : '' ?>><?= h($mecanico['nome']) ?></option><?php endforeach; ?>
                         </select>
                     </div>
                     <div class="form-group"><label>KM saída</label><input class="input" type="number" min="0" name="km_saida" value="<?= h($ordem['km_saida'] !== null ? (string) $ordem['km_saida'] : '') ?>"></div>
                     <div class="form-group"><label>Previsão de entrega</label><input class="input" type="datetime-local" name="previsao_entrega" value="<?= $ordem['previsao_entrega'] ? date('Y-m-d\TH:i', strtotime($ordem['previsao_entrega'])) : '' ?>"></div>
-                    <div class="form-group"><label>Desconto</label><input class="input" name="desconto" inputmode="decimal" value="<?= number_format((float) $ordem['desconto'], 2, ',', '.') ?>"></div>
+                    <?php if ($configPermitirDesconto): ?><div class="form-group"><label>Desconto</label><input class="input" name="desconto" inputmode="decimal" value="<?= number_format((float) $ordem['desconto'], 2, ',', '.') ?>"></div><?php endif; ?>
                     <div class="form-group"><label>Acréscimo</label><input class="input" name="acrescimo" inputmode="decimal" value="<?= number_format((float) $ordem['acrescimo'], 2, ',', '.') ?>"></div>
                     <div class="form-group"><label>Diagnóstico</label><textarea class="input" name="diagnostico"><?= h($ordem['diagnostico'] ?? '') ?></textarea></div>
                     <div class="form-group"><label>Observações</label><textarea class="input" name="observacoes"><?= h($ordem['observacoes'] ?? '') ?></textarea></div>
