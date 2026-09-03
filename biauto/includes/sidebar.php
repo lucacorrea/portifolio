@@ -3,6 +3,10 @@ function nav_item(string $href, string $icon, string $label, string $key, string
     $active = $key === $currentPage ? ' active' : '';
     return '<a class="nav-item' . $active . '" href="' . h($href) . '">' . ui_icon($icon, 'nav-item-icon') . '<span>' . h($label) . '</span></a>';
 }
+
+$nomeLogado = nome_usuario();
+$nivelLogado = nivel_usuario();
+$iniciais = iniciais_usuario($nomeLogado);
 ?>
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-top">
@@ -28,6 +32,9 @@ function nav_item(string $href, string $icon, string $label, string $key, string
         <div class="nav-section">Gestão</div>
         <?= nav_item('relatorios.php', 'report', 'Relatórios', 'relatorios', $currentPage) ?>
         <?= nav_item('configuracoes.php', 'settings', 'Configurações', 'configuracoes', $currentPage) ?>
+        <?php if (usuario_admin()): ?>
+            <?= nav_item('cadastro.php', 'clients', 'Novo usuário', 'usuarios', $currentPage) ?>
+        <?php endif; ?>
     </nav>
 
     <div class="sidebar-bottom">
@@ -58,14 +65,15 @@ function nav_item(string $href, string $icon, string $label, string $key, string
             </button>
 
             <div class="profile-card">
-                <div class="avatar">AD</div>
+                <div class="avatar"><?= h($iniciais) ?></div>
                 <div class="profile-meta">
-                    <strong>Administrador</strong>
-                    <span>Bianka Oficina</span>
+                    <strong><?= h($nomeLogado) ?></strong>
+                    <span><?= h(ucfirst($nivelLogado)) ?></span>
                 </div>
-                <button class="icon-btn ghost-btn" type="button" aria-label="Mais opções">
-                    <?= ui_icon('ellipsis') ?>
-                </button>
+                <form method="post" action="logout.php" style="margin:0">
+                    <?= csrf_field() ?>
+                    <button class="icon-btn ghost-btn" type="submit" aria-label="Sair" title="Sair" style="width:auto;padding:0 10px;font-size:12px;font-weight:700">Sair</button>
+                </form>
             </div>
         </div>
     </header>
