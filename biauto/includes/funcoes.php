@@ -111,11 +111,67 @@ function datetime_br(?string $data): string
     return $timestamp ? date('d/m/Y H:i', $timestamp) : '-';
 }
 
+function usuario_logado(): bool
+{
+    return !empty($_SESSION['usuario_id']);
+}
+
+function usuario_admin(): bool
+{
+    return ($_SESSION['usuario_nivel'] ?? '') === 'admin';
+}
+
+function nome_usuario(): string
+{
+    return trim((string) ($_SESSION['usuario_nome'] ?? 'Usuário'));
+}
+
+function nivel_usuario(): string
+{
+    return (string) ($_SESSION['usuario_nivel'] ?? '');
+}
+
+function iniciais_usuario(string $nome): string
+{
+    $partes = preg_split('/\s+/', trim($nome)) ?: [];
+
+    if (!$partes) {
+        return 'US';
+    }
+
+    $primeira = strtoupper(substr($partes[0], 0, 1));
+    $ultima = count($partes) > 1 ? strtoupper(substr($partes[count($partes) - 1], 0, 1)) : '';
+
+    return $primeira . $ultima;
+}
+
+function registrar_tentativa_login(PDO $pdo, string $email, bool $sucesso): void
+{
+    $stmt = $pdo->prepare('INSERT INTO login_tentativas (identificador, ip, sucesso, user_agent) VALUES (?, ?, ?, ?)');
+    $stmt->execute([
+        $email,
+        $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
+        $sucesso ? 1 : 0,
+        isset($_SERVER['HTTP_USER_AGENT']) ? substr((string) $_SERVER['HTTP_USER_AGENT'], 0, 500) : null,
+    ]);
+}
+
+function login_bloqueado(PDO $pdo, string $email): bool
+{
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM login_tentativas WHERE sucesso = 0 AND created_at >= DATE_SUB(NOW(), INTERVAL 15 MINUTE) AND (identificador = ? OR ip = ?)");
+    $stmt->execute([$email, $ip]);
+
+    return (int) $stmt->fetchColumn() >= 5;
+}
+
 function audit(PDO $pdo, string $entidade, ?int $entidadeId, string $acao, $antes = null, $depois = null): void
 {
     try {
-        $stmt = $pdo->prepare('INSERT INTO auditoria (usuario_id, entidade, entidade_id, acao, dados_anteriores, dados_novos, ip, user_agent) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?)');
+        $usuarioId = !empty($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : null;
+        $stmt = $pdo->prepare('INSERT INTO auditoria (usuario_id, entidade, entidade_id, acao, dados_anteriores, dados_novos, ip, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
         $stmt->execute([
+            $usuarioId,
             $entidade,
             $entidadeId,
             $acao,
