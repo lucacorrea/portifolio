@@ -29,13 +29,20 @@ $valorBusca = $paginaBusca ? trim((string) ($_GET['q'] ?? '')) : '';
         <?php if (pode_acessar('veiculos')): ?><?= nav_item('veiculos.php', 'vehicle', 'Veículos', 'veiculos', $currentPage) ?><?php endif; ?>
         <?php if (pode_acessar('mecanicos')): ?><?= nav_item('mecanicos.php', 'mechanic', 'Mecânicos', 'mecanicos', $currentPage) ?><?php endif; ?>
         <?php if (pode_acessar('servicos')): ?><?= nav_item('servicos.php', 'service', 'Serviços', 'servicos', $currentPage) ?><?php endif; ?>
-        <?php if (pode_acessar('pecas')): ?><?= nav_item('pecas.php', 'parts', 'Peças', 'pecas', $currentPage) ?><?php endif; ?>
+        <?php if (pode_acessar('pecas')): ?>
+            <?= nav_item('pecas.php', 'parts', 'Peças', 'pecas', $currentPage) ?>
+            <?= nav_item('fornecedores.php', 'clients', 'Fornecedores', 'fornecedores', $currentPage) ?>
+            <?= nav_item('estoque_historico.php', 'report', 'Mov. Estoque', 'estoque', $currentPage) ?>
+        <?php endif; ?>
 
         <?php if (pode_acessar('relatorios') || pode_acessar('configuracoes') || pode_acessar('usuarios')): ?>
             <div class="nav-section">Gestão</div>
         <?php endif; ?>
         <?php if (pode_acessar('relatorios')): ?><?= nav_item('relatorios.php', 'report', 'Relatórios', 'relatorios', $currentPage) ?><?php endif; ?>
-        <?php if (pode_acessar('configuracoes')): ?><?= nav_item('configuracoes.php', 'settings', 'Configurações', 'configuracoes', $currentPage) ?><?php endif; ?>
+        <?php if (pode_acessar('configuracoes')): ?>
+            <?= nav_item('configuracoes.php', 'settings', 'Configurações', 'configuracoes', $currentPage) ?>
+            <?= nav_item('auditoria.php', 'report', 'Auditoria', 'auditoria', $currentPage) ?>
+        <?php endif; ?>
         <?php if (pode_acessar('usuarios')): ?><?= nav_item('usuarios.php', 'clients', 'Usuários', 'usuarios', $currentPage) ?><?php endif; ?>
     </nav>
 
