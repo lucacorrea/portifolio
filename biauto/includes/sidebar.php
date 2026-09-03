@@ -33,7 +33,7 @@ $iniciais = iniciais_usuario($nomeLogado);
         <?= nav_item('relatorios.php', 'report', 'Relatórios', 'relatorios', $currentPage) ?>
         <?= nav_item('configuracoes.php', 'settings', 'Configurações', 'configuracoes', $currentPage) ?>
         <?php if (usuario_admin()): ?>
-            <?= nav_item('cadastro.php', 'clients', 'Novo usuário', 'usuarios', $currentPage) ?>
+            <?= nav_item('cadastro.php', 'clients', 'Usuários', 'usuarios', $currentPage) ?>
         <?php endif; ?>
     </nav>
 
