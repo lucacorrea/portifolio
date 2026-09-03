@@ -95,7 +95,12 @@
     display: flex;
     flex-wrap: wrap;
     gap: .45rem .9rem;
-    margin-top: .65rem;
+    align-items: center;
+    margin: .7rem 0 .8rem;
+    padding: .62rem .75rem;
+    border: 1px solid #e1e8e4;
+    border-radius: 12px;
+    background: #fbfcfb;
     color: #73857b;
     font-size: .72rem;
 }
@@ -116,6 +121,92 @@
 .cm-review-dot--warning { background: #d99b31; }
 .cm-review-dot--danger { background: #b85450; }
 .cm-review-dot--success { background: #2f8b55; }
+
+/*
+ * Painel operacional padrão do SIGAS.
+ * Replica a hierarquia visual do Primeiro Emprego sem reutilizar regras do módulo.
+ */
+.cm-filter-panel--review {
+    display: grid;
+    grid-template-columns: minmax(280px, 1.65fr) repeat(3, minmax(150px, .8fr)) auto auto;
+    gap: .65rem;
+    align-items: center;
+    margin-top: .8rem;
+    padding: .8rem;
+    border: 1px solid #dfe7e3;
+    border-radius: 14px;
+    background: #fbfcfb;
+    box-shadow: 0 2px 9px rgba(23, 61, 42, .025);
+}
+
+.cm-filter-panel--review > label,
+.cm-filter-panel--review .cm-advanced-filters > label {
+    min-width: 0;
+    margin: 0;
+}
+
+/* No padrão operacional os selects são autoexplicativos, como no Primeiro Emprego. */
+.cm-filter-panel--review > label > span,
+.cm-filter-panel--review .cm-advanced-filters label > span {
+    display: none;
+}
+
+.cm-filter-panel--review .form-control,
+.cm-filter-panel--review .form-select {
+    width: 100%;
+    min-height: 42px;
+    border: 1px solid #d8e2dd;
+    border-radius: 10px;
+    background: #fff;
+    color: #334d41;
+    font-size: .82rem;
+}
+
+.cm-filter-panel--review .form-control:focus,
+.cm-filter-panel--review .form-select:focus {
+    border-color: #83b895;
+    box-shadow: 0 0 0 .18rem rgba(23, 107, 58, .09);
+}
+
+.cm-filter-panel--review .cm-input-icon > i {
+    color: #7f9288;
+}
+
+/* Todos os filtros ficam visíveis; cada módulo define seus próprios campos. */
+.cm-filter-panel--review .cm-advanced-filters,
+.cm-filter-panel--review .cm-advanced-filters.show {
+    display: contents !important;
+}
+
+.cm-filter-panel--review [data-toggle-advanced] {
+    display: none !important;
+}
+
+.cm-filter-panel--review > label:has([name="search"]) { order: 1; }
+.cm-filter-panel--review > label:has([name="review"]) { order: 2; }
+.cm-filter-panel--review > label:has([name="program_status"]) { order: 3; }
+.cm-filter-panel--review > label:has([name="origin"]) { order: 4; }
+
+.cm-filter-panel--review .cm-advanced-filters > label:has([name="delivery_status"]) { order: 5; }
+.cm-filter-panel--review .cm-advanced-filters > label:has([name="competencia_id"]) { order: 6; }
+.cm-filter-panel--review .cm-advanced-filters > label:has([name="priority"]) { order: 7; }
+.cm-filter-panel--review .cm-advanced-filters > label:has([name="zone"]) { order: 8; }
+.cm-filter-panel--review .cm-advanced-filters > label:has([name="district"]) { order: 9; }
+.cm-filter-panel--review .cm-advanced-filters > label:has([name="community"]) { order: 10; }
+.cm-filter-panel--review .cm-advanced-filters > label:has([name="pole_id"]) { order: 11; }
+
+.cm-filter-panel--review > button[type="submit"] {
+    order: 20;
+    min-height: 42px;
+    padding-inline: 1.1rem;
+}
+
+.cm-filter-panel--review > .cm-filter-clear {
+    order: 21;
+    width: 42px;
+    min-height: 42px;
+    padding-inline: 0;
+}
 
 .cm-review-cell {
     min-width: 190px;
@@ -138,10 +229,6 @@
     font-size: .68rem;
 }
 
-.cm-filter-panel--review {
-    grid-template-columns: minmax(230px, 1.45fr) repeat(3, minmax(155px, .8fr)) auto auto auto;
-}
-
 .cm-review-active-filter {
     display: inline-flex;
     align-items: center;
@@ -155,13 +242,33 @@
     font-weight: 700;
 }
 
-@media (max-width: 1100px) {
-    .cm-filter-panel--review {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+@media (min-width: 1180px) {
+    .cm-filter-panel--review > label:has([name="search"]) {
+        grid-column: span 2;
     }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 1180px) {
+    .cm-filter-panel--review {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .cm-filter-panel--review > label:has([name="search"]) {
+        grid-column: span 2;
+    }
+}
+
+@media (max-width: 820px) {
+    .cm-filter-panel--review {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .cm-filter-panel--review > label:has([name="search"]) {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 600px) {
     .cm-review-quality__header {
         align-items: flex-start;
         flex-direction: column;
@@ -173,5 +280,9 @@
 
     .cm-filter-panel--review {
         grid-template-columns: 1fr;
+    }
+
+    .cm-filter-panel--review > label:has([name="search"]) {
+        grid-column: auto;
     }
 }
