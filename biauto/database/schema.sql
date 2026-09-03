@@ -1,13 +1,9 @@
--- Bianka Oficina / BIAUTO
--- Schema inicial compatível com MySQL 8+ e MariaDB 10.6+
--- Execute este arquivo após selecionar o banco de dados da aplicação.
-
 SET NAMES utf8mb4;
 SET time_zone = '-04:00';
 SET FOREIGN_KEY_CHECKS = 0;
 
 CREATE TABLE IF NOT EXISTS schema_migrations (
-    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,\\
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     migration VARCHAR(190) NOT NULL,
     applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
@@ -203,6 +199,7 @@ CREATE TABLE IF NOT EXISTS estoque_movimentos (
     PRIMARY KEY (id),
     KEY idx_estoque_peca_data (peca_id, created_at),
     KEY idx_estoque_origem (origem_tipo, origem_id),
+    KEY idx_estoque_usuario (usuario_id),
     CONSTRAINT fk_estoque_peca FOREIGN KEY (peca_id) REFERENCES pecas(id) ON DELETE RESTRICT,
     CONSTRAINT fk_estoque_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -421,14 +418,24 @@ CREATE TABLE IF NOT EXISTS auditoria (
 INSERT INTO configuracoes (chave, valor, tipo, descricao)
 VALUES
     ('empresa.nome', 'Bianka Oficina Mecânica', 'string', 'Nome exibido da oficina'),
+    ('empresa.cnpj', '', 'string', 'CNPJ da oficina'),
+    ('empresa.telefone', '', 'string', 'Telefone da oficina'),
+    ('empresa.endereco', '', 'string', 'Endereço da oficina'),
+    ('empresa.cidade', 'Coari', 'string', 'Cidade da oficina'),
+    ('empresa.uf', 'AM', 'string', 'UF da oficina'),
     ('empresa.timezone', 'America/Manaus', 'string', 'Fuso horário da aplicação'),
     ('os.prefixo', 'OS', 'string', 'Prefixo da ordem de serviço'),
     ('orcamento.prefixo', 'ORC', 'string', 'Prefixo do orçamento'),
+    ('os.permitir_desconto', '1', 'boolean', 'Permite descontos em OS e orçamentos'),
+    ('os.exigir_mecanico', '0', 'boolean', 'Exige mecânico responsável na OS'),
+    ('estoque.controlar_minimo', '1', 'boolean', 'Controla e destaca estoque mínimo'),
     ('estoque.permitir_negativo', '0', 'boolean', 'Permite saldo de estoque negativo')
 ON DUPLICATE KEY UPDATE chave = VALUES(chave);
 
 INSERT INTO schema_migrations (migration)
-VALUES ('20260902_001_initial_schema')
+VALUES
+    ('20260902_001_initial_schema'),
+    ('20260903_002_biauto_complete_schema')
 ON DUPLICATE KEY UPDATE migration = VALUES(migration);
 
 SET FOREIGN_KEY_CHECKS = 1;
