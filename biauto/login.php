@@ -37,11 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $up->execute([$novoHash, $usuario['id']]);
             }
 
-            session_regenerate_id(true);
-            $_SESSION['usuario_id'] = (int) $usuario['id'];
-            $_SESSION['usuario_nome'] = (string) $usuario['nome'];
-            $_SESSION['usuario_email'] = (string) $usuario['email'];
-            $_SESSION['usuario_nivel'] = (string) $usuario['nivel'];
+            iniciar_sessao_usuario($usuario);
 
             $up = $pdo->prepare('UPDATE usuarios SET ultimo_login_em = NOW() WHERE id = ?');
             $up->execute([$usuario['id']]);
@@ -64,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/login.css?v=1">
+    <link rel="stylesheet" href="assets/css/login.css?v=2">
 </head>
 <body>
 <div class="auth-page">
@@ -88,6 +84,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <h2>Entrar no sistema</h2>
             <p class="auth-subtitle">Use sua conta para acessar o painel da oficina.</p>
 
+            <?php if (isset($_GET['expirada'])): ?>
+                <div class="auth-alert warning">Sua sessão expirou por tempo de inatividade. Entre novamente.</div>
+            <?php endif; ?>
+
             <?php if ($erro !== ''): ?>
                 <div class="auth-alert danger"><?= htmlspecialchars($erro, ENT_QUOTES, 'UTF-8') ?></div>
             <?php endif; ?>
@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?= csrf_field() ?>
                 <div class="form-group">
                     <label for="email">E-mail</label>
-                    <input class="input" id="email" name="email" type="email" autocomplete="username" required value="<?= htmlspecialchars((string) ($_POST['email'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                    <input class="input" id="email" name="email" type="email" autocomplete="username" required maxlength="190" value="<?= htmlspecialchars((string) ($_POST['email'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
                 </div>
                 <div class="form-group">
                     <label for="senha">Senha</label>
