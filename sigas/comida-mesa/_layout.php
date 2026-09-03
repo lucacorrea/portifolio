@@ -43,7 +43,24 @@ $pageDefinition = [];
 $pageCustomContent = '';
 $pageExtraStyles = [];
 $pageExtraScripts = [];
-$view = dirname(__DIR__) . '/frontend/modules/comida-mesa/pages/' . $pageKey . '.php';
+
+/*
+ * Prévia controlada do padrão operacional usado no Primeiro Emprego.
+ *
+ * A URL normal continua carregando a tela estável. Enquanto o novo padrão visual
+ * e os filtros de revisão estiverem em validação, ele só é ativado com
+ * ?layout=operacional. Depois de aprovado, a mesma view poderá virar a padrão sem
+ * alterar as regras do módulo.
+ */
+$viewName = $pageKey;
+if (
+    $pageKey === 'beneficiarios'
+    && (string) ($_GET['layout'] ?? '') === 'operacional'
+) {
+    $viewName = 'beneficiarios-review';
+}
+
+$view = dirname(__DIR__) . '/frontend/modules/comida-mesa/pages/' . $viewName . '.php';
 
 if (!is_file($view)) {
     http_response_code(404);
