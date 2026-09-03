@@ -52,4 +52,16 @@ if (!$paginaPublica) {
     $_SESSION['usuario_nome'] = (string) $usuarioAtual['nome'];
     $_SESSION['usuario_email'] = (string) $usuarioAtual['email'];
     $_SESSION['usuario_nivel'] = (string) $usuarioAtual['nivel'];
+
+    $moduloAtual = modulo_pagina($paginaAtual);
+
+    if (!pode_acessar($moduloAtual)) {
+        flash('warning', 'Seu usuário não possui permissão para acessar esta área.');
+        redirect('index.php');
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && !pode_alterar($moduloAtual)) {
+        flash('warning', 'Seu usuário possui acesso somente para consulta nesta área.');
+        redirect('index.php');
+    }
 }
