@@ -63,7 +63,7 @@
                     "Abra a conferência e localize a inscrição já existente dessa família.",
                     "Confirme se a linha importada é uma duplicidade ou se deve atualizar o cadastro existente.",
                     "Preserve uma única inscrição válida para a família.",
-                    "Depois da correção, reprocese os vínculos da importação."
+                    "Depois da correção, reprocesse os vínculos da importação."
                 ]
             };
         }
@@ -83,7 +83,13 @@
         if (!href) return "";
 
         try {
-            const url = new URL(href, window.location.href);
+            // beneficiarios.php já está dentro de /comida-mesa/. Os links PHP do módulo
+            // usam o prefixo "comida-mesa/" pensando na raiz do SIGAS; resolvê-los contra
+            // window.location.href duplicaria o segmento (/comida-mesa/comida-mesa/).
+            // A raiz do SIGAS é um nível acima da página atual.
+            const sigasRoot = new URL("../", window.location.href);
+            const url = new URL(href, sigasRoot);
+
             // O padrão da tela é "Pendente". Conflitos já foram confirmados,
             // portanto o acesso vindo da lista principal precisa pesquisar em TODAS as situações.
             url.searchParams.set("review_situation", "");
