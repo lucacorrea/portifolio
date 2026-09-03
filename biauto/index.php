@@ -12,7 +12,7 @@ $faturamentoMes = (float) $pdo->query("SELECT COALESCE(SUM(valor), 0) FROM pagam
 $entradasHoje = (int) $pdo->query('SELECT COUNT(*) FROM ordens_servico WHERE DATE(data_entrada) = CURDATE()')->fetchColumn();
 $servicosHoje = (int) $pdo->query('SELECT COUNT(*) FROM ordem_servico_servicos WHERE DATE(iniciado_em) = CURDATE()')->fetchColumn();
 $entregasHoje = (int) $pdo->query("SELECT COUNT(*) FROM ordens_servico WHERE DATE(previsao_entrega) = CURDATE() AND status NOT IN ('finalizada','cancelada')")->fetchColumn();
-$estoqueBaixo = (int) $pdo->query('SELECT COUNT(*) FROM pecas WHERE deleted_at IS NULL AND ativo = 1 AND estoque_atual <= estoque_minimo')->fetchColumn();
+$estoqueBaixo = $configControlarEstoqueMinimo ? (int) $pdo->query('SELECT COUNT(*) FROM pecas WHERE deleted_at IS NULL AND ativo = 1 AND estoque_atual <= estoque_minimo')->fetchColumn() : 0;
 
 $meses = [];
 for ($i = 1; $i <= 12; $i++) {
@@ -55,6 +55,13 @@ $statusLabels = [
 ];
 
 $nomesMeses = [1 => 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+$acoesDashboard = [];
+if (pode_acessar('relatorios')) {
+    $acoesDashboard[] = ['label' => 'Relatórios', 'href' => 'relatorios.php', 'icon' => 'filter', 'class' => 'btn-secondary'];
+}
+if (pode_alterar('ordens')) {
+    $acoesDashboard[] = ['label' => 'Nova OS', 'href' => 'ordem_nova.php', 'icon' => 'plus', 'class' => 'btn-primary'];
+}
 
 $pageTitle = 'Dashboard';
 $currentPage = 'dashboard';
@@ -64,10 +71,7 @@ require __DIR__ . '/includes/sidebar.php';
 
 <?= render_flash() ?>
 
-<?= page_header('Dashboard', 'Acompanhe os principais números, o faturamento e a movimentação da oficina.', [
-    ['label' => 'Relatórios', 'href' => 'relatorios.php', 'icon' => 'filter', 'class' => 'btn-secondary'],
-    ['label' => 'Nova OS', 'href' => 'ordem_nova.php', 'icon' => 'plus', 'class' => 'btn-primary']
-]) ?>
+<?= page_header('Dashboard', 'Acompanhe os principais números, o faturamento e a movimentação da oficina.', $acoesDashboard) ?>
 
 <div class="grid stats">
     <div class="card stat-card">
@@ -109,7 +113,7 @@ require __DIR__ . '/includes/sidebar.php';
             <div class="operation-item"><div class="operation-main"><div class="operation-icon"><?= ui_icon('vehicle') ?></div><div class="operation-copy"><strong>Entradas de veículos</strong><span>Recebidos hoje</span></div></div><div class="operation-value"><?= $entradasHoje ?></div></div>
             <div class="operation-item"><div class="operation-main"><div class="operation-icon"><?= ui_icon('mechanic') ?></div><div class="operation-copy"><strong>Serviços iniciados</strong><span>Execuções iniciadas hoje</span></div></div><div class="operation-value"><?= $servicosHoje ?></div></div>
             <div class="operation-item"><div class="operation-main"><div class="operation-icon"><?= ui_icon('os') ?></div><div class="operation-copy"><strong>Entregas previstas</strong><span>Programadas para hoje</span></div></div><div class="operation-value"><?= $entregasHoje ?></div></div>
-            <div class="operation-item"><div class="operation-main"><div class="operation-icon"><?= ui_icon('parts') ?></div><div class="operation-copy"><strong>Estoque baixo</strong><span>Itens para reposição</span></div></div><div class="operation-value"><?= $estoqueBaixo ?></div></div>
+            <div class="operation-item"><div class="operation-main"><div class="operation-icon"><?= ui_icon('parts') ?></div><div class="operation-copy"><strong><?= $configControlarEstoqueMinimo ? 'Estoque baixo' : 'Controle de estoque' ?></strong><span><?= $configControlarEstoqueMinimo ? 'Itens para reposição' : 'Controle mínimo desativado' ?></span></div></div><div class="operation-value"><?= $configControlarEstoqueMinimo ? $estoqueBaixo : '—' ?></div></div>
         </div>
     </div>
 </div>
