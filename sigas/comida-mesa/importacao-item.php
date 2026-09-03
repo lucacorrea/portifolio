@@ -9,7 +9,7 @@ require_once dirname(__DIR__) . '/frontend/modules/comida-mesa/lib/import.php';
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
-$respond = static function (int $status, array $payload): never {
+$respond = static function (int $status, array $payload): void {
     http_response_code($status);
     echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
