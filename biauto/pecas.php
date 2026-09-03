@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $entrada = in_array($tipo, ['entrada', 'ajuste_positivo', 'devolucao'], true);
             $novoEstoque = (float) $peca['estoque_atual'] + ($entrada ? $quantidade : -$quantidade);
 
-            if ($novoEstoque < 0) {
+            if ($novoEstoque < 0 && !$configPermitirEstoqueNegativo) {
                 throw new RuntimeException('Estoque insuficiente para esta saída.');
             }
 
@@ -80,7 +80,7 @@ if ($q !== '') {
     $params = [$busca, $busca, $busca, $busca];
 }
 
-if ($estoque === 'baixo') {
+if ($estoque === 'baixo' && $configControlarEstoqueMinimo) {
     $sql .= ' AND estoque_atual <= estoque_minimo';
 } elseif ($estoque === 'zerado') {
     $sql .= ' AND estoque_atual <= 0';
@@ -110,7 +110,7 @@ require __DIR__ . '/includes/sidebar.php';
         <div class="filter-grow"><input class="input" name="q" value="<?= h($q) ?>" placeholder="Pesquisar produto, código ou marca"></div>
         <select class="select" name="estoque">
             <option value="">Todo o estoque</option>
-            <option value="baixo" <?= $estoque === 'baixo' ? 'selected' : '' ?>>Estoque baixo</option>
+            <?php if ($configControlarEstoqueMinimo): ?><option value="baixo" <?= $estoque === 'baixo' ? 'selected' : '' ?>>Estoque baixo</option><?php endif; ?>
             <option value="zerado" <?= $estoque === 'zerado' ? 'selected' : '' ?>>Sem estoque</option>
         </select>
         <button class="btn" type="submit">Pesquisar</button>
@@ -123,7 +123,12 @@ require __DIR__ . '/includes/sidebar.php';
             <tbody>
             <?php if (!$pecas): ?><tr><td colspan="8" class="muted">Nenhuma peça encontrada.</td></tr><?php endif; ?>
             <?php foreach ($pecas as $peca): ?>
-                <?php $baixo = (float) $peca['estoque_atual'] <= (float) $peca['estoque_minimo']; ?>
+                <?php
+                $negativo = (float) $peca['estoque_atual'] < 0;
+                $baixo = $configControlarEstoqueMinimo && (float) $peca['estoque_atual'] <= (float) $peca['estoque_minimo'];
+                $statusClasse = ($negativo || $baixo) ? 'danger' : 'success';
+                $statusTexto = $negativo ? 'Estoque negativo' : ($baixo ? 'Estoque baixo' : 'Normal');
+                ?>
                 <tr>
                     <td><strong><?= h($peca['nome']) ?></strong><?= $peca['marca'] ? '<div class="muted">' . h($peca['marca']) . '</div>' : '' ?></td>
                     <td><?= h($peca['codigo'] ?: '-') ?></td>
@@ -131,7 +136,7 @@ require __DIR__ . '/includes/sidebar.php';
                     <td><?= number_format((float) $peca['estoque_minimo'], 3, ',', '.') ?></td>
                     <td><?= money_br($peca['custo_medio']) ?></td>
                     <td class="money"><?= money_br($peca['preco_venda']) ?></td>
-                    <td><span class="badge <?= $baixo ? 'danger' : 'success' ?>"><?= $baixo ? 'Estoque baixo' : 'Normal' ?></span></td>
+                    <td><span class="badge <?= $statusClasse ?>"><?= h($statusTexto) ?></span></td>
                     <td>
                         <div class="actions">
                             <?php if (pode_alterar('pecas')): ?>
@@ -156,9 +161,14 @@ require __DIR__ . '/includes/sidebar.php';
 
     <div class="mobile-cards">
         <?php foreach ($pecas as $peca): ?>
-            <?php $baixo = (float) $peca['estoque_atual'] <= (float) $peca['estoque_minimo']; ?>
+            <?php
+            $negativo = (float) $peca['estoque_atual'] < 0;
+            $baixo = $configControlarEstoqueMinimo && (float) $peca['estoque_atual'] <= (float) $peca['estoque_minimo'];
+            $statusClasse = ($negativo || $baixo) ? 'danger' : 'success';
+            $statusTexto = $negativo ? 'Negativo' : ($baixo ? 'Baixo' : 'Normal');
+            ?>
             <div class="card mobile-card">
-                <div class="mobile-card-top"><strong><?= h($peca['nome']) ?></strong><span class="badge <?= $baixo ? 'danger' : 'success' ?>"><?= $baixo ? 'Baixo' : 'Normal' ?></span></div>
+                <div class="mobile-card-top"><strong><?= h($peca['nome']) ?></strong><span class="badge <?= $statusClasse ?>"><?= h($statusTexto) ?></span></div>
                 <p><?= h($peca['codigo'] ?: 'Sem código') ?></p>
                 <p>Estoque: <?= number_format((float) $peca['estoque_atual'], 3, ',', '.') ?> <?= h($peca['unidade']) ?></p>
                 <div class="mobile-card-bottom">
@@ -201,6 +211,7 @@ require __DIR__ . '/includes/sidebar.php';
         </div>
         <div class="form-group"><label>Quantidade</label><input class="input" name="quantidade" inputmode="decimal" required></div>
         <div class="form-group"><label>Observação</label><input class="input" name="observacao" maxlength="500" placeholder="Opcional"></div>
+        <?php if ($configPermitirEstoqueNegativo): ?><div class="badge warning">Estoque negativo permitido nas configurações.</div><?php endif; ?>
         <div class="modal-actions">
             <button class="btn" type="button" data-modal-close>Cancelar</button>
             <button class="btn btn-primary" type="submit">Confirmar ajuste</button>
