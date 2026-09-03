@@ -93,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($acao === 'atualizar') {
         $validade = trim((string) ($_POST['validade_ate'] ?? ''));
-        $desconto = max(0, decimal_value($_POST['desconto'] ?? 0));
+        $desconto = $configPermitirDesconto ? max(0, decimal_value($_POST['desconto'] ?? 0)) : 0;
         $observacoes = nullable_string($_POST['observacoes'] ?? null);
         $pdo->prepare('UPDATE orcamentos SET validade_ate = ?, desconto = ?, observacoes = ? WHERE id = ?')->execute([$validade !== '' ? $validade : null, $desconto, $observacoes, $orcamentoId]);
         recalcular_orcamento($pdo, $orcamentoId);
@@ -156,7 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pecaStmt->execute([$item['peca_id']]);
                 $peca = $pecaStmt->fetch();
 
-                if (!$peca || (float) $peca['estoque_atual'] < (float) $item['quantidade']) {
+                if (!$peca || (!$configPermitirEstoqueNegativo && (float) $peca['estoque_atual'] < (float) $item['quantidade'])) {
                     throw new RuntimeException('Estoque insuficiente para ' . $item['descricao'] . '.');
                 }
 
@@ -307,20 +307,20 @@ require __DIR__ . '/includes/sidebar.php';
             <div class="summary-box">
                 <div class="summary-line"><span>Serviços</span><strong><?= money_br($orcamento['subtotal_servicos']) ?></strong></div>
                 <div class="summary-line"><span>Peças</span><strong><?= money_br($orcamento['subtotal_pecas']) ?></strong></div>
-                <div class="summary-line"><span>Desconto</span><strong>- <?= money_br($orcamento['desconto']) ?></strong></div>
+                <?php if ($configPermitirDesconto): ?><div class="summary-line"><span>Desconto</span><strong>- <?= money_br($orcamento['desconto']) ?></strong></div><?php endif; ?>
                 <div class="summary-total"><span>Total</span><span><?= money_br($orcamento['total']) ?></span></div>
             </div>
         </div>
 
         <div class="card section-card">
-            <div class="section-title"><div><h2>Dados complementares</h2><p>Validade, desconto e observações.</p></div></div>
+            <div class="section-title"><div><h2>Dados complementares</h2><p>Validade<?= $configPermitirDesconto ? ', desconto' : '' ?> e observações.</p></div></div>
             <form method="post">
                 <?= csrf_field() ?>
                 <input type="hidden" name="acao" value="atualizar">
                 <input type="hidden" name="orcamento_id" value="<?= $orcamentoId ?>">
                 <div class="form-row" style="grid-template-columns:1fr">
                     <div class="form-group"><label>Validade</label><input class="input" type="date" name="validade_ate" value="<?= h($orcamento['validade_ate'] ?? '') ?>"></div>
-                    <div class="form-group"><label>Desconto</label><input class="input" name="desconto" inputmode="decimal" value="<?= number_format((float) $orcamento['desconto'], 2, ',', '.') ?>"></div>
+                    <?php if ($configPermitirDesconto): ?><div class="form-group"><label>Desconto</label><input class="input" name="desconto" inputmode="decimal" value="<?= number_format((float) $orcamento['desconto'], 2, ',', '.') ?>"></div><?php endif; ?>
                     <div class="form-group"><label>Observações</label><textarea class="input" name="observacoes"><?= h($orcamento['observacoes'] ?? '') ?></textarea></div>
                 </div>
                 <?php if ($orcamento['status'] !== 'convertido'): ?><button class="btn btn-primary" type="submit" style="width:100%;justify-content:center;margin-top:12px">Salvar</button><?php endif; ?>
