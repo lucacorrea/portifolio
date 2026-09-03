@@ -59,14 +59,26 @@ $importOnly = ['items'=>[], 'total'=>0, 'page'=>1, 'per_page'=>50, 'total_pages'
 $importOnlyError = null;
 try {
     $importOnlyCounts = cm_import_confirmed_unlinked_counts(cm_db());
-    $canShowImportOnly = $filter->deliveryStatus === null
-        && $filter->zone === null
+
+    // Confirmados da importação sem inscrição oficial fazem parte da lista principal.
+    // Mantemos o conflito visível e bloqueamos ações que dependem de inscricao_id.
+    $canShowImportOnly = $filter->zone === null
         && $filter->district === null
         && $filter->community === null
-        && $filter->poleId === null;
+        && $filter->poleId === null
+        && in_array($filter->programStatus, [null, 'ativa', 'lista_espera'], true)
+        && in_array($filter->deliveryStatus, [null, 'bloqueada', 'indisponivel'], true);
+
     if ($canShowImportOnly) {
+        $importProgramStatus = (string) ($filter->programStatus ?? '');
+        if ($importProgramStatus === '' && $filter->deliveryStatus === 'bloqueada') {
+            $importProgramStatus = 'ativa';
+        } elseif ($importProgramStatus === '' && $filter->deliveryStatus === 'indisponivel') {
+            $importProgramStatus = 'lista_espera';
+        }
+
         $importOnlyPage = max(1, (int) ($_GET['import_page'] ?? 1));
-        $importOnly = cm_import_confirmed_unlinked(cm_db(), (string) ($filter->programStatus ?? ''), (string) $filter->search, $importOnlyPage, 50);
+        $importOnly = cm_import_confirmed_unlinked(cm_db(), $importProgramStatus, (string) $filter->search, $importOnlyPage, 50);
     }
 } catch (Throwable $e) {
     $importOnlyError = 'Não foi possível carregar os confirmados da importação que ainda aguardam vínculo cadastral.';
@@ -74,6 +86,8 @@ try {
 
 $statistics['beneficiarias_ativas'] += $importOnlyCounts['beneficiarios'];
 $statistics['lista_espera'] += $importOnlyCounts['lista_espera'];
+$mainVisibleCount = count($items) + count($importOnly['items']);
+$mainVisibleTotal = $total + (int) $importOnly['total'];
 $hasAdvanced = $filter->zone !== null || $filter->district !== null || $filter->community !== null || $filter->poleId !== null;
 $exportParams = array_filter([
     'tipo' => 'beneficiarios',
@@ -112,7 +126,7 @@ $queryForImportPage = static function (int $pageNumber) use ($filter, $currentPa
 ob_start();
 ?>
 <section class="content-card cm-list-card">
-    <?php cm_list_header('Gestão do benefício', 'Famílias beneficiárias', 'Consulte, filtre e acompanhe as famílias. Clique em uma linha para abrir a central de ações.'); ?>
+    <?php cm_list_header('Gestão do benefício', 'Famílias beneficiárias', 'Consulte, filtre e acompanhe as famílias. Clique em uma linha regular para abrir a central de ações.'); ?>
     <?php cm_metrics([
         ['label'=>'Famílias cadastradas','value'=>$statistics['familias_cadastradas'],'hint'=>'Base do programa','tone'=>'neutral'],
         ['label'=>'Beneficiárias ativas','value'=>$statistics['beneficiarias_ativas'],'hint'=>'Aptas no programa','tone'=>'success'],
@@ -125,6 +139,7 @@ ob_start();
     ]); ?>
 
     <?php if ($loadError): ?><div class="alert alert-danger mt-3 mb-0"><?= cm_h($loadError) ?></div><?php endif; ?>
+    <?php if ($importOnlyError): ?><div class="alert alert-warning mt-3 mb-0"><?= cm_h($importOnlyError) ?></div><?php endif; ?>
 
     <div class="d-flex gap-2 flex-wrap mt-3">
         <a class="btn <?= $filter->programStatus === 'ativa' ? 'btn-success' : 'btn-light' ?>" href="comida-mesa/beneficiarios.php?program_status=ativa"><i class="bi bi-people-fill"></i> Beneficiários ativos</a>
@@ -152,71 +167,67 @@ ob_start();
     </form>
 
     <div class="cm-table-shell">
-        <div class="cm-table-toolbar"><div><h3>Famílias beneficiárias</h3><p>Exibindo <?= count($items) ?> de <?= number_format($total,0,',','.') ?> registro(s) · <?= cm_h($competenceLabel) ?></p></div><span><i class="bi bi-cursor"></i> Clique em uma linha para abrir as ações</span></div>
-        <?php if ($items): ?>
-            <div class="table-responsive"><table class="cm-data-table"><thead><tr><th>Código</th><th>Responsável familiar</th><th>Localidade</th><th>Polo</th><th>Situação no programa</th><th>Entrega</th><th>Atualização</th></tr></thead><tbody>
-            <?php foreach ($items as $row): ?>
-                <?php
-                $delivery = $service->deliveryStatusForRow($row, $competence);
-                $eligibility = $service->deliveryEligibility([
-                    'status'=>(string)$row['inscricao_status'],'polo_id'=>$row['polo_id']??null,'polo_ativo'=>$row['polo_ativo']??null,
-                ], $competence, empty($row['entrega_id']) ? null : ['status'=>(string)$row['entrega_status']]);
-                $deliveryAction=(string)$eligibility['action'];
-                $canDeliverRow=cm_can('comida_mesa.entregar') && (bool)$eligibility['allowed'] && in_array($deliveryAction,['register','reactivate'],true);
-                $canCancelRow=cm_can('comida_mesa.cancelar_entrega') && (bool)$eligibility['allowed'] && $deliveryAction==='cancel';
-                ?>
-                <tr tabindex="0" data-cm-action-row
-                    data-registration-id="<?= (int)$row['inscricao_id'] ?>"
-                    data-registration-name="<?= cm_h($row['responsavel_nome']) ?>"
-                    data-family-code="<?= cm_h($row['familia_codigo']) ?>"
-                    data-pole-name="<?= cm_h($row['polo_nome'] ?: 'Sem polo') ?>"
-                    data-program-status="<?= cm_h($service->programStatusLabel((string)$row['inscricao_status'])) ?>"
-                    data-delivery-label="<?= cm_h($delivery['label']) ?>"
-                    data-delivery-action="<?= cm_h($deliveryAction) ?>"
-                    data-delivery-title="<?= cm_h($eligibility['reason'] ?? '') ?>"
-                    data-delivery-date="<?= cm_h(cm_date($delivery['delivered_at'] ?? null,true)) ?>"
-                    data-delivery-operator="<?= cm_h($row['entrega_operador_nome'] ?: 'Não informado') ?>"
-                    data-can-edit="<?= cm_can('comida_mesa.editar')?'1':'0' ?>"
-                    data-can-deliver="<?= $canDeliverRow?'1':'0' ?>"
-                    data-can-cancel="<?= $canCancelRow?'1':'0' ?>"
-                    data-can-document="<?= cm_can('comida_mesa.documentos_enviar')?'1':'0' ?>"
-                    data-can-history="<?= cm_can('comida_mesa.historico_visualizar')?'1':'0' ?>">
-                    <td><strong><?= cm_h($row['familia_codigo']) ?></strong></td>
-                    <td><div class="cm-person-cell"><span class="cm-avatar"><?= cm_h(cm_initials((string)$row['responsavel_nome'])) ?></span><div><strong><?= cm_h($row['responsavel_nome']) ?></strong><small>CPF <?= cm_h(cm_format_cpf($row['cpf'])) ?><?= $row['nis'] ? ' · NIS '.cm_h($row['nis']) : '' ?></small></div></div></td>
-                    <td><?= cm_h(cm_location($row)) ?></td>
-                    <td><?= cm_h($row['polo_nome'] ?: 'Sem polo') ?></td>
-                    <td><?= cm_status($service->programStatusLabel((string)$row['inscricao_status'])) ?></td>
-                    <td><?= cm_status((string)$delivery['label']) ?></td>
-                    <td><?= cm_h(cm_date($row['atualizado_em'] ?? $row['data_inscricao'])) ?></td>
-                </tr>
-            <?php endforeach; ?>
-            </tbody></table></div>
-            <div class="cm-pagination"><span>Página <?= $currentPage ?> de <?= $totalPages ?></span><nav><?php if($currentPage>1): ?><a href="<?= cm_h($queryForPage($currentPage-1)) ?>"><i class="bi bi-chevron-left"></i></a><?php endif; ?><?php for($p=max(1,$currentPage-2);$p<=min($totalPages,$currentPage+2);$p++): ?><a class="<?= $p===$currentPage?'active':'' ?>" href="<?= cm_h($queryForPage($p)) ?>"><?= $p ?></a><?php endfor; ?><?php if($currentPage<$totalPages): ?><a href="<?= cm_h($queryForPage($currentPage+1)) ?>"><i class="bi bi-chevron-right"></i></a><?php endif; ?></nav></div>
-        <?php else: ?><?php cm_empty('Nenhuma família encontrada','Ajuste os filtros ou cadastre uma nova inscrição.','people'); ?><?php endif; ?>
-    </div>
-
-    <?php if ($importOnlyError): ?>
-        <div class="alert alert-warning mt-3"><?= cm_h($importOnlyError) ?></div>
-    <?php elseif (!empty($importOnly['items'])): ?>
-        <?php
-        $importTitle = $filter->programStatus === 'ativa'
-            ? 'Beneficiários confirmados com cadastro pendente'
-            : ($filter->programStatus === 'lista_espera'
-                ? 'Lista de espera confirmada com cadastro pendente'
-                : 'Confirmados pela importação com cadastro pendente');
-        ?>
-        <div class="cm-table-shell mt-4" id="confirmados-importacao">
-            <div class="cm-table-toolbar">
-                <div>
-                    <h3><?= cm_h($importTitle) ?></h3>
-                    <p>Já estão na lista definida na conferência. Pendências cadastrais comuns não bloqueiam o benefício; aqui permanecem apenas registros que ainda não puderam ser vinculados por conflito estrutural.</p>
-                </div>
-                <span><i class="bi bi-shield-exclamation"></i> Somente conflitos de vínculo impedem a entrega</span>
+        <div class="cm-table-toolbar">
+            <div>
+                <h3>Famílias beneficiárias</h3>
+                <p>Exibindo <?= number_format($mainVisibleCount,0,',','.') ?> de <?= number_format($mainVisibleTotal,0,',','.') ?> registro(s) · <?= cm_h($competenceLabel) ?></p>
             </div>
+            <span><i class="bi bi-shield-check"></i> Conflitos permanecem visíveis e sem entrega até regularização</span>
+        </div>
+
+        <?php if ($items || !empty($importOnly['items'])): ?>
             <div class="table-responsive">
                 <table class="cm-data-table">
-                    <thead><tr><th>Código</th><th>Responsável</th><th>Localidade</th><th>Origem</th><th>Situação no programa</th><th>Cadastro</th><th>Confirmação</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Responsável familiar</th>
+                            <th>Localidade</th>
+                            <th>Polo</th>
+                            <th>Situação no programa</th>
+                            <th>Cadastro</th>
+                            <th>Entrega</th>
+                            <th>Atualização</th>
+                        </tr>
+                    </thead>
                     <tbody>
+                    <?php foreach ($items as $row): ?>
+                        <?php
+                        $delivery = $service->deliveryStatusForRow($row, $competence);
+                        $eligibility = $service->deliveryEligibility([
+                            'status'=>(string)$row['inscricao_status'],'polo_id'=>$row['polo_id']??null,'polo_ativo'=>$row['polo_ativo']??null,
+                        ], $competence, empty($row['entrega_id']) ? null : ['status'=>(string)$row['entrega_status']]);
+                        $deliveryAction=(string)$eligibility['action'];
+                        $canDeliverRow=cm_can('comida_mesa.entregar') && (bool)$eligibility['allowed'] && in_array($deliveryAction,['register','reactivate'],true);
+                        $canCancelRow=cm_can('comida_mesa.cancelar_entrega') && (bool)$eligibility['allowed'] && $deliveryAction==='cancel';
+                        ?>
+                        <tr tabindex="0" data-cm-action-row
+                            data-registration-id="<?= (int)$row['inscricao_id'] ?>"
+                            data-registration-name="<?= cm_h($row['responsavel_nome']) ?>"
+                            data-family-code="<?= cm_h($row['familia_codigo']) ?>"
+                            data-pole-name="<?= cm_h($row['polo_nome'] ?: 'Sem polo') ?>"
+                            data-program-status="<?= cm_h($service->programStatusLabel((string)$row['inscricao_status'])) ?>"
+                            data-delivery-label="<?= cm_h($delivery['label']) ?>"
+                            data-delivery-action="<?= cm_h($deliveryAction) ?>"
+                            data-delivery-title="<?= cm_h($eligibility['reason'] ?? '') ?>"
+                            data-delivery-date="<?= cm_h(cm_date($delivery['delivered_at'] ?? null,true)) ?>"
+                            data-delivery-operator="<?= cm_h($row['entrega_operador_nome'] ?: 'Não informado') ?>"
+                            data-can-edit="<?= cm_can('comida_mesa.editar')?'1':'0' ?>"
+                            data-can-deliver="<?= $canDeliverRow?'1':'0' ?>"
+                            data-can-cancel="<?= $canCancelRow?'1':'0' ?>"
+                            data-can-document="<?= cm_can('comida_mesa.documentos_enviar')?'1':'0' ?>"
+                            data-can-history="<?= cm_can('comida_mesa.historico_visualizar')?'1':'0' ?>">
+                            <td><strong><?= cm_h($row['familia_codigo']) ?></strong></td>
+                            <td><div class="cm-person-cell"><span class="cm-avatar"><?= cm_h(cm_initials((string)$row['responsavel_nome'])) ?></span><div><strong><?= cm_h($row['responsavel_nome']) ?></strong><small>CPF <?= cm_h(cm_format_cpf($row['cpf'])) ?><?= $row['nis'] ? ' · NIS '.cm_h($row['nis']) : '' ?></small></div></div></td>
+                            <td><?= cm_h(cm_location($row)) ?></td>
+                            <td><?= cm_h($row['polo_nome'] ?: 'Sem polo') ?></td>
+                            <td><?= cm_status($service->programStatusLabel((string)$row['inscricao_status'])) ?></td>
+                            <td><span class="cm-status cm-status--success">Regular</span></td>
+                            <td><?= cm_status((string)$delivery['label']) ?></td>
+                            <td><?= cm_h(cm_date($row['atualizado_em'] ?? $row['data_inscricao'])) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+
                     <?php foreach ($importOnly['items'] as $pending): ?>
                         <?php
                         $source = $pending['dados_origem'] ?? [];
@@ -229,30 +240,65 @@ ob_start();
                             $pending['local_origem'] ?? '',
                         ], static fn($v) => trim((string)$v) !== ''));
                         $isBeneficiary = (string)$pending['situacao_programa'] === 'Beneficiario';
+                        $programLabel = $isBeneficiary ? 'Beneficiária ativa' : 'Lista de espera';
+                        $deliveryLabel = $isBeneficiary ? 'Bloqueada' : 'Não disponível';
                         ?>
-                        <tr>
-                            <td><strong>IMP-<?= (int)$pending['id'] ?></strong><small class="d-block text-muted">Carga #<?= (int)$pending['importacao_id'] ?></small></td>
-                            <td><div class="cm-person-cell"><span class="cm-avatar"><?= cm_h(cm_initials((string)$pending['nome'])) ?></span><div><strong><?= cm_h($pending['nome']) ?></strong><small><?= cm_h($documentDisplay) ?> · <?= cm_h($pending['telefone_informado'] ?: 'Sem telefone') ?></small></div></div></td>
+                        <tr title="<?= cm_h($pending['efetivacao_motivo'] ?: $pending['motivos'] ?: 'Conflito de vínculo pendente de regularização.') ?>">
+                            <td>
+                                <strong>IMP-<?= (int)$pending['id'] ?></strong>
+                                <small class="d-block text-muted">Carga #<?= (int)$pending['importacao_id'] ?> · Linha <?= (int)$pending['linha'] ?></small>
+                            </td>
+                            <td>
+                                <div class="cm-person-cell">
+                                    <span class="cm-avatar"><?= cm_h(cm_initials((string)$pending['nome'])) ?></span>
+                                    <div>
+                                        <strong><?= cm_h($pending['nome']) ?></strong>
+                                        <small><?= cm_h($documentDisplay) ?><?= $pending['telefone_informado'] ? ' · '.cm_h($pending['telefone_informado']) : '' ?></small>
+                                    </div>
+                                </div>
+                            </td>
                             <td><?= cm_h($locationParts ? implode(' · ', $locationParts) : 'Não informado') ?></td>
-                            <td><strong><?= cm_h($pending['arquivo_nome']) ?></strong><small class="d-block text-muted">Linha <?= (int)$pending['linha'] ?></small></td>
-                            <td><span class="cm-status cm-status--<?= $isBeneficiary ? 'success' : 'info' ?>"><?= $isBeneficiary ? 'Beneficiária ativa' : 'Lista de espera' ?></span></td>
-                            <td><span class="cm-status cm-status--warning">Conflito de vínculo</span><small class="d-block mt-1 text-muted"><?= cm_h($pending['efetivacao_motivo'] ?: $pending['motivos'] ?: 'Necessário concluir o vínculo ao cadastro central.') ?></small></td>
-                            <td><?= cm_h(cm_date($pending['decidido_em'], true)) ?><small class="d-block text-muted"><?= cm_h($pending['decisor_nome'] ?: 'Não informado') ?></small></td>
+                            <td><?= cm_h($pending['polo_informado'] ?: ($source['polo_informado'] ?? 'Sem polo')) ?></td>
+                            <td><span class="cm-status cm-status--<?= $isBeneficiary ? 'success' : 'info' ?>"><?= cm_h($programLabel) ?></span></td>
+                            <td>
+                                <span class="cm-status cm-status--warning">Conflito de vínculo</span>
+                                <small class="d-block mt-1 text-muted"><?= cm_h($pending['efetivacao_motivo'] ?: $pending['motivos'] ?: 'Necessário concluir o vínculo ao cadastro central.') ?></small>
+                                <?php if (cm_can('comida_mesa.importar') || cm_can('comida_mesa.cadastrar')): ?>
+                                    <small class="d-block mt-1"><a href="comida-mesa/importar-beneficiarios.php?import_id=<?= (int)$pending['importacao_id'] ?>#lista-conferencia">Revisar vínculo</a></small>
+                                <?php endif; ?>
+                            </td>
+                            <td><span class="cm-status cm-status--warning"><?= cm_h($deliveryLabel) ?></span></td>
+                            <td>
+                                <?= cm_h(cm_date($pending['decidido_em'] ?: $pending['importado_em'], true)) ?>
+                                <small class="d-block text-muted"><?= cm_h($pending['decisor_nome'] ?: 'Importação') ?></small>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
-            <div class="cm-pagination">
-                <span>Exibindo <?= count($importOnly['items']) ?> de <?= number_format((int)$importOnly['total'],0,',','.') ?> registro(s) · Página <?= (int)$importOnly['page'] ?> de <?= (int)$importOnly['total_pages'] ?></span>
-                <nav>
-                    <?php if($importOnly['page']>1): ?><a href="<?= cm_h($queryForImportPage((int)$importOnly['page']-1)) ?>#confirmados-importacao"><i class="bi bi-chevron-left"></i></a><?php endif; ?>
-                    <?php for($p=max(1,(int)$importOnly['page']-2);$p<=min((int)$importOnly['total_pages'],(int)$importOnly['page']+2);$p++): ?><a class="<?= $p===(int)$importOnly['page']?'active':'' ?>" href="<?= cm_h($queryForImportPage($p)) ?>#confirmados-importacao"><?= $p ?></a><?php endfor; ?>
-                    <?php if($importOnly['page']<$importOnly['total_pages']): ?><a href="<?= cm_h($queryForImportPage((int)$importOnly['page']+1)) ?>#confirmados-importacao"><i class="bi bi-chevron-right"></i></a><?php endif; ?>
-                </nav>
-            </div>
-        </div>
-    <?php endif; ?>
+
+            <?php if ($totalPages > 1): ?>
+                <div class="cm-pagination">
+                    <span>Cadastros oficiais · Página <?= $currentPage ?> de <?= $totalPages ?></span>
+                    <nav><?php if($currentPage>1): ?><a href="<?= cm_h($queryForPage($currentPage-1)) ?>"><i class="bi bi-chevron-left"></i></a><?php endif; ?><?php for($p=max(1,$currentPage-2);$p<=min($totalPages,$currentPage+2);$p++): ?><a class="<?= $p===$currentPage?'active':'' ?>" href="<?= cm_h($queryForPage($p)) ?>"><?= $p ?></a><?php endfor; ?><?php if($currentPage<$totalPages): ?><a href="<?= cm_h($queryForPage($currentPage+1)) ?>"><i class="bi bi-chevron-right"></i></a><?php endif; ?></nav>
+                </div>
+            <?php endif; ?>
+
+            <?php if ((int)$importOnly['total_pages'] > 1): ?>
+                <div class="cm-pagination">
+                    <span>Importados com conflito · Página <?= (int)$importOnly['page'] ?> de <?= (int)$importOnly['total_pages'] ?></span>
+                    <nav>
+                        <?php if($importOnly['page']>1): ?><a href="<?= cm_h($queryForImportPage((int)$importOnly['page']-1)) ?>"><i class="bi bi-chevron-left"></i></a><?php endif; ?>
+                        <?php for($p=max(1,(int)$importOnly['page']-2);$p<=min((int)$importOnly['total_pages'],(int)$importOnly['page']+2);$p++): ?><a class="<?= $p===(int)$importOnly['page']?'active':'' ?>" href="<?= cm_h($queryForImportPage($p)) ?>"><?= $p ?></a><?php endfor; ?>
+                        <?php if($importOnly['page']<$importOnly['total_pages']): ?><a href="<?= cm_h($queryForImportPage((int)$importOnly['page']+1)) ?>"><i class="bi bi-chevron-right"></i></a><?php endif; ?>
+                    </nav>
+                </div>
+            <?php endif; ?>
+        <?php else: ?>
+            <?php cm_empty('Nenhuma família encontrada','Ajuste os filtros ou cadastre uma nova inscrição.','people'); ?>
+        <?php endif; ?>
+    </div>
 </section>
 
 <?php cm_new_registration_lookup_modal($competence); ?>
