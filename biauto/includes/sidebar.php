@@ -36,7 +36,7 @@ $valorBusca = $paginaBusca ? trim((string) ($_GET['q'] ?? '')) : '';
         <?php endif; ?>
         <?php if (pode_acessar('relatorios')): ?><?= nav_item('relatorios.php', 'report', 'Relatórios', 'relatorios', $currentPage) ?><?php endif; ?>
         <?php if (pode_acessar('configuracoes')): ?><?= nav_item('configuracoes.php', 'settings', 'Configurações', 'configuracoes', $currentPage) ?><?php endif; ?>
-        <?php if (pode_acessar('usuarios')): ?><?= nav_item('cadastro.php', 'clients', 'Usuários', 'usuarios', $currentPage) ?><?php endif; ?>
+        <?php if (pode_acessar('usuarios')): ?><?= nav_item('usuarios.php', 'clients', 'Usuários', 'usuarios', $currentPage) ?><?php endif; ?>
     </nav>
 
     <div class="sidebar-bottom">
