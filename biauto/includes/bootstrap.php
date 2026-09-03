@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
     ini_set('session.use_strict_mode', '1');
+    ini_set('session.use_only_cookies', '1');
     session_name('BIAUTOSESSID');
     session_set_cookie_params([
         'lifetime' => 0,
@@ -28,17 +29,26 @@ if (!in_array($paginaAtual, $paginasPublicas, true)) {
         redirect('login.php');
     }
 
+    $agora = time();
+    $ultimaAtividade = (int) ($_SESSION['ultima_atividade'] ?? $agora);
+
+    if (($agora - $ultimaAtividade) > 7200) {
+        encerrar_sessao();
+        redirect('login.php?expirada=1');
+    }
+
+    $_SESSION['ultima_atividade'] = $agora;
+
     $stmt = $pdo->prepare('SELECT id, nome, email, nivel, ativo FROM usuarios WHERE id = ? AND deleted_at IS NULL LIMIT 1');
     $stmt->execute([(int) $_SESSION['usuario_id']]);
     $usuarioAtual = $stmt->fetch();
 
     if (!$usuarioAtual || (int) $usuarioAtual['ativo'] !== 1) {
-        $_SESSION = [];
-        session_destroy();
+        encerrar_sessao();
         redirect('login.php');
     }
 
-    $_SESSION['usuario_nome'] = $usuarioAtual['nome'];
-    $_SESSION['usuario_email'] = $usuarioAtual['email'];
-    $_SESSION['usuario_nivel'] = $usuarioAtual['nivel'];
+    $_SESSION['usuario_nome'] = (string) $usuarioAtual['nome'];
+    $_SESSION['usuario_email'] = (string) $usuarioAtual['email'];
+    $_SESSION['usuario_nivel'] = (string) $usuarioAtual['nivel'];
 }
