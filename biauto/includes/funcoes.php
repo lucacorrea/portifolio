@@ -194,6 +194,31 @@ function pode_alterar(string $modulo): bool
     return in_array($modulo, $permissoes[$nivel] ?? [], true);
 }
 
+function config_value(PDO $pdo, string $chave, $padrao = null)
+{
+    static $cache = null;
+
+    if ($cache === null) {
+        $cache = [];
+        try {
+            $linhas = $pdo->query('SELECT chave, valor FROM configuracoes')->fetchAll();
+            foreach ($linhas as $linha) {
+                $cache[(string) $linha['chave']] = $linha['valor'];
+            }
+        } catch (Throwable $e) {
+            $cache = [];
+        }
+    }
+
+    return array_key_exists($chave, $cache) ? $cache[$chave] : $padrao;
+}
+
+function config_bool(PDO $pdo, string $chave, bool $padrao = false): bool
+{
+    $valor = config_value($pdo, $chave, $padrao ? '1' : '0');
+    return in_array(strtolower((string) $valor), ['1', 'true', 'sim', 'yes', 'on'], true);
+}
+
 function iniciais_usuario(string $nome): string
 {
     $partes = preg_split('/\s+/', trim($nome)) ?: [];
@@ -290,9 +315,14 @@ function next_number(PDO $pdo, string $tabela, string $prefixo): string
         throw new InvalidArgumentException('Tabela inválida.');
     }
 
+    $chave = $tabela === 'ordens_servico' ? 'os.prefixo' : 'orcamento.prefixo';
+    $configurado = (string) config_value($pdo, $chave, $prefixo);
+    $configurado = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $configurado) ?: '');
+    $prefixoFinal = $configurado !== '' ? substr($configurado, 0, 10) : $prefixo;
+
     $ano = date('Y');
     $stmt = $pdo->query("SELECT MAX(id) AS maior_id FROM {$tabela}");
     $maior = (int) (($stmt->fetch()['maior_id'] ?? 0) + 1);
 
-    return $prefixo . '-' . $ano . '-' . str_pad((string) $maior, 5, '0', STR_PAD_LEFT);
+    return $prefixoFinal . '-' . $ano . '-' . str_pad((string) $maior, 5, '0', STR_PAD_LEFT);
 }
