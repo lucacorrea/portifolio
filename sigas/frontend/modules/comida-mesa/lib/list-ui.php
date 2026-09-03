@@ -69,11 +69,10 @@ function cm_action_modal(): void
                     <div class="cm-action-status-grid">
                         <div><span>Situação no programa</span><strong data-cm-action-program>—</strong></div>
                         <div><span>Situação da entrega</span><strong data-cm-action-delivery>—</strong></div>
-                        <div><span>Revisão cadastral</span><strong data-cm-action-review>—</strong><small class="d-block mt-1 text-muted" data-cm-action-review-reasons></small></div>
                     </div>
                     <div class="cm-action-grid">
                         <button type="button" class="cm-action-card" data-cm-action-command="view"><i class="bi bi-eye"></i><span><strong>Visualizar</strong><small>Dados completos da família</small></span><i class="bi bi-chevron-right"></i></button>
-                        <button type="button" class="cm-action-card" data-cm-action-command="edit"><i class="bi bi-pencil-square"></i><span><strong>Editar cadastro</strong><small>Atualizar dados e corrigir pendências</small></span><i class="bi bi-chevron-right"></i></button>
+                        <button type="button" class="cm-action-card" data-cm-action-command="edit"><i class="bi bi-pencil-square"></i><span><strong>Editar cadastro</strong><small>Atualizar dados da inscrição</small></span><i class="bi bi-chevron-right"></i></button>
                         <button type="button" class="cm-action-card" data-cm-action-command="delivery"><i class="bi bi-basket2"></i><span><strong data-cm-action-delivery-text>Registrar entrega</strong><small>Operação da competência atual</small></span><i class="bi bi-chevron-right"></i></button>
                         <button type="button" class="cm-action-card" data-cm-action-command="document"><i class="bi bi-paperclip"></i><span><strong>Enviar documento</strong><small>Anexar arquivo ao cadastro</small></span><i class="bi bi-chevron-right"></i></button>
                         <button type="button" class="cm-action-card" data-cm-action-command="history"><i class="bi bi-clock-history"></i><span><strong>Histórico</strong><small>Movimentações e entregas</small></span><i class="bi bi-chevron-right"></i></button>
