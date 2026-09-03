@@ -53,7 +53,43 @@ if (!is_file($view)) {
     return;
 }
 
-require $view;
+/*
+ * Compatibilidade isolada da conferência de importação.
+ *
+ * A rotina legada cm_import_review_items() ainda reutiliza o mesmo placeholder
+ * nomeado em vários LIKEs. O SIGAS usa prepared statements nativos globalmente,
+ * o que é o padrão correto, mas o MySQL/PDO não aceita reutilização de placeholder
+ * nesse modo e dispara SQLSTATE[HY093] quando review_search é informado.
+ *
+ * Limitamos a emulação SOMENTE a esta requisição/tela e restauramos a configuração
+ * logo após montar a view. Nenhuma outra página ou operação do SIGAS é afetada.
+ */
+$compatPdo = null;
+$restoreNativePrepares = false;
+if ($pageKey === 'importar-beneficiarios' && trim((string) ($_GET['review_search'] ?? '')) !== '') {
+    try {
+        $compatPdo = cm_db();
+        if (!(bool) $compatPdo->getAttribute(PDO::ATTR_EMULATE_PREPARES)) {
+            $compatPdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);
+            $restoreNativePrepares = true;
+        }
+    } catch (Throwable) {
+        $compatPdo = null;
+        $restoreNativePrepares = false;
+    }
+}
+
+try {
+    require $view;
+} finally {
+    if ($restoreNativePrepares && $compatPdo instanceof PDO) {
+        try {
+            $compatPdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+        } catch (Throwable) {
+            // A configuração global da conexão já é nativa; não mascarar a resposta da página.
+        }
+    }
+}
 
 $extraStyles = array_values(array_unique($pageExtraStyles));
 $extraScripts = array_values(array_unique(array_merge([
