@@ -43,14 +43,7 @@ $pageDefinition = [];
 $pageCustomContent = '';
 $pageExtraStyles = [];
 $pageExtraScripts = [];
-
-$viewName = $pageKey === 'beneficiarios' ? 'beneficiarios-review' : $pageKey;
-$view = dirname(__DIR__) . '/frontend/modules/comida-mesa/pages/' . $viewName . '.php';
-
-if (!is_file($view)) {
-    // Compatibilidade: enquanto a nova tela não estiver publicada, preserva a anterior.
-    $view = dirname(__DIR__) . '/frontend/modules/comida-mesa/pages/' . $pageKey . '.php';
-}
+$view = dirname(__DIR__) . '/frontend/modules/comida-mesa/pages/' . $pageKey . '.php';
 
 if (!is_file($view)) {
     http_response_code(404);
@@ -103,7 +96,6 @@ $extraScripts = array_values(array_unique(array_merge([
     'assets/js/comida-mesa.js',
     'assets/js/modules/comida-mesa-conflicts.js',
     'assets/js/modules/comida-mesa-import-review.js',
-    'assets/js/modules/comida-mesa-beneficiary-review.js',
 ], $pageExtraScripts)));
 
 /*
