@@ -38,8 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $pdo->prepare('UPDATE pecas SET estoque_atual = ? WHERE id = ?')->execute([$novoEstoque, $id]);
-            $mov = $pdo->prepare('INSERT INTO estoque_movimentos (peca_id, tipo, quantidade, custo_unitario, observacao) VALUES (?, ?, ?, ?, ?)');
-            $mov->execute([$id, $tipo, $quantidade, $peca['custo_medio'], $observacao]);
+            $mov = $pdo->prepare('INSERT INTO estoque_movimentos (peca_id, tipo, quantidade, custo_unitario, observacao, usuario_id) VALUES (?, ?, ?, ?, ?, ?)');
+            $mov->execute([$id, $tipo, $quantidade, $peca['custo_medio'], $observacao, (int) $_SESSION['usuario_id']]);
             $pdo->commit();
             audit($pdo, 'pecas', $id, 'ajustar_estoque', ['estoque_atual' => $peca['estoque_atual']], ['estoque_atual' => $novoEstoque, 'tipo' => $tipo, 'quantidade' => $quantidade]);
             flash('success', 'Estoque atualizado com sucesso.');
@@ -71,27 +71,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $q = trim((string) ($_GET['q'] ?? ''));
 $estoque = (string) ($_GET['estoque'] ?? '');
-$sql = 'SELECT * FROM pecas WHERE deleted_at IS NULL';
+$sql = 'SELECT p.*, f.nome_razao AS fornecedor_nome FROM pecas p LEFT JOIN fornecedores f ON f.id = p.fornecedor_id AND f.deleted_at IS NULL WHERE p.deleted_at IS NULL';
 $params = [];
 
 if ($q !== '') {
-    $sql .= ' AND (nome LIKE ? OR codigo LIKE ? OR codigo_barras LIKE ? OR marca LIKE ?)';
+    $sql .= ' AND (p.nome LIKE ? OR p.codigo LIKE ? OR p.codigo_barras LIKE ? OR p.marca LIKE ? OR f.nome_razao LIKE ?)';
     $busca = '%' . $q . '%';
-    $params = [$busca, $busca, $busca, $busca];
+    $params = [$busca, $busca, $busca, $busca, $busca];
 }
 
 if ($estoque === 'baixo' && $configControlarEstoqueMinimo) {
-    $sql .= ' AND estoque_atual <= estoque_minimo';
+    $sql .= ' AND p.estoque_atual <= p.estoque_minimo';
 } elseif ($estoque === 'zerado') {
-    $sql .= ' AND estoque_atual <= 0';
+    $sql .= ' AND p.estoque_atual <= 0';
 }
 
-$sql .= ' ORDER BY nome ASC LIMIT 300';
+$sql .= ' ORDER BY p.nome ASC LIMIT 300';
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $pecas = $stmt->fetchAll();
 
-$acoes = [];
+$acoes = [
+    ['label' => 'Fornecedores', 'href' => 'fornecedores.php', 'icon' => 'clients', 'class' => 'btn-secondary'],
+    ['label' => 'Histórico de estoque', 'href' => 'estoque_historico.php', 'icon' => 'report', 'class' => 'btn-secondary'],
+];
 if (pode_alterar('pecas')) {
     $acoes[] = ['label' => 'Nova peça', 'href' => 'peca_form.php', 'icon' => 'plus', 'class' => 'btn-primary'];
 }
@@ -103,11 +106,11 @@ require __DIR__ . '/includes/sidebar.php';
 ?>
 
 <?= render_flash() ?>
-<?= page_header('Peças', 'Controle de estoque, custo e valor de venda.', $acoes) ?>
+<?= page_header('Peças', 'Controle de estoque, fornecedor, custo e valor de venda.', $acoes) ?>
 
 <div class="card section-card">
     <form class="filters" method="get">
-        <div class="filter-grow"><input class="input" name="q" value="<?= h($q) ?>" placeholder="Pesquisar produto, código ou marca"></div>
+        <div class="filter-grow"><input class="input" name="q" value="<?= h($q) ?>" placeholder="Pesquisar produto, código, marca ou fornecedor"></div>
         <select class="select" name="estoque">
             <option value="">Todo o estoque</option>
             <?php if ($configControlarEstoqueMinimo): ?><option value="baixo" <?= $estoque === 'baixo' ? 'selected' : '' ?>>Estoque baixo</option><?php endif; ?>
@@ -119,9 +122,9 @@ require __DIR__ . '/includes/sidebar.php';
 
     <div class="table-shell table-desktop">
         <table class="table">
-            <thead><tr><th>Produto</th><th>Código</th><th>Estoque</th><th>Mínimo</th><th>Custo</th><th>Venda</th><th>Status</th><th>Ações</th></tr></thead>
+            <thead><tr><th>Produto</th><th>Fornecedor</th><th>Código</th><th>Estoque</th><th>Mínimo</th><th>Custo</th><th>Venda</th><th>Status</th><th>Ações</th></tr></thead>
             <tbody>
-            <?php if (!$pecas): ?><tr><td colspan="8" class="muted">Nenhuma peça encontrada.</td></tr><?php endif; ?>
+            <?php if (!$pecas): ?><tr><td colspan="9" class="muted">Nenhuma peça encontrada.</td></tr><?php endif; ?>
             <?php foreach ($pecas as $peca): ?>
                 <?php
                 $negativo = (float) $peca['estoque_atual'] < 0;
@@ -131,6 +134,7 @@ require __DIR__ . '/includes/sidebar.php';
                 ?>
                 <tr>
                     <td><strong><?= h($peca['nome']) ?></strong><?= $peca['marca'] ? '<div class="muted">' . h($peca['marca']) . '</div>' : '' ?></td>
+                    <td><?= h($peca['fornecedor_nome'] ?: '-') ?></td>
                     <td><?= h($peca['codigo'] ?: '-') ?></td>
                     <td class="money"><?= number_format((float) $peca['estoque_atual'], 3, ',', '.') ?> <?= h($peca['unidade']) ?></td>
                     <td><?= number_format((float) $peca['estoque_minimo'], 3, ',', '.') ?></td>
@@ -169,6 +173,7 @@ require __DIR__ . '/includes/sidebar.php';
             ?>
             <div class="card mobile-card">
                 <div class="mobile-card-top"><strong><?= h($peca['nome']) ?></strong><span class="badge <?= $statusClasse ?>"><?= h($statusTexto) ?></span></div>
+                <p><?= h($peca['fornecedor_nome'] ?: 'Fornecedor não informado') ?></p>
                 <p><?= h($peca['codigo'] ?: 'Sem código') ?></p>
                 <p>Estoque: <?= number_format((float) $peca['estoque_atual'], 3, ',', '.') ?> <?= h($peca['unidade']) ?></p>
                 <div class="mobile-card-bottom">
