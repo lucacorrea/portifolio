@@ -22,6 +22,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('ordem_nova.php');
     }
 
+    if ($configExigirMecanico && $mecanicoId <= 0) {
+        flash('danger', 'Selecione o mecânico responsável.');
+        redirect('ordem_nova.php');
+    }
+
     $veiculoStmt = $pdo->prepare('SELECT id FROM veiculos WHERE id = ? AND cliente_id = ? AND deleted_at IS NULL AND ativo = 1');
     $veiculoStmt->execute([$veiculoId, $clienteId]);
     if (!$veiculoStmt->fetch()) {
@@ -104,9 +109,9 @@ require __DIR__ . '/includes/sidebar.php';
                         <input class="input" type="number" name="km_entrada" min="0" placeholder="Ex.: 83520">
                     </div>
                     <div class="form-group">
-                        <label>Mecânico responsável</label>
-                        <select class="select" name="mecanico_responsavel_id">
-                            <option value="0">Não definido</option>
+                        <label>Mecânico responsável<?= $configExigirMecanico ? ' *' : '' ?></label>
+                        <select class="select" name="mecanico_responsavel_id" <?= $configExigirMecanico ? 'required' : '' ?>>
+                            <option value="0"><?= $configExigirMecanico ? 'Selecione o mecânico' : 'Não definido' ?></option>
                             <?php foreach ($mecanicos as $mecanico): ?>
                                 <option value="<?= (int) $mecanico['id'] ?>"><?= h($mecanico['nome']) ?></option>
                             <?php endforeach; ?>
