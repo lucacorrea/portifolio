@@ -145,21 +145,57 @@ function iniciais_usuario(string $nome): string
     return $primeira . $ultima;
 }
 
+function iniciar_sessao_usuario(array $usuario): void
+{
+    session_regenerate_id(true);
+    $_SESSION['usuario_id'] = (int) $usuario['id'];
+    $_SESSION['usuario_nome'] = (string) $usuario['nome'];
+    $_SESSION['usuario_email'] = (string) $usuario['email'];
+    $_SESSION['usuario_nivel'] = (string) $usuario['nivel'];
+    $_SESSION['ultima_atividade'] = time();
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+function encerrar_sessao(): void
+{
+    $_SESSION = [];
+
+    if (ini_get('session.use_cookies')) {
+        $params = session_get_cookie_params();
+        setcookie(
+            session_name(),
+            '',
+            time() - 42000,
+            $params['path'],
+            $params['domain'] ?? '',
+            (bool) $params['secure'],
+            (bool) $params['httponly']
+        );
+    }
+
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_destroy();
+    }
+}
+
 function registrar_tentativa_login(PDO $pdo, string $email, bool $sucesso): void
 {
+    $ip = substr((string) ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'), 0, 45);
+    $userAgent = substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 500);
+
     $stmt = $pdo->prepare('INSERT INTO login_tentativas (identificador, ip, sucesso, user_agent) VALUES (?, ?, ?, ?)');
-    $stmt->execute([
-        $email,
-        $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
-        $sucesso ? 1 : 0,
-        isset($_SERVER['HTTP_USER_AGENT']) ? substr((string) $_SERVER['HTTP_USER_AGENT'], 0, 500) : null,
-    ]);
+    $stmt->execute([$email, $ip, $sucesso ? 1 : 0, $userAgent]);
+
+    if ($sucesso) {
+        $stmt = $pdo->prepare('DELETE FROM login_tentativas WHERE identificador = ? AND ip = ? AND sucesso = 0');
+        $stmt->execute([$email, $ip]);
+    }
 }
 
 function login_bloqueado(PDO $pdo, string $email): bool
 {
-    $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM login_tentativas WHERE sucesso = 0 AND created_at >= DATE_SUB(NOW(), INTERVAL 15 MINUTE) AND (identificador = ? OR ip = ?)");
+    $ip = substr((string) ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'), 0, 45);
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM login_tentativas WHERE identificador = ? AND ip = ? AND sucesso = 0 AND created_at >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)");
     $stmt->execute([$email, $ip]);
 
     return (int) $stmt->fetchColumn() >= 5;
