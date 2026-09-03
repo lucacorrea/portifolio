@@ -19,10 +19,11 @@ date_default_timezone_set('America/Manaus');
 
 require_once dirname(__DIR__) . '/conexao.php';
 require_once __DIR__ . '/funcoes.php';
+require_once __DIR__ . '/auth.php';
 
 $paginaAtual = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
 $paginasPublicas = ['login.php', 'cadastro.php'];
 
-if (!in_array($paginaAtual, $paginasPublicas, true) && empty($_SESSION['usuario_id'])) {
-    redirect('login.php');
+if (!in_array($paginaAtual, $paginasPublicas, true)) {
+    exigir_login($pdo);
 }
