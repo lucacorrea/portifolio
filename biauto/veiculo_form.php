@@ -106,29 +106,35 @@ require __DIR__ . '/includes/sidebar.php';
     ['label' => 'Voltar', 'href' => 'veiculos.php', 'icon' => 'chevron', 'class' => 'btn-secondary']
 ]) ?>
 
-<form method="post" autocomplete="off">
+<form method="post" autocomplete="off" class="form-page">
     <?= csrf_field() ?>
     <input type="hidden" name="id" value="<?= $id ?>">
 
     <div class="card section-card">
-        <div class="section-title"><div><h2>Identificação</h2><p>Dados principais do veículo.</p></div></div>
+        <div class="section-title">
+            <div>
+                <h2>Identificação</h2>
+                <p>Dados principais e características do veículo.</p>
+            </div>
+        </div>
+
         <div class="form-row">
             <div class="form-group">
                 <label>Cliente</label>
                 <select class="select" name="cliente_id" required>
-                    <option value="">Selecione...</option>
+                    <option value="">Selecione o proprietário</option>
                     <?php foreach ($clientes as $cliente): ?>
                         <option value="<?= (int) $cliente['id'] ?>" <?= $clienteSelecionado === (int) $cliente['id'] ? 'selected' : '' ?>><?= h($cliente['nome_razao']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="form-group"><label>Placa</label><input class="input" name="placa" maxlength="10" required value="<?= h($veiculo['placa'] ?? '') ?>"></div>
-            <div class="form-group"><label>Marca</label><input class="input" name="marca" maxlength="100" required value="<?= h($veiculo['marca'] ?? '') ?>"></div>
-            <div class="form-group"><label>Modelo</label><input class="input" name="modelo" maxlength="120" required value="<?= h($veiculo['modelo'] ?? '') ?>"></div>
-            <div class="form-group"><label>Versão</label><input class="input" name="versao" maxlength="120" value="<?= h($veiculo['versao'] ?? '') ?>"></div>
-            <div class="form-group"><label>Cor</label><input class="input" name="cor" maxlength="60" value="<?= h($veiculo['cor'] ?? '') ?>"></div>
-            <div class="form-group"><label>Ano fabricação</label><input class="input" type="number" name="ano_fabricacao" min="1900" max="2100" value="<?= h(isset($veiculo['ano_fabricacao']) ? (string) $veiculo['ano_fabricacao'] : '') ?>"></div>
-            <div class="form-group"><label>Ano modelo</label><input class="input" type="number" name="ano_modelo" min="1900" max="2100" value="<?= h(isset($veiculo['ano_modelo']) ? (string) $veiculo['ano_modelo'] : '') ?>"></div>
+            <div class="form-group"><label>Placa</label><input class="input" name="placa" maxlength="10" required placeholder="ABC1D23" value="<?= h($veiculo['placa'] ?? '') ?>"></div>
+            <div class="form-group"><label>Marca</label><input class="input" name="marca" maxlength="100" required placeholder="Ex.: Toyota" value="<?= h($veiculo['marca'] ?? '') ?>"></div>
+            <div class="form-group"><label>Modelo</label><input class="input" name="modelo" maxlength="120" required placeholder="Ex.: Hilux" value="<?= h($veiculo['modelo'] ?? '') ?>"></div>
+            <div class="form-group"><label>Versão</label><input class="input" name="versao" maxlength="120" placeholder="Ex.: SRV 2.8" value="<?= h($veiculo['versao'] ?? '') ?>"></div>
+            <div class="form-group"><label>Cor</label><input class="input" name="cor" maxlength="60" placeholder="Ex.: Prata" value="<?= h($veiculo['cor'] ?? '') ?>"></div>
+            <div class="form-group"><label>Ano fabricação</label><input class="input" type="number" name="ano_fabricacao" min="1900" max="2100" placeholder="2024" value="<?= h(isset($veiculo['ano_fabricacao']) ? (string) $veiculo['ano_fabricacao'] : '') ?>"></div>
+            <div class="form-group"><label>Ano modelo</label><input class="input" type="number" name="ano_modelo" min="1900" max="2100" placeholder="2025" value="<?= h(isset($veiculo['ano_modelo']) ? (string) $veiculo['ano_modelo'] : '') ?>"></div>
             <div class="form-group">
                 <label>Combustível</label>
                 <select class="select" name="combustivel">
@@ -138,23 +144,29 @@ require __DIR__ . '/includes/sidebar.php';
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="form-group"><label>KM atual</label><input class="input" type="number" name="km_atual" min="0" value="<?= h(isset($veiculo['km_atual']) ? (string) $veiculo['km_atual'] : '') ?>"></div>
+            <div class="form-group"><label>KM atual</label><input class="input" type="number" name="km_atual" min="0" placeholder="Ex.: 83520" value="<?= h(isset($veiculo['km_atual']) ? (string) $veiculo['km_atual'] : '') ?>"></div>
         </div>
     </div>
 
     <div class="card section-card">
-        <div class="section-title"><div><h2>Documentação</h2><p>Campos opcionais para identificação do veículo.</p></div></div>
+        <div class="section-title">
+            <div>
+                <h2>Documentação</h2>
+                <p>Informações opcionais para identificação e observações.</p>
+            </div>
+        </div>
+
         <div class="form-row">
-            <div class="form-group"><label>Chassi</label><input class="input" name="chassi" maxlength="40" value="<?= h($veiculo['chassi'] ?? '') ?>"></div>
-            <div class="form-group"><label>RENAVAM</label><input class="input" name="renavam" maxlength="30" value="<?= h($veiculo['renavam'] ?? '') ?>"></div>
-            <div class="form-group" style="grid-column:1/-1"><label>Observações</label><textarea class="input" name="observacoes"><?= h($veiculo['observacoes'] ?? '') ?></textarea></div>
-            <div class="form-group"><label><input type="checkbox" name="ativo" value="1" <?= !isset($veiculo['ativo']) || (int) $veiculo['ativo'] === 1 ? 'checked' : '' ?>> Veículo ativo</label></div>
+            <div class="form-group"><label>Chassi</label><input class="input" name="chassi" maxlength="40" placeholder="Número do chassi" value="<?= h($veiculo['chassi'] ?? '') ?>"></div>
+            <div class="form-group"><label>RENAVAM</label><input class="input" name="renavam" maxlength="30" placeholder="Número do RENAVAM" value="<?= h($veiculo['renavam'] ?? '') ?>"></div>
+            <div class="form-group" style="grid-column:1/-1"><label>Observações</label><textarea class="input" name="observacoes" placeholder="Informações adicionais sobre o veículo"><?= h($veiculo['observacoes'] ?? '') ?></textarea></div>
+            <div class="form-group" style="grid-column:1/-1"><label><input type="checkbox" name="ativo" value="1" <?= !isset($veiculo['ativo']) || (int) $veiculo['ativo'] === 1 ? 'checked' : '' ?>>Veículo ativo</label></div>
         </div>
     </div>
 
-    <div class="actions">
-        <button class="btn btn-primary" type="submit"><?= $id > 0 ? 'Salvar alterações' : 'Cadastrar veículo' ?></button>
+    <div class="form-actions-bar">
         <a class="btn" href="veiculos.php">Cancelar</a>
+        <button class="btn btn-primary" type="submit"><?= $id > 0 ? 'Salvar alterações' : 'Cadastrar veículo' ?></button>
     </div>
 </form>
 
