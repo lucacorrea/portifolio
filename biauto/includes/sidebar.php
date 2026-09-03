@@ -7,6 +7,8 @@ function nav_item(string $href, string $icon, string $label, string $key, string
 $nomeLogado = nome_usuario();
 $nivelLogado = nivel_usuario();
 $iniciais = iniciais_usuario($nomeLogado);
+$paginaBusca = basename((string) ($_SERVER['SCRIPT_NAME'] ?? '')) === 'busca.php';
+$valorBusca = $paginaBusca ? trim((string) ($_GET['q'] ?? '')) : '';
 ?>
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-top">
@@ -18,23 +20,23 @@ $iniciais = iniciais_usuario($nomeLogado);
     </div>
 
     <nav class="sidebar-nav">
-        <?= nav_item('index.php', 'dashboard', 'Dashboard', 'dashboard', $currentPage) ?>
-        <?= nav_item('ordens.php', 'os', 'Ordens de Serviço', 'ordens', $currentPage) ?>
-        <?= nav_item('orcamentos.php', 'budget', 'Orçamentos', 'orcamentos', $currentPage) ?>
+        <?php if (pode_acessar('dashboard')): ?><?= nav_item('index.php', 'dashboard', 'Dashboard', 'dashboard', $currentPage) ?><?php endif; ?>
+        <?php if (pode_acessar('ordens')): ?><?= nav_item('ordens.php', 'os', 'Ordens de Serviço', 'ordens', $currentPage) ?><?php endif; ?>
+        <?php if (pode_acessar('orcamentos')): ?><?= nav_item('orcamentos.php', 'budget', 'Orçamentos', 'orcamentos', $currentPage) ?><?php endif; ?>
 
         <div class="nav-section">Cadastros</div>
-        <?= nav_item('clientes.php', 'clients', 'Clientes', 'clientes', $currentPage) ?>
-        <?= nav_item('veiculos.php', 'vehicle', 'Veículos', 'veiculos', $currentPage) ?>
-        <?= nav_item('mecanicos.php', 'mechanic', 'Mecânicos', 'mecanicos', $currentPage) ?>
-        <?= nav_item('servicos.php', 'service', 'Serviços', 'servicos', $currentPage) ?>
-        <?= nav_item('pecas.php', 'parts', 'Peças', 'pecas', $currentPage) ?>
+        <?php if (pode_acessar('clientes')): ?><?= nav_item('clientes.php', 'clients', 'Clientes', 'clientes', $currentPage) ?><?php endif; ?>
+        <?php if (pode_acessar('veiculos')): ?><?= nav_item('veiculos.php', 'vehicle', 'Veículos', 'veiculos', $currentPage) ?><?php endif; ?>
+        <?php if (pode_acessar('mecanicos')): ?><?= nav_item('mecanicos.php', 'mechanic', 'Mecânicos', 'mecanicos', $currentPage) ?><?php endif; ?>
+        <?php if (pode_acessar('servicos')): ?><?= nav_item('servicos.php', 'service', 'Serviços', 'servicos', $currentPage) ?><?php endif; ?>
+        <?php if (pode_acessar('pecas')): ?><?= nav_item('pecas.php', 'parts', 'Peças', 'pecas', $currentPage) ?><?php endif; ?>
 
-        <div class="nav-section">Gestão</div>
-        <?= nav_item('relatorios.php', 'report', 'Relatórios', 'relatorios', $currentPage) ?>
-        <?= nav_item('configuracoes.php', 'settings', 'Configurações', 'configuracoes', $currentPage) ?>
-        <?php if (usuario_admin()): ?>
-            <?= nav_item('cadastro.php', 'clients', 'Usuários', 'usuarios', $currentPage) ?>
+        <?php if (pode_acessar('relatorios') || pode_acessar('configuracoes') || pode_acessar('usuarios')): ?>
+            <div class="nav-section">Gestão</div>
         <?php endif; ?>
+        <?php if (pode_acessar('relatorios')): ?><?= nav_item('relatorios.php', 'report', 'Relatórios', 'relatorios', $currentPage) ?><?php endif; ?>
+        <?php if (pode_acessar('configuracoes')): ?><?= nav_item('configuracoes.php', 'settings', 'Configurações', 'configuracoes', $currentPage) ?><?php endif; ?>
+        <?php if (pode_acessar('usuarios')): ?><?= nav_item('cadastro.php', 'clients', 'Usuários', 'usuarios', $currentPage) ?><?php endif; ?>
     </nav>
 
     <div class="sidebar-bottom">
@@ -52,10 +54,10 @@ $iniciais = iniciais_usuario($nomeLogado);
             <button class="mobile-menu-btn" id="menuToggle" type="button" aria-label="Abrir menu">
                 <?= ui_icon('menu') ?>
             </button>
-            <label class="searchbar" for="mainSearch">
+            <form class="searchbar" method="get" action="busca.php">
                 <?= ui_icon('search') ?>
-                <input id="mainSearch" type="search" placeholder="Buscar OS, cliente, veículo ou peça">
-            </label>
+                <input id="mainSearch" name="q" type="search" value="<?= h($valorBusca) ?>" placeholder="Buscar OS, cliente, veículo ou peça" autocomplete="off">
+            </form>
         </div>
 
         <div class="topbar-right">
