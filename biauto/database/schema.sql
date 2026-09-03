@@ -1,6 +1,9 @@
 SET NAMES utf8mb4;
 SET time_zone = '-04:00';
 SET FOREIGN_KEY_CHECKS = 0;
+ 
+CREATE DATABASE IF NOT EXISTS `auto` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ use `auto`;
 
 CREATE TABLE IF NOT EXISTS schema_migrations (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
