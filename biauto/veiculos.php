@@ -75,8 +75,19 @@ require __DIR__ . '/includes/sidebar.php';
     </form>
 
     <div class="table-shell table-desktop">
-        <table class="table">
-            <thead><tr><th>Veículo</th><th>Placa</th><th>Cliente</th><th>Ano</th><th>KM atual</th><th>Último serviço</th><th>Status</th><th>Ações</th></tr></thead>
+        <table class="table vehicle-table">
+            <thead>
+                <tr>
+                    <th>Veículo</th>
+                    <th>Placa</th>
+                    <th>Cliente</th>
+                    <th>Ano</th>
+                    <th>KM atual</th>
+                    <th>Último serviço</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
             <tbody>
             <?php if (!$veiculos): ?><tr><td colspan="8" class="muted">Nenhum veículo encontrado.</td></tr><?php endif; ?>
             <?php foreach ($veiculos as $veiculo): ?>
@@ -89,15 +100,15 @@ require __DIR__ . '/includes/sidebar.php';
                     <td><?= date_br($veiculo['ultimo_servico']) ?></td>
                     <td><span class="badge <?= (int) $veiculo['ativo'] === 1 ? 'success' : 'warning' ?>"><?= (int) $veiculo['ativo'] === 1 ? 'Ativo' : 'Inativo' ?></span></td>
                     <td>
-                        <div class="actions">
-                            <?php if (pode_alterar('veiculos')): ?><a class="btn" href="veiculo_form.php?id=<?= (int) $veiculo['id'] ?>">Editar</a><?php endif; ?>
-                            <a class="btn" href="ordens.php?veiculo_id=<?= (int) $veiculo['id'] ?>">Histórico</a>
+                        <div class="table-actions">
+                            <?php if (pode_alterar('veiculos')): ?><a class="btn btn-sm" href="veiculo_form.php?id=<?= (int) $veiculo['id'] ?>">Editar</a><?php endif; ?>
+                            <a class="btn btn-sm" href="ordens.php?veiculo_id=<?= (int) $veiculo['id'] ?>">Histórico</a>
                             <?php if (pode_alterar('veiculos')): ?>
                                 <form method="post" onsubmit="return confirm('Remover este veículo?')">
                                     <?= csrf_field() ?>
                                     <input type="hidden" name="acao" value="excluir">
                                     <input type="hidden" name="id" value="<?= (int) $veiculo['id'] ?>">
-                                    <button class="btn btn-danger" type="submit">Excluir</button>
+                                    <button class="btn btn-danger btn-sm" type="submit">Excluir</button>
                                 </form>
                             <?php endif; ?>
                         </div>
@@ -116,9 +127,9 @@ require __DIR__ . '/includes/sidebar.php';
                 <p><?= $veiculo['km_atual'] !== null ? number_format((int) $veiculo['km_atual'], 0, ',', '.') . ' km' : 'KM não informado' ?></p>
                 <div class="mobile-card-bottom">
                     <span><?= date_br($veiculo['ultimo_servico']) ?></span>
-                    <div class="actions">
-                        <?php if (pode_alterar('veiculos')): ?><a class="btn" href="veiculo_form.php?id=<?= (int) $veiculo['id'] ?>">Editar</a><?php endif; ?>
-                        <a class="btn" href="ordens.php?veiculo_id=<?= (int) $veiculo['id'] ?>">Histórico</a>
+                    <div class="table-actions">
+                        <?php if (pode_alterar('veiculos')): ?><a class="btn btn-sm" href="veiculo_form.php?id=<?= (int) $veiculo['id'] ?>">Editar</a><?php endif; ?>
+                        <a class="btn btn-sm" href="ordens.php?veiculo_id=<?= (int) $veiculo['id'] ?>">Histórico</a>
                     </div>
                 </div>
             </div>
