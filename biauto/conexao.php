@@ -3,10 +3,10 @@
 declare(strict_types=1);
 
 $host = 'localhost';
-$porta = 3306;
-$banco = 'biauto';
-$usuario = 'root';
-$senha = '';
+$porta = '3306';
+$banco = 'u784961086_bi';
+$usuario = 'u784961086_bi';
+$senha = '|pE3/=oGP7';
 $charset = 'utf8mb4';
 
 $dsn = "mysql:host={$host};port={$porta};dbname={$banco};charset={$charset}";
