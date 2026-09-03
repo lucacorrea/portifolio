@@ -23,11 +23,14 @@ if ($id > 0) {
     }
 }
 
+$fornecedores = $pdo->query('SELECT id, nome_razao FROM fornecedores WHERE deleted_at IS NULL AND ativo = 1 ORDER BY nome_razao')->fetchAll();
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_validate();
 
     $nome = trim((string) ($_POST['nome'] ?? ''));
     $codigo = strtoupper(trim((string) ($_POST['codigo'] ?? '')));
+    $fornecedorId = (int) ($_POST['fornecedor_id'] ?? 0);
     $precoVenda = decimal_value($_POST['preco_venda'] ?? 0);
     $custoMedio = decimal_value($_POST['custo_medio'] ?? 0);
     $estoqueMinimo = max(0, (float) str_replace(',', '.', (string) ($_POST['estoque_minimo'] ?? 0)));
@@ -42,7 +45,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('peca_form.php' . ($id > 0 ? '?id=' . $id : ''));
     }
 
+    if ($fornecedorId > 0) {
+        $stmt = $pdo->prepare('SELECT id FROM fornecedores WHERE id = ? AND deleted_at IS NULL AND ativo = 1');
+        $stmt->execute([$fornecedorId]);
+        if (!$stmt->fetch()) {
+            flash('danger', 'Fornecedor inválido.');
+            redirect('peca_form.php' . ($id > 0 ? '?id=' . $id : ''));
+        }
+    }
+
     $dados = [
+        'fornecedor_id' => $fornecedorId > 0 ? $fornecedorId : null,
         'codigo' => $codigo === '' ? null : $codigo,
         'codigo_barras' => nullable_string($_POST['codigo_barras'] ?? null),
         'nome' => $nome,
@@ -58,20 +71,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         if ($id > 0) {
             $antes = $peca;
-            $stmt = $pdo->prepare('UPDATE pecas SET codigo = ?, codigo_barras = ?, nome = ?, marca = ?, unidade = ?, estoque_minimo = ?, custo_medio = ?, preco_venda = ?, localizacao = ?, ativo = ? WHERE id = ? AND deleted_at IS NULL');
-            $stmt->execute([$dados['codigo'], $dados['codigo_barras'], $dados['nome'], $dados['marca'], $dados['unidade'], $dados['estoque_minimo'], $dados['custo_medio'], $dados['preco_venda'], $dados['localizacao'], $dados['ativo'], $id]);
+            $stmt = $pdo->prepare('UPDATE pecas SET fornecedor_id = ?, codigo = ?, codigo_barras = ?, nome = ?, marca = ?, unidade = ?, estoque_minimo = ?, custo_medio = ?, preco_venda = ?, localizacao = ?, ativo = ? WHERE id = ? AND deleted_at IS NULL');
+            $stmt->execute([$dados['fornecedor_id'], $dados['codigo'], $dados['codigo_barras'], $dados['nome'], $dados['marca'], $dados['unidade'], $dados['estoque_minimo'], $dados['custo_medio'], $dados['preco_venda'], $dados['localizacao'], $dados['ativo'], $id]);
             audit($pdo, 'pecas', $id, 'atualizar', $antes, $dados);
             flash('success', 'Peça atualizada com sucesso.');
         } else {
             $estoqueInicial = max(0, (float) str_replace(',', '.', (string) ($_POST['estoque_inicial'] ?? 0)));
             $pdo->beginTransaction();
-            $stmt = $pdo->prepare('INSERT INTO pecas (codigo, codigo_barras, nome, marca, unidade, estoque_atual, estoque_minimo, custo_medio, preco_venda, localizacao, ativo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-            $stmt->execute([$dados['codigo'], $dados['codigo_barras'], $dados['nome'], $dados['marca'], $dados['unidade'], $estoqueInicial, $dados['estoque_minimo'], $dados['custo_medio'], $dados['preco_venda'], $dados['localizacao'], $dados['ativo']]);
+            $stmt = $pdo->prepare('INSERT INTO pecas (fornecedor_id, codigo, codigo_barras, nome, marca, unidade, estoque_atual, estoque_minimo, custo_medio, preco_venda, localizacao, ativo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            $stmt->execute([$dados['fornecedor_id'], $dados['codigo'], $dados['codigo_barras'], $dados['nome'], $dados['marca'], $dados['unidade'], $estoqueInicial, $dados['estoque_minimo'], $dados['custo_medio'], $dados['preco_venda'], $dados['localizacao'], $dados['ativo']]);
             $id = (int) $pdo->lastInsertId();
 
             if ($estoqueInicial > 0) {
-                $mov = $pdo->prepare('INSERT INTO estoque_movimentos (peca_id, tipo, quantidade, custo_unitario, observacao) VALUES (?, ?, ?, ?, ?)');
-                $mov->execute([$id, 'entrada', $estoqueInicial, $dados['custo_medio'], 'Estoque inicial']);
+                $mov = $pdo->prepare('INSERT INTO estoque_movimentos (peca_id, tipo, quantidade, custo_unitario, observacao, usuario_id) VALUES (?, ?, ?, ?, ?, ?)');
+                $mov->execute([$id, 'entrada', $estoqueInicial, $dados['custo_medio'], 'Estoque inicial', (int) $_SESSION['usuario_id']]);
             }
 
             $pdo->commit();
@@ -103,6 +116,7 @@ require __DIR__ . '/includes/sidebar.php';
 
 <?= render_flash() ?>
 <?= page_header($id > 0 ? 'Editar peça' : 'Nova peça', $id > 0 ? 'Atualize os dados da peça selecionada.' : 'Cadastre o item e os parâmetros de estoque.', [
+    ['label' => 'Fornecedores', 'href' => 'fornecedores.php', 'icon' => 'clients', 'class' => 'btn-secondary'],
     ['label' => 'Voltar', 'href' => 'pecas.php', 'icon' => 'chevron', 'class' => 'btn-secondary']
 ]) ?>
 
@@ -111,9 +125,10 @@ require __DIR__ . '/includes/sidebar.php';
     <input type="hidden" name="id" value="<?= $id ?>">
 
     <div class="card section-card">
-        <div class="section-title"><div><h2>Identificação</h2><p>Dados básicos da peça.</p></div></div>
+        <div class="section-title"><div><h2>Identificação</h2><p>Dados básicos da peça e fornecedor.</p></div></div>
         <div class="form-row">
             <div class="form-group"><label>Nome</label><input class="input" name="nome" maxlength="190" required value="<?= h($peca['nome'] ?? '') ?>"></div>
+            <div class="form-group"><label>Fornecedor</label><select class="select" name="fornecedor_id"><option value="0">Não informado</option><?php foreach ($fornecedores as $fornecedor): ?><option value="<?= (int) $fornecedor['id'] ?>" <?= (int) ($peca['fornecedor_id'] ?? 0) === (int) $fornecedor['id'] ? 'selected' : '' ?>><?= h($fornecedor['nome_razao']) ?></option><?php endforeach; ?></select></div>
             <div class="form-group"><label>Código</label><input class="input" name="codigo" maxlength="80" value="<?= h($peca['codigo'] ?? '') ?>"></div>
             <div class="form-group"><label>Código de barras</label><input class="input" name="codigo_barras" maxlength="80" value="<?= h($peca['codigo_barras'] ?? '') ?>"></div>
             <div class="form-group"><label>Marca</label><input class="input" name="marca" maxlength="100" value="<?= h($peca['marca'] ?? '') ?>"></div>
