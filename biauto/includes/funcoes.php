@@ -131,6 +131,62 @@ function nivel_usuario(): string
     return (string) ($_SESSION['usuario_nivel'] ?? '');
 }
 
+function modulo_pagina(string $pagina): string
+{
+    $mapa = [
+        'index.php' => 'dashboard',
+        'ordens.php' => 'ordens',
+        'ordem_nova.php' => 'ordens',
+        'ordem_detalhe.php' => 'ordens',
+        'orcamentos.php' => 'orcamentos',
+        'orcamento_novo.php' => 'orcamentos',
+        'orcamento_detalhe.php' => 'orcamentos',
+        'clientes.php' => 'clientes',
+        'veiculos.php' => 'veiculos',
+        'mecanicos.php' => 'mecanicos',
+        'servicos.php' => 'servicos',
+        'pecas.php' => 'pecas',
+        'relatorios.php' => 'relatorios',
+        'configuracoes.php' => 'configuracoes',
+        'cadastro.php' => 'usuarios',
+        'busca.php' => 'busca',
+        'logout.php' => 'logout',
+        'login.php' => 'login',
+    ];
+
+    return $mapa[$pagina] ?? 'dashboard';
+}
+
+function pode_acessar(string $modulo): bool
+{
+    $nivel = nivel_usuario();
+
+    $permissoes = [
+        'admin' => ['dashboard', 'ordens', 'orcamentos', 'clientes', 'veiculos', 'mecanicos', 'servicos', 'pecas', 'relatorios', 'configuracoes', 'usuarios', 'busca', 'logout'],
+        'gerente' => ['dashboard', 'ordens', 'orcamentos', 'clientes', 'veiculos', 'mecanicos', 'servicos', 'pecas', 'relatorios', 'busca', 'logout'],
+        'atendente' => ['dashboard', 'ordens', 'orcamentos', 'clientes', 'veiculos', 'servicos', 'pecas', 'busca', 'logout'],
+        'mecanico' => ['dashboard', 'ordens', 'clientes', 'veiculos', 'servicos', 'pecas', 'busca', 'logout'],
+        'leitor' => ['dashboard', 'ordens', 'orcamentos', 'clientes', 'veiculos', 'mecanicos', 'servicos', 'pecas', 'relatorios', 'busca', 'logout'],
+    ];
+
+    return in_array($modulo, $permissoes[$nivel] ?? [], true);
+}
+
+function pode_alterar(string $modulo): bool
+{
+    $nivel = nivel_usuario();
+
+    $permissoes = [
+        'admin' => ['ordens', 'orcamentos', 'clientes', 'veiculos', 'mecanicos', 'servicos', 'pecas', 'configuracoes', 'usuarios', 'logout'],
+        'gerente' => ['ordens', 'orcamentos', 'clientes', 'veiculos', 'mecanicos', 'servicos', 'pecas', 'logout'],
+        'atendente' => ['ordens', 'orcamentos', 'clientes', 'veiculos', 'logout'],
+        'mecanico' => ['ordens', 'logout'],
+        'leitor' => ['logout'],
+    ];
+
+    return in_array($modulo, $permissoes[$nivel] ?? [], true);
+}
+
 function iniciais_usuario(string $nome): string
 {
     $partes = preg_split('/\s+/', trim($nome)) ?: [];
