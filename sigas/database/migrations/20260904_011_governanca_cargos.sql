@@ -15,6 +15,25 @@ CREATE TABLE IF NOT EXISTS cargos (
     KEY idx_cargos_ativo (ativo)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Compatibilidade com instalações que já possuíam uma tabela cargos simplificada.
+ALTER TABLE cargos
+    ADD COLUMN IF NOT EXISTS slug VARCHAR(120) NULL AFTER nome,
+    ADD COLUMN IF NOT EXISTS descricao VARCHAR(255) NULL AFTER slug,
+    ADD COLUMN IF NOT EXISTS ativo TINYINT(1) NOT NULL DEFAULT 1 AFTER descricao,
+    ADD COLUMN IF NOT EXISTS criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER ativo,
+    ADD COLUMN IF NOT EXISTS atualizado_em DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP AFTER criado_em,
+    ADD COLUMN IF NOT EXISTS excluido_em DATETIME NULL DEFAULT NULL AFTER atualizado_em;
+
+-- Garante identificador para registros legados já existentes na tabela cargos.
+UPDATE cargos
+SET slug = CONCAT('legado-', LEFT(SHA2(LOWER(TRIM(nome)), 256), 12))
+WHERE (slug IS NULL OR TRIM(slug) = '')
+  AND nome IS NOT NULL
+  AND TRIM(nome) <> '';
+
+ALTER TABLE cargos
+    MODIFY COLUMN slug VARCHAR(120) NOT NULL;
+
 -- Preserva os cargos já existentes nas contas atuais sem criar dados fictícios.
 INSERT INTO cargos (nome, slug, descricao, ativo, criado_em)
 SELECT
