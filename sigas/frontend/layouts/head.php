@@ -6,9 +6,13 @@ require_once dirname(__DIR__) . '/support/helpers.php';
 
 /**
  * Monta a lista de CSS adicionais sem duplicar arquivos.
- * O Primeiro Emprego recebe carregamento explícito do module2.0.css.
- * O Design System operacional híbrido global continua no Primeiro Emprego.
- * O Comida na Mesa usa seu próprio module.css modular e isolado.
+ *
+ * Ordem visual do SIGAS:
+ * 1. base global;
+ * 2. identidade específica do módulo;
+ * 3. estilos extras da página;
+ * 4. compatibilidade histórica do Primeiro Emprego;
+ * 5. Design System Operacional Global, que normaliza geometria e componentes.
  *
  * @return array<int,string>
  */
@@ -38,7 +42,6 @@ if (!function_exists('sigas_frontend_module_styles')) {
         return array_values(array_unique($styles));
     }
 }
-
 
 $moduleStyles = sigas_frontend_module_styles(
     isset($environment) && is_array($environment) ? $environment : null,
@@ -82,7 +85,12 @@ $moduleStyles = sigas_frontend_module_styles(
     <?php if (($environmentKey ?? '') === 'primeiro-emprego'): ?>
         <?php $operationalUiPath = 'assets/css/sigas-operational-ui.css'; ?>
         <?php if (is_file(dirname(__DIR__, 2) . '/' . $operationalUiPath)): ?>
-            <link href="<?= sigas_frontend_asset($operationalUiPath) ?>" rel="stylesheet" data-sigas-operational-ui="v3">
+            <link href="<?= sigas_frontend_asset($operationalUiPath) ?>" rel="stylesheet" data-sigas-operational-ui="legacy-pe">
         <?php endif; ?>
+    <?php endif; ?>
+
+    <?php $globalUiPath = 'assets/css/sigas-global-layout.css'; ?>
+    <?php if (is_file(dirname(__DIR__, 2) . '/' . $globalUiPath)): ?>
+        <link href="<?= sigas_frontend_asset($globalUiPath) ?>" rel="stylesheet" data-sigas-global-layout="v1">
     <?php endif; ?>
 </head>
