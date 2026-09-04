@@ -38,7 +38,15 @@ $pageCustomContent = '';
 $pageExtraStyles = [];
 $pageExtraScripts = [];
 
-$view = dirname(__DIR__) . '/frontend/modules/gestao-acessos/pages/' . $pageKey . '.php';
+$viewKey = $pageKey;
+if (isset($governanceViewKey) && is_string($governanceViewKey)) {
+    $allowedViewOverrides = ['novo-usuario'];
+    if (in_array($governanceViewKey, $allowedViewOverrides, true)) {
+        $viewKey = $governanceViewKey;
+    }
+}
+
+$view = dirname(__DIR__) . '/frontend/modules/gestao-acessos/pages/' . $viewKey . '.php';
 
 if (!is_file($view)) {
     http_response_code(404);

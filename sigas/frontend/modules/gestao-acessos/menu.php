@@ -34,6 +34,24 @@ foreach ($menuPages as $key => &$navigationPage) {
 }
 unset($navigationPage);
 
+$orderedMenuPages = [];
+foreach ($menuPages as $key => $navigationPage) {
+    $orderedMenuPages[$key] = $navigationPage;
+    if ($key === 'usuarios') {
+        $orderedMenuPages['novo-usuario'] = [
+            'key' => 'novo-usuario',
+            'label' => 'Novo usuário',
+            'icon' => 'person-plus',
+            'page' => 'usuarios',
+            'href' => 'governanca-acessos/novo-usuario.php',
+            'target' => 'public',
+            'view' => null,
+            'mobile' => false,
+        ];
+    }
+}
+$menuPages = $orderedMenuPages;
+
 $environment = $menuEnvironment;
 $menuSurface = isset($menuSurface) && is_string($menuSurface) ? $menuSurface : 'sidebar';
 $menuPageKey = isset($menuPageKey) && is_string($menuPageKey)
