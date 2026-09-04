@@ -12,7 +12,8 @@ require_once dirname(__DIR__) . '/support/helpers.php';
  * 2. identidade específica do módulo;
  * 3. estilos extras da página;
  * 4. compatibilidade histórica do Primeiro Emprego;
- * 5. Design System Operacional Global, que normaliza geometria e componentes.
+ * 5. Design System Operacional Global, que normaliza geometria e componentes;
+ * 6. padrão global das modais operacionais.
  *
  * @return array<int,string>
  */
@@ -92,5 +93,10 @@ $moduleStyles = sigas_frontend_module_styles(
     <?php $globalUiPath = 'assets/css/sigas-global-layout.css'; ?>
     <?php if (is_file(dirname(__DIR__, 2) . '/' . $globalUiPath)): ?>
         <link href="<?= sigas_frontend_asset($globalUiPath) ?>" rel="stylesheet" data-sigas-global-layout="v1">
+    <?php endif; ?>
+
+    <?php $globalActionModalPath = 'assets/css/sigas-action-modal.css'; ?>
+    <?php if (is_file(dirname(__DIR__, 2) . '/' . $globalActionModalPath)): ?>
+        <link href="<?= sigas_frontend_asset($globalActionModalPath) ?>" rel="stylesheet" data-sigas-action-modal="v1">
     <?php endif; ?>
 </head>
