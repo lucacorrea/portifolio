@@ -59,28 +59,78 @@ function cm_action_modal(): void
             <div class="modal-content sigas-action-modal">
                 <div class="modal-header">
                     <div>
-                        <div class="eyebrow"><i class="bi bi-grid"></i> Ações do beneficiário</div>
+                        <div class="eyebrow">Beneficiário</div>
                         <h2 class="modal-title" id="beneficiaryActionModalTitle" data-cm-action-name>Família beneficiária</h2>
                         <p class="cm-modal-subtitle"><span data-cm-action-code>Sem código</span> · <span data-cm-action-pole>Sem polo</span></p>
                     </div>
                     <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
+
                 <div class="modal-body">
-                    <div class="cm-action-status-grid">
-                        <div><span>Situação no programa</span><strong data-cm-action-program>—</strong></div>
-                        <div><span>Situação da entrega</span><strong data-cm-action-delivery>—</strong></div>
+                    <div class="cm-action-review-box">
+                        <div class="cm-action-review-box__heading">
+                            <i class="bi bi-shield-check" aria-hidden="true"></i>
+                            <span>Situação no programa</span>
+                        </div>
+                        <strong data-cm-action-program>—</strong>
+                        <small data-cm-action-note>As ações disponíveis respeitam as permissões do usuário e a situação atual do benefício.</small>
                     </div>
+
+                    <div class="cm-action-summary-grid">
+                        <div>
+                            <span>Código</span>
+                            <strong data-cm-action-code>—</strong>
+                        </div>
+                        <div>
+                            <span>Polo</span>
+                            <strong data-cm-action-pole>—</strong>
+                        </div>
+                        <div>
+                            <span>Entrega</span>
+                            <strong data-cm-action-delivery>—</strong>
+                        </div>
+                    </div>
+
+                    <div class="cm-action-section-title">Ações do beneficiário</div>
+
                     <div class="cm-action-grid">
-                        <button type="button" class="cm-action-card" data-cm-action-command="view"><i class="bi bi-eye"></i><span><strong>Visualizar</strong><small>Dados completos da família</small></span><i class="bi bi-chevron-right"></i></button>
-                        <button type="button" class="cm-action-card" data-cm-action-command="edit"><i class="bi bi-pencil-square"></i><span><strong>Editar cadastro</strong><small>Atualizar dados da inscrição</small></span><i class="bi bi-chevron-right"></i></button>
-                        <button type="button" class="cm-action-card" data-cm-action-command="delivery"><i class="bi bi-basket2"></i><span><strong data-cm-action-delivery-text>Registrar entrega</strong><small>Operação da competência atual</small></span><i class="bi bi-chevron-right"></i></button>
-                        <button type="button" class="cm-action-card" data-cm-action-command="document"><i class="bi bi-paperclip"></i><span><strong>Enviar documento</strong><small>Anexar arquivo ao cadastro</small></span><i class="bi bi-chevron-right"></i></button>
-                        <button type="button" class="cm-action-card" data-cm-action-command="history"><i class="bi bi-clock-history"></i><span><strong>Histórico</strong><small>Movimentações e entregas</small></span><i class="bi bi-chevron-right"></i></button>
-                        <button type="button" class="cm-action-card cm-action-card--danger" data-cm-action-command="cancel"><i class="bi bi-x-circle"></i><span><strong>Cancelar entrega</strong><small>Exige justificativa e permissão</small></span><i class="bi bi-chevron-right"></i></button>
+                        <button type="button" class="cm-action-card" data-cm-action-command="view">
+                            <i class="bi bi-eye"></i>
+                            <span><strong>Visualizar cadastro</strong><small>Consultar os dados completos da família</small></span>
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+
+                        <button type="button" class="cm-action-card" data-cm-action-command="edit">
+                            <i class="bi bi-pencil-square"></i>
+                            <span><strong>Editar cadastro</strong><small>Atualizar os dados da inscrição</small></span>
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+
+                        <button type="button" class="cm-action-card" data-cm-action-command="delivery">
+                            <i class="bi bi-basket2"></i>
+                            <span><strong data-cm-action-delivery-text>Registrar entrega</strong><small>Executar a operação da competência atual</small></span>
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+
+                        <button type="button" class="cm-action-card" data-cm-action-command="document">
+                            <i class="bi bi-paperclip"></i>
+                            <span><strong>Enviar documento</strong><small>Anexar arquivo ao cadastro da família</small></span>
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+
+                        <button type="button" class="cm-action-card" data-cm-action-command="history">
+                            <i class="bi bi-clock-history"></i>
+                            <span><strong>Histórico</strong><small>Consultar movimentações e entregas registradas</small></span>
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+
+                        <button type="button" class="cm-action-card cm-action-card--danger" data-cm-action-command="cancel">
+                            <i class="bi bi-x-circle"></i>
+                            <span><strong>Cancelar entrega</strong><small>Ação restrita que exige justificativa e permissão</small></span>
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
                     </div>
-                    <p class="cm-action-note" data-cm-action-note>As ações respeitam as permissões do usuário e a situação atual do benefício.</p>
                 </div>
-                <div class="modal-footer"><button class="btn btn-light" type="button" data-bs-dismiss="modal">Fechar</button></div>
             </div>
         </div>
     </div>
