@@ -5,14 +5,14 @@ declare(strict_types=1);
 function cm_list_header(string $kicker, string $title, string $description, string $createLabel = '', string $createTarget = '', string $icon = 'plus-lg'): void
 {
     ?>
-    <div class="cm-list-hero">
+    <div class="cm-list-hero sigas-workspace-hero">
         <div>
             <div class="card-kicker"><?= cm_h($kicker) ?></div>
             <h2><?= cm_h($title) ?></h2>
             <p><?= cm_h($description) ?></p>
         </div>
         <?php if ($createLabel !== '' && $createTarget !== ''): ?>
-            <div class="cm-page-actions">
+            <div class="cm-page-actions sigas-page-actions">
                 <button class="btn btn-primary" type="button" data-cm-open="<?= cm_h($createTarget) ?>">
                     <i class="bi bi-<?= cm_h($icon) ?>"></i><?= cm_h($createLabel) ?>
                 </button>
@@ -27,10 +27,10 @@ function cm_metrics(array $metrics): void
 {
     if ($metrics === []) return;
     ?>
-    <div class="cm-kpi-grid">
+    <div class="cm-kpi-grid sigas-kpi-grid">
         <?php foreach ($metrics as $metric): ?>
             <?php $tone = (string) ($metric['tone'] ?? 'neutral'); ?>
-            <article class="cm-kpi cm-kpi--<?= cm_h($tone) ?>">
+            <article class="cm-kpi sigas-kpi cm-kpi--<?= cm_h($tone) ?>">
                 <span><?= cm_h($metric['label'] ?? 'Indicador') ?></span>
                 <strong><?= cm_h((string) ($metric['value'] ?? 0)) ?></strong>
                 <?php if (!empty($metric['hint'])): ?><small><?= cm_h((string) $metric['hint']) ?></small><?php endif; ?>
@@ -43,7 +43,7 @@ function cm_metrics(array $metrics): void
 function cm_empty(string $title, string $text, string $icon = 'inbox'): void
 {
     ?>
-    <div class="cm-empty-state">
+    <div class="cm-empty-state sigas-empty-state">
         <i class="bi bi-<?= cm_h($icon) ?>"></i>
         <strong><?= cm_h($title) ?></strong>
         <span><?= cm_h($text) ?></span>
@@ -56,7 +56,7 @@ function cm_action_modal(): void
     ?>
     <div class="modal fade" id="beneficiaryActionModal" tabindex="-1" aria-labelledby="beneficiaryActionModalTitle" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable cm-action-dialog">
-            <div class="modal-content">
+            <div class="modal-content sigas-action-modal">
                 <div class="modal-header">
                     <div>
                         <div class="eyebrow"><i class="bi bi-grid"></i> Ações do beneficiário</div>
@@ -87,7 +87,7 @@ function cm_action_modal(): void
 
     <div class="modal fade" id="beneficiaryConflictModal" tabindex="-1" aria-labelledby="beneficiaryConflictModalTitle" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable cm-action-dialog">
-            <div class="modal-content">
+            <div class="modal-content sigas-action-modal">
                 <div class="modal-header">
                     <div>
                         <div class="eyebrow"><i class="bi bi-shield-exclamation"></i> Regularização de vínculo</div>
