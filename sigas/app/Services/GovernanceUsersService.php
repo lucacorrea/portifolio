@@ -26,6 +26,7 @@ final class GovernanceUsersService
             $sector = trim((string) ($user['setor_nome'] ?? '')) ?: 'Sem setor';
             $level = trim((string) ($user['nivel_nome'] ?? '')) ?: 'Sem nível';
             $status = $this->statusLabel((string) ($user['status'] ?? ''));
+            $userId = (int) ($user['id'] ?? 0);
 
             if ($sector !== 'Sem setor') {
                 $sectors[$sector] = true;
@@ -42,7 +43,7 @@ final class GovernanceUsersService
                 'nivel' => $level,
                 'ultimo_acesso' => $this->formatDateTime($user['ultimo_login_em'] ?? null, 'Nunca'),
                 'situacao' => $status,
-                'ID do usuário' => (string) ((int) ($user['id'] ?? 0)),
+                'ID do usuário' => (string) $userId,
                 'CPF completo' => $this->formatCpf((string) ($user['cpf'] ?? '')),
                 'Matrícula' => trim((string) ($user['matricula'] ?? '')) ?: 'Não informada',
                 'E-mail' => trim((string) ($user['email'] ?? '')) ?: 'Não informado',
@@ -52,6 +53,7 @@ final class GovernanceUsersService
                 'Bloqueado até' => $this->formatDateTime($user['bloqueado_ate'] ?? null, 'Não'),
                 'Tentativas de login' => (string) ((int) ($user['tentativas_login'] ?? 0)),
                 'Troca de senha obrigatória' => (int) ($user['precisa_trocar_senha'] ?? 0) === 1 ? 'Sim' : 'Não',
+                'Sessões ativas' => (string) ((int) ($user['sessoes_ativas'] ?? 0)),
                 'Versão de autorização' => (string) ((int) ($user['versao_autorizacao'] ?? 1)),
                 'Aprovado por' => trim((string) ($user['aprovado_por_nome'] ?? '')) ?: 'Não informado',
                 'Aprovado em' => $this->formatDateTime($user['aprovado_em'] ?? null, 'Não informado'),
@@ -61,13 +63,33 @@ final class GovernanceUsersService
                 'Observação interna' => trim((string) ($user['observacao_interna'] ?? '')) ?: 'Sem observações',
                 'Criado em' => $this->formatDateTime($user['criado_em'] ?? null, 'Não informado'),
                 'Atualizado em' => $this->formatDateTime($user['atualizado_em'] ?? null, 'Nunca atualizado'),
+                '__user_id' => $userId,
+                '__sector_id' => (int) ($user['setor_id'] ?? 0),
+                '__requested_sector_id' => (int) ($user['setor_solicitado_id'] ?? 0),
+                '__level_id' => (int) ($user['nivel_id'] ?? 0),
+                '__status' => trim((string) ($user['status'] ?? '')),
+                '__active_sessions' => (int) ($user['sessoes_ativas'] ?? 0),
                 '_actions' => [
                     [
                         'kind' => 'detail',
                         'label' => 'Ver dados completos',
                         'description' => 'Consultar os dados administrativos desta conta sem realizar alterações.',
                         'icon' => 'person-vcard',
+                    ],
+                    [
+                        'kind' => 'navigate',
+                        'label' => 'Gerenciar acesso',
+                        'description' => 'Alterar setor, nível, status ou sessões com validação e auditoria.',
+                        'icon' => 'shield-lock',
                         'variant' => 'primary',
+                        'href' => 'governanca-acessos/usuarios.php?usuario={__user_id}',
+                    ],
+                    [
+                        'kind' => 'navigate',
+                        'label' => 'Ver auditoria',
+                        'description' => 'Consultar os eventos administrativos relacionados a esta conta.',
+                        'icon' => 'journal-text',
+                        'href' => 'governanca-acessos/auditoria.php?usuario={__user_id}',
                     ],
                 ],
             ];
@@ -80,6 +102,8 @@ final class GovernanceUsersService
 
         return [
             'rows' => $rows,
+            'sectors' => $this->repository->activeSectors(),
+            'levels' => $this->repository->activeLevels(),
             'filters' => [
                 ['label' => 'Setor', 'options' => $sectorOptions],
                 ['label' => 'Nível', 'options' => $levelOptions],

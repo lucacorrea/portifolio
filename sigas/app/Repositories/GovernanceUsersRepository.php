@@ -51,6 +51,9 @@ final class GovernanceUsersRepository
             $stmt = $this->pdo->prepare(
                 "SELECT
                     u.id,
+                    u.setor_id,
+                    u.setor_solicitado_id,
+                    u.nivel_id,
                     u.nome,
                     u.cpf,
                     u.matricula,
@@ -75,7 +78,14 @@ final class GovernanceUsersRepository
                     n.nome AS nivel_nome,
                     n.slug AS nivel_slug,
                     ap.nome AS aprovado_por_nome,
-                    rp.nome AS rejeitado_por_nome
+                    rp.nome AS rejeitado_por_nome,
+                    (
+                        SELECT COUNT(*)
+                        FROM sessoes_usuarios su
+                        WHERE su.usuario_id = u.id
+                          AND su.revogada_em IS NULL
+                          AND su.expira_em > UTC_TIMESTAMP()
+                    ) AS sessoes_ativas
                  FROM usuarios u
                  LEFT JOIN setores s ON s.id = u.setor_id
                  LEFT JOIN setores ss ON ss.id = u.setor_solicitado_id
@@ -102,6 +112,56 @@ final class GovernanceUsersRepository
             return is_array($rows) ? $rows : [];
         } catch (PDOException $exception) {
             $this->logFailure('users', $exception);
+            return [];
+        }
+    }
+
+    /** @return list<array{id:int,nome:string}> */
+    public function activeSectors(): array
+    {
+        try {
+            $rows = $this->pdo->query(
+                "SELECT id, nome
+                 FROM setores
+                 WHERE ativo = 1
+                   AND excluido_em IS NULL
+                 ORDER BY nome"
+            )->fetchAll(PDO::FETCH_ASSOC);
+
+            return array_map(
+                static fn (array $row): array => [
+                    'id' => (int) ($row['id'] ?? 0),
+                    'nome' => trim((string) ($row['nome'] ?? '')),
+                ],
+                is_array($rows) ? $rows : []
+            );
+        } catch (PDOException $exception) {
+            $this->logFailure('activeSectors', $exception);
+            return [];
+        }
+    }
+
+    /** @return list<array{id:int,nome:string,slug:string}> */
+    public function activeLevels(): array
+    {
+        try {
+            $rows = $this->pdo->query(
+                "SELECT id, nome, slug
+                 FROM niveis_acesso
+                 WHERE ativo = 1
+                 ORDER BY prioridade, nome"
+            )->fetchAll(PDO::FETCH_ASSOC);
+
+            return array_map(
+                static fn (array $row): array => [
+                    'id' => (int) ($row['id'] ?? 0),
+                    'nome' => trim((string) ($row['nome'] ?? '')),
+                    'slug' => trim((string) ($row['slug'] ?? '')),
+                ],
+                is_array($rows) ? $rows : []
+            );
+        } catch (PDOException $exception) {
+            $this->logFailure('activeLevels', $exception);
             return [];
         }
     }
