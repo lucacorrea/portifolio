@@ -78,16 +78,16 @@ function cm_action_modal(): void
 
                     <div class="cm-action-summary-grid">
                         <div>
-                            <span>Código</span>
-                            <strong data-cm-action-code>—</strong>
-                        </div>
-                        <div>
-                            <span>Polo</span>
-                            <strong data-cm-action-pole>—</strong>
-                        </div>
-                        <div>
                             <span>Entrega</span>
                             <strong data-cm-action-delivery>—</strong>
+                        </div>
+                        <div>
+                            <span>Operação</span>
+                            <strong>Conforme competência</strong>
+                        </div>
+                        <div>
+                            <span>Permissões</span>
+                            <strong>Conforme perfil do usuário</strong>
                         </div>
                     </div>
 
