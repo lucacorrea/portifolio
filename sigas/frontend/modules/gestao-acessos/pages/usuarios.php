@@ -17,6 +17,7 @@ $selectedUserId = filter_input(INPUT_GET, 'usuario', FILTER_VALIDATE_INT, [
     'options' => ['min_range' => 1],
 ]);
 $selectedUser = null;
+$currentUserId = (int) ($_SESSION['auth_user_id'] ?? 0);
 
 if (is_int($selectedUserId) && $selectedUserId > 0) {
     foreach ($data['rows'] as $row) {
@@ -33,6 +34,7 @@ if (is_array($selectedUser)) {
     $requestedSectorId = (int) ($selectedUser['__requested_sector_id'] ?? 0);
     $currentLevelId = (int) ($selectedUser['__level_id'] ?? 0);
     $activeSessions = (int) ($selectedUser['__active_sessions'] ?? 0);
+    $isSelf = $currentUserId > 0 && $currentUserId === (int) $selectedUserId;
     $statusClass = match ($selectedStatus) {
         'ativo' => 'success',
         'pendente' => 'warning',
@@ -105,6 +107,16 @@ if (is_array($selectedUser)) {
                         </div>
                     <?php endif; ?>
 
+                    <?php if ($isSelf): ?>
+                        <div class="ga-governance-note">
+                            <i class="bi bi-shield-check"></i>
+                            <div>
+                                <strong>Conta atual protegida</strong>
+                                <span>Por segurança, setor, nível, bloqueio e sessões da própria conta são somente leitura nesta tela. Alterações críticas devem ser realizadas por outro administrador autorizado.</span>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
                     <section class="ga-admin-section">
                         <div class="ga-admin-section-heading">
                             <div>
@@ -117,7 +129,7 @@ if (is_array($selectedUser)) {
                         <div class="row g-3">
                             <div class="col-12 col-lg-6">
                                 <label class="form-label" for="governanceSector">Setor</label>
-                                <select class="form-select" id="governanceSector" name="setor_id" required>
+                                <select class="form-select" id="governanceSector" name="setor_id" required <?= $isSelf ? 'disabled' : '' ?>>
                                     <option value="">Selecione o setor</option>
                                     <?php foreach ($data['sectors'] as $sector): ?>
                                         <?php $sectorId = (int) ($sector['id'] ?? 0); ?>
@@ -131,7 +143,7 @@ if (is_array($selectedUser)) {
 
                             <div class="col-12 col-lg-6">
                                 <label class="form-label" for="governanceLevel">Nível de acesso</label>
-                                <select class="form-select" id="governanceLevel" name="nivel_id" required>
+                                <select class="form-select" id="governanceLevel" name="nivel_id" required <?= $isSelf ? 'disabled' : '' ?>>
                                     <option value="">Selecione o nível</option>
                                     <?php foreach ($data['levels'] as $level): ?>
                                         <?php $levelId = (int) ($level['id'] ?? 0); ?>
@@ -152,9 +164,14 @@ if (is_array($selectedUser)) {
                                     minlength="5"
                                     maxlength="500"
                                     required
+                                    <?= $isSelf ? 'disabled' : '' ?>
                                     placeholder="Informe o motivo administrativo. A justificativa será registrada na auditoria."
                                 ></textarea>
-                                <div class="form-text">Obrigatória para qualquer alteração de acesso, status ou sessão.</div>
+                                <div class="form-text">
+                                    <?= $isSelf
+                                        ? 'A própria conta está protegida contra alterações críticas nesta tela.'
+                                        : 'Obrigatória para qualquer alteração de acesso, status ou sessão.' ?>
+                                </div>
                             </div>
                         </div>
                     </section>
@@ -168,39 +185,49 @@ if (is_array($selectedUser)) {
                             <i class="bi bi-shield-check"></i>
                         </div>
 
-                        <div class="ga-admin-actions">
-                            <?php if ($selectedStatus === 'pendente'): ?>
-                                <button class="btn btn-primary" type="submit" name="acao" value="approve">
-                                    <i class="bi bi-person-check"></i> Aprovar e liberar acesso
-                                </button>
-                            <?php else: ?>
-                                <button class="btn btn-primary" type="submit" name="acao" value="change_access">
-                                    <i class="bi bi-arrow-repeat"></i> Salvar setor e nível
-                                </button>
-                            <?php endif; ?>
+                        <?php if ($isSelf): ?>
+                            <div class="ga-governance-note mb-0">
+                                <i class="bi bi-lock"></i>
+                                <div>
+                                    <strong>Ações críticas indisponíveis para a própria conta</strong>
+                                    <span>Bloqueio, alteração de acesso e encerramento administrativo de sessões precisam ser executados por outro administrador autorizado.</span>
+                                </div>
+                            </div>
+                        <?php else: ?>
+                            <div class="ga-admin-actions">
+                                <?php if ($selectedStatus === 'pendente'): ?>
+                                    <button class="btn btn-primary" type="submit" name="acao" value="approve">
+                                        <i class="bi bi-person-check"></i> Aprovar e liberar acesso
+                                    </button>
+                                <?php else: ?>
+                                    <button class="btn btn-primary" type="submit" name="acao" value="change_access">
+                                        <i class="bi bi-arrow-repeat"></i> Salvar setor e nível
+                                    </button>
+                                <?php endif; ?>
 
-                            <?php if ($selectedStatus === 'ativo'): ?>
-                                <button class="btn btn-outline-danger" type="submit" name="acao" value="block" data-confirm-action="Bloquear esta conta e encerrar suas sessões ativas?">
-                                    <i class="bi bi-person-lock"></i> Bloquear usuário
-                                </button>
-                            <?php elseif ($selectedStatus === 'bloqueado'): ?>
-                                <button class="btn btn-outline-success" type="submit" name="acao" value="unblock" data-confirm-action="Desbloquear esta conta e permitir novo acesso ao SIGAS?">
-                                    <i class="bi bi-person-check"></i> Desbloquear usuário
-                                </button>
-                            <?php endif; ?>
+                                <?php if ($selectedStatus === 'ativo'): ?>
+                                    <button class="btn btn-outline-danger" type="submit" name="acao" value="block" data-confirm-action="Bloquear esta conta e encerrar suas sessões ativas?">
+                                        <i class="bi bi-person-lock"></i> Bloquear usuário
+                                    </button>
+                                <?php elseif ($selectedStatus === 'bloqueado'): ?>
+                                    <button class="btn btn-outline-success" type="submit" name="acao" value="unblock" data-confirm-action="Desbloquear esta conta e permitir novo acesso ao SIGAS?">
+                                        <i class="bi bi-person-check"></i> Desbloquear usuário
+                                    </button>
+                                <?php endif; ?>
 
-                            <button
-                                class="btn btn-outline-secondary"
-                                type="submit"
-                                name="acao"
-                                value="revoke_sessions"
-                                data-confirm-action="Encerrar todas as sessões ativas deste usuário?"
-                                <?= $activeSessions <= 0 ? 'disabled' : '' ?>
-                            >
-                                <i class="bi bi-door-closed"></i>
-                                Encerrar sessões<?= $activeSessions > 0 ? ' (' . $activeSessions . ')' : '' ?>
-                            </button>
-                        </div>
+                                <button
+                                    class="btn btn-outline-secondary"
+                                    type="submit"
+                                    name="acao"
+                                    value="revoke_sessions"
+                                    data-confirm-action="Encerrar todas as sessões ativas deste usuário?"
+                                    <?= $activeSessions <= 0 ? 'disabled' : '' ?>
+                                >
+                                    <i class="bi bi-door-closed"></i>
+                                    Encerrar sessões<?= $activeSessions > 0 ? ' (' . $activeSessions . ')' : '' ?>
+                                </button>
+                            </div>
+                        <?php endif; ?>
                     </section>
 
                     <section class="ga-admin-section ga-user-audit-summary">
