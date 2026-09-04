@@ -1,8 +1,19 @@
 SET NAMES utf8mb4;
 
 -- Evita confundir cargo/função profissional com o nível de acesso "Administrador".
--- Só renomeia quando não houver usuário atualmente vinculado ao nome legado.
+-- Só renomeia quando não houver usuário atualmente vinculado ao nome legado
+-- e quando o nome/slug de destino ainda não estiverem em uso.
 UPDATE cargos c
+LEFT JOIN usuarios u
+       ON u.excluido_em IS NULL
+      AND LOWER(TRIM(COALESCE(u.cargo, ''))) = LOWER(TRIM(c.nome))
+LEFT JOIN cargos outro
+       ON outro.id <> c.id
+      AND outro.excluido_em IS NULL
+      AND (
+          LOWER(TRIM(outro.nome)) = LOWER('Administrador(a) de Sistemas')
+          OR LOWER(TRIM(outro.slug)) = 'administrador-sistemas'
+      )
 SET
     c.nome = 'Administrador(a) de Sistemas',
     c.slug = 'administrador-sistemas',
@@ -13,19 +24,5 @@ SET
     END
 WHERE LOWER(TRIM(c.nome)) = 'administrador do sistema'
   AND c.excluido_em IS NULL
-  AND NOT EXISTS (
-      SELECT 1
-      FROM usuarios u
-      WHERE u.excluido_em IS NULL
-        AND LOWER(TRIM(COALESCE(u.cargo, ''))) = LOWER(TRIM(c.nome))
-  )
-  AND NOT EXISTS (
-      SELECT 1
-      FROM cargos outro
-      WHERE outro.id <> c.id
-        AND outro.excluido_em IS NULL
-        AND (
-            LOWER(TRIM(outro.nome)) = LOWER('Administrador(a) de Sistemas')
-            OR LOWER(TRIM(outro.slug)) = 'administrador-sistemas'
-        )
-  );
+  AND u.id IS NULL
+  AND outro.id IS NULL;
