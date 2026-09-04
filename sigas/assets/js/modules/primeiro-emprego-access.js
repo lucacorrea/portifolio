@@ -35,6 +35,12 @@
         return access.canCurrentAction === true;
     };
 
+    if (access.currentPage === 'candidatos' && access.canCurrentAction !== true) {
+        document.querySelectorAll(
+            '[data-pe-modal-action-review], [data-pe-modal-action-visit], [data-pe-modal-action-profile]'
+        ).forEach(action => action.remove());
+    }
+
     document.querySelectorAll('[data-pe-open]').forEach(opener => {
         const selector = opener.getAttribute('data-pe-open');
         if (!selector || !selector.startsWith('#')) return;

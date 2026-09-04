@@ -43,6 +43,24 @@ if (!pe_can_page($pageKey)) {
     return;
 }
 
+if ($pageKey === 'candidatos' && !pe_can('primeiro_emprego.editar')) {
+    $restrictedCandidateAction = false;
+    foreach (['revisar', 'visita', 'ficha'] as $candidateActionKey) {
+        if ((int) ($_GET[$candidateActionKey] ?? 0) > 0) {
+            $restrictedCandidateAction = true;
+            break;
+        }
+    }
+
+    if ($restrictedCandidateAction) {
+        http_response_code(403);
+        $errorTitle = 'Operação não autorizada';
+        $errorMessage = 'Seu nível permite consultar candidatos, mas não abrir formulários de revisão ou acompanhamento.';
+        require dirname(__DIR__) . '/frontend/layouts/error-layout.php';
+        return;
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = trim((string) ($_POST['pe_action'] ?? ''));
     $postPermission = pe_post_permission($pageKey, $action);
