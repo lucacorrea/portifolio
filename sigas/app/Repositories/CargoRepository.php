@@ -18,8 +18,28 @@ final class CargoRepository
     public function schemaReady(): bool
     {
         try {
-            $stmt = $this->pdo->query("SHOW TABLES LIKE 'cargos'");
-            return (bool) $stmt->fetchColumn();
+            $stmt = $this->pdo->query("SHOW COLUMNS FROM cargos");
+            $columns = [];
+
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $column) {
+                $field = trim((string) ($column['Field'] ?? ''));
+                if ($field !== '') {
+                    $columns[] = $field;
+                }
+            }
+
+            $required = [
+                'id',
+                'nome',
+                'slug',
+                'descricao',
+                'ativo',
+                'criado_em',
+                'atualizado_em',
+                'excluido_em',
+            ];
+
+            return array_diff($required, $columns) === [];
         } catch (PDOException) {
             return false;
         }
