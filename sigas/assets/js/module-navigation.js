@@ -5,7 +5,7 @@
  *
  * Compatibilidade visual:
  * páginas legadas do SIGAS ainda usam shell próprio, mas compartilham este script.
- * Enquanto são migradas para module-layout.php, carregamos nelas o Design System
+ * Enquanto são migradas para module-layout.php, conectamos nelas o Design System
  * Operacional Global sem alterar seu HTML, regras de negócio ou navegação.
  */
 (() => {
@@ -13,21 +13,32 @@
     const shell = document.querySelector('[data-module-shell]');
     if (!shell) return;
 
+    const loadStylesheetOnce = (href, selector, datasetName, datasetValue) => {
+        if (document.querySelector(selector)) return;
+        const stylesheet = document.createElement('link');
+        stylesheet.rel = 'stylesheet';
+        stylesheet.href = href;
+        stylesheet.dataset[datasetName] = datasetValue;
+        document.head.appendChild(stylesheet);
+    };
+
     const isOfficialLayout = document.body.classList.contains('frontend-module-page');
-    if (!isOfficialLayout) {
+    if (!isOfficialLayout && currentScript && currentScript.src) {
         document.body.classList.add('sigas-legacy-module-page');
 
-        const alreadyLoaded = document.querySelector(
-            'link[data-sigas-global-layout], link[href*="sigas-global-layout.css"]'
+        loadStylesheetOnce(
+            new URL('../css/sigas-global-layout.css', currentScript.src).href,
+            'link[data-sigas-global-layout], link[href*="sigas-global-layout.css"]',
+            'sigasGlobalLayout',
+            'legacy-bridge'
         );
 
-        if (!alreadyLoaded && currentScript && currentScript.src) {
-            const stylesheet = document.createElement('link');
-            stylesheet.rel = 'stylesheet';
-            stylesheet.href = new URL('../css/sigas-global-layout.css', currentScript.src).href;
-            stylesheet.dataset.sigasGlobalLayout = 'legacy-bridge';
-            document.head.appendChild(stylesheet);
-        }
+        loadStylesheetOnce(
+            new URL('../css/sigas-legacy-layout.css', currentScript.src).href,
+            'link[data-sigas-legacy-layout], link[href*="sigas-legacy-layout.css"]',
+            'sigasLegacyLayout',
+            'v1'
+        );
     }
 
     const setMenu = open => {
