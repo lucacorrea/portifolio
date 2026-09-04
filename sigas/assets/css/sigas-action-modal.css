@@ -1,0 +1,304 @@
+/* ============================================================================
+   SIGAS — Modal Operacional Global
+   Referência visual: Coari Meu Primeiro Emprego
+   ---------------------------------------------------------------------------
+   A regra de negócio continua pertencendo a cada módulo. Este arquivo normaliza
+   apenas apresentação, hierarquia, espaçamento, ações e responsividade.
+   ============================================================================ */
+
+#beneficiaryActionModal .cm-action-dialog {
+    width: min(calc(100% - 32px), 780px);
+    max-width: 780px;
+    margin-inline: auto;
+}
+
+#beneficiaryActionModal .sigas-action-modal {
+    overflow: hidden;
+    max-height: calc(100dvh - 32px);
+    border: 1px solid var(--sigas-ui-border, #dfe7e3);
+    border-top: 3px solid var(--sigas-ui-accent, var(--cm-accent, #176b3a));
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 26px 70px rgba(16, 36, 27, .18);
+}
+
+#beneficiaryActionModal .modal-header {
+    align-items: flex-start;
+    gap: 16px;
+    padding: 18px 22px 14px;
+    border-bottom: 1px solid var(--sigas-ui-border, #dfe7e3);
+    background: #fff;
+}
+
+#beneficiaryActionModal .modal-header > div {
+    min-width: 0;
+}
+
+#beneficiaryActionModal .modal-header .eyebrow {
+    margin: 0 0 5px;
+    color: var(--sigas-ui-accent, var(--cm-accent, #176b3a));
+    font-size: .68rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+#beneficiaryActionModal .modal-header .eyebrow i {
+    margin-right: 5px;
+}
+
+#beneficiaryActionModal .modal-title {
+    margin: 0;
+    color: var(--sigas-ui-accent-strong, #173e29);
+    font-size: 1.34rem;
+    font-weight: 800;
+    letter-spacing: -.035em;
+    line-height: 1.15;
+}
+
+#beneficiaryActionModal .cm-modal-subtitle {
+    margin: 5px 0 0;
+    color: var(--sigas-ui-muted, #74867f);
+    font-size: .82rem;
+}
+
+#beneficiaryActionModal .btn-close {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    margin: -2px -4px 0 0;
+    padding: 0;
+    border: 1px solid var(--sigas-ui-border, #dfe7e3);
+    border-radius: 10px;
+    background-size: 14px;
+    opacity: .72;
+}
+
+#beneficiaryActionModal .btn-close:hover,
+#beneficiaryActionModal .btn-close:focus {
+    opacity: 1;
+}
+
+#beneficiaryActionModal .modal-body {
+    overflow-y: auto;
+    padding: 20px 22px 22px;
+    background: #fff;
+}
+
+/* Situação principal — equivalente ao quadro de revisão do Primeiro Emprego. */
+#beneficiaryActionModal .cm-action-review-box {
+    display: grid;
+    gap: 5px;
+    margin-bottom: 14px;
+    padding: 13px 15px;
+    border: 1px solid var(--sigas-ui-accent-border, #cfe4d7);
+    border-radius: 13px;
+    background: var(--sigas-ui-accent-soft, #f3faf5);
+}
+
+#beneficiaryActionModal .cm-action-review-box__heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--sigas-ui-accent-strong, #173e29);
+}
+
+#beneficiaryActionModal .cm-action-review-box__heading i {
+    color: var(--sigas-ui-accent, var(--cm-accent, #176b3a));
+    font-size: .92rem;
+}
+
+#beneficiaryActionModal .cm-action-review-box__heading span {
+    color: var(--sigas-ui-muted, #74867f);
+    font-size: .69rem;
+    font-weight: 800;
+    letter-spacing: .035em;
+    text-transform: uppercase;
+}
+
+#beneficiaryActionModal .cm-action-review-box strong {
+    color: var(--sigas-ui-accent-strong, #173e29);
+    font-size: .9rem;
+    font-weight: 800;
+}
+
+#beneficiaryActionModal .cm-action-review-box small {
+    color: var(--sigas-ui-muted, #74867f);
+    font-size: .77rem;
+    line-height: 1.4;
+}
+
+/* Dados resumidos — mesma leitura em cards da modal do Primeiro Emprego. */
+#beneficiaryActionModal .cm-action-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+#beneficiaryActionModal .cm-action-summary-grid > div {
+    min-width: 0;
+    min-height: 72px;
+    padding: 11px 12px;
+    border: 1px solid var(--sigas-ui-border, #dfe7e3);
+    border-radius: 12px;
+    background: var(--sigas-ui-surface-soft, #f8faf9);
+}
+
+#beneficiaryActionModal .cm-action-summary-grid span,
+#beneficiaryActionModal .cm-action-summary-grid strong {
+    display: block;
+}
+
+#beneficiaryActionModal .cm-action-summary-grid span {
+    margin-bottom: 6px;
+    color: var(--sigas-ui-muted, #74867f);
+    font-size: .66rem;
+    font-weight: 800;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+}
+
+#beneficiaryActionModal .cm-action-summary-grid strong {
+    overflow: hidden;
+    color: var(--sigas-ui-ink, #18382e);
+    font-size: .83rem;
+    font-weight: 800;
+    line-height: 1.3;
+    text-overflow: ellipsis;
+}
+
+#beneficiaryActionModal .cm-action-section-title {
+    margin: 0 0 9px;
+    color: #63756e;
+    font-size: .67rem;
+    font-weight: 800;
+    letter-spacing: .055em;
+    text-transform: uppercase;
+}
+
+/* Ações em uma única coluna, igual ao Primeiro Emprego. */
+#beneficiaryActionModal .cm-action-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 9px !important;
+}
+
+#beneficiaryActionModal .cm-action-card {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 68px;
+    padding: 10px 12px;
+    border: 1px solid var(--sigas-ui-border, #dfe7e3);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--sigas-ui-ink, #18382e);
+    text-align: left;
+    transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+
+#beneficiaryActionModal .cm-action-card:hover:not(:disabled),
+#beneficiaryActionModal .cm-action-card:focus-visible:not(:disabled) {
+    border-color: var(--sigas-ui-accent-border, #cfe4d7);
+    background: var(--sigas-ui-accent-soft, #f6fbf7);
+    box-shadow: 0 7px 20px rgba(18, 54, 39, .06);
+    transform: translateY(-1px);
+}
+
+#beneficiaryActionModal .cm-action-card > i:first-child {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    border: 1px solid var(--sigas-ui-accent-border, #cfe4d7);
+    border-radius: 10px;
+    background: var(--sigas-ui-accent-soft, #f3faf5);
+    color: var(--sigas-ui-accent, var(--cm-accent, #176b3a));
+    font-size: 1rem;
+}
+
+#beneficiaryActionModal .cm-action-card > span {
+    min-width: 0;
+}
+
+#beneficiaryActionModal .cm-action-card strong,
+#beneficiaryActionModal .cm-action-card small {
+    display: block;
+}
+
+#beneficiaryActionModal .cm-action-card strong {
+    color: var(--sigas-ui-ink, #18382e);
+    font-size: .85rem;
+    font-weight: 800;
+}
+
+#beneficiaryActionModal .cm-action-card small {
+    margin-top: 2px;
+    color: var(--sigas-ui-muted, #74867f);
+    font-size: .73rem;
+    line-height: 1.35;
+}
+
+#beneficiaryActionModal .cm-action-card > i:last-child {
+    color: #9aaba4;
+    font-size: .8rem;
+}
+
+#beneficiaryActionModal .cm-action-card--danger > i:first-child {
+    border-color: #f0d0d3;
+    background: #fff5f5;
+    color: #b93b45;
+}
+
+#beneficiaryActionModal .cm-action-card--danger strong {
+    color: #9f3039;
+}
+
+#beneficiaryActionModal .cm-action-card:disabled,
+#beneficiaryActionModal .cm-action-card.is-disabled {
+    cursor: not-allowed;
+    opacity: .46;
+    transform: none;
+}
+
+/* O padrão do Primeiro Emprego usa apenas o X para fechar a modal de ações. */
+#beneficiaryActionModal .modal-footer {
+    display: none !important;
+}
+
+@media (max-width: 767.98px) {
+    #beneficiaryActionModal .cm-action-dialog {
+        width: min(calc(100% - 16px), 780px);
+        margin: 8px auto;
+    }
+
+    #beneficiaryActionModal .sigas-action-modal {
+        max-height: calc(100dvh - 16px);
+        border-radius: 16px;
+    }
+
+    #beneficiaryActionModal .modal-header {
+        padding: 16px 16px 13px;
+    }
+
+    #beneficiaryActionModal .modal-body {
+        padding: 16px;
+    }
+
+    #beneficiaryActionModal .cm-action-summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    #beneficiaryActionModal .cm-action-summary-grid > div {
+        min-height: 62px;
+    }
+
+    #beneficiaryActionModal .cm-action-card {
+        grid-template-columns: 40px minmax(0, 1fr) auto;
+        min-height: 66px;
+    }
+}
