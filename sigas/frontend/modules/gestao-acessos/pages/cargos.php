@@ -40,12 +40,20 @@ ob_start();
     </div>
 <?php endif; ?>
 
+<div class="alert alert-info d-flex align-items-start gap-2" role="status">
+    <i class="bi bi-info-circle mt-1"></i>
+    <div>
+        <strong>Cargo e nível de acesso são informações diferentes.</strong>
+        <div>O cargo representa a função institucional do usuário e não concede permissões. O nível de acesso é definido separadamente em Perfis e níveis e aplicado durante a aprovação do usuário.</div>
+    </div>
+</div>
+
 <section class="content-card frontend-data-card" data-governance-cargos>
     <div class="card-heading">
         <div>
             <div class="card-kicker">Governança</div>
             <h2>Catálogo de cargos e funções</h2>
-            <p>Cadastre uma única vez e reutilize nos usuários. Isso evita nomes duplicados ou escritos de formas diferentes.</p>
+            <p>Cadastre funções institucionais uma única vez e reutilize nos usuários, sem misturar cargo com nível de acesso.</p>
         </div>
         <?php if ($schemaReady): ?>
             <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#governanceCargoModal" data-cargo-new>
@@ -155,11 +163,12 @@ ob_start();
                     <div class="mb-3">
                         <label class="form-label" for="governanceCargoName">Cargo / função *</label>
                         <input class="form-control" id="governanceCargoName" name="nome" type="text" minlength="2" maxlength="120" required data-cargo-name>
-                        <div class="form-text">Use o nome institucional completo, por exemplo: Assistente Social, Atendente, Coordenador(a).</div>
+                        <div class="form-text">Use a função institucional completa, por exemplo: Assistente Social, Coordenador(a), Operador(a) de Sistemas.</div>
                     </div>
                     <div>
                         <label class="form-label" for="governanceCargoDescription">Descrição</label>
                         <textarea class="form-control" id="governanceCargoDescription" name="descricao" rows="3" maxlength="255" data-cargo-description></textarea>
+                        <div class="form-text">A descrição do cargo é informativa e não altera permissões de acesso.</div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -178,7 +187,7 @@ $pageCustomContent = (string) ob_get_clean();
 
 return sigas_frontend_page([
     'title' => 'Cargos',
-    'description' => 'Catálogo institucional de cargos e funções utilizados nos usuários do SIGAS.',
+    'description' => 'Catálogo institucional de cargos e funções. Cargos não concedem nível ou permissão de acesso.',
     'actions' => $schemaReady ? [
         [
             'label' => 'Novo cargo',
