@@ -8,6 +8,7 @@ use App\Core\Database;
 use App\Core\Validator;
 use App\DTO\UserData;
 use App\Models\User;
+use App\Repositories\CargoRepository;
 use App\Repositories\SectorRepository;
 use App\Repositories\UserRepository;
 use InvalidArgumentException;
@@ -18,6 +19,7 @@ final class GovernanceUserRegistrationService
     public function __construct(
         private readonly UserRepository $users,
         private readonly SectorRepository $sectors,
+        private readonly CargoRepository $cargos,
         private readonly AuditService $audit,
     ) {
     }
@@ -27,7 +29,7 @@ final class GovernanceUserRegistrationService
         string $name,
         string $cpf,
         ?string $registration,
-        ?string $jobTitle,
+        int $cargoId,
         string $email,
         ?string $phone,
         int $requestedSectorId,
@@ -37,7 +39,6 @@ final class GovernanceUserRegistrationService
         $name = preg_replace('/\s+/u', ' ', trim($name)) ?: '';
         $cpf = Validator::onlyDigits($cpf);
         $registration = $this->nullableTrim($registration);
-        $jobTitle = $this->nullableTrim($jobTitle);
         $email = mb_strtolower(trim($email));
         $phone = $this->nullableTrim($phone);
 
@@ -53,9 +54,6 @@ final class GovernanceUserRegistrationService
         if ($registration !== null && mb_strlen($registration) > 60) {
             throw new InvalidArgumentException('A matrícula informada é muito longa.');
         }
-        if ($jobTitle !== null && mb_strlen($jobTitle) > 120) {
-            throw new InvalidArgumentException('O cargo informado é muito longo.');
-        }
         if ($phone !== null) {
             $phoneDigits = Validator::onlyDigits($phone);
             if (!in_array(strlen($phoneDigits), [10, 11], true)) {
@@ -66,6 +64,16 @@ final class GovernanceUserRegistrationService
         if (!$this->sectors->existsActive($requestedSectorId)) {
             throw new InvalidArgumentException('Selecione um setor ativo para a solicitação.');
         }
+
+        $cargo = $this->cargos->findActiveById($cargoId);
+        if ($cargo === null) {
+            throw new InvalidArgumentException('Selecione um cargo ativo cadastrado na Governança.');
+        }
+        $jobTitle = trim((string) ($cargo['nome'] ?? ''));
+        if ($jobTitle === '' || mb_strlen($jobTitle) > 120) {
+            throw new InvalidArgumentException('O cargo selecionado é inválido.');
+        }
+
         if (!Validator::strongPassword($password)) {
             throw new InvalidArgumentException('A senha deve ter pelo menos 8 caracteres, incluindo letra, número e símbolo.');
         }
@@ -98,7 +106,7 @@ final class GovernanceUserRegistrationService
             $passwordHash,
         );
 
-        return Database::transaction(function () use ($operator, $data, $requestedSectorId): int {
+        return Database::transaction(function () use ($operator, $data, $requestedSectorId, $cargoId): int {
             $userId = $this->users->createPending($data);
 
             $this->audit->record(
@@ -114,6 +122,7 @@ final class GovernanceUserRegistrationService
                     'cpf' => $data->cpf,
                     'email' => $data->email,
                     'matricula' => $data->matricula,
+                    'cargo_id' => $cargoId,
                     'cargo' => $data->cargo,
                     'telefone' => $data->telefone,
                     'setor_solicitado_id' => $requestedSectorId,

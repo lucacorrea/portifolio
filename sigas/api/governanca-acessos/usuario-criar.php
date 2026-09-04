@@ -8,6 +8,7 @@ use App\Core\Logger;
 use App\Exceptions\AuthorizationException;
 use App\Repositories\AccessLevelRepository;
 use App\Repositories\AuditLogRepository;
+use App\Repositories\CargoRepository;
 use App\Repositories\PermissionRepository;
 use App\Repositories\SectorRepository;
 use App\Repositories\UserRepository;
@@ -77,9 +78,19 @@ try {
         throw new InvalidArgumentException('Selecione o setor solicitado.');
     }
 
+    $cargoId = filter_var(
+        $_POST['cargo_id'] ?? null,
+        FILTER_VALIDATE_INT,
+        ['options' => ['min_range' => 1]]
+    );
+    if ($cargoId === false) {
+        throw new InvalidArgumentException('Selecione um cargo cadastrado.');
+    }
+
     $service = new GovernanceUserRegistrationService(
         $users,
         new SectorRepository($pdo),
+        new CargoRepository($pdo),
         $audit,
     );
 
@@ -88,7 +99,7 @@ try {
         (string) ($_POST['nome'] ?? ''),
         (string) ($_POST['cpf'] ?? ''),
         isset($_POST['matricula']) ? (string) $_POST['matricula'] : null,
-        isset($_POST['cargo']) ? (string) $_POST['cargo'] : null,
+        (int) $cargoId,
         (string) ($_POST['email'] ?? ''),
         isset($_POST['telefone']) ? (string) $_POST['telefone'] : null,
         (int) $requestedSectorId,

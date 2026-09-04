@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Core\Csrf;
+use App\Core\Database;
+use App\Repositories\CargoRepository;
 
 require_once dirname(__DIR__, 3) . '/support/program-pages.php';
 
@@ -10,6 +12,10 @@ require_once dirname(__DIR__, 3) . '/support/program-pages.php';
 $governanceUsers = require dirname(__DIR__) . '/users-bootstrap.php';
 $options = $governanceUsers->page();
 $sectors = is_array($options['sectors'] ?? null) ? $options['sectors'] : [];
+$cargoRepository = new CargoRepository(Database::connection());
+$cargoSchemaReady = $cargoRepository->schemaReady();
+$cargos = $cargoSchemaReady ? $cargoRepository->activeOptions() : [];
+$canCreate = $cargoSchemaReady && $cargos !== [];
 
 $pageExtraStyles[] = 'assets/css/modules/gestao-acessos-users.css';
 $pageExtraScripts[] = 'assets/js/modules/gestao-acessos-user-create.js';
@@ -38,6 +44,24 @@ ob_start();
                 <span>Este cadastro cria somente a identidade do usuário. O nível de acesso será definido posteriormente na tela de Governança.</span>
             </div>
         </div>
+
+        <?php if (!$cargoSchemaReady): ?>
+            <div class="alert alert-warning d-flex align-items-start gap-2 mb-4" role="alert">
+                <i class="bi bi-database-exclamation mt-1"></i>
+                <div>
+                    <strong>Catálogo de cargos ainda não inicializado.</strong>
+                    <div>Inicialize a gestão de cargos antes de cadastrar usuários. Não será permitido informar cargo manualmente.</div>
+                </div>
+            </div>
+        <?php elseif ($cargos === []): ?>
+            <div class="alert alert-warning d-flex align-items-start gap-2 mb-4" role="alert">
+                <i class="bi bi-person-badge mt-1"></i>
+                <div>
+                    <strong>Cadastre pelo menos um cargo ativo primeiro.</strong>
+                    <div><a class="alert-link" href="governanca-acessos/cargos.php?novo=1">Ir para Cargos e cadastrar agora</a>.</div>
+                </div>
+            </div>
+        <?php endif; ?>
 
         <section class="ga-admin-section mb-3">
             <div class="ga-admin-section-heading">
@@ -70,8 +94,19 @@ ob_start();
                     <input class="form-control" id="newUserRegistration" name="matricula" type="text" maxlength="60">
                 </div>
                 <div class="col-12 col-lg-6">
-                    <label class="form-label" for="newUserJobTitle">Cargo / função</label>
-                    <input class="form-control" id="newUserJobTitle" name="cargo" type="text" maxlength="120">
+                    <div class="d-flex align-items-center justify-content-between gap-2">
+                        <label class="form-label" for="newUserJobTitle">Cargo / função *</label>
+                        <a class="small fw-semibold text-decoration-none" href="governanca-acessos/cargos.php">Gerenciar cargos</a>
+                    </div>
+                    <select class="form-select" id="newUserJobTitle" name="cargo_id" required <?= !$canCreate ? 'disabled' : '' ?>>
+                        <option value="">Selecione o cargo</option>
+                        <?php foreach ($cargos as $cargo): ?>
+                            <option value="<?= (int) ($cargo['id'] ?? 0) ?>">
+                                <?= sigas_frontend_escape((string) ($cargo['nome'] ?? 'Cargo')) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div class="form-text">Somente cargos ativos cadastrados na Governança podem ser atribuídos.</div>
                 </div>
                 <div class="col-12 col-lg-6">
                     <label class="form-label" for="newUserSector">Setor solicitado *</label>
@@ -112,7 +147,7 @@ ob_start();
 
         <div class="d-flex flex-column flex-sm-row justify-content-end gap-2 pt-2">
             <a class="btn btn-light" href="governanca-acessos/usuarios.php">Cancelar</a>
-            <button class="btn btn-primary" type="submit">
+            <button class="btn btn-primary" type="submit" <?= !$canCreate ? 'disabled' : '' ?>>
                 <i class="bi bi-person-plus"></i> Criar usuário pendente
             </button>
         </div>
@@ -125,6 +160,11 @@ return sigas_frontend_page([
     'title' => 'Novo usuário',
     'description' => 'Crie uma conta pendente para posterior definição de nível e aprovação de acesso.',
     'actions' => [
+        [
+            'label' => 'Gerenciar cargos',
+            'icon' => 'person-badge',
+            'href' => 'governanca-acessos/cargos.php',
+        ],
         [
             'label' => 'Voltar para usuários',
             'icon' => 'arrow-left',
