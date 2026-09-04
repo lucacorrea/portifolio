@@ -152,7 +152,17 @@ final class AuthService
             return $user;
         }
 
-        header('Location: index.php');
+        /*
+         * Nunca usar "index.php" relativo aqui.
+         *
+         * Em rotas aninhadas, por exemplo /sigas/comida-mesa/index.php,
+         * o navegador resolveria esse Location para a própria página e criaria
+         * um loop infinito (ERR_TOO_MANY_REDIRECTS) quando a sessão expirasse.
+         *
+         * O destino é sempre o login na raiz pública configurada do SIGAS.
+         */
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Location: ' . $this->loginUrl(), true, 302);
         exit;
     }
 
@@ -241,6 +251,39 @@ final class AuthService
         $value = Environment::int('SESSION_LIFETIME', 7200);
 
         return $value > 0 ? $value : 7200;
+    }
+
+    private function loginUrl(): string
+    {
+        /*
+         * APP_URL é a fonte principal porque representa a raiz pública real do
+         * SIGAS. Usamos apenas o PATH para manter o redirecionamento no mesmo
+         * host da requisição e evitar dependência de domínio em homologação.
+         */
+        $appUrl = trim((string) Environment::get('APP_URL', ''));
+
+        if ($appUrl !== '') {
+            $path = parse_url($appUrl, PHP_URL_PATH);
+
+            if (is_string($path)) {
+                $basePath = '/' . trim($path, '/');
+                $basePath = $basePath === '/' ? '' : rtrim($basePath, '/');
+
+                return $basePath . '/index.php';
+            }
+        }
+
+        /*
+         * Fallback coerente com a configuração do cookie de sessão.
+         * No ambiente atual, por exemplo, SESSION_COOKIE_PATH=/sigas.
+         */
+        $cookiePath = trim((string) Environment::get('SESSION_COOKIE_PATH', '/'));
+
+        if ($cookiePath !== '' && $cookiePath !== '/') {
+            return '/' . trim($cookiePath, '/') . '/index.php';
+        }
+
+        return '/index.php';
     }
 
     private function clientIp(): ?string
