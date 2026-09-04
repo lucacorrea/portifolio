@@ -27,7 +27,7 @@ ob_start();
         <div>
             <div class="card-kicker">Governança de identidade</div>
             <h2>Criar conta pendente</h2>
-            <p>Cadastre os dados iniciais. O usuário não terá acesso ao SIGAS até que setor e nível sejam aprovados.</p>
+            <p>Cadastre os dados institucionais. Cargo e setor descrevem a lotação; o nível de acesso será definido somente na aprovação.</p>
         </div>
         <span class="badge text-bg-warning">Pendente</span>
     </div>
@@ -41,7 +41,7 @@ ob_start();
             <i class="bi bi-shield-check"></i>
             <div>
                 <strong>Conta sem acesso até aprovação</strong>
-                <span>Este cadastro cria somente a identidade do usuário. O nível de acesso será definido posteriormente na tela de Governança.</span>
+                <span>O cargo não concede permissões. O nível de acesso será definido posteriormente por Administrador ou Suporte autorizado.</span>
             </div>
         </div>
 
@@ -106,7 +106,7 @@ ob_start();
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <div class="form-text">Somente cargos ativos cadastrados na Governança podem ser atribuídos.</div>
+                    <div class="form-text">Informação funcional. O cargo não define nível, perfil ou permissão de acesso ao SIGAS.</div>
                 </div>
                 <div class="col-12 col-lg-6">
                     <label class="form-label" for="newUserSector">Setor solicitado *</label>
@@ -118,6 +118,7 @@ ob_start();
                             </option>
                         <?php endforeach; ?>
                     </select>
+                    <div class="form-text">O setor solicitado também será validado durante a aprovação do usuário.</div>
                 </div>
             </div>
         </section>
@@ -158,7 +159,7 @@ $pageCustomContent = (string) ob_get_clean();
 
 return sigas_frontend_page([
     'title' => 'Novo usuário',
-    'description' => 'Crie uma conta pendente para posterior definição de nível e aprovação de acesso.',
+    'description' => 'Crie a identidade institucional do usuário; o nível de acesso será definido somente na aprovação.',
     'actions' => [
         [
             'label' => 'Gerenciar cargos',
