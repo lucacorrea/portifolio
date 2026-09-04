@@ -6,6 +6,9 @@
 
     if (!form) return;
 
+    const submitButtons = Array.from(form.querySelectorAll('button[type="submit"]'));
+    const initialSubmitState = new Map(submitButtons.map(button => [button, button.disabled]));
+
     const showMessage = (message, type = 'danger') => {
         if (!alertBox) return;
         alertBox.className = `alert alert-${type}`;
@@ -15,9 +18,8 @@
     };
 
     const setBusy = busy => {
-        form.querySelectorAll('button, input, select').forEach(control => {
-            if (control.type === 'hidden') return;
-            control.disabled = busy;
+        submitButtons.forEach(button => {
+            button.disabled = busy ? true : Boolean(initialSubmitState.get(button));
         });
         form.setAttribute('aria-busy', String(busy));
     };
@@ -59,6 +61,11 @@
             return;
         }
 
+        // Captura todos os valores antes de bloquear o botão de envio.
+        // Campos disabled não fazem parte do FormData; por isso o formulário
+        // não deve desabilitar inputs/selects antes desta etapa.
+        const formData = new FormData(form);
+
         setBusy(true);
         showMessage('Criando usuário pendente...', 'info');
 
@@ -69,7 +76,7 @@
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: new FormData(form),
+                body: formData,
                 credentials: 'same-origin'
             });
 
