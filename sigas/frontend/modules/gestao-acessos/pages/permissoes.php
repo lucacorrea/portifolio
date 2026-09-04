@@ -15,13 +15,13 @@ return sigas_frontend_page([
         [
             'label' => 'Níveis de usuário',
             'icon' => 'person-gear',
-            'href' => 'setor.php?ambiente=gestao-acessos&pagina=perfis',
+            'href' => 'governanca-acessos/perfis.php',
         ],
         [
             'label' => 'Matriz de acesso',
             'icon' => 'grid-3x3-gap',
             'primary' => true,
-            'href' => 'setor.php?ambiente=gestao-acessos&pagina=matriz-acesso',
+            'href' => 'governanca-acessos/matriz-acesso.php',
         ],
     ],
     'stats' => $data['stats'],

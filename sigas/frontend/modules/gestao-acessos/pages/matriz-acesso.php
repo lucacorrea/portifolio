@@ -37,13 +37,13 @@ return sigas_frontend_page([
         [
             'label' => 'Níveis de usuário',
             'icon' => 'person-gear',
-            'href' => 'setor.php?ambiente=gestao-acessos&pagina=perfis',
+            'href' => 'governanca-acessos/perfis.php',
         ],
         [
             'label' => 'Permissões',
             'icon' => 'key',
             'primary' => true,
-            'href' => 'setor.php?ambiente=gestao-acessos&pagina=permissoes',
+            'href' => 'governanca-acessos/permissoes.php',
         ],
     ],
     'stats' => $data['stats'],

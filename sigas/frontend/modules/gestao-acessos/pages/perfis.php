@@ -15,13 +15,13 @@ return sigas_frontend_page([
         [
             'label' => 'Permissões',
             'icon' => 'key',
-            'href' => 'setor.php?ambiente=gestao-acessos&pagina=permissoes',
+            'href' => 'governanca-acessos/permissoes.php',
         ],
         [
             'label' => 'Matriz por nível',
             'icon' => 'grid-3x3-gap',
             'primary' => true,
-            'href' => 'setor.php?ambiente=gestao-acessos&pagina=matriz-acesso',
+            'href' => 'governanca-acessos/matriz-acesso.php',
         ],
     ],
     'stats' => $data['stats'],

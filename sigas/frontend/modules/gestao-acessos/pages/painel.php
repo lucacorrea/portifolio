@@ -68,13 +68,13 @@ return sigas_frontend_page([
         [
             'label' => 'Usuários',
             'icon' => 'people',
-            'href' => 'setor.php?ambiente=gestao-acessos&pagina=usuarios',
+            'href' => 'governanca-acessos/usuarios.php',
         ],
         [
             'label' => 'Revisar matriz',
             'icon' => 'shield-check',
             'primary' => true,
-            'href' => 'setor.php?ambiente=gestao-acessos&pagina=matriz-acesso',
+            'href' => 'governanca-acessos/matriz-acesso.php',
         ],
     ],
     'stats' => $data['stats'],
