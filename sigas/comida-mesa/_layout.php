@@ -108,6 +108,32 @@ try {
     }
 }
 
+/*
+ * Ações de topo seguem a mesma regra do menu: se o usuário não possui a
+ * permissão operacional correspondente, o botão nem é renderizado.
+ * Segurança continua sendo validada novamente no backend das rotas.
+ */
+if (isset($pageDefinition['actions']) && is_array($pageDefinition['actions'])) {
+    $actionRules = [
+        'comida-mesa/nova-inscricao.php' => cm_can('comida_mesa.cadastrar'),
+        'comida-mesa/importar-beneficiarios.php' => cm_can('comida_mesa.importar') || cm_can('comida_mesa.cadastrar'),
+        'comida-mesa/consulta-cpf.php' => cm_can('comida_mesa.consultar_cpf'),
+        'comida-mesa/registrar-entrega.php' => cm_can('comida_mesa.entregar'),
+        'comida-mesa/competencias.php' => cm_can('comida_mesa.competencias_gerenciar'),
+        'comida-mesa/polos.php' => cm_can('comida_mesa.polos_gerenciar'),
+        'comida-mesa/documentos.php' => cm_can('comida_mesa.documentos_visualizar') || cm_can('comida_mesa.documentos_enviar'),
+        'comida-mesa/historico.php' => cm_can('comida_mesa.historico_visualizar'),
+    ];
+
+    $pageDefinition['actions'] = array_values(array_filter(
+        $pageDefinition['actions'],
+        static function (array $action) use ($actionRules): bool {
+            $href = (string) ($action['href'] ?? '');
+            return !array_key_exists($href, $actionRules) || $actionRules[$href] === true;
+        }
+    ));
+}
+
 $extraStyles = array_values(array_unique($pageExtraStyles));
 $extraScripts = array_values(array_unique(array_merge([
     'assets/js/comida-mesa.js',

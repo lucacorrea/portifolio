@@ -23,6 +23,22 @@ $menuPageKey = isset($menuPageKey) && is_string($menuPageKey)
     : (isset($pageKey) && is_string($pageKey) ? $pageKey : (string) $menuEnvironment['home_page']);
 $menuPages = $menuEnvironment['pages'];
 
+/*
+ * Filtro visual opcional por módulo.
+ *
+ * O registro do ModuleRegistry continua sendo a fonte completa de navegação.
+ * Cada módulo pode informar $menuVisiblePageKeys para ocultar links que o
+ * usuário autenticado não pode utilizar. Isso melhora a UX, mas não substitui
+ * a autorização obrigatória no backend de cada página/ação.
+ */
+if (isset($menuVisiblePageKeys) && is_array($menuVisiblePageKeys)) {
+    $visibleKeys = array_fill_keys(array_map('strval', $menuVisiblePageKeys), true);
+    $menuPages = array_values(array_filter(
+        $menuPages,
+        static fn (array $item): bool => isset($visibleKeys[(string) ($item['key'] ?? '')])
+    ));
+}
+
 if ($menuSurface === 'mobile') {
     ?>
     <nav

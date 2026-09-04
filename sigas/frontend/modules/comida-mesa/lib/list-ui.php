@@ -53,6 +53,11 @@ function cm_empty(string $title, string $text, string $icon = 'inbox'): void
 
 function cm_action_modal(): void
 {
+    $canEdit = cm_can('comida_mesa.editar');
+    $canDeliver = cm_can('comida_mesa.entregar');
+    $canCancel = cm_can('comida_mesa.cancelar_entrega');
+    $canDocument = cm_can('comida_mesa.documentos_enviar');
+    $canHistory = cm_can('comida_mesa.historico_visualizar');
     ?>
     <div class="modal fade" id="beneficiaryActionModal" tabindex="-1" aria-labelledby="beneficiaryActionModalTitle" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable cm-action-dialog">
@@ -73,7 +78,7 @@ function cm_action_modal(): void
                             <span>Situação no programa</span>
                         </div>
                         <strong data-cm-action-program>—</strong>
-                        <small data-cm-action-note>As ações disponíveis respeitam as permissões do usuário e a situação atual do benefício.</small>
+                        <small data-cm-action-note>As ações exibidas respeitam as permissões do usuário e a situação atual do benefício.</small>
                     </div>
 
                     <div class="cm-action-summary-grid">
@@ -100,35 +105,45 @@ function cm_action_modal(): void
                             <i class="bi bi-chevron-right"></i>
                         </button>
 
-                        <button type="button" class="cm-action-card" data-cm-action-command="edit">
-                            <i class="bi bi-pencil-square"></i>
-                            <span><strong>Editar cadastro</strong><small>Atualizar os dados da inscrição</small></span>
-                            <i class="bi bi-chevron-right"></i>
-                        </button>
+                        <?php if ($canEdit): ?>
+                            <button type="button" class="cm-action-card" data-cm-action-command="edit">
+                                <i class="bi bi-pencil-square"></i>
+                                <span><strong>Editar cadastro</strong><small>Atualizar os dados da inscrição</small></span>
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                        <?php endif; ?>
 
-                        <button type="button" class="cm-action-card" data-cm-action-command="delivery">
-                            <i class="bi bi-basket2"></i>
-                            <span><strong data-cm-action-delivery-text>Registrar entrega</strong><small>Executar a operação da competência atual</small></span>
-                            <i class="bi bi-chevron-right"></i>
-                        </button>
+                        <?php if ($canDeliver): ?>
+                            <button type="button" class="cm-action-card" data-cm-action-command="delivery">
+                                <i class="bi bi-basket2"></i>
+                                <span><strong data-cm-action-delivery-text>Registrar entrega</strong><small>Executar a operação da competência atual</small></span>
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                        <?php endif; ?>
 
-                        <button type="button" class="cm-action-card" data-cm-action-command="document">
-                            <i class="bi bi-paperclip"></i>
-                            <span><strong>Enviar documento</strong><small>Anexar arquivo ao cadastro da família</small></span>
-                            <i class="bi bi-chevron-right"></i>
-                        </button>
+                        <?php if ($canDocument): ?>
+                            <button type="button" class="cm-action-card" data-cm-action-command="document">
+                                <i class="bi bi-paperclip"></i>
+                                <span><strong>Enviar documento</strong><small>Anexar arquivo ao cadastro da família</small></span>
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                        <?php endif; ?>
 
-                        <button type="button" class="cm-action-card" data-cm-action-command="history">
-                            <i class="bi bi-clock-history"></i>
-                            <span><strong>Histórico</strong><small>Consultar movimentações e entregas registradas</small></span>
-                            <i class="bi bi-chevron-right"></i>
-                        </button>
+                        <?php if ($canHistory): ?>
+                            <button type="button" class="cm-action-card" data-cm-action-command="history">
+                                <i class="bi bi-clock-history"></i>
+                                <span><strong>Histórico</strong><small>Consultar movimentações e entregas registradas</small></span>
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                        <?php endif; ?>
 
-                        <button type="button" class="cm-action-card cm-action-card--danger" data-cm-action-command="cancel">
-                            <i class="bi bi-x-circle"></i>
-                            <span><strong>Cancelar entrega</strong><small>Ação restrita que exige justificativa e permissão</small></span>
-                            <i class="bi bi-chevron-right"></i>
-                        </button>
+                        <?php if ($canCancel): ?>
+                            <button type="button" class="cm-action-card cm-action-card--danger" data-cm-action-command="cancel">
+                                <i class="bi bi-x-circle"></i>
+                                <span><strong>Cancelar entrega</strong><small>Ação restrita que exige justificativa e permissão</small></span>
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
