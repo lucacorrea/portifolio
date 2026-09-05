@@ -182,7 +182,7 @@
                             <label class="form-label extra-small fw-bold text-uppercase opacity-75">Taxa da Maquininha (%)</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-white border-end-0 text-info"><i class="fas fa-percent"></i></span>
-                                <input type="number" id="taxa_cartao" class="form-control border-start-0 ps-0" placeholder="0,00" step="0.01" min="0" oninput="renderCart()">
+                                <input type="number" id="taxa_cartao" class="form-control border-start-0 ps-0" placeholder="0,00" step="0.01" min="0" oninput="resetPdvOrcamentoManualTotalOnItemChange(); renderCart()">
                             </div>
                         </div>
 
@@ -287,7 +287,7 @@
                             </div>
                             <div class="input-group input-group-lg" style="width: 160px;">
                                 <span class="input-group-text bg-success bg-opacity-10 border-success text-success fw-bold" id="discountSymbol">R$</span>
-                                <input type="number" id="discountPercent" class="form-control text-end fw-bold text-success border-success bg-success bg-opacity-10" value="0" min="0" step="0.01" onfocus="this.select()" oninput="renderCart()">
+                                <input type="number" id="discountPercent" class="form-control text-end fw-bold text-success border-success bg-success bg-opacity-10" value="0" min="0" step="0.01" onfocus="this.select()" oninput="resetPdvOrcamentoManualTotalOnItemChange(); renderCart()">
                             </div>
                         </div>
                     </div>
@@ -955,7 +955,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadRecentSales();
     
     // Initialize Discount UI
-    updateDiscountUI();
+    updateDiscountUI(false);
     
     // Check initial payment method
     const initialPayment = document.querySelector('input[name="payment"]:checked');
@@ -1011,6 +1011,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
+            resetPdvOrcamentoManualTotalOnItemChange();
             renderCart();
         });
     });
@@ -1588,6 +1589,7 @@ function addToCart(product) {
         });
     }
     
+    resetPdvOrcamentoManualTotalOnItemChange();
     pdvSearch.value = '';
     qtyInput.value = 1; 
     searchResults.classList.add('d-none');
@@ -1730,6 +1732,7 @@ function updatePriceTier(index, tier) {
     if (tier == 1) item.price = item.price1;
     else if (tier == 2) item.price = item.price2;
     else if (tier == 3) item.price = item.price3;
+    resetPdvOrcamentoManualTotalOnItemChange();
     renderCart();
 }
 
@@ -1738,6 +1741,18 @@ function getCartPriceByTier(item, tier) {
     if (tier == 2) return parseFloat(item.price2) || 0;
     if (tier == 3) return parseFloat(item.price3) || 0;
     return 0;
+}
+
+function getCartItemsTotal() {
+    return cart.reduce((acc, i) => {
+        const qty = parseFloat(i.qty) || 0;
+        const price = parseFloat(i.price) || 0;
+        return acc + (price * qty);
+    }, 0);
+}
+
+function shouldPreservePdvManualOrcamentoTotal(savedTotal, itemsTotal) {
+    return Math.abs((parseFloat(savedTotal) || 0) - (parseFloat(itemsTotal) || 0)) >= 0.01;
 }
 
 function applyPriceTierToCart(tier) {
@@ -1765,6 +1780,7 @@ function applyPriceTierToCart(tier) {
         updated++;
     });
 
+    resetPdvOrcamentoManualTotalOnItemChange();
     renderCart();
 
     let message = `Preço ${tier} aplicado em ${updated} item(ns).`;
@@ -1793,23 +1809,28 @@ function applyManualUnitPriceToCart() {
     });
 
     if (input) input.value = price.toFixed(2);
+    resetPdvOrcamentoManualTotalOnItemChange();
     renderCart();
     alert(`Valor unitário de R$ ${price.toFixed(2).replace('.', ',')} aplicado em ${cart.length} item(ns).`);
 }
 
 function updateQty(index, val) {
-    cart[index].qty = Math.max(0.001, parseFloat(val));
+    const qty = parseCurrencyToFloat(val) || 0.001;
+    cart[index].qty = Math.max(0.001, qty);
+    resetPdvOrcamentoManualTotalOnItemChange();
     renderCart();
 }
 
 function updateItemPrice(index, val) {
-    cart[index].price = Math.max(0, parseFloat(val));
+    cart[index].price = Math.max(0, parseCurrencyToFloat(val));
+    resetPdvOrcamentoManualTotalOnItemChange();
     renderCart();
 }
 
 
 function removeFromCart(index) {
     cart.splice(index, 1);
+    resetPdvOrcamentoManualTotalOnItemChange();
     renderCart();
 }
 
@@ -2102,9 +2123,13 @@ async function importPreSale(code) {
         currentPvCode = pv.codigo;
         const manualTotalInput = document.getElementById('orcamentoTotalManual');
         if (manualTotalInput) {
-            manualTotalInput.value = (pv.codigo && pv.codigo.startsWith('ORC-'))
-                ? parseFloat(pv.valor_total || 0).toFixed(2)
-                : '';
+            const savedTotal = parseFloat(pv.valor_total || 0) || 0;
+            const itemsTotal = getCartItemsTotal();
+            manualTotalInput.value = (
+                pv.codigo
+                && pv.codigo.startsWith('ORC-')
+                && shouldPreservePdvManualOrcamentoTotal(savedTotal, itemsTotal)
+            ) ? savedTotal.toFixed(2) : '';
         }
         
         // Auto-select customer if present in pre-sale
@@ -2151,9 +2176,7 @@ async function saveCurrentSaleAsPreSale() {
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
 
-    const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
-    const discountPercent = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
-    const total = subtotal * (1 - (discountPercent / 100));
+    const total = parseFloat(getPdvCalculatedOrcamentoTotal().toFixed(2));
 
     let clientAvulso = selectedCustomerName;
     let clientCpf = selectedCustomerCPF;
@@ -2230,15 +2253,36 @@ function getPdvManualOrcamentoTotal() {
     return Math.max(0, parseCurrencyToFloat(input.value));
 }
 
+function getPdvFinalTotalFromControls() {
+    const subtotal = getCartItemsTotal();
+    const isMoneyMode = document.getElementById('discountModeToggle').checked;
+    const discountInput = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
+    const discountValue = isMoneyMode ? discountInput : (subtotal * (discountInput / 100));
+    const baseValue = Math.max(0, subtotal - discountValue);
+    const payment = document.querySelector('input[name="payment"]:checked')?.value || 'dinheiro';
+    const taxPercent = payment.includes('cartao') ? (parseCurrencyToFloat(document.getElementById('taxa_cartao').value) || 0) : 0;
+    return Math.max(0, baseValue + (baseValue * (taxPercent / 100)));
+}
+
 function getPdvCalculatedOrcamentoTotal() {
-    return parseCurrencyToFloat(finalTotal.innerText || '0');
+    const displayedTotal = parseCurrencyToFloat(finalTotal.innerText || '0');
+    if (displayedTotal > 0 || cart.length === 0) return displayedTotal;
+    return getPdvFinalTotalFromControls();
+}
+
+function clearPdvFinalOrcamentoTotalOnly() {
+    const input = document.getElementById('orcamentoTotalManual');
+    if (input) input.value = '';
 }
 
 function clearPdvManualOrcamentoTotal() {
-    const input = document.getElementById('orcamentoTotalManual');
-    if (input) input.value = '';
+    clearPdvFinalOrcamentoTotalOnly();
     const bulkInput = document.getElementById('orcamentoBulkUnitPrice');
     if (bulkInput) bulkInput.value = '';
+}
+
+function resetPdvOrcamentoManualTotalOnItemChange() {
+    clearPdvFinalOrcamentoTotalOnly();
 }
 
 async function saveCurrentSaleAsOrcamento() {
@@ -2253,7 +2297,7 @@ async function saveCurrentSaleAsOrcamento() {
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
 
     const manualTotal = getPdvManualOrcamentoTotal();
-    const total = manualTotal !== null ? manualTotal : getPdvCalculatedOrcamentoTotal();
+    const total = parseFloat((manualTotal !== null ? manualTotal : getPdvCalculatedOrcamentoTotal()).toFixed(2));
 
     let clientAvulso = selectedCustomerName;
     let clientCpf = selectedCustomerCPF;
@@ -3558,7 +3602,7 @@ function toggleDiscountModeClick() {
     updateDiscountUI();
 }
 
-function updateDiscountUI() {
+function updateDiscountUI(resetManualTotal = true) {
     const isMoney = document.getElementById('discountModeToggle').checked;
     const slider = document.getElementById('discountSlider');
     const optMoney = document.getElementById('optMoney');
@@ -3583,6 +3627,9 @@ function updateDiscountUI() {
         inputLabel.style.color = '#3b82f6';
         symbol.innerText = '%';
         input.step = '0.1';
+    }
+    if (resetManualTotal) {
+        resetPdvOrcamentoManualTotalOnItemChange();
     }
     renderCart();
 }
@@ -3649,6 +3696,7 @@ async function validateAuthorization() {
 function resetDiscount() {
     if (!isAuthorized) {
         document.getElementById('discountPercent').value = 0;
+        resetPdvOrcamentoManualTotalOnItemChange();
         renderCart();
     }
 }

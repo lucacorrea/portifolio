@@ -525,6 +525,7 @@ function addToPVCart(product) {
         });
     }
     
+    resetPvOrcamentoManualTotalOnItemChange();
     pvSearchInput.value = '';
     qtyInput.value = 1;
     pvSearchResults.classList.add('d-none');
@@ -548,7 +549,8 @@ function addToPVCart(product) {
 }
 
 function updatePVPrice(index, val) {
-    pvCart[index].price = Math.max(0, parseFloat(val));
+    pvCart[index].price = Math.max(0, parsePvCurrencyToFloat(val));
+    resetPvOrcamentoManualTotalOnItemChange();
     renderPVCart();
 }
 
@@ -603,7 +605,9 @@ function renderPVCart() {
 }
 
 function updatePVQty(index, val) {
-    pvCart[index].qty = Math.max(1, parseFloat(val));
+    const qty = parsePvCurrencyToFloat(val) || 1;
+    pvCart[index].qty = Math.max(1, qty);
+    resetPvOrcamentoManualTotalOnItemChange();
     renderPVCart();
 }
 
@@ -615,6 +619,7 @@ function changePVPriceTier(index, tier) {
     else if (tier == 2) item.price = item.price2;
     else if (tier == 3) item.price = item.price3;
     
+    resetPvOrcamentoManualTotalOnItemChange();
     renderPVCart();
 }
 
@@ -650,6 +655,7 @@ function applyPVPriceTierToCart(tier) {
         updated++;
     });
 
+    resetPvOrcamentoManualTotalOnItemChange();
     renderPVCart();
 
     let message = `Preço ${tier} aplicado em ${updated} item(ns).`;
@@ -678,12 +684,14 @@ function applyPVManualUnitPriceToCart() {
     });
 
     if (input) input.value = price.toFixed(2);
+    resetPvOrcamentoManualTotalOnItemChange();
     renderPVCart();
     alert(`Valor unitário de R$ ${price.toFixed(2).replace('.', ',')} aplicado em ${pvCart.length} item(ns).`);
 }
 
 function removeFromPVCart(index) {
     pvCart.splice(index, 1);
+    resetPvOrcamentoManualTotalOnItemChange();
     renderPVCart();
 }
 
@@ -711,7 +719,15 @@ function parsePvCurrencyToFloat(valStr) {
 }
 
 function getPvCartTotal() {
-    return pvCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
+    return pvCart.reduce((acc, i) => {
+        const qty = parseFloat(i.qty) || 0;
+        const price = parseFloat(i.price) || 0;
+        return acc + (price * qty);
+    }, 0);
+}
+
+function shouldPreservePvManualOrcamentoTotal(savedTotal, itemsTotal) {
+    return Math.abs((parseFloat(savedTotal) || 0) - (parseFloat(itemsTotal) || 0)) >= 0.01;
 }
 
 function getPvManualOrcamentoTotal() {
@@ -720,11 +736,19 @@ function getPvManualOrcamentoTotal() {
     return Math.max(0, parsePvCurrencyToFloat(input.value));
 }
 
-function clearPvManualOrcamentoTotal() {
+function clearPvFinalOrcamentoTotalOnly() {
     const input = document.getElementById('pv_orcamento_total_manual');
     if (input) input.value = '';
+}
+
+function clearPvManualOrcamentoTotal() {
+    clearPvFinalOrcamentoTotalOnly();
     const bulkInput = document.getElementById('pv_orcamento_bulk_unit_price');
     if (bulkInput) bulkInput.value = '';
+}
+
+function resetPvOrcamentoManualTotalOnItemChange() {
+    clearPvFinalOrcamentoTotalOnly();
 }
 
 async function generatePreSale(isOrcamento = false) {
@@ -734,6 +758,7 @@ async function generatePreSale(isOrcamento = false) {
     }
     
     const manualTotal = isOrcamento ? getPvManualOrcamentoTotal() : null;
+    const total = parseFloat((manualTotal !== null ? manualTotal : getPvCartTotal()).toFixed(2));
     const data = {
         id: currentPvId,
         codigo: currentPvCode,
@@ -741,7 +766,7 @@ async function generatePreSale(isOrcamento = false) {
         nome_cliente_avulso: document.getElementById('pv_nome_cliente_avulso').value || null,
         cpf_cliente: document.getElementById('pv_cpf_cliente').value || null,
         items: pvCart,
-        valor_total: manualTotal !== null ? manualTotal : getPvCartTotal(),
+        valor_total: total,
         is_orcamento: isOrcamento
     };
 
@@ -899,9 +924,13 @@ async function loadPreSaleInPreSaleScreen(code) {
         currentPvCode = pv.codigo;
         const manualTotalInput = document.getElementById('pv_orcamento_total_manual');
         if (manualTotalInput) {
-            manualTotalInput.value = (pv.codigo && pv.codigo.startsWith('ORC-'))
-                ? parseFloat(pv.valor_total || 0).toFixed(2)
-                : '';
+            const savedTotal = parseFloat(pv.valor_total || 0) || 0;
+            const itemsTotal = getPvCartTotal();
+            manualTotalInput.value = (
+                pv.codigo
+                && pv.codigo.startsWith('ORC-')
+                && shouldPreservePvManualOrcamentoTotal(savedTotal, itemsTotal)
+            ) ? savedTotal.toFixed(2) : '';
         }
         
         // Load customer
