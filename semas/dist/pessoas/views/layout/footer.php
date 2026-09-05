@@ -1,0 +1,1 @@
+<footer><div class="footer clearfix mb-0 text-muted"><div class="float-start text-black"><p><?= date('Y') ?> &copy; Todos os direitos reservados à <b>Prefeitura Municipal de Coari-AM.</b></p></div><div class="float-end text-black"><p>Desenvolvido por <b>Junior Praia, Lucas Correa e Luiz Frota.</b></p></div></div></footer>

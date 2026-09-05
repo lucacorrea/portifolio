@@ -10,8 +10,8 @@ $blockRowActionsJson = json_encode(
     JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT
 ) ?: '[]';
 ?>
-<section class="content-card frontend-data-card" data-frontend-dataset>
-    <div class="card-heading">
+<section class="content-card frontend-data-card sigas-table-card" data-frontend-dataset>
+    <div class="card-heading sigas-table-toolbar">
         <div>
             <div class="card-kicker"><?= sigas_frontend_escape($block['kicker'] ?? 'Visão operacional') ?></div>
             <h2><?= sigas_frontend_escape($blockTitle) ?></h2>
@@ -21,7 +21,7 @@ $blockRowActionsJson = json_encode(
     </div>
 
     <div class="table-responsive frontend-desktop-table">
-        <table class="table align-middle">
+        <table class="table align-middle sigas-data-table">
             <thead>
                 <tr>
                     <?php foreach ($block['columns'] as $column): ?>
@@ -119,7 +119,7 @@ $blockRowActionsJson = json_encode(
         <p>Altere os filtros ou a pesquisa para continuar.</p>
     </div>
 
-    <div class="frontend-pagination">
+    <div class="frontend-pagination sigas-pagination">
         <span>Exibindo página 1 de 3</span>
         <nav aria-label="Paginação demonstrativa">
             <button class="btn btn-light btn-sm" type="button" disabled>Anterior</button>

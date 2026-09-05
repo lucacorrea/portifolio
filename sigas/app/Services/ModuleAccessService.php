@@ -9,6 +9,11 @@ use App\Repositories\ModuleAccessRepository;
 
 final class ModuleAccessService
 {
+    private const MODULE_PERMISSIONS = [
+        'comida-mesa' => 'comida_mesa.visualizar',
+        'primeiro-emprego' => 'primeiro_emprego.visualizar',
+    ];
+
     public function __construct(
         private readonly ModuleAccessRepository $repository,
         private readonly AuthorizationService $authorization,
@@ -31,20 +36,19 @@ final class ModuleAccessService
 
         $override = $this->repository->userOverride($user->id, $module);
         if ($override !== null) {
-            return $override;
+            return $override && $this->hasModulePermission($user, $module);
         }
 
         if ($user->setorId === null) {
             return false;
         }
 
-        // Segurança de implantação: enquanto um setor não tiver matriz configurada,
-        // preserva o comportamento atual. Após a primeira configuração, passa a aplicar a matriz.
         if (!$this->repository->sectorHasConfiguration($user->setorId)) {
-            return true;
+            return $this->hasModulePermission($user, $module);
         }
 
-        return $this->repository->sectorAllows($user->setorId, $module);
+        return $this->repository->sectorAllows($user->setorId, $module)
+            && $this->hasModulePermission($user, $module);
     }
 
     /** @param array<string,array<string,mixed>> $navigation */
@@ -55,5 +59,12 @@ final class ModuleAccessService
             fn (array $environment, string $key): bool => $this->canAccess($user, $key),
             ARRAY_FILTER_USE_BOTH
         );
+    }
+
+    private function hasModulePermission(User $user, string $module): bool
+    {
+        $permission = self::MODULE_PERMISSIONS[$module] ?? null;
+
+        return $permission === null || $this->authorization->can($user, $permission);
     }
 }

@@ -43,7 +43,24 @@ $pageDefinition = [];
 $pageCustomContent = '';
 $pageExtraStyles = [];
 $pageExtraScripts = [];
-$view = dirname(__DIR__) . '/frontend/modules/comida-mesa/pages/' . $pageKey . '.php';
+
+/*
+ * Prévia controlada do padrão operacional usado no Primeiro Emprego.
+ *
+ * A URL normal continua carregando a tela estável. Enquanto o novo padrão visual
+ * e os filtros de revisão estiverem em validação, ele só é ativado com
+ * ?layout=operacional. Depois de aprovado, a mesma view poderá virar a padrão sem
+ * alterar as regras do módulo.
+ */
+$viewName = $pageKey;
+if (
+    $pageKey === 'beneficiarios'
+    && (string) ($_GET['layout'] ?? '') === 'operacional'
+) {
+    $viewName = 'beneficiarios-review';
+}
+
+$view = dirname(__DIR__) . '/frontend/modules/comida-mesa/pages/' . $viewName . '.php';
 
 if (!is_file($view)) {
     http_response_code(404);
@@ -53,11 +70,75 @@ if (!is_file($view)) {
     return;
 }
 
-require $view;
+/*
+ * Compatibilidade isolada da conferência de importação.
+ *
+ * A rotina legada cm_import_review_items() ainda reutiliza o mesmo placeholder
+ * nomeado em vários LIKEs. O SIGAS usa prepared statements nativos globalmente,
+ * o que é o padrão correto, mas o MySQL/PDO não aceita reutilização de placeholder
+ * nesse modo e dispara SQLSTATE[HY093] quando review_search é informado.
+ *
+ * Limitamos a emulação SOMENTE a esta requisição/tela e restauramos a configuração
+ * logo após montar a view. Nenhuma outra página ou operação do SIGAS é afetada.
+ */
+$compatPdo = null;
+$restoreNativePrepares = false;
+if ($pageKey === 'importar-beneficiarios' && trim((string) ($_GET['review_search'] ?? '')) !== '') {
+    try {
+        $compatPdo = cm_db();
+        if (!(bool) $compatPdo->getAttribute(PDO::ATTR_EMULATE_PREPARES)) {
+            $compatPdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);
+            $restoreNativePrepares = true;
+        }
+    } catch (Throwable) {
+        $compatPdo = null;
+        $restoreNativePrepares = false;
+    }
+}
+
+try {
+    require $view;
+} finally {
+    if ($restoreNativePrepares && $compatPdo instanceof PDO) {
+        try {
+            $compatPdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+        } catch (Throwable) {
+            // A configuração global da conexão já é nativa; não mascarar a resposta da página.
+        }
+    }
+}
+
+/*
+ * Ações de topo seguem a mesma regra do menu: se o usuário não possui a
+ * permissão operacional correspondente, o botão nem é renderizado.
+ * Segurança continua sendo validada novamente no backend das rotas.
+ */
+if (isset($pageDefinition['actions']) && is_array($pageDefinition['actions'])) {
+    $actionRules = [
+        'comida-mesa/nova-inscricao.php' => cm_can('comida_mesa.cadastrar'),
+        'comida-mesa/importar-beneficiarios.php' => cm_can('comida_mesa.importar') || cm_can('comida_mesa.cadastrar'),
+        'comida-mesa/consulta-cpf.php' => cm_can('comida_mesa.consultar_cpf'),
+        'comida-mesa/registrar-entrega.php' => cm_can('comida_mesa.entregar'),
+        'comida-mesa/competencias.php' => cm_can('comida_mesa.competencias_gerenciar'),
+        'comida-mesa/polos.php' => cm_can('comida_mesa.polos_gerenciar'),
+        'comida-mesa/documentos.php' => cm_can('comida_mesa.documentos_visualizar') || cm_can('comida_mesa.documentos_enviar'),
+        'comida-mesa/historico.php' => cm_can('comida_mesa.historico_visualizar'),
+    ];
+
+    $pageDefinition['actions'] = array_values(array_filter(
+        $pageDefinition['actions'],
+        static function (array $action) use ($actionRules): bool {
+            $href = (string) ($action['href'] ?? '');
+            return !array_key_exists($href, $actionRules) || $actionRules[$href] === true;
+        }
+    ));
+}
 
 $extraStyles = array_values(array_unique($pageExtraStyles));
 $extraScripts = array_values(array_unique(array_merge([
     'assets/js/comida-mesa.js',
+    'assets/js/modules/comida-mesa-conflicts.js',
+    'assets/js/modules/comida-mesa-import-review.js',
 ], $pageExtraScripts)));
 
 /*
