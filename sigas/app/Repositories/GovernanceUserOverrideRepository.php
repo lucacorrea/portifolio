@@ -241,10 +241,6 @@ final class GovernanceUserOverrideRepository
                 'atualizado_por' => $operatorId,
                 'slug' => $permissionSlug,
             ]);
-
-            if ($stmt->rowCount() === 0) {
-                throw new RepositoryException('Permissão não localizada ou inativa.');
-            }
         } catch (PDOException $exception) {
             throw $this->fail('setPermissionOverride', 'Falha ao alterar exceção de permissão.', $exception);
         }
