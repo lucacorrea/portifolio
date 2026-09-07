@@ -129,6 +129,25 @@ function pe_post_permission(string $pageKey, string $action = ''): ?string
     };
 }
 
+function pe_can_current_mutation(?string $pageKey = null): bool
+{
+    $resolvedPageKey = $pageKey;
+
+    if ($resolvedPageKey === null || trim($resolvedPageKey) === '') {
+        $resolvedPageKey = isset($GLOBALS['pageKey']) && is_string($GLOBALS['pageKey'])
+            ? $GLOBALS['pageKey']
+            : '';
+    }
+
+    if ($resolvedPageKey === '') {
+        return false;
+    }
+
+    $permission = pe_post_permission($resolvedPageKey, '__default__');
+
+    return $permission !== null && pe_can($permission);
+}
+
 /** @return list<string> */
 function pe_visible_page_keys(): array
 {
@@ -163,6 +182,51 @@ function pe_page_routes(): array
         'relatorios' => 'primeiro-emprego/relatorios.php',
         'configuracoes' => 'primeiro-emprego/configuracoes.php',
     ];
+}
+
+/**
+ * Remove do cabeçalho ações que levam a uma página sem permissão.
+ * Segurança continua sendo aplicada no backend; esta função cuida da UX.
+ *
+ * @param array<string,mixed> $definition
+ * @return array<string,mixed>
+ */
+function pe_filter_page_definition(array $definition): array
+{
+    if (!isset($definition['actions']) || !is_array($definition['actions'])) {
+        return $definition;
+    }
+
+    $routeToPage = [];
+    foreach (pe_page_routes() as $routePageKey => $route) {
+        $routeToPage[ltrim($route, '/')] = $routePageKey;
+    }
+
+    $definition['actions'] = array_values(array_filter(
+        $definition['actions'],
+        static function ($action) use ($routeToPage): bool {
+            if (!is_array($action)) {
+                return false;
+            }
+
+            $href = trim((string) ($action['href'] ?? ''));
+            if ($href === '') {
+                return true;
+            }
+
+            $path = parse_url($href, PHP_URL_PATH);
+            if (!is_string($path) || $path === '') {
+                return true;
+            }
+
+            $normalized = ltrim($path, '/');
+            $targetPageKey = $routeToPage[$normalized] ?? null;
+
+            return $targetPageKey === null || pe_can_page($targetPageKey);
+        }
+    ));
+
+    return $definition;
 }
 
 /** @return array<string,mixed> */
