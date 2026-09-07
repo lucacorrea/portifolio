@@ -80,6 +80,25 @@ CREATE TABLE IF NOT EXISTS pessoa_atendimentos (
         ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Se uma versão anterior desta migration chegou a criar a tabela sem o índice
+-- composto da fila atual, a reexecução corrige a estrutura sem duplicar índice.
+SET @sigas_has_fila_atual_index := (
+    SELECT COUNT(*)
+    FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'pessoa_atendimentos'
+      AND INDEX_NAME = 'idx_pessoa_atendimentos_fila_atual'
+);
+
+SET @sigas_sql := IF(
+    @sigas_has_fila_atual_index = 0,
+    'ALTER TABLE pessoa_atendimentos ADD INDEX idx_pessoa_atendimentos_fila_atual (setor_atual_id, modulo_atual, status)',
+    'SELECT 1'
+);
+PREPARE sigas_stmt FROM @sigas_sql;
+EXECUTE sigas_stmt;
+DEALLOCATE PREPARE sigas_stmt;
+
 CREATE TABLE IF NOT EXISTS pessoa_movimentacoes (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     atendimento_id BIGINT UNSIGNED NOT NULL,
