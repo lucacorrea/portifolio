@@ -35,7 +35,7 @@ foreach ($requiredModulePermissions as $permissionMapping) {
 }
 
 assert_module_governance(
-    str_contains($accessService, "if ($module === 'gestao-acessos')"),
+    str_contains($accessService, "if (\$module === 'gestao-acessos')"),
     'Governança deve permanecer restrita a Administrador/Suporte'
 );
 
