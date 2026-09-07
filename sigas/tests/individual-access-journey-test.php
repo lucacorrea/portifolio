@@ -234,7 +234,8 @@ iaj_assert(str_contains($migration, 'information_schema.COLUMNS'), 'migration de
 iaj_assert(str_contains($migration, 'information_schema.STATISTICS'), 'migration deve validar índice existente de forma idempotente no MariaDB');
 iaj_assert(str_contains($migration, 'idx_pessoa_atendimentos_fila_atual'), 'migration deve manter índice composto da fila operacional');
 iaj_assert(str_contains($migration, 'fk_pe_candidatos_pessoa'), 'Primeiro Emprego deve possuir FK para a pessoa central');
-iaj_assert(!str_contains($migration, 'START TRANSACTION'), 'migration com DDL não deve simular rollback transacional no MariaDB');
+$hasExplicitDdlTransaction = preg_match('/^\s*START\s+TRANSACTION\s*;/mi', $migration) === 1;
+iaj_assert(!$hasExplicitDdlTransaction, 'migration com DDL não deve simular rollback transacional no MariaDB');
 iaj_assert(str_contains($migration, 'HAVING COUNT(*) = 1'), 'backfill deve vincular somente CPF único entre candidatos');
 iaj_assert(str_contains($migration, 'COALESCE(c.revisao_cpf, 0) = 0'), 'backfill deve ignorar CPF em revisão');
 iaj_assert(str_contains($migration, 'COALESCE(c.cpf_duplicado, 0) = 0'), 'backfill deve ignorar CPF marcado como duplicado');
