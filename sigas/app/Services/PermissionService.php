@@ -50,11 +50,8 @@ final class PermissionService
      * Regra efetiva de uma ação para usuário operacional:
      * 1. módulo precisa estar efetivamente acessível (exceção individual ou setor);
      * 2. exceção individual da ação;
-     * 3. uma liberação individual do módulo concede a permissão básica *.visualizar;
+     * 3. uma liberação individual do módulo concede a permissão básica de visualização;
      * 4. demais ações continuam herdando normalmente do nível.
-     *
-     * Assim, "Liberar módulo" permite que a pessoa entre no módulo, mas não concede
-     * cadastrar, editar, excluir, importar ou outras ações internas automaticamente.
      */
     public function hasPermissionForUser(
         int $userId,
@@ -86,18 +83,8 @@ final class PermissionService
 
     private function individualModuleOverrideGrantsView(int $userId, string $permission): bool
     {
-        $permissionModule = $this->permissionModule($permission);
-        if ($permissionModule === null) {
-            return false;
-        }
-
-        $publicModule = AccessModuleCatalog::permissionModuleIndex()[$permissionModule] ?? null;
-        if (!is_string($publicModule) || $publicModule === '') {
-            return false;
-        }
-
-        $definition = AccessModuleCatalog::operational()[$publicModule] ?? null;
-        if (!is_array($definition) || (string) ($definition['view_permission'] ?? '') !== $permission) {
+        $publicModule = $this->publicModuleForViewPermission($permission);
+        if ($publicModule === null) {
             return false;
         }
 
@@ -107,12 +94,21 @@ final class PermissionService
     private function passesModuleBarrier(int $userId, ?int $sectorId, string $permission): bool
     {
         $permissionModule = $this->permissionModule($permission);
-        if ($permissionModule === null) {
-            return true;
+        $publicModule = null;
+
+        if ($permissionModule !== null) {
+            $candidate = AccessModuleCatalog::permissionModuleIndex()[$permissionModule] ?? null;
+            if (is_string($candidate) && $candidate !== '') {
+                $publicModule = $candidate;
+            }
         }
 
-        $publicModule = AccessModuleCatalog::permissionModuleIndex()[$permissionModule] ?? null;
-        if (!is_string($publicModule) || $publicModule === '') {
+        // A permissão de entrada do módulo também é reconhecida pelo catálogo
+        // mesmo quando a linha correspondente ainda não existe na tabela permissoes.
+        // Isso mantém portal, rota e Governança coerentes durante atualizações parciais.
+        $publicModule ??= $this->publicModuleForViewPermission($permission);
+
+        if ($publicModule === null) {
             return true;
         }
 
@@ -129,8 +125,6 @@ final class PermissionService
             $this->sectorConfigurationCache[$sectorId] = $this->permissions->sectorHasModuleConfiguration($sectorId);
         }
 
-        // Compatibilidade histórica: setor sem matriz configurada não sofre
-        // bloqueio automático até que a governança configure sua matriz.
         if (!$this->sectorConfigurationCache[$sectorId]) {
             return true;
         }
@@ -141,6 +135,17 @@ final class PermissionService
         }
 
         return $this->sectorModuleCache[$sectorModuleKey];
+    }
+
+    private function publicModuleForViewPermission(string $permission): ?string
+    {
+        foreach (AccessModuleCatalog::operational() as $moduleKey => $definition) {
+            if ((string) ($definition['view_permission'] ?? '') === $permission) {
+                return $moduleKey;
+            }
+        }
+
+        return null;
     }
 
     private function permissionModule(string $permission): ?string
