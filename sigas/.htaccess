@@ -2,12 +2,21 @@ DirectoryIndex index.php index.html
 
 Options -Indexes
 
+# Bloqueia arquivos ocultos (.env, .gitignore etc.).
 <FilesMatch "^\.">
     Require all denied
 </FilesMatch>
 
-<FilesMatch "\.(env|ini|log|sql|bak|dist|example)$">
+# Arquivos de configuração, logs, dumps, documentação interna e artefatos não
+# devem ser entregues diretamente pelo Apache.
+<FilesMatch "\.(env|ini|log|sql|bak|dist|example|md|txt|zip)$">
     Require all denied
 </FilesMatch>
 
-RedirectMatch 403 "(^|/)(app|database|frontend|tests|docs|\.git|\.svn|\.hg|\.idea|\.vscode)(/|$)"
+# bootstrap.php é dependência interna; páginas públicas o carregam via PHP.
+<Files "bootstrap.php">
+    Require all denied
+</Files>
+
+# Diretórios internos/protegidos. scripts continua disponível normalmente via CLI.
+RedirectMatch 403 "(^|/)(app|database|frontend|tests|docs|scripts|instalacao|storage|\.git|\.svn|\.hg|\.idea|\.vscode)(/|$)"
