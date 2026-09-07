@@ -1,0 +1,147 @@
+/*
+ * SIGAS — Kit Maternidade, Aluguel Social e Benefícios Eventuais
+ * Camada visual compartilhada dos módulos operacionais independentes.
+ */
+
+.frontend-module-page[data-module="kit-maternidade"],
+.frontend-module-page[data-module="aluguel-social"],
+.frontend-module-page[data-module="beneficios-eventuais"] {
+    --operational-surface: #ffffff;
+    --operational-border: rgba(18, 67, 42, .11);
+    --operational-muted: #66766d;
+}
+
+.frontend-module-page[data-module="kit-maternidade"] .sigas-page-header,
+.frontend-module-page[data-module="aluguel-social"] .sigas-page-header,
+.frontend-module-page[data-module="beneficios-eventuais"] .sigas-page-header {
+    border: 1px solid var(--operational-border);
+    background: linear-gradient(135deg, rgba(255,255,255,.98), rgba(246,250,247,.98));
+    box-shadow: 0 14px 34px rgba(25, 65, 44, .06);
+}
+
+.frontend-module-page[data-module="kit-maternidade"] .frontend-stat-card,
+.frontend-module-page[data-module="aluguel-social"] .frontend-stat-card,
+.frontend-module-page[data-module="beneficios-eventuais"] .frontend-stat-card,
+.frontend-module-page[data-module="kit-maternidade"] .content-card,
+.frontend-module-page[data-module="aluguel-social"] .content-card,
+.frontend-module-page[data-module="beneficios-eventuais"] .content-card {
+    border-color: var(--operational-border);
+    box-shadow: 0 10px 26px rgba(22, 68, 43, .045);
+}
+
+.frontend-module-page[data-module="kit-maternidade"] .sigas-data-table thead th,
+.frontend-module-page[data-module="aluguel-social"] .sigas-data-table thead th,
+.frontend-module-page[data-module="beneficios-eventuais"] .sigas-data-table thead th {
+    white-space: nowrap;
+    font-size: .72rem;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+}
+
+.frontend-module-page[data-module="kit-maternidade"] .sigas-data-table tbody tr,
+.frontend-module-page[data-module="aluguel-social"] .sigas-data-table tbody tr,
+.frontend-module-page[data-module="beneficios-eventuais"] .sigas-data-table tbody tr {
+    transition: background-color .16s ease, transform .16s ease;
+}
+
+.frontend-module-page[data-module="kit-maternidade"] .sigas-data-table tbody tr:hover,
+.frontend-module-page[data-module="aluguel-social"] .sigas-data-table tbody tr:hover,
+.frontend-module-page[data-module="beneficios-eventuais"] .sigas-data-table tbody tr:hover {
+    background: rgba(23, 107, 58, .035);
+}
+
+.frontend-module-page[data-module="kit-maternidade"] .frontend-action-record,
+.frontend-module-page[data-module="aluguel-social"] .frontend-action-record,
+.frontend-module-page[data-module="beneficios-eventuais"] .frontend-action-record {
+    border: 1px solid var(--operational-border);
+    box-shadow: 0 8px 20px rgba(22, 68, 43, .04);
+}
+
+.operational-front-note {
+    display: flex;
+    gap: .8rem;
+    align-items: flex-start;
+    padding: .85rem 1rem;
+    border-radius: 14px;
+    border: 1px solid rgba(17, 106, 60, .16);
+    background: rgba(229, 247, 237, .72);
+    color: #1e5d3a;
+}
+
+.operational-front-note > i {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    border-radius: 10px;
+    background: rgba(255,255,255,.9);
+    font-size: 1rem;
+}
+
+.operational-front-note div {
+    min-width: 0;
+    display: grid;
+    gap: .18rem;
+}
+
+.operational-front-note strong {
+    font-size: .88rem;
+}
+
+.operational-front-note span {
+    font-size: .79rem;
+    line-height: 1.45;
+    color: #517160;
+}
+
+#frontendActionModal .modal-dialog {
+    max-width: 760px;
+}
+
+#frontendActionModal .modal-content {
+    border: 0;
+    border-radius: 20px;
+    box-shadow: 0 24px 80px rgba(15, 43, 28, .2);
+}
+
+#frontendActionModal .modal-body .form-label {
+    font-size: .78rem;
+    font-weight: 700;
+    color: #344b3e;
+    margin-bottom: .4rem;
+}
+
+#frontendActionModal .modal-body .form-control,
+#frontendActionModal .modal-body .form-select {
+    min-height: 44px;
+    border-radius: 11px;
+    border-color: rgba(28, 71, 47, .16);
+}
+
+#frontendActionModal .modal-body textarea.form-control {
+    min-height: 94px;
+    resize: vertical;
+}
+
+#frontendActionModal .modal-body .form-control:focus,
+#frontendActionModal .modal-body .form-select:focus {
+    border-color: rgba(23, 107, 58, .52);
+    box-shadow: 0 0 0 .2rem rgba(23, 107, 58, .09);
+}
+
+@media (max-width: 767.98px) {
+    .frontend-module-page[data-module="kit-maternidade"] .sigas-page-header,
+    .frontend-module-page[data-module="aluguel-social"] .sigas-page-header,
+    .frontend-module-page[data-module="beneficios-eventuais"] .sigas-page-header {
+        padding: 1rem;
+    }
+
+    #frontendActionModal .modal-dialog {
+        margin: .75rem;
+    }
+
+    #frontendActionModal .modal-content {
+        border-radius: 16px;
+    }
+}
