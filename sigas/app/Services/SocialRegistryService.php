@@ -32,11 +32,24 @@ final class SocialRegistryService
         $person = $this->people->findByCpf($cpf);
         $profile = null;
         $requests = [];
+        $history = [];
 
         if (is_array($person)) {
             $personId = (int) ($person['id'] ?? 0);
-            $profile = $personId > 0 ? $this->socioeconomic->findByPersonId($personId) : null;
-            $requests = $personId > 0 ? $this->benefits->listByPerson($personId) : [];
+            if ($personId > 0) {
+                $profile = $this->socioeconomic->findByPersonId($personId);
+                $requests = $this->benefits->listByPerson($personId);
+                $history = array_map(
+                    static fn (array $item): array => [
+                        'id' => (int) ($item['id'] ?? 0),
+                        'origem' => (string) ($item['origem'] ?? 'sigas'),
+                        'motivo' => (string) ($item['motivo'] ?? 'Atualização do prontuário'),
+                        'criado_em' => $item['criado_em'] ?? null,
+                        'usuario_nome' => $item['usuario_nome'] ?? null,
+                    ],
+                    $this->socioeconomic->history($personId, 20)
+                );
+            }
         }
 
         $anexo = $consultAnexo ? $this->anexo->consultCpf($cpf) : [
@@ -53,6 +66,7 @@ final class SocialRegistryService
             'socioeconomic' => $profile,
             'socioeconomic_state' => $this->profileState($profile),
             'benefit_requests' => $requests,
+            'history' => $history,
             'anexo' => $anexo,
             'anexo_draft' => !is_array($profile) && !empty($anexo['found'])
                 ? $this->draftFromAnexo($anexo)
