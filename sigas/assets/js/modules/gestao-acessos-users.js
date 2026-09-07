@@ -165,6 +165,12 @@
         return;
     }
 
+    const userIdField = form.querySelector('input[name="user_id"]');
+    const selectedUserId = Number.parseInt(userIdField?.value || '', 10);
+    const feedbackStorageKey = Number.isInteger(selectedUserId) && selectedUserId > 0
+        ? `sigas-governance-feedback-${selectedUserId}`
+        : 'sigas-governance-feedback';
+
     if (modalElement.dataset.autoOpen === '1') {
         bootstrap.Modal.getOrCreateInstance(modalElement, {
             backdrop: 'static',
@@ -180,6 +186,12 @@
         alertBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     };
 
+    const storedFeedback = window.sessionStorage.getItem(feedbackStorageKey);
+    if (storedFeedback) {
+        window.sessionStorage.removeItem(feedbackStorageKey);
+        showMessage(storedFeedback, 'success');
+    }
+
     const setBusy = busy => {
         form.querySelectorAll('button[type="submit"]').forEach(button => {
             button.disabled = busy || button.dataset.permanentlyDisabled === '1';
@@ -191,6 +203,100 @@
         button.dataset.permanentlyDisabled = '1';
     });
 
+    const accessModuleBlocks = () => [...form.querySelectorAll('details.border.rounded-3.bg-white')]
+        .filter(block => block.querySelector('select[name^="module_override["]'));
+
+    const sectorIsBlocked = block => {
+        const summary = block.querySelector('summary');
+        return (summary?.textContent || '').includes('Setor: bloqueado');
+    };
+
+    const moduleHasEffectiveAccess = block => {
+        const summary = block.querySelector('summary');
+        return (summary?.textContent || '').includes('Acesso efetivo')
+            && !(summary?.textContent || '').includes('Sem acesso efetivo');
+    };
+
+    const updateModuleGuard = block => {
+        const moduleSelect = block.querySelector('select[name^="module_override["]');
+        const content = moduleSelect?.closest('.border-top');
+        if (!moduleSelect || !content) return;
+
+        let warning = content.querySelector('[data-module-barrier-warning]');
+        const baseBlocked = sectorIsBlocked(block);
+        const inheritedBlock = baseBlocked && moduleSelect.value === 'inherit';
+
+        if (!warning) {
+            warning = document.createElement('div');
+            warning.dataset.moduleBarrierWarning = '1';
+            warning.className = 'alert alert-warning py-2 px-3 small mb-3';
+            const firstRow = content.querySelector('.row');
+            if (firstRow) {
+                firstRow.insertAdjacentElement('afterend', warning);
+            } else {
+                content.prepend(warning);
+            }
+        }
+
+        if (inheritedBlock) {
+            warning.textContent = 'Este setor não possui acesso a este módulo. Para liberar somente este usuário, selecione “Liberar para esta pessoa” em Acesso ao módulo e salve novamente.';
+            warning.classList.remove('d-none');
+        } else if (baseBlocked && moduleSelect.value === 'allow') {
+            warning.textContent = 'A exceção individual de módulo será aplicada ao salvar. As ações internas continuarão obedecendo ao nível ou às exceções individuais configuradas abaixo.';
+            warning.classList.remove('d-none');
+            warning.classList.remove('alert-warning');
+            warning.classList.add('alert-info');
+        } else {
+            warning.classList.add('d-none');
+        }
+
+        if (inheritedBlock || !moduleHasEffectiveAccess(block)) {
+            block.querySelectorAll('table tbody tr').forEach(row => {
+                const resultBadge = row.querySelector('td:last-child .badge');
+                if (!resultBadge) return;
+                resultBadge.textContent = 'Negado';
+                resultBadge.classList.remove('text-bg-success');
+                resultBadge.classList.add('text-bg-secondary');
+                resultBadge.title = 'O módulo não possui acesso efetivo para este usuário.';
+            });
+        }
+    };
+
+    accessModuleBlocks().forEach(block => {
+        const moduleSelect = block.querySelector('select[name^="module_override["]');
+        updateModuleGuard(block);
+        moduleSelect?.addEventListener('change', () => updateModuleGuard(block));
+    });
+
+    const validateModuleBarriers = action => {
+        if (action !== 'save_overrides') {
+            return true;
+        }
+
+        for (const block of accessModuleBlocks()) {
+            const moduleSelect = block.querySelector('select[name^="module_override["]');
+            if (!moduleSelect || !sectorIsBlocked(block) || moduleSelect.value !== 'inherit') {
+                continue;
+            }
+
+            const hasPositivePermissionOverride = [...block.querySelectorAll('select[name^="permission_override["]')]
+                .some(select => select.value === 'allow');
+
+            if (!hasPositivePermissionOverride) {
+                continue;
+            }
+
+            const moduleName = (block.querySelector('summary .fw-semibold')?.textContent || 'Este módulo').trim();
+            showMessage(`${moduleName} está bloqueado pelo setor. Para liberar uma ação interna, primeiro escolha “Liberar para esta pessoa” em Acesso ao módulo.`, 'warning');
+            block.open = true;
+            moduleSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            window.setTimeout(() => moduleSelect.focus(), 300);
+            return false;
+        }
+
+        return true;
+    };
+
     form.addEventListener('submit', async event => {
         event.preventDefault();
         const submitter = event.submitter;
@@ -199,6 +305,10 @@
         if (!action) return;
 
         if (!form.reportValidity()) {
+            return;
+        }
+
+        if (!validateModuleBarriers(action)) {
             return;
         }
 
@@ -247,8 +357,15 @@
                 return;
             }
 
-            showMessage(payload.message || 'Ação concluída com sucesso.', 'success');
-            window.setTimeout(() => window.location.assign('governanca-acessos/usuarios.php'), 900);
+            const successMessage = payload.message || 'Alterações salvas com sucesso.';
+            showMessage(successMessage, 'success');
+            window.sessionStorage.setItem(feedbackStorageKey, successMessage);
+
+            const destination = Number.isInteger(selectedUserId) && selectedUserId > 0
+                ? `governanca-acessos/usuarios.php?usuario=${encodeURIComponent(String(selectedUserId))}`
+                : 'governanca-acessos/usuarios.php';
+
+            window.setTimeout(() => window.location.assign(destination), 900);
         } catch (_) {
             showMessage('Falha de comunicação com o servidor. Tente novamente.', 'danger');
             setBusy(false);
