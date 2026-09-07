@@ -33,7 +33,12 @@ final class AuthorizationService
             return $this->permissions->hasPermission($user->nivelId, $permission);
         }
 
-        return $this->permissions->hasPermissionForUser($user->id, $user->nivelId, $permission);
+        return $this->permissions->hasPermissionForUser(
+            $user->id,
+            $user->nivelId,
+            $user->setorId,
+            $permission,
+        );
     }
 
     public function requirePermission(User $user, string $permission): void
