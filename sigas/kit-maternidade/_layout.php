@@ -8,6 +8,7 @@ use App\Core\PageContext;
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/frontend/support/operational-program-access.php';
 require_once dirname(__DIR__) . '/frontend/support/operational-program-front.php';
+require_once dirname(__DIR__) . '/frontend/modules/kit-maternidade/lib/runtime.php';
 
 if (!isset($pageKey) || !is_string($pageKey) || trim($pageKey) === '') {
     throw new RuntimeException('A página do módulo não foi informada.');
@@ -65,12 +66,20 @@ if (!is_array($pageDefinition)) {
     throw new RuntimeException('A view do Kit Maternidade deve retornar uma definição de página.');
 }
 
+/*
+ * A view histórica fornece título/descrição. A camada compartilhada mantém o
+ * padrão visual; o runtime do Kit substitui dados demonstrativos por dados reais.
+ */
 $pageDefinition = sigas_operational_filter_page_definition($environmentKey, $pageKey, $pageDefinition);
 $pageDefinition = sigas_operational_front_enhance($environmentKey, $pageKey, $pageDefinition);
+$kitRuntime = km_runtime_page($pageKey, $pageDefinition);
+$pageDefinition = $kitRuntime['definition'];
+$pageCustomContent .= $kitRuntime['custom'];
 $menuVisiblePageKeys = sigas_operational_visible_pages($environmentKey);
 
 $pageExtraStyles[] = 'assets/css/modules/operational-programs.css';
 $pageExtraScripts[] = 'assets/js/modules/operational-programs.js';
+$pageExtraScripts[] = 'assets/js/modules/kit-maternidade-flow.js';
 
 $frontendContext['module'] = $environmentKey;
 $frontendContext['page'] = $pageKey;
@@ -80,6 +89,7 @@ $frontendContext['operationalProgramAccess'] = [
     'canMutate' => sigas_operational_can_mutate($environmentKey, $pageKey),
     'visiblePages' => $menuVisiblePageKeys,
 ];
+$frontendContext['kitMaternity'] = $kitRuntime['context'];
 
 $extraStyles = array_values(array_unique($pageExtraStyles));
 $extraScripts = array_values(array_unique($pageExtraScripts));
