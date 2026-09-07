@@ -107,6 +107,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         if (!Csrf::validateAndRotate(isset($_POST['_csrf']) ? (string) $_POST['_csrf'] : null, 'person-journey')) {
             throw new RuntimeException('A sessão do formulário expirou. Atualize a página e tente novamente.');
         }
+        if (!Validator::cpf($cpf)) {
+            throw new InvalidArgumentException('CPF inválido para movimentar o atendimento.');
+        }
 
         $attendanceId = filter_var($_POST['atendimento_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
         if ($attendanceId === false) {
@@ -115,6 +118,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $attendance = $journeyRepository->findAttendance((int) $attendanceId);
         if (!is_array($attendance)) {
             throw new InvalidArgumentException('Atendimento não localizado.');
+        }
+
+        $personCheck = $pdo->prepare('SELECT id FROM pessoas WHERE cpf = :cpf LIMIT 1');
+        $personCheck->execute(['cpf' => $cpf]);
+        $personIdForCpf = $personCheck->fetchColumn();
+        if ($personIdForCpf === false || (int) $personIdForCpf !== (int) ($attendance['pessoa_id'] ?? 0)) {
+            throw new RuntimeException('O atendimento informado não pertence à pessoa consultada.');
         }
 
         $currentModule = trim((string) ($attendance['modulo_atual'] ?? ''));
@@ -182,8 +192,14 @@ if ($cpf !== '') {
     if (!Validator::cpf($cpf)) {
         $error ??= 'Informe um CPF válido para consultar a trajetória.';
     } else {
+        // A consulta transversal aplica minimização de dados: NIS e telefone
+        // só são carregados para perfis globais. Usuários operacionais devem
+        // consultar esses dados dentro do módulo que realmente necessita deles.
+        $personColumns = $isGlobal
+            ? 'id, nome, cpf, nis, telefone, status'
+            : 'id, nome, cpf, NULL AS nis, NULL AS telefone, status';
         $stmt = $pdo->prepare(
-            'SELECT id, nome, cpf, nis, telefone, status
+            'SELECT ' . $personColumns . '
              FROM pessoas
              WHERE cpf = :cpf
              LIMIT 1'
@@ -225,6 +241,8 @@ if ($cpf !== '') {
                         'status' => (string) ($row['atendimento_status'] ?? ''),
                         'aberto_em' => (string) ($row['aberto_em'] ?? ''),
                         'concluido_em' => (string) ($row['concluido_em'] ?? ''),
+                        'setor_origem_id' => $row['setor_origem_id'] === null ? null : (int) $row['setor_origem_id'],
+                        'setor_atual_id' => $row['setor_atual_id'] === null ? null : (int) $row['setor_atual_id'],
                         'setor_origem' => (string) ($row['setor_origem'] ?? ''),
                         'setor_atual' => (string) ($row['setor_atual'] ?? ''),
                         'modulo_origem' => $originModule,
@@ -308,8 +326,8 @@ $sectors = $sectorRepository->allActive();
             </div>
             <div class="journey-summary">
                 <div><small>Atendimentos visíveis</small><strong><?= count($attendances) ?></strong></div>
-                <div><small>NIS</small><strong><?= journey_h($person['nis'] ?: 'Não informado') ?></strong></div>
-                <div><small>Telefone</small><strong><?= journey_h($person['telefone'] ?: 'Não informado') ?></strong></div>
+                <div><small>NIS</small><strong><?= journey_h($isGlobal ? ($person['nis'] ?: 'Não informado') : 'Restrito') ?></strong></div>
+                <div><small>Telefone</small><strong><?= journey_h($isGlobal ? ($person['telefone'] ?: 'Não informado') : 'Restrito') ?></strong></div>
                 <div><small>Situação cadastral</small><strong><?= journey_h($person['status'] ?: 'Não definida') ?></strong></div>
             </div>
         </section>
@@ -321,10 +339,7 @@ $sectors = $sectorRepository->allActive();
         <?php foreach ($attendances as $attendance): ?>
             <?php
             $currentModule = (string) $attendance['modulo_atual'];
-            $currentSectorIdStmt = $pdo->prepare('SELECT setor_atual_id FROM pessoa_atendimentos WHERE id = :id LIMIT 1');
-            $currentSectorIdStmt->execute(['id' => (int) $attendance['id']]);
-            $currentSectorValue = $currentSectorIdStmt->fetchColumn();
-            $currentSectorId = $currentSectorValue === false || $currentSectorValue === null ? null : (int) $currentSectorValue;
+            $currentSectorId = $attendance['setor_atual_id'] === null ? null : (int) $attendance['setor_atual_id'];
             $canOperate = $attendance['status'] !== 'concluido'
                 && isset($catalog[$currentModule])
                 && $moduleAccess->canAccess($user, $currentModule)
