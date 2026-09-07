@@ -47,6 +47,9 @@ jobs:
             -print0 \
             | xargs -0 -n1 php -l
 
+      - name: Operational JavaScript syntax
+        run: node --check sigas/assets/js/modules/operational-programs.js
+
       - name: Authorization level regression
         run: php sigas/tests/authorization-level-test.php
 
