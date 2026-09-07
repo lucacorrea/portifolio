@@ -1,0 +1,57 @@
+name: SIGAS CI
+
+on:
+  pull_request:
+    paths:
+      - 'sigas/**'
+      - '.github/workflows/sigas-ci.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'sigas/**'
+      - '.github/workflows/sigas-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sigas-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  php-quality:
+    name: PHP syntax and security regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: none
+
+      - name: PHP syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          find sigas \
+            -type f \
+            -name '*.php' \
+            -not -path '*/vendor/*' \
+            -print0 \
+            | xargs -0 -n1 php -l
+
+      - name: Authorization level regression
+        run: php sigas/tests/authorization-level-test.php
+
+      - name: Authorization policy regression
+        run: php sigas/tests/authorization-policy-test.php
+
+      - name: Individual access and journey regression
+        run: php sigas/tests/individual-access-journey-test.php

@@ -4,26 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Config\AccessModuleCatalog;
 use App\Models\User;
 use App\Repositories\ModuleAccessRepository;
 
 final class ModuleAccessService
 {
-    /**
-     * Permissao minima exigida para entrar em cada modulo operacional.
-     *
-     * A liberacao por setor ou por excecao individual nunca substitui a
-     * permissao funcional do usuario. As duas regras precisam ser satisfeitas.
-     * Governanca permanece restrita a Administrador e Suporte em canAccess().
-     */
-    private const MODULE_PERMISSIONS = [
-        'kit-maternidade' => 'kit_maternidade.visualizar',
-        'aluguel-social' => 'aluguel_social.visualizar',
-        'beneficios-eventuais' => 'beneficios_eventuais.visualizar',
-        'comida-mesa' => 'comida_mesa.visualizar',
-        'primeiro-emprego' => 'primeiro_emprego.visualizar',
-    ];
-
     public function __construct(
         private readonly ModuleAccessRepository $repository,
         private readonly AuthorizationService $authorization,
@@ -40,7 +26,7 @@ final class ModuleAccessService
             return true;
         }
 
-        // Modulo critico: somente perfis administrativos globais podem entrar.
+        // Governança é deliberadamente imune a exceções individuais de usuários comuns.
         if ($module === 'gestao-acessos') {
             return false;
         }
@@ -74,8 +60,9 @@ final class ModuleAccessService
 
     private function hasModulePermission(User $user, string $module): bool
     {
-        $permission = self::MODULE_PERMISSIONS[$module] ?? null;
+        $definition = AccessModuleCatalog::operational()[$module] ?? null;
+        $permission = is_array($definition) ? ($definition['view_permission'] ?? null) : null;
 
-        return $permission === null || $this->authorization->can($user, $permission);
+        return !is_string($permission) || $permission === '' || $this->authorization->can($user, $permission);
     }
 }

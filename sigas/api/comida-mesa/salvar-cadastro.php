@@ -11,6 +11,7 @@ use App\Repositories\AccessLevelRepository;
 use App\Repositories\AuditLogRepository;
 use App\Repositories\ComidaMesaRepository;
 use App\Repositories\PermissionRepository;
+use App\Repositories\PersonJourneyRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\UserSessionRepository;
 use App\Services\AuditService;
@@ -18,6 +19,7 @@ use App\Services\AuthService;
 use App\Services\AuthorizationService;
 use App\Services\ComidaMesaService;
 use App\Services\PermissionService;
+use App\Services\PersonJourneyService;
 
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 
@@ -249,11 +251,35 @@ try {
             throw $exception;
         }
 
-        // A primeira tentativa já passou por toda a validação do serviço e falhou
-        // somente na trava histórica de alteração de CPF. Regularizamos NULL -> CPF
-        // na mesma pessoa e repetimos o salvamento normal.
         $cpfRegularization = cm_regularize_missing_cpf($pdo, $data, $user->id);
         $result = $service->saveRegistration($data, $user->id, $audit);
+    }
+
+    if (!empty($result['created'])) {
+        try {
+            $person = $repository->findPersonByCpf($data->cpf);
+            if (is_array($person) && (int) ($person['id'] ?? 0) > 0) {
+                (new PersonJourneyService(new PersonJourneyRepository($pdo)))->start(
+                    (int) $person['id'],
+                    'comida-mesa',
+                    $user->setorId,
+                    $user->id,
+                    'Solicitação do programa Coari Comida na Mesa',
+                    'comida-mesa',
+                    'comida_mesa_inscricao',
+                    (int) $result['id'],
+                    'Cadastro iniciado no setor do usuário responsável.'
+                );
+            }
+        } catch (Throwable $trackingException) {
+            // O benefício já foi salvo; uma falha na trilha não deve duplicar o cadastro
+            // por repetição automática da requisição. O erro fica visível no log técnico.
+            Logger::application('Comida Mesa person journey registration failed.', [
+                'type' => $trackingException::class,
+                'registration_id' => (int) ($result['id'] ?? 0),
+                'user_id' => $user->id,
+            ]);
+        }
     }
 
     if (is_array($cpfRegularization) && !empty($cpfRegularization['changed']) && $data->registrationId !== null) {

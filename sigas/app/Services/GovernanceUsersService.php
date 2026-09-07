@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Config\AccessModuleCatalog;
+use App\Repositories\GovernanceUserOverrideRepository;
 use App\Repositories\GovernanceUsersRepository;
 use DateTimeImmutable;
 use Throwable;
 
 final class GovernanceUsersService
 {
-    public function __construct(private readonly GovernanceUsersRepository $repository)
-    {
+    public function __construct(
+        private readonly GovernanceUsersRepository $repository,
+        private readonly ?GovernanceUserOverrideRepository $overrides = null,
+    ) {
     }
 
     /** @return array<string,mixed> */
@@ -67,6 +71,7 @@ final class GovernanceUsersService
                 '__sector_id' => (int) ($user['setor_id'] ?? 0),
                 '__requested_sector_id' => (int) ($user['setor_solicitado_id'] ?? 0),
                 '__level_id' => (int) ($user['nivel_id'] ?? 0),
+                '__level_slug' => trim((string) ($user['nivel_slug'] ?? '')),
                 '__status' => trim((string) ($user['status'] ?? '')),
                 '__active_sessions' => (int) ($user['sessoes_ativas'] ?? 0),
                 '_actions' => [
@@ -79,7 +84,7 @@ final class GovernanceUsersService
                     [
                         'kind' => 'navigate',
                         'label' => 'Gerenciar acesso',
-                        'description' => 'Alterar setor, nível, status ou sessões com validação e auditoria.',
+                        'description' => 'Alterar setor, nível, módulos, permissões, status ou sessões com validação e auditoria.',
                         'icon' => 'shield-lock',
                         'variant' => 'primary',
                         'href' => 'governanca-acessos/usuarios.php?usuario={__user_id}',
@@ -116,6 +121,86 @@ final class GovernanceUsersService
                 ['label' => 'Bloqueados', 'value' => (string) $summary['bloqueados'], 'detail' => 'Sem acesso', 'icon' => 'person-lock'],
             ],
         ];
+    }
+
+    /**
+     * Perfil efetivo mostrado na Governança.
+     * A tela distingue claramente o que vem do nível/setor e o que é exceção individual.
+     *
+     * @return array{modules:list<array<string,mixed>>,protected:bool}
+     */
+    public function accessProfile(int $userId, ?int $levelId, ?int $sectorId, string $levelSlug = ''): array
+    {
+        if ($this->overrides === null) {
+            return ['modules' => [], 'protected' => true];
+        }
+
+        $catalog = AccessModuleCatalog::operational();
+        $permissionModuleIndex = AccessModuleCatalog::permissionModuleIndex();
+        $permissions = $this->overrides->permissionCatalog(array_keys($permissionModuleIndex));
+        $levelPermissions = array_fill_keys($this->overrides->levelPermissionSlugs($levelId), true);
+        $moduleOverrides = $this->overrides->moduleOverrides($userId);
+        $permissionOverrides = $this->overrides->permissionOverrides($userId);
+        $sectorRules = $this->overrides->sectorModuleRules($sectorId);
+        $sectorConfigured = $this->overrides->sectorHasConfiguration($sectorId);
+        $grouped = [];
+
+        foreach ($permissions as $permission) {
+            $permissionModule = trim((string) ($permission['modulo'] ?? ''));
+            $moduleKey = $permissionModuleIndex[$permissionModule] ?? null;
+            if (!is_string($moduleKey)) {
+                continue;
+            }
+            $grouped[$moduleKey][] = $permission;
+        }
+
+        $modules = [];
+        foreach ($catalog as $moduleKey => $definition) {
+            $baseModuleAllowed = !$sectorConfigured || (bool) ($sectorRules[$moduleKey] ?? false);
+            $moduleOverride = array_key_exists($moduleKey, $moduleOverrides) ? $moduleOverrides[$moduleKey] : null;
+            $effectiveModuleRule = $moduleOverride ?? $baseModuleAllowed;
+            $viewPermission = $definition['view_permission'];
+            $baseViewAllowed = isset($levelPermissions[$viewPermission]);
+            $viewOverride = array_key_exists($viewPermission, $permissionOverrides) ? $permissionOverrides[$viewPermission] : null;
+            $effectiveViewAllowed = $viewOverride ?? $baseViewAllowed;
+            $permissionRows = [];
+
+            foreach ($grouped[$moduleKey] ?? [] as $permission) {
+                $slug = trim((string) ($permission['slug'] ?? ''));
+                if ($slug === '') {
+                    continue;
+                }
+                $baseAllowed = isset($levelPermissions[$slug]);
+                $override = array_key_exists($slug, $permissionOverrides) ? $permissionOverrides[$slug] : null;
+                $permissionRows[] = [
+                    'slug' => $slug,
+                    'label' => trim((string) ($permission['nome'] ?? $slug)),
+                    'description' => trim((string) ($permission['descricao'] ?? '')),
+                    'base_allowed' => $baseAllowed,
+                    'override_state' => $this->stateLabel($override),
+                    'effective_allowed' => $override ?? $baseAllowed,
+                ];
+            }
+
+            $modules[] = [
+                'key' => $moduleKey,
+                'label' => $definition['label'],
+                'base_module_allowed' => $baseModuleAllowed,
+                'module_override_state' => $this->stateLabel($moduleOverride),
+                'effective_access' => $effectiveModuleRule && $effectiveViewAllowed,
+                'permissions' => $permissionRows,
+            ];
+        }
+
+        return [
+            'modules' => $modules,
+            'protected' => in_array($levelSlug, ['administrador', 'suporte'], true),
+        ];
+    }
+
+    private function stateLabel(?bool $state): string
+    {
+        return $state === null ? 'inherit' : ($state ? 'allow' : 'deny');
     }
 
     private function maskCpf(string $cpf): string

@@ -33,8 +33,15 @@ if (is_array($selectedUser)) {
     $currentSectorId = (int) ($selectedUser['__sector_id'] ?? 0);
     $requestedSectorId = (int) ($selectedUser['__requested_sector_id'] ?? 0);
     $currentLevelId = (int) ($selectedUser['__level_id'] ?? 0);
+    $currentLevelSlug = (string) ($selectedUser['__level_slug'] ?? '');
     $activeSessions = (int) ($selectedUser['__active_sessions'] ?? 0);
     $isSelf = $currentUserId > 0 && $currentUserId === (int) $selectedUserId;
+    $accessProfile = $governanceUsers->accessProfile(
+        (int) $selectedUserId,
+        $currentLevelId > 0 ? $currentLevelId : null,
+        $currentSectorId > 0 ? $currentSectorId : null,
+        $currentLevelSlug,
+    );
     $statusClass = match ($selectedStatus) {
         'ativo' => 'success',
         'pendente' => 'warning',
@@ -112,7 +119,7 @@ if (is_array($selectedUser)) {
                             <i class="bi bi-shield-check"></i>
                             <div>
                                 <strong>Conta atual protegida</strong>
-                                <span>Por segurança, setor, nível, bloqueio e sessões da própria conta são somente leitura nesta tela. Alterações críticas devem ser realizadas por outro administrador autorizado.</span>
+                                <span>Por segurança, setor, nível, bloqueio, exceções individuais e sessões da própria conta são somente leitura nesta tela. Alterações críticas devem ser realizadas por outro administrador autorizado.</span>
                             </div>
                         </div>
                     <?php endif; ?>
@@ -170,11 +177,13 @@ if (is_array($selectedUser)) {
                                 <div class="form-text">
                                     <?= $isSelf
                                         ? 'A própria conta está protegida contra alterações críticas nesta tela.'
-                                        : 'Obrigatória para qualquer alteração de acesso, status ou sessão.' ?>
+                                        : 'Obrigatória para qualquer alteração de acesso, exceção individual, status ou sessão.' ?>
                                 </div>
                             </div>
                         </div>
                     </section>
+
+                    <?php require dirname(__DIR__) . '/components/user-access-overrides.php'; ?>
 
                     <section class="ga-admin-section ga-admin-section--actions">
                         <div class="ga-admin-section-heading">
@@ -261,7 +270,7 @@ if (is_array($selectedUser)) {
 
 return sigas_frontend_page([
     'title' => 'Usuários',
-    'description' => 'Contas reais do SIGAS com dados administrativos, setor, nível, situação e histórico básico de acesso.',
+    'description' => 'Contas reais do SIGAS com dados administrativos, setor, nível, exceções individuais, situação e histórico básico de acesso.',
     'actions' => [
         [
             'label' => 'Níveis de usuário',
@@ -283,7 +292,7 @@ return sigas_frontend_page([
             'type' => 'table',
             'kicker' => 'Governança',
             'title' => 'Usuários do SIGAS',
-            'description' => 'Clique em uma linha para consultar os dados ou abrir o gerenciamento administrativo da conta.',
+            'description' => 'Clique em uma linha para consultar dados ou gerenciar setor, nível e exceções individuais da conta.',
             'columns' => [
                 ['key' => 'usuario', 'label' => 'Usuário'],
                 ['key' => 'cpf', 'label' => 'CPF'],
