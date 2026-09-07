@@ -69,3 +69,6 @@ jobs:
 
       - name: Socioeconomic and Kit Maternity regression
         run: php sigas/tests/socioeconomic-kit-flow-test.php
+
+      - name: Root structure regression
+        run: php sigas/tests/root-structure-test.php
