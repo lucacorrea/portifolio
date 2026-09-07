@@ -119,6 +119,44 @@ final class PersonJourneyService
         );
     }
 
+    public function receive(int $attendanceId, ?int $userId, string $observation = ''): void
+    {
+        $attendance = $this->repository->findAttendance($attendanceId);
+        if (!is_array($attendance)) {
+            throw new InvalidArgumentException('Atendimento não localizado.');
+        }
+
+        $status = (string) ($attendance['status'] ?? '');
+        if (in_array($status, ['concluido', 'cancelado'], true)) {
+            throw new InvalidArgumentException('Atendimento encerrado não pode ser recebido.');
+        }
+        if ($status === 'em_atendimento') {
+            return;
+        }
+
+        $sectorId = $attendance['setor_atual_id'] === null ? null : (int) $attendance['setor_atual_id'];
+        $module = (string) ($attendance['modulo_atual'] ?? '');
+
+        $this->repository->insertMovement([
+            'atendimento_id' => $attendanceId,
+            'pessoa_id' => (int) $attendance['pessoa_id'],
+            'tipo' => 'recebimento',
+            'setor_origem_id' => $sectorId,
+            'setor_destino_id' => $sectorId,
+            'modulo_origem' => $module,
+            'modulo_destino' => $module,
+            'usuario_id' => $userId,
+            'observacao' => $this->nullableText($observation ?: 'Atendimento recebido pelo setor responsável.', 500),
+        ]);
+
+        $this->repository->updateCurrentLocation(
+            $attendanceId,
+            $sectorId,
+            $module,
+            'em_atendimento',
+        );
+    }
+
     public function complete(int $attendanceId, ?int $userId, string $observation): void
     {
         $attendance = $this->repository->findAttendance($attendanceId);
