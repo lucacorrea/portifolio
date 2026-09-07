@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Repositories\BenefitRequestRepository;
-use App\Repositories\PersonJourneyRepository;
 use PDO;
 use RuntimeException;
 use Throwable;
@@ -53,7 +52,11 @@ final class BenefitRequestService
             );
         }
 
-        $this->pdo->beginTransaction();
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) {
+            $this->pdo->beginTransaction();
+        }
+
         try {
             $requestId = $this->requests->insert([
                 'pessoa_id' => $personId,
@@ -94,10 +97,12 @@ final class BenefitRequestService
             );
             $stmt->execute(['id' => $requestId]);
 
-            $this->pdo->commit();
+            if ($ownsTransaction) {
+                $this->pdo->commit();
+            }
             return $requestId;
         } catch (Throwable $exception) {
-            if ($this->pdo->inTransaction()) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
             }
             throw $exception;
