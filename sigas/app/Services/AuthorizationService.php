@@ -25,7 +25,7 @@ final class AuthorizationService
     {
         return $user->nivelId !== null
             && $user->status->value === 'ativo'
-            && $this->permissions->hasPermission($user->nivelId, $permission);
+            && $this->permissions->hasPermissionForUser($user->id, $user->nivelId, $permission);
     }
 
     public function requirePermission(User $user, string $permission): void
