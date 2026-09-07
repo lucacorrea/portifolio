@@ -135,6 +135,8 @@ final class PersonJourneyRepository
                     a.status AS atendimento_status,
                     a.aberto_em,
                     a.concluido_em,
+                    a.setor_origem_id,
+                    a.setor_atual_id,
                     so.nome AS setor_origem,
                     sa.nome AS setor_atual,
                     a.modulo_origem,
