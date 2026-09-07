@@ -105,8 +105,16 @@ final class PersonRegistryRepository
                 'cpf' => $cpf,
                 'nis' => $this->nullable($person['nis'] ?? null),
                 'rg' => $this->nullable($person['rg'] ?? null),
+                'rg_emissao' => $this->nullable($person['rg_emissao'] ?? null),
+                'rg_uf' => $this->upperNullable($person['rg_uf'] ?? null, 2),
                 'data_nascimento' => $this->nullable($person['data_nascimento'] ?? null),
+                'genero' => $this->nullable($person['genero'] ?? null),
+                'cor_raca' => $this->nullable($person['cor_raca'] ?? null),
+                'estado_civil' => $this->nullable($person['estado_civil'] ?? null),
+                'naturalidade' => $this->nullable($person['naturalidade'] ?? null),
+                'nacionalidade' => $this->nullable($person['nacionalidade'] ?? null),
                 'telefone' => $this->nullable($person['telefone'] ?? null),
+                'whatsapp' => $this->nullable($person['whatsapp'] ?? null),
                 'email' => $this->nullable($person['email'] ?? null),
                 'usuario_id' => $userId,
             ];
@@ -114,11 +122,13 @@ final class PersonRegistryRepository
             if ($personId <= 0) {
                 $insert = $this->pdo->prepare(
                     'INSERT INTO pessoas
-                        (nome, cpf, nis, rg, data_nascimento, telefone, email,
-                         status, criado_por, atualizado_por)
+                        (nome, cpf, nis, rg, rg_emissao, rg_uf, data_nascimento,
+                         genero, cor_raca, estado_civil, naturalidade, nacionalidade,
+                         telefone, whatsapp, email, status, criado_por, atualizado_por)
                      VALUES
-                        (:nome, :cpf, :nis, :rg, :data_nascimento, :telefone, :email,
-                         \'ativo\', :usuario_id, :usuario_id)'
+                        (:nome, :cpf, :nis, :rg, :rg_emissao, :rg_uf, :data_nascimento,
+                         :genero, :cor_raca, :estado_civil, :naturalidade, :nacionalidade,
+                         :telefone, :whatsapp, :email, \'ativo\', :usuario_id, :usuario_id)'
                 );
                 $insert->execute($personParams);
                 $personId = (int) $this->pdo->lastInsertId();
@@ -130,8 +140,16 @@ final class PersonRegistryRepository
                      SET nome = :nome,
                          nis = COALESCE(:nis, nis),
                          rg = COALESCE(:rg, rg),
+                         rg_emissao = COALESCE(:rg_emissao, rg_emissao),
+                         rg_uf = COALESCE(:rg_uf, rg_uf),
                          data_nascimento = COALESCE(:data_nascimento, data_nascimento),
+                         genero = COALESCE(:genero, genero),
+                         cor_raca = COALESCE(:cor_raca, cor_raca),
+                         estado_civil = COALESCE(:estado_civil, estado_civil),
+                         naturalidade = COALESCE(:naturalidade, naturalidade),
+                         nacionalidade = COALESCE(:nacionalidade, nacionalidade),
                          telefone = COALESCE(:telefone, telefone),
+                         whatsapp = COALESCE(:whatsapp, whatsapp),
                          email = COALESCE(:email, email),
                          atualizado_por = :usuario_id
                      WHERE id = :id'
@@ -220,6 +238,12 @@ final class PersonRegistryRepository
     {
         $value = trim((string) ($value ?? ''));
         return $value === '' ? null : $value;
+    }
+
+    private function upperNullable(mixed $value, int $limit): ?string
+    {
+        $value = $this->nullable($value);
+        return $value === null ? null : mb_substr(mb_strtoupper($value), 0, $limit);
     }
 
     private function nullableDecimal(mixed $value): ?string
