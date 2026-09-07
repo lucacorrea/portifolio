@@ -55,3 +55,6 @@ jobs:
 
       - name: Individual access and journey regression
         run: php sigas/tests/individual-access-journey-test.php
+
+      - name: Operational program front regression
+        run: php sigas/tests/operational-program-front-test.php
