@@ -69,6 +69,40 @@ final class PermissionRepository
         }
     }
 
+    /**
+     * Retorna a decisão individual para uma permissão.
+     * null = herda do nível; true = libera; false = bloqueia.
+     *
+     * Bases ainda sem a migration nova preservam o comportamento por nível.
+     */
+    public function userPermissionOverride(int $userId, string $permissionSlug): ?bool
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                'SELECT upe.permitido
+                 FROM usuario_permissao_excecoes upe
+                 INNER JOIN permissoes p ON p.id = upe.permissao_id
+                 WHERE upe.usuario_id = :usuario_id
+                   AND p.slug = :slug
+                   AND p.ativo = 1
+                 LIMIT 1'
+            );
+            $stmt->execute([
+                'usuario_id' => $userId,
+                'slug' => $permissionSlug,
+            ]);
+            $value = $stmt->fetchColumn();
+
+            return $value === false ? null : (bool) $value;
+        } catch (PDOException $exception) {
+            Logger::application('Individual permission override unavailable.', [
+                'repository' => self::class,
+                'code' => $exception->getCode(),
+            ]);
+            return null;
+        }
+    }
+
     /** @param array<string, mixed> $params */
     private function findOne(string $where, array $params): ?Permission
     {
