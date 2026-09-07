@@ -187,8 +187,27 @@ function sigas_operational_visible_pages(string $moduleKey): array
 }
 
 /**
- * Remove ações de cabeçalho que levam para páginas que o usuário não pode abrir.
- * Botões sem href são removidos quando a página atual não admite mutação.
+ * Atalhos de cabeçalho que substituem o antigo botão genérico "Nova ação".
+ * A rota continua passando pelo mesmo backend de autorização da página-alvo.
+ *
+ * @return array<string,array<string,array{page:string,label:string,icon:string}>>
+ */
+function sigas_operational_header_shortcuts(): array
+{
+    return [
+        'kit-maternidade' => [
+            'beneficiarias' => ['page' => 'cadastro', 'label' => 'Cadastrar gestante', 'icon' => 'person-plus'],
+        ],
+        'aluguel-social' => [
+            'beneficiarios' => ['page' => 'solicitacoes', 'label' => 'Nova solicitação', 'icon' => 'house-add'],
+        ],
+    ];
+}
+
+/**
+ * Remove ações que apontam para áreas sem permissão e converte atalhos genéricos
+ * em links reais para páginas internas. Relatórios continuam permitindo ações
+ * frontais de geração/exportação por serem operações de consulta.
  *
  * @param array<string,mixed> $pageDefinition
  * @return array<string,mixed>
@@ -206,17 +225,35 @@ function sigas_operational_filter_page_definition(
 
     $visiblePages = array_fill_keys(sigas_operational_visible_pages($moduleKey), true);
     $canMutateCurrentPage = sigas_operational_can_mutate($moduleKey, $pageKey);
+    $shortcut = sigas_operational_header_shortcuts()[$moduleKey][$pageKey] ?? null;
+
+    if (is_array($shortcut) && isset($visiblePages[(string) $shortcut['page']])) {
+        foreach ($pageDefinition['actions'] as &$action) {
+            if (!is_array($action) || trim((string) ($action['href'] ?? '')) !== '') {
+                continue;
+            }
+            if (mb_strtolower(trim((string) ($action['label'] ?? ''))) !== 'nova ação') {
+                continue;
+            }
+
+            $action['label'] = $shortcut['label'];
+            $action['icon'] = $shortcut['icon'];
+            $action['href'] = 'setor.php?ambiente=' . rawurlencode($moduleKey)
+                . '&pagina=' . rawurlencode((string) $shortcut['page']);
+        }
+        unset($action);
+    }
 
     $pageDefinition['actions'] = array_values(array_filter(
         $pageDefinition['actions'],
-        static function ($action) use ($moduleKey, $visiblePages, $canMutateCurrentPage): bool {
+        static function ($action) use ($moduleKey, $pageKey, $visiblePages, $canMutateCurrentPage): bool {
             if (!is_array($action)) {
                 return false;
             }
 
             $href = trim((string) ($action['href'] ?? ''));
             if ($href === '') {
-                return $canMutateCurrentPage;
+                return $canMutateCurrentPage || $pageKey === 'relatorios';
             }
 
             $query = parse_url($href, PHP_URL_QUERY);
