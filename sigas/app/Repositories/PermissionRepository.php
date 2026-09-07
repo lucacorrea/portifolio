@@ -103,6 +103,56 @@ final class PermissionRepository
         }
     }
 
+    public function permissionModule(string $permissionSlug): ?string
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                'SELECT modulo
+                 FROM permissoes
+                 WHERE slug = :slug AND ativo = 1
+                 LIMIT 1'
+            );
+            $stmt->execute(['slug' => $permissionSlug]);
+            $value = $stmt->fetchColumn();
+            if ($value === false) {
+                return null;
+            }
+            $module = trim((string) $value);
+            return $module === '' ? null : $module;
+        } catch (PDOException $exception) {
+            throw $this->fail('permissionModule', 'Falha ao identificar o módulo da permissão.', $exception);
+        }
+    }
+
+    /**
+     * Exceção de módulo é consultada também durante uma autorização de API.
+     * Um bloqueio explícito do módulo sempre vence qualquer permissão interna.
+     */
+    public function userModuleOverride(int $userId, string $publicModuleKey): ?bool
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                'SELECT permitido
+                 FROM usuario_modulo_excecoes
+                 WHERE usuario_id = :usuario_id
+                   AND modulo = :modulo
+                 LIMIT 1'
+            );
+            $stmt->execute([
+                'usuario_id' => $userId,
+                'modulo' => $publicModuleKey,
+            ]);
+            $value = $stmt->fetchColumn();
+            return $value === false ? null : (bool) $value;
+        } catch (PDOException $exception) {
+            Logger::application('Individual module override unavailable during permission check.', [
+                'repository' => self::class,
+                'code' => $exception->getCode(),
+            ]);
+            return null;
+        }
+    }
+
     /** @param array<string, mixed> $params */
     private function findOne(string $where, array $params): ?Permission
     {
