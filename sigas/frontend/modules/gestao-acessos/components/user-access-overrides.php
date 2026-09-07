@@ -40,7 +40,7 @@ $individualAccessLocked = !empty($isSelf) || !empty($accessProfile['protected'])
             <i class="bi bi-info-circle mt-1"></i>
             <div>
                 <strong>Como funciona</strong>
-                <div class="small text-secondary">Herdar mantém a regra normal. Liberar cria uma exceção positiva apenas para esta pessoa. Bloquear cria uma exceção negativa apenas para esta pessoa.</div>
+                <div class="small text-secondary">Herdar mantém a regra normal. Liberar o módulo permite a entrada e a visualização básica apenas para esta pessoa. Cadastrar, editar, importar, excluir e outras ações continuam obedecendo ao nível ou às exceções individuais configuradas abaixo. Bloquear o módulo nega todas as ações internas.</div>
             </div>
         </div>
     <?php endif; ?>
@@ -71,7 +71,7 @@ $individualAccessLocked = !empty($isSelf) || !empty($accessProfile['protected'])
                     <div class="row g-3 align-items-end mb-3">
                         <div class="col-12 col-lg-7">
                             <label class="form-label fw-semibold" for="moduleOverride-<?= sigas_frontend_escape($moduleKey) ?>">Acesso ao módulo</label>
-                            <div class="form-text mt-0">Esta decisão é aplicada além da permissão <code>*.visualizar</code>.</div>
+                            <div class="form-text mt-0">Liberar individualmente concede a entrada e a visualização básica do módulo. As demais ações permanecem separadas abaixo.</div>
                         </div>
                         <div class="col-12 col-lg-5">
                             <select
