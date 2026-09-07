@@ -24,6 +24,54 @@ $menuPageKey = isset($menuPageKey) && is_string($menuPageKey)
 $menuPages = $menuEnvironment['pages'];
 
 /*
+ * Rotas públicas dos módulos independentes.
+ *
+ * O ModuleRegistry continua sendo a fonte das páginas e o setor.php continua
+ * funcionando como rota legada. Para os módulos que possuem pasta pública,
+ * a navegação visual permanece dentro da própria pasta.
+ */
+$folderModuleHomes = [
+    'kit-maternidade' => 'kit-maternidade/index.php',
+    'aluguel-social' => 'aluguel-social/index.php',
+    'beneficios-eventuais' => 'beneficios-eventuais/index.php',
+];
+
+$governanceRoutes = [
+    'painel' => 'governanca-acessos/index.php',
+    'usuarios' => 'governanca-acessos/usuarios.php',
+    'cargos' => 'governanca-acessos/cargos.php',
+    'perfis' => 'governanca-acessos/perfis.php',
+    'permissoes' => 'governanca-acessos/permissoes.php',
+    'setores' => 'governanca-acessos/setores.php',
+    'matriz-acesso' => 'governanca-acessos/matriz-acesso.php',
+    'auditoria' => 'governanca-acessos/auditoria.php',
+    'sessoes' => 'governanca-acessos/sessoes.php',
+];
+
+$menuHref = static function (array $navigationPage) use ($menuEnvironmentKey, $folderModuleHomes, $governanceRoutes): string {
+    $pageKeyValue = (string) ($navigationPage['key'] ?? '');
+
+    if ($menuEnvironmentKey === 'gestao-acessos' && isset($governanceRoutes[$pageKeyValue])) {
+        return $governanceRoutes[$pageKeyValue];
+    }
+
+    if (isset($folderModuleHomes[$menuEnvironmentKey])) {
+        $home = $folderModuleHomes[$menuEnvironmentKey];
+        return $pageKeyValue === 'painel'
+            ? $home
+            : $home . '?pagina=' . rawurlencode($pageKeyValue);
+    }
+
+    return (string) ($navigationPage['href'] ?? 'portal.php');
+};
+
+$menuHomeHref = isset($folderModuleHomes[$menuEnvironmentKey])
+    ? $folderModuleHomes[$menuEnvironmentKey]
+    : ($menuEnvironmentKey === 'gestao-acessos'
+        ? $governanceRoutes['painel']
+        : (string) $menuEnvironment['home']);
+
+/*
  * Filtro visual opcional por módulo.
  *
  * O registro do ModuleRegistry continua sendo a fonte completa de navegação.
@@ -50,7 +98,7 @@ if ($menuSurface === 'mobile') {
         <?php foreach (array_filter($menuPages, static fn (array $item): bool => (bool) $item['mobile']) as $navigationPage): ?>
             <a
                 class="module-nav-link<?= $navigationPage['key'] === $menuPageKey ? ' active' : '' ?>"
-                href="<?= sigas_frontend_escape($navigationPage['href']) ?>"
+                href="<?= sigas_frontend_escape($menuHref($navigationPage)) ?>"
                 <?= $navigationPage['key'] === $menuPageKey ? 'aria-current="page"' : '' ?>
             >
                 <i class="bi bi-<?= sigas_frontend_escape($navigationPage['icon']) ?>"></i>
@@ -77,7 +125,7 @@ if ($menuSurface !== 'sidebar') {
     aria-label="Menu de <?= sigas_frontend_escape($menuEnvironment['name']) ?>"
 >
     <div class="module-sidebar-head">
-        <a class="module-brand" href="<?= sigas_frontend_escape($menuEnvironment['home']) ?>">
+        <a class="module-brand" href="<?= sigas_frontend_escape($menuHomeHref) ?>">
             <i class="bi bi-<?= sigas_frontend_escape($menuEnvironment['icon']) ?>"></i>
             <span>
                 <small><?= $menuEnvironment['kind'] === 'module' ? 'Módulo SIGAS' : 'Setor SEMAS' ?></small>
@@ -92,7 +140,7 @@ if ($menuSurface !== 'sidebar') {
         <?php foreach ($menuPages as $navigationPage): ?>
             <a
                 class="module-nav-link<?= $navigationPage['key'] === $menuPageKey ? ' active' : '' ?>"
-                href="<?= sigas_frontend_escape($navigationPage['href']) ?>"
+                href="<?= sigas_frontend_escape($menuHref($navigationPage)) ?>"
                 <?= $navigationPage['key'] === $menuPageKey ? 'aria-current="page"' : '' ?>
             >
                 <i class="bi bi-<?= sigas_frontend_escape($navigationPage['icon']) ?>"></i>
@@ -101,6 +149,6 @@ if ($menuSurface !== 'sidebar') {
         <?php endforeach; ?>
     </nav>
     <div class="module-sidebar-footer">
-        <a class="module-switch-link" href="portal.php"><i class="bi bi-grid"></i>Trocar setor ou módulo</a>
+        <a class="module-switch-link" href="portal.php"><i class="bi bi-grid"></i>Trocar módulo</a>
     </div>
 </aside>
