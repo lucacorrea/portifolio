@@ -89,7 +89,10 @@ final class PersonRegistryRepository
             throw new RepositoryException('Nome da pessoa é obrigatório.');
         }
 
-        $this->pdo->beginTransaction();
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) {
+            $this->pdo->beginTransaction();
+        }
 
         try {
             $lock = $this->pdo->prepare('SELECT id FROM pessoas WHERE cpf = :cpf LIMIT 1 FOR UPDATE');
@@ -137,11 +140,13 @@ final class PersonRegistryRepository
             }
 
             $familyId = $this->saveFamily($personId, $family, $userId);
-            $this->pdo->commit();
+            if ($ownsTransaction) {
+                $this->pdo->commit();
+            }
 
             return ['person_id' => $personId, 'family_id' => $familyId, 'created' => $created];
         } catch (Throwable $exception) {
-            if ($this->pdo->inTransaction()) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
             }
             if ($exception instanceof RepositoryException) {
@@ -222,10 +227,16 @@ final class PersonRegistryRepository
         if ($value === null || trim((string) $value) === '') {
             return null;
         }
-        $normalized = str_replace(['.', ','], ['', '.'], trim((string) $value));
-        if (!is_numeric($normalized)) {
-            return null;
+
+        $raw = trim((string) $value);
+        if (str_contains($raw, ',') && str_contains($raw, '.')) {
+            $raw = str_replace('.', '', $raw);
+            $raw = str_replace(',', '.', $raw);
+        } elseif (str_contains($raw, ',')) {
+            $raw = str_replace(',', '.', $raw);
         }
-        return number_format((float) $normalized, 2, '.', '');
+        $raw = preg_replace('/[^0-9.\-]/', '', $raw) ?? '';
+
+        return is_numeric($raw) ? number_format((float) $raw, 2, '.', '') : null;
     }
 }
