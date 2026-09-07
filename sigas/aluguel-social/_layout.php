@@ -7,6 +7,7 @@ use App\Core\PageContext;
 
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/frontend/support/operational-program-access.php';
+require_once dirname(__DIR__) . '/frontend/support/operational-program-front.php';
 
 if (!isset($pageKey) || !is_string($pageKey) || trim($pageKey) === '') {
     throw new RuntimeException('A página do módulo não foi informada.');
@@ -65,6 +66,7 @@ if (!is_array($pageDefinition)) {
 }
 
 $pageDefinition = sigas_operational_filter_page_definition($environmentKey, $pageKey, $pageDefinition);
+$pageDefinition = sigas_operational_front_enhance($environmentKey, $pageKey, $pageDefinition);
 $menuVisiblePageKeys = sigas_operational_visible_pages($environmentKey);
 
 $pageExtraStyles[] = 'assets/css/modules/operational-programs.css';
