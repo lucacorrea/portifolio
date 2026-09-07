@@ -7,6 +7,30 @@ use App\Core\PageContext;
 require_once __DIR__ . '/bootstrap.php';
 
 $frontendContext = PageContext::requireAuthenticatedFrontendContext();
+
+// O portal principal passa a exibir somente módulos operacionais independentes.
+// Os antigos ambientes setoriais permanecem registrados para compatibilidade
+// com rotas e funcionalidades legadas, mas não são mais cards de entrada.
+$frontendContext['navigation'] = array_filter(
+    $frontendContext['navigation'] ?? [],
+    static fn (array $environment): bool => ($environment['kind'] ?? null) === 'module'
+);
+
+$moduleDescriptions = [
+    'kit-maternidade' => 'Acompanha gestantes desde o cadastro e triagem até visitas, avaliação, entrega do kit e pós-parto.',
+    'aluguel-social' => 'Gerencia solicitações, vistorias, pareceres, concessões, pagamentos e reavaliações do benefício.',
+    'beneficios-eventuais' => 'Organiza solicitações, triagens, análises, concessões e entregas dos Benefícios Eventuais.',
+    'gestao-acessos' => 'Administra usuários, cargos, perfis, permissões, setores, sessões e auditoria de acessos do SIGAS.',
+    'comida-mesa' => 'Gerencia inscrições, beneficiários, competências, polos, documentos e entregas do programa Comida na Mesa.',
+    'primeiro-emprego' => 'Acompanha candidatos, vagas, parceiros, encaminhamentos, frequência, bolsas, capacitações e resultados do programa.',
+];
+
+foreach ($frontendContext['navigation'] as $moduleKey => &$module) {
+    if (isset($moduleDescriptions[$moduleKey])) {
+        $module['description'] = $moduleDescriptions[$moduleKey];
+    }
+}
+unset($module);
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -38,11 +62,11 @@ $frontendContext = PageContext::requireAuthenticatedFrontendContext();
         </header>
 
         <section class="portal-welcome" aria-labelledby="portalTitle">
-            <div><span class="eyebrow"><i class="bi bi-grid-1x2"></i>Ambiente de trabalho</span><h1 id="portalTitle">Escolha um setor ou módulo para continuar</h1><p data-portal-sector>Os ambientes disponíveis são definidos conforme o seu perfil e vínculos institucionais.</p></div>
+            <div><span class="eyebrow"><i class="bi bi-grid-1x2"></i>Ambiente de trabalho</span><h1 id="portalTitle">Escolha um módulo para continuar</h1><p data-portal-sector>Os módulos disponíveis são liberados conforme seu perfil, setor e permissões.</p></div>
             <div class="portal-version"><i class="bi bi-shield-check"></i><span>Ambiente institucional<br><strong>SIGAS Coari v1.1</strong></span></div>
         </section>
 
-        <section id="modulos" aria-labelledby="modulesTitle"><div class="portal-section-heading"><div><h2 id="modulesTitle">Setores e módulos disponíveis</h2><p>Os quatro primeiros cards são setores organizadores da SEMAS; os dois últimos são módulos independentes.</p></div><span class="status-badge status-info"><i class="bi bi-info-circle"></i>Estrutura visual</span></div><div class="module-card-grid" id="moduleCards" aria-live="polite"></div></section>
+        <section id="modulos" aria-labelledby="modulesTitle"><div class="portal-section-heading"><div><h2 id="modulesTitle">Módulos disponíveis</h2><p>Cada módulo possui ambiente, fluxo, navegação e permissões próprios.</p></div><span class="status-badge status-info"><i class="bi bi-grid"></i>Módulos independentes</span></div><div class="module-card-grid" id="moduleCards" aria-live="polite"></div></section>
     </main>
     <?= PageContext::script($frontendContext) ?>
     <script src="assets/js/module-portal.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/module-portal.js') ?>"></script>

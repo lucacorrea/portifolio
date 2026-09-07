@@ -9,7 +9,17 @@ use App\Repositories\ModuleAccessRepository;
 
 final class ModuleAccessService
 {
+    /**
+     * Permissao minima exigida para entrar em cada modulo operacional.
+     *
+     * A liberacao por setor ou por excecao individual nunca substitui a
+     * permissao funcional do usuario. As duas regras precisam ser satisfeitas.
+     * Governanca permanece restrita a Administrador e Suporte em canAccess().
+     */
     private const MODULE_PERMISSIONS = [
+        'kit-maternidade' => 'kit_maternidade.visualizar',
+        'aluguel-social' => 'aluguel_social.visualizar',
+        'beneficios-eventuais' => 'beneficios_eventuais.visualizar',
         'comida-mesa' => 'comida_mesa.visualizar',
         'primeiro-emprego' => 'primeiro_emprego.visualizar',
     ];
@@ -30,6 +40,7 @@ final class ModuleAccessService
             return true;
         }
 
+        // Modulo critico: somente perfis administrativos globais podem entrar.
         if ($module === 'gestao-acessos') {
             return false;
         }
