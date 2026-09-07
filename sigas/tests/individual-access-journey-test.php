@@ -201,6 +201,7 @@ $authorization = file_get_contents($root . '/app/Services/AuthorizationService.p
 $governancePage = file_get_contents($root . '/frontend/modules/gestao-acessos/pages/usuarios.php') ?: '';
 $governanceComponent = file_get_contents($root . '/frontend/modules/gestao-acessos/components/user-access-overrides.php') ?: '';
 $journeyPage = file_get_contents($root . '/historico-pessoa.php') ?: '';
+$journeyRepository = file_get_contents($root . '/app/Repositories/PersonJourneyRepository.php') ?: '';
 $comidaSave = file_get_contents($root . '/api/comida-mesa/salvar-cadastro.php') ?: '';
 $peJourney = file_get_contents($root . '/frontend/modules/primeiro-emprego/lib/person-journey.php') ?: '';
 $peNewCandidate = file_get_contents($root . '/frontend/modules/primeiro-emprego/pages/novo-candidato.php') ?: '';
@@ -209,7 +210,13 @@ foreach (['usuario_permissao_excecoes', 'pessoa_atendimentos', 'pessoa_movimenta
     iaj_assert(str_contains($migration, $table), 'migration deve criar/usar ' . $table);
 }
 
-iaj_assert(str_contains($migration, 'ADD COLUMN IF NOT EXISTS pessoa_id'), 'Primeiro Emprego deve ganhar vínculo com pessoa central');
+iaj_assert(str_contains($migration, 'information_schema.COLUMNS'), 'migration deve validar coluna existente de forma idempotente no MariaDB');
+iaj_assert(str_contains($migration, 'information_schema.STATISTICS'), 'migration deve validar índice existente de forma idempotente no MariaDB');
+iaj_assert(str_contains($migration, 'fk_pe_candidatos_pessoa'), 'Primeiro Emprego deve possuir FK para a pessoa central');
+iaj_assert(!str_contains($migration, 'START TRANSACTION'), 'migration com DDL não deve simular rollback transacional no MariaDB');
+iaj_assert(str_contains($migration, 'HAVING COUNT(*) = 1'), 'backfill deve vincular somente CPF único entre candidatos');
+iaj_assert(str_contains($migration, 'COALESCE(c.revisao_cpf, 0) = 0'), 'backfill deve ignorar CPF em revisão');
+iaj_assert(str_contains($migration, 'COALESCE(c.cpf_duplicado, 0) = 0'), 'backfill deve ignorar CPF marcado como duplicado');
 iaj_assert(str_contains($authorization, '$user->setorId'), 'autorização efetiva deve considerar setor do usuário');
 iaj_assert(str_contains($governancePage, 'accessProfile'), 'Governança deve carregar perfil efetivo do usuário');
 iaj_assert(str_contains($governanceComponent, 'save_overrides'), 'Governança deve permitir salvar exceções individuais');
@@ -217,6 +224,11 @@ iaj_assert(str_contains($governanceComponent, 'Herdar do nível'), 'editor deve 
 iaj_assert(str_contains($journeyPage, "value=\"receber\""), 'trajetória deve permitir recebimento do encaminhamento');
 iaj_assert(str_contains($journeyPage, "value=\"encaminhar\""), 'trajetória deve permitir encaminhamento');
 iaj_assert(str_contains($journeyPage, "value=\"concluir\""), 'trajetória deve permitir conclusão');
+iaj_assert(str_contains($journeyPage, 'NULL AS nis, NULL AS telefone'), 'consulta transversal não deve carregar NIS/telefone para perfil operacional');
+iaj_assert(str_contains($journeyPage, "'Restrito'"), 'tela transversal deve indicar dados pessoais restritos ao perfil operacional');
+iaj_assert(str_contains($journeyPage, 'não pertence à pessoa consultada'), 'POST da trajetória deve vincular atendimento à pessoa consultada');
+iaj_assert(!str_contains($journeyPage, 'SELECT setor_atual_id FROM pessoa_atendimentos WHERE id = :id LIMIT 1'), 'tela não deve executar consulta N+1 por atendimento');
+iaj_assert(str_contains($journeyRepository, 'a.setor_atual_id'), 'consulta principal da trajetória deve trazer setor_atual_id');
 iaj_assert(str_contains($comidaSave, 'new PersonJourneyService'), 'Comida na Mesa deve iniciar trajetória ao cadastrar');
 iaj_assert(str_contains($peJourney, 'pe_link_person_and_start_journey'), 'Primeiro Emprego deve possuir integração com pessoa central');
 iaj_assert(str_contains($peNewCandidate, 'pe_link_person_and_start_journey'), 'triagem manual deve iniciar rastreabilidade');
