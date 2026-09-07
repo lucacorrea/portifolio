@@ -9,6 +9,7 @@ use App\Exceptions\AuthorizationException;
 use App\Repositories\AccessLevelRepository;
 use App\Repositories\AuditLogRepository;
 use App\Repositories\GovernanceUserAdminRepository;
+use App\Repositories\GovernanceUserOverrideRepository;
 use App\Repositories\PermissionRepository;
 use App\Repositories\SectorRepository;
 use App\Repositories\UserRepository;
@@ -17,6 +18,7 @@ use App\Services\AuditService;
 use App\Services\AuthService;
 use App\Services\AuthorizationService;
 use App\Services\GovernanceUserAdministrationService;
+use App\Services\GovernanceUserOverrideService;
 use App\Services\PermissionService;
 use App\Services\UserAdministrationPolicy;
 
@@ -51,6 +53,13 @@ function governance_optional_positive_int(mixed $value, string $field): ?int
     return (int) $parsed;
 }
 
+/** @return array<string,mixed> */
+function governance_post_array(string $key): array
+{
+    $value = $_POST[$key] ?? [];
+    return is_array($value) ? $value : [];
+}
+
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     governance_user_response(405, ['ok' => false, 'message' => 'Método não permitido.']);
 }
@@ -78,34 +87,55 @@ try {
         throw new InvalidArgumentException('Usuário inválido.');
     }
 
+    $permissionRepository = new PermissionRepository($pdo);
     $authorization = new AuthorizationService(
-        new PermissionService(new PermissionRepository($pdo)),
+        new PermissionService($permissionRepository),
         $levels
     );
     if (!$authorization->isAdministrator($operator) && !$authorization->isSupport($operator)) {
         throw new AuthorizationException('Acesso administrativo restrito à Governança e Acessos.');
     }
 
-    $policy = new UserAdministrationPolicy($authorization, $users);
-    $service = new GovernanceUserAdministrationService(
-        $users,
-        $sessions,
-        $sectors,
-        $levels,
-        $policy,
-        $authorization,
-        $audit,
-        new GovernanceUserAdminRepository($pdo)
-    );
+    $action = trim((string) ($_POST['acao'] ?? ''));
+    $reason = (string) ($_POST['motivo'] ?? '');
 
-    $result = $service->execute(
-        $operator,
-        trim((string) ($_POST['acao'] ?? '')),
-        (int) $targetUserId,
-        governance_optional_positive_int($_POST['setor_id'] ?? null, 'Setor'),
-        governance_optional_positive_int($_POST['nivel_id'] ?? null, 'Nível'),
-        (string) ($_POST['motivo'] ?? '')
-    );
+    if ($action === 'save_overrides') {
+        $service = new GovernanceUserOverrideService(
+            new GovernanceUserOverrideRepository($pdo),
+            $users,
+            $sessions,
+            $authorization,
+            $audit,
+        );
+        $result = $service->save(
+            $operator,
+            (int) $targetUserId,
+            governance_post_array('module_override'),
+            governance_post_array('permission_override'),
+            $reason,
+        );
+    } else {
+        $policy = new UserAdministrationPolicy($authorization, $users);
+        $service = new GovernanceUserAdministrationService(
+            $users,
+            $sessions,
+            $sectors,
+            $levels,
+            $policy,
+            $authorization,
+            $audit,
+            new GovernanceUserAdminRepository($pdo)
+        );
+
+        $result = $service->execute(
+            $operator,
+            $action,
+            (int) $targetUserId,
+            governance_optional_positive_int($_POST['setor_id'] ?? null, 'Setor'),
+            governance_optional_positive_int($_POST['nivel_id'] ?? null, 'Nível'),
+            $reason
+        );
+    }
 
     governance_user_response(200, [
         'ok' => true,
