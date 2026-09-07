@@ -195,6 +195,26 @@ iaj_assert(
     'setor ainda sem matriz configurada mantém fallback compatível'
 );
 
+$viewPermission = 'primeiro_emprego.visualizar';
+$service = iaj_service([], [], ['primeiro-emprego' => true], ['primeiro-emprego' => false]);
+iaj_assert(
+    $service->hasPermissionForUser(10, 3, 5, $viewPermission),
+    'liberação individual do módulo deve conceder automaticamente a visualização básica'
+);
+
+$internalPermission = 'primeiro_emprego.candidatos.cadastrar';
+$service = iaj_service([], [], ['primeiro-emprego' => true], ['primeiro-emprego' => false]);
+iaj_assert(
+    !$service->hasPermissionForUser(10, 3, 5, $internalPermission),
+    'liberação individual do módulo não deve conceder ações internas automaticamente'
+);
+
+$service = iaj_service([], [$viewPermission => false], ['primeiro-emprego' => true], ['primeiro-emprego' => false]);
+iaj_assert(
+    !$service->hasPermissionForUser(10, 3, 5, $viewPermission),
+    'negação explícita da permissão de visualização deve prevalecer sobre liberação do módulo'
+);
+
 $root = dirname(__DIR__);
 $migration = file_get_contents($root . '/database/migrations/20260907_015_acesso_individual_rastreabilidade_pessoas.sql') ?: '';
 $authorization = file_get_contents($root . '/app/Services/AuthorizationService.php') ?: '';
@@ -222,6 +242,7 @@ iaj_assert(str_contains($authorization, '$user->setorId'), 'autorização efetiv
 iaj_assert(str_contains($governancePage, 'accessProfile'), 'Governança deve carregar perfil efetivo do usuário');
 iaj_assert(str_contains($governanceComponent, 'save_overrides'), 'Governança deve permitir salvar exceções individuais');
 iaj_assert(str_contains($governanceComponent, 'Herdar do nível'), 'editor deve distinguir herança de exceção individual');
+iaj_assert(str_contains($governanceComponent, 'visualização básica'), 'editor deve explicar que liberar módulo concede entrada básica');
 iaj_assert(str_contains($journeyPage, "value=\"receber\""), 'trajetória deve permitir recebimento do encaminhamento');
 iaj_assert(str_contains($journeyPage, "value=\"encaminhar\""), 'trajetória deve permitir encaminhamento');
 iaj_assert(str_contains($journeyPage, "value=\"concluir\""), 'trajetória deve permitir conclusão');
