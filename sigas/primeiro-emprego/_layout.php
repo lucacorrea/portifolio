@@ -88,6 +88,10 @@ if (!is_file($view)) {
 
 require $view;
 
+// Ações de cabeçalho que apontam para áreas sem permissão nem chegam a ser
+// renderizadas. O JavaScript permanece apenas como uma segunda camada visual.
+$pageDefinition = pe_filter_page_definition($pageDefinition);
+
 $frontendContext['primeiroEmpregoAccess'] = pe_access_snapshot($pageKey);
 $extraStyles = isset($extraStyles) && is_array($extraStyles) ? $extraStyles : [];
 $extraScripts = isset($extraScripts) && is_array($extraScripts) ? $extraScripts : [];
