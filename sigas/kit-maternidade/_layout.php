@@ -78,6 +78,7 @@ $pageCustomContent .= $kitRuntime['custom'];
 $menuVisiblePageKeys = sigas_operational_visible_pages($environmentKey);
 
 $pageExtraStyles[] = 'assets/css/modules/operational-programs.css';
+$pageExtraStyles[] = 'assets/css/modules/kit-maternidade-flow.css';
 $pageExtraScripts[] = 'assets/js/modules/operational-programs.js';
 $pageExtraScripts[] = 'assets/js/modules/kit-maternidade-flow.js';
 
