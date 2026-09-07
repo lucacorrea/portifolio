@@ -5,8 +5,10 @@ declare(strict_types=1);
 use App\Core\PageContext;
 
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/frontend/support/operational-program-access.php';
 
 $frontendContext = PageContext::requireAuthenticatedFrontendContext();
+$canViewSocioeconomic = sigas_operational_can('socioeconomico.visualizar');
 
 // O portal principal passa a exibir somente módulos operacionais independentes.
 // Os antigos ambientes setoriais permanecem registrados para compatibilidade
@@ -70,6 +72,7 @@ unset($module);
             <div class="portal-section-heading">
                 <div><h2 id="modulesTitle">Módulos disponíveis</h2><p>Cada módulo possui ambiente, fluxo, navegação e permissões próprios.</p></div>
                 <div class="d-flex flex-wrap align-items-center gap-2">
+                    <?php if ($canViewSocioeconomic): ?><a class="btn btn-light btn-sm" href="prontuario-socioeconomico.php"><i class="bi bi-person-vcard"></i> Prontuário socioeconômico</a><?php endif; ?>
                     <a class="btn btn-light btn-sm" href="historico-pessoa.php"><i class="bi bi-signpost-split"></i> Trajetória da pessoa</a>
                     <span class="status-badge status-info"><i class="bi bi-grid"></i>Módulos independentes</span>
                 </div>
