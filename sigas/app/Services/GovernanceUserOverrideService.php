@@ -49,6 +49,9 @@ final class GovernanceUserOverrideService
         if (!$target instanceof User) {
             throw new InvalidArgumentException('Usuário não localizado.');
         }
+        if ($this->authorization->isAdministrator($target) || $this->authorization->isSupport($target)) {
+            throw new AuthorizationException('Contas Administrador e Suporte usam escopo global e não aceitam exceções individuais nesta tela.');
+        }
 
         $reason = trim($reason);
         if (mb_strlen($reason) < 5) {
@@ -81,7 +84,6 @@ final class GovernanceUserOverrideService
             $normalizedPermissions[$slug] = $this->normalizeState($state);
         }
 
-        // Permissões não enviadas pelo formulário voltam a herdar do nível.
         foreach (array_keys($allowedPermissionSlugs) as $slug) {
             if (!array_key_exists($slug, $normalizedPermissions)) {
                 $normalizedPermissions[$slug] = null;
