@@ -101,10 +101,7 @@ final class SocialRegistryService
         $person['nome'] = $name;
 
         if ($members !== []) {
-            $family['quantidade_membros'] = max(
-                (int) ($family['quantidade_membros'] ?? 0),
-                count($members) + 1
-            );
+            $family['quantidade_membros'] = max((int) ($family['quantidade_membros'] ?? 0), count($members) + 1);
         }
         $profile['quantidade_membros'] = max(1, (int) ($family['quantidade_membros'] ?? 1));
 
@@ -158,7 +155,13 @@ final class SocialRegistryService
                 'nome' => (string) ($person['name'] ?? ''),
                 'nis' => $person['nis'] ?? null,
                 'rg' => $person['rg'] ?? null,
+                'rg_emissao' => $person['rg_issued_at'] ?? null,
+                'rg_uf' => $person['rg_state'] ?? null,
                 'data_nascimento' => $person['birth_date'] ?? null,
+                'genero' => $person['gender'] ?? null,
+                'estado_civil' => $person['marital_status'] ?? null,
+                'naturalidade' => $person['birthplace'] ?? null,
+                'nacionalidade' => $person['nationality'] ?? null,
                 'telefone' => $person['phone'] ?? null,
             ],
             'family' => [
@@ -197,13 +200,7 @@ final class SocialRegistryService
     private function profileState(?array $profile): array
     {
         if (!is_array($profile)) {
-            return [
-                'exists' => false,
-                'state' => 'ausente',
-                'age_days' => null,
-                'needs_review' => true,
-                'label' => 'Formulário socioeconômico ainda não preenchido',
-            ];
+            return ['exists' => false, 'state' => 'ausente', 'age_days' => null, 'needs_review' => true, 'label' => 'Formulário socioeconômico ainda não preenchido'];
         }
 
         $date = (string) ($profile['data_entrevista'] ?? $profile['atualizado_em'] ?? $profile['criado_em'] ?? '');
@@ -216,9 +213,7 @@ final class SocialRegistryService
             'state' => $needsReview ? 'revisar' : 'atual',
             'age_days' => $ageDays,
             'needs_review' => $needsReview,
-            'label' => $needsReview
-                ? 'Prontuário existente; confira se os dados continuam atuais'
-                : 'Prontuário socioeconômico atualizado',
+            'label' => $needsReview ? 'Prontuário existente; confira se os dados continuam atuais' : 'Prontuário socioeconômico atualizado',
         ];
     }
 }
