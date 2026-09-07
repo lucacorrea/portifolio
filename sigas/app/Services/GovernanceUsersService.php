@@ -250,7 +250,7 @@ final class GovernanceUsersService
             'ativo' => 'Ativo',
             'pendente' => 'Pendente',
             'bloqueado' => 'Bloqueado',
-            'inativo', 'rejeitado' => 'Inativo',
+            'inativo' => 'Inativo',
             'rejeitado' => 'Rejeitado',
             default => $status !== '' ? ucfirst($status) : 'Não definido',
         };
