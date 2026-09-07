@@ -66,7 +66,16 @@ unset($module);
             <div class="portal-version"><i class="bi bi-shield-check"></i><span>Ambiente institucional<br><strong>SIGAS Coari v1.1</strong></span></div>
         </section>
 
-        <section id="modulos" aria-labelledby="modulesTitle"><div class="portal-section-heading"><div><h2 id="modulesTitle">Módulos disponíveis</h2><p>Cada módulo possui ambiente, fluxo, navegação e permissões próprios.</p></div><span class="status-badge status-info"><i class="bi bi-grid"></i>Módulos independentes</span></div><div class="module-card-grid" id="moduleCards" aria-live="polite"></div></section>
+        <section id="modulos" aria-labelledby="modulesTitle">
+            <div class="portal-section-heading">
+                <div><h2 id="modulesTitle">Módulos disponíveis</h2><p>Cada módulo possui ambiente, fluxo, navegação e permissões próprios.</p></div>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <a class="btn btn-light btn-sm" href="historico-pessoa.php"><i class="bi bi-signpost-split"></i> Trajetória da pessoa</a>
+                    <span class="status-badge status-info"><i class="bi bi-grid"></i>Módulos independentes</span>
+                </div>
+            </div>
+            <div class="module-card-grid" id="moduleCards" aria-live="polite"></div>
+        </section>
     </main>
     <?= PageContext::script($frontendContext) ?>
     <script src="assets/js/module-portal.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/module-portal.js') ?>"></script>
