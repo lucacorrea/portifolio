@@ -21,6 +21,12 @@ final class PermissionService
     /** @var array<string, bool|null> */
     private array $userModuleOverrideCache = [];
 
+    /** @var array<int,bool> */
+    private array $sectorConfigurationCache = [];
+
+    /** @var array<string,bool> */
+    private array $sectorModuleCache = [];
+
     public function __construct(private readonly PermissionRepository $permissions)
     {
     }
@@ -41,8 +47,8 @@ final class PermissionService
     }
 
     /**
-     * Regra efetiva de uma ação:
-     * 1. bloqueio individual explícito do módulo vence tudo;
+     * Regra efetiva de uma ação para usuário operacional:
+     * 1. módulo precisa estar efetivamente acessível (exceção individual ou setor);
      * 2. exceção individual da ação;
      * 3. na ausência dela, herança normal do nível.
      *
@@ -50,9 +56,13 @@ final class PermissionService
      * remove a barreira de entrada; as ações continuam dependentes do nível ou
      * de uma exceção positiva específica.
      */
-    public function hasPermissionForUser(int $userId, int $levelId, string $permission): bool
-    {
-        if ($this->isExplicitlyBlockedByModule($userId, $permission)) {
+    public function hasPermissionForUser(
+        int $userId,
+        int $levelId,
+        ?int $sectorId,
+        string $permission,
+    ): bool {
+        if (!$this->passesModuleBarrier($userId, $sectorId, $permission)) {
             return false;
         }
 
@@ -70,7 +80,7 @@ final class PermissionService
         return $this->hasPermission($levelId, $permission);
     }
 
-    private function isExplicitlyBlockedByModule(int $userId, string $permission): bool
+    private function passesModuleBarrier(int $userId, ?int $sectorId, string $permission): bool
     {
         if (!array_key_exists($permission, $this->permissionModuleCache)) {
             $this->permissionModuleCache[$permission] = $this->permissions->permissionModule($permission);
@@ -78,19 +88,43 @@ final class PermissionService
 
         $permissionModule = $this->permissionModuleCache[$permission];
         if ($permissionModule === null) {
-            return false;
+            return true;
         }
 
         $publicModule = AccessModuleCatalog::permissionModuleIndex()[$permissionModule] ?? null;
         if (!is_string($publicModule) || $publicModule === '') {
+            return true;
+        }
+
+        $userModuleKey = $userId . ':' . $publicModule;
+        if (!array_key_exists($userModuleKey, $this->userModuleOverrideCache)) {
+            $this->userModuleOverrideCache[$userModuleKey] = $this->permissions->userModuleOverride($userId, $publicModule);
+        }
+
+        $individualModuleRule = $this->userModuleOverrideCache[$userModuleKey];
+        if ($individualModuleRule !== null) {
+            return $individualModuleRule;
+        }
+
+        if ($sectorId === null || $sectorId <= 0) {
             return false;
         }
 
-        $cacheKey = $userId . ':' . $publicModule;
-        if (!array_key_exists($cacheKey, $this->userModuleOverrideCache)) {
-            $this->userModuleOverrideCache[$cacheKey] = $this->permissions->userModuleOverride($userId, $publicModule);
+        if (!array_key_exists($sectorId, $this->sectorConfigurationCache)) {
+            $this->sectorConfigurationCache[$sectorId] = $this->permissions->sectorHasModuleConfiguration($sectorId);
         }
 
-        return $this->userModuleOverrideCache[$cacheKey] === false;
+        // Compatibilidade histórica: setor sem matriz configurada não sofre
+        // bloqueio automático até que a governança configure sua matriz.
+        if (!$this->sectorConfigurationCache[$sectorId]) {
+            return true;
+        }
+
+        $sectorModuleKey = $sectorId . ':' . $publicModule;
+        if (!array_key_exists($sectorModuleKey, $this->sectorModuleCache)) {
+            $this->sectorModuleCache[$sectorModuleKey] = $this->permissions->sectorAllowsModule($sectorId, $publicModule);
+        }
+
+        return $this->sectorModuleCache[$sectorModuleKey];
     }
 }
