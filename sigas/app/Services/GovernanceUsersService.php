@@ -162,7 +162,7 @@ final class GovernanceUsersService
             $viewPermission = $definition['view_permission'];
             $baseViewAllowed = isset($levelPermissions[$viewPermission]);
             $viewOverride = array_key_exists($viewPermission, $permissionOverrides) ? $permissionOverrides[$viewPermission] : null;
-            $effectiveViewAllowed = $viewOverride ?? $baseViewAllowed;
+            $effectiveViewAllowed = $viewOverride ?? ($moduleOverride === true ? true : $baseViewAllowed);
             $permissionRows = [];
 
             foreach ($grouped[$moduleKey] ?? [] as $permission) {
@@ -170,15 +170,25 @@ final class GovernanceUsersService
                 if ($slug === '') {
                     continue;
                 }
+
                 $baseAllowed = isset($levelPermissions[$slug]);
                 $override = array_key_exists($slug, $permissionOverrides) ? $permissionOverrides[$slug] : null;
+                $actionAllowed = $override ?? $baseAllowed;
+
+                // Ao liberar individualmente o módulo, a permissão básica de visualização
+                // é concedida automaticamente. Uma negativa explícita da própria ação
+                // ainda prevalece sobre essa liberação.
+                if ($slug === $viewPermission && $override === null && $moduleOverride === true) {
+                    $actionAllowed = true;
+                }
+
                 $permissionRows[] = [
                     'slug' => $slug,
                     'label' => trim((string) ($permission['nome'] ?? $slug)),
                     'description' => trim((string) ($permission['descricao'] ?? '')),
                     'base_allowed' => $baseAllowed,
                     'override_state' => $this->stateLabel($override),
-                    'effective_allowed' => $override ?? $baseAllowed,
+                    'effective_allowed' => $effectiveModuleRule && $actionAllowed,
                 ];
             }
 
@@ -240,7 +250,7 @@ final class GovernanceUsersService
             'ativo' => 'Ativo',
             'pendente' => 'Pendente',
             'bloqueado' => 'Bloqueado',
-            'inativo' => 'Inativo',
+            'inativo', 'rejeitado' => 'Inativo',
             'rejeitado' => 'Rejeitado',
             default => $status !== '' ? ucfirst($status) : 'Não definido',
         };
