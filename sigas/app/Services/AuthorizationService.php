@@ -23,9 +23,17 @@ final class AuthorizationService
 
     public function can(User $user, string $permission): bool
     {
-        return $user->nivelId !== null
-            && $user->status->value === 'ativo'
-            && $this->permissions->hasPermissionForUser($user->id, $user->nivelId, $permission);
+        if ($user->nivelId === null || $user->status->value !== 'ativo') {
+            return false;
+        }
+
+        // Contas globais são deliberadamente imunes a exceções individuais.
+        // Isso reduz o risco de bloqueio administrativo acidental.
+        if ($this->isAdministrator($user) || $this->isSupport($user)) {
+            return $this->permissions->hasPermission($user->nivelId, $permission);
+        }
+
+        return $this->permissions->hasPermissionForUser($user->id, $user->nivelId, $permission);
     }
 
     public function requirePermission(User $user, string $permission): void
