@@ -212,6 +212,7 @@ foreach (['usuario_permissao_excecoes', 'pessoa_atendimentos', 'pessoa_movimenta
 
 iaj_assert(str_contains($migration, 'information_schema.COLUMNS'), 'migration deve validar coluna existente de forma idempotente no MariaDB');
 iaj_assert(str_contains($migration, 'information_schema.STATISTICS'), 'migration deve validar índice existente de forma idempotente no MariaDB');
+iaj_assert(str_contains($migration, 'idx_pessoa_atendimentos_fila_atual'), 'migration deve manter índice composto da fila operacional');
 iaj_assert(str_contains($migration, 'fk_pe_candidatos_pessoa'), 'Primeiro Emprego deve possuir FK para a pessoa central');
 iaj_assert(!str_contains($migration, 'START TRANSACTION'), 'migration com DDL não deve simular rollback transacional no MariaDB');
 iaj_assert(str_contains($migration, 'HAVING COUNT(*) = 1'), 'backfill deve vincular somente CPF único entre candidatos');
