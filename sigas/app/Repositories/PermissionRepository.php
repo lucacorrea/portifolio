@@ -153,6 +153,60 @@ final class PermissionRepository
         }
     }
 
+    /**
+     * Informa se o setor possui uma matriz explícita de módulos.
+     * Ausência da tabela/migration mantém o fallback histórico para não causar
+     * bloqueio generalizado durante uma publicação parcialmente atualizada.
+     */
+    public function sectorHasModuleConfiguration(?int $sectorId): bool
+    {
+        if ($sectorId === null || $sectorId <= 0) {
+            return false;
+        }
+
+        try {
+            $stmt = $this->pdo->prepare(
+                'SELECT 1
+                 FROM setor_modulos
+                 WHERE setor_id = :setor_id
+                 LIMIT 1'
+            );
+            $stmt->execute(['setor_id' => $sectorId]);
+            return (bool) $stmt->fetchColumn();
+        } catch (PDOException $exception) {
+            Logger::application('Sector module configuration unavailable during permission check.', [
+                'repository' => self::class,
+                'code' => $exception->getCode(),
+            ]);
+            return false;
+        }
+    }
+
+    public function sectorAllowsModule(int $sectorId, string $publicModuleKey): bool
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                'SELECT permitido
+                 FROM setor_modulos
+                 WHERE setor_id = :setor_id
+                   AND modulo = :modulo
+                 LIMIT 1'
+            );
+            $stmt->execute([
+                'setor_id' => $sectorId,
+                'modulo' => $publicModuleKey,
+            ]);
+            $value = $stmt->fetchColumn();
+            return $value !== false && (bool) $value;
+        } catch (PDOException $exception) {
+            Logger::application('Sector module rule unavailable during permission check.', [
+                'repository' => self::class,
+                'code' => $exception->getCode(),
+            ]);
+            return false;
+        }
+    }
+
     /** @param array<string, mixed> $params */
     private function findOne(string $where, array $params): ?Permission
     {
