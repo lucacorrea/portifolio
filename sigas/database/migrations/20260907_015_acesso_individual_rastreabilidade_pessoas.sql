@@ -1,6 +1,15 @@
 SET NAMES utf8mb4;
 
-START TRANSACTION;
+-- ============================================================================
+-- SIGAS | Acesso individual + rastreabilidade da pessoa
+-- Compatibilidade alvo: MariaDB 11.x
+--
+-- IMPORTANTE:
+-- DDL no MariaDB executa COMMIT implícito. Por isso esta migration não usa
+-- START TRANSACTION/COMMIT como se CREATE/ALTER TABLE fossem reversíveis.
+-- Todas as operações estruturais abaixo são idempotentes para permitir nova
+-- execução caso uma etapa posterior falhe.
+-- ============================================================================
 
 -- Exceções individuais de ações. O nível continua sendo a regra padrão;
 -- esta tabela registra somente diferenças explícitas para uma pessoa usuária.
@@ -56,6 +65,7 @@ CREATE TABLE IF NOT EXISTS pessoa_atendimentos (
     KEY idx_pessoa_atendimentos_setor_origem (setor_origem_id),
     KEY idx_pessoa_atendimentos_setor_atual (setor_atual_id),
     KEY idx_pessoa_atendimentos_modulo_atual (modulo_atual),
+    KEY idx_pessoa_atendimentos_fila_atual (setor_atual_id, modulo_atual, status),
     CONSTRAINT fk_pessoa_atendimentos_pessoa
         FOREIGN KEY (pessoa_id) REFERENCES pessoas(id)
         ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -104,21 +114,100 @@ CREATE TABLE IF NOT EXISTS pessoa_movimentacoes (
         ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Primeiro Emprego passa a poder apontar para a mesma pessoa central usada pelos
--- demais módulos. CPF inválido/ausente continua permitido e fica sem vínculo.
-ALTER TABLE pe_candidatos
-    ADD COLUMN IF NOT EXISTS pessoa_id BIGINT UNSIGNED NULL AFTER id;
+-- ============================================================================
+-- Primeiro Emprego -> pessoa central
+--
+-- Usamos information_schema em vez de depender de ADD COLUMN/INDEX IF NOT
+-- EXISTS. Isso deixa a reexecução previsível no MariaDB e também evita erro em
+-- ambientes onde a coluna/índice já tenham sido aplicados manualmente.
+-- ============================================================================
 
-CREATE INDEX IF NOT EXISTS idx_pe_candidatos_pessoa_id
-    ON pe_candidatos (pessoa_id);
+SET @sigas_has_pe_pessoa_column := (
+    SELECT COUNT(*)
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'pe_candidatos'
+      AND COLUMN_NAME = 'pessoa_id'
+);
+
+SET @sigas_sql := IF(
+    @sigas_has_pe_pessoa_column = 0,
+    'ALTER TABLE pe_candidatos ADD COLUMN pessoa_id BIGINT UNSIGNED NULL AFTER id',
+    'SELECT 1'
+);
+PREPARE sigas_stmt FROM @sigas_sql;
+EXECUTE sigas_stmt;
+DEALLOCATE PREPARE sigas_stmt;
+
+SET @sigas_has_pe_pessoa_index := (
+    SELECT COUNT(*)
+    FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'pe_candidatos'
+      AND INDEX_NAME = 'idx_pe_candidatos_pessoa_id'
+);
+
+SET @sigas_sql := IF(
+    @sigas_has_pe_pessoa_index = 0,
+    'ALTER TABLE pe_candidatos ADD INDEX idx_pe_candidatos_pessoa_id (pessoa_id)',
+    'SELECT 1'
+);
+PREPARE sigas_stmt FROM @sigas_sql;
+EXECUTE sigas_stmt;
+DEALLOCATE PREPARE sigas_stmt;
+
+SET @sigas_has_pe_pessoa_fk := (
+    SELECT COUNT(*)
+    FROM information_schema.TABLE_CONSTRAINTS
+    WHERE CONSTRAINT_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'pe_candidatos'
+      AND CONSTRAINT_NAME = 'fk_pe_candidatos_pessoa'
+      AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+);
+
+SET @sigas_sql := IF(
+    @sigas_has_pe_pessoa_fk = 0,
+    'ALTER TABLE pe_candidatos ADD CONSTRAINT fk_pe_candidatos_pessoa FOREIGN KEY (pessoa_id) REFERENCES pessoas(id) ON DELETE SET NULL ON UPDATE CASCADE',
+    'SELECT 1'
+);
+PREPARE sigas_stmt FROM @sigas_sql;
+EXECUTE sigas_stmt;
+DEALLOCATE PREPARE sigas_stmt;
+
+-- Backfill conservador.
+-- Só vincula automaticamente quando:
+-- 1) o CPF já está normalizado em 11 dígitos;
+-- 2) o candidato não está marcado para revisar CPF;
+-- 3) o candidato não está marcado como CPF duplicado;
+-- 4) esse CPF aparece uma única vez em pe_candidatos.
+-- Assim um conflito histórico nunca une duas pessoas por automação.
+DROP TEMPORARY TABLE IF EXISTS tmp_sigas_pe_cpf_unicos;
+CREATE TEMPORARY TABLE tmp_sigas_pe_cpf_unicos
+ENGINE=MEMORY
+AS
+SELECT cpf
+FROM pe_candidatos
+WHERE cpf IS NOT NULL
+  AND CHAR_LENGTH(cpf) = 11
+GROUP BY cpf
+HAVING COUNT(*) = 1;
+
+ALTER TABLE tmp_sigas_pe_cpf_unicos
+    ADD PRIMARY KEY (cpf);
 
 UPDATE pe_candidatos c
+INNER JOIN tmp_sigas_pe_cpf_unicos u ON u.cpf = c.cpf
 INNER JOIN pessoas p ON p.cpf = c.cpf
 SET c.pessoa_id = p.id
 WHERE c.pessoa_id IS NULL
-  AND c.cpf IS NOT NULL
-  AND CHAR_LENGTH(c.cpf) = 11;
+  AND COALESCE(c.revisao_cpf, 0) = 0
+  AND COALESCE(c.cpf_duplicado, 0) = 0;
 
+DROP TEMPORARY TABLE IF EXISTS tmp_sigas_pe_cpf_unicos;
+
+-- ============================================================================
+-- Governança
+-- ============================================================================
 INSERT INTO permissoes (nome, slug, descricao, modulo, ativo) VALUES
 (
     'Gerenciar exceções individuais de acesso',
@@ -138,5 +227,3 @@ SELECT n.id, p.id
 FROM niveis_acesso n
 INNER JOIN permissoes p ON p.slug = 'governanca.excecoes_usuario'
 WHERE n.slug IN ('administrador', 'suporte');
-
-COMMIT;
