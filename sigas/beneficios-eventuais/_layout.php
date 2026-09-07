@@ -6,11 +6,13 @@ use App\Config\ModuleRegistry;
 use App\Core\PageContext;
 
 require_once dirname(__DIR__) . '/bootstrap.php';
+require_once dirname(__DIR__) . '/frontend/support/operational-program-access.php';
 
-if (!isset($pageKey) || !is_string($pageKey) || $pageKey === '') {
+if (!isset($pageKey) || !is_string($pageKey) || trim($pageKey) === '') {
     throw new RuntimeException('A página do módulo não foi informada.');
 }
 
+$pageKey = trim($pageKey);
 $environmentKey = 'beneficios-eventuais';
 $baseHref = '../';
 $environment = ModuleRegistry::find($environmentKey);
@@ -28,7 +30,15 @@ $frontendContext = PageContext::requireAuthenticatedFrontendContext();
 if (!isset($frontendContext['navigation'][$environmentKey])) {
     http_response_code(403);
     $errorTitle = 'Acesso não autorizado';
-    $errorMessage = 'Seu perfil não possui acesso ao módulo Benefícios Eventuais.';
+    $errorMessage = 'Seu setor, nível ou exceção individual não permite acessar o módulo Benefícios Eventuais.';
+    require dirname(__DIR__) . '/frontend/layouts/error-layout.php';
+    return;
+}
+
+if (!sigas_operational_can_page($environmentKey, $pageKey)) {
+    http_response_code(403);
+    $errorTitle = 'Área não autorizada';
+    $errorMessage = 'Você possui acesso a Benefícios Eventuais, mas não tem permissão para esta área específica.';
     require dirname(__DIR__) . '/frontend/layouts/error-layout.php';
     return;
 }
@@ -54,8 +64,21 @@ if (!is_array($pageDefinition)) {
     throw new RuntimeException('A view de Benefícios Eventuais deve retornar uma definição de página.');
 }
 
+$pageDefinition = sigas_operational_filter_page_definition($environmentKey, $pageKey, $pageDefinition);
+$menuVisiblePageKeys = sigas_operational_visible_pages($environmentKey);
+
+$pageExtraStyles[] = 'assets/css/modules/operational-programs.css';
+$pageExtraScripts[] = 'assets/js/modules/operational-programs.js';
+
 $frontendContext['module'] = $environmentKey;
 $frontendContext['page'] = $pageKey;
+$frontendContext['operationalProgramAccess'] = [
+    'module' => $environmentKey,
+    'page' => $pageKey,
+    'canMutate' => sigas_operational_can_mutate($environmentKey, $pageKey),
+    'visiblePages' => $menuVisiblePageKeys,
+];
+
 $extraStyles = array_values(array_unique($pageExtraStyles));
 $extraScripts = array_values(array_unique($pageExtraScripts));
 
