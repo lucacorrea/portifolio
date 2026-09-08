@@ -11,12 +11,15 @@ use App\Config\ModuleRegistry;
 
 $root = dirname(__DIR__);
 $failures = [];
+$registry = ModuleRegistry::all();
 
 $assert = static function (bool $condition, string $message) use (&$failures): void {
     if (!$condition) {
         $failures[] = $message;
     }
 };
+
+$assert(count($registry) === 6, 'somente os seis módulos independentes devem possuir menu no catálogo');
 
 $renderMenu = static function (string $path, string $surface, string $activePage): string {
     $menuSurface = $surface;
@@ -26,8 +29,9 @@ $renderMenu = static function (string $path, string $surface, string $activePage
     return (string) ob_get_clean();
 };
 
-foreach (ModuleRegistry::all() as $environmentKey => $environment) {
+foreach ($registry as $environmentKey => $environment) {
     $menuPath = $root . '/' . $environment['menu'];
+    $assert(is_file($menuPath), "{$environmentKey}: menu próprio ausente");
 
     foreach ($environment['pages'] as $pageKey => $page) {
         $sidebar = $renderMenu($menuPath, 'sidebar', $pageKey);
@@ -48,33 +52,6 @@ foreach (ModuleRegistry::all() as $environmentKey => $environment) {
     $assert(str_contains($mobile, 'data-module-menu-toggle'), "{$environmentKey}: botão Mais ausente");
 }
 
-$publicFiles = [];
-
-foreach (ModuleRegistry::all() as $environmentKey => $environment) {
-    foreach ($environment['pages'] as $page) {
-        if ($page['target'] !== 'public') {
-            continue;
-        }
-
-        $path = parse_url((string) $page['href'], PHP_URL_PATH);
-
-        if (!is_string($path) || str_starts_with($path, 'primeiro-emprego/') || str_starts_with($path, 'comida-mesa/')) {
-            continue;
-        }
-
-        $publicFiles[$path] = $environmentKey;
-    }
-}
-
-foreach ($publicFiles as $path => $environmentKey) {
-    $source = file_get_contents($root . '/' . $path) ?: '';
-    $assert(str_contains($source, "/frontend/modules/{$environmentKey}/menu.php"), "{$path}: menu SSR do ambiente ausente");
-    $assert(str_contains($source, '/frontend/layouts/module-topbar.php'), "{$path}: topbar padrão ausente");
-    $assert(!str_contains($source, 'id="appSidebar"'), "{$path}: placeholder antigo de sidebar presente");
-    $assert(!str_contains($source, 'id="appTopbar"'), "{$path}: placeholder antigo de topbar presente");
-    $assert(!str_contains($source, 'id="bottomNavigation"'), "{$path}: placeholder antigo de navegação móvel presente");
-}
-
 foreach (['primeiro-emprego', 'comida-mesa'] as $modularEnvironment) {
     $layoutPath = $root . '/' . $modularEnvironment . '/_layout.php';
     $source = is_file($layoutPath) ? (file_get_contents($layoutPath) ?: '') : '';
@@ -83,9 +60,8 @@ foreach (['primeiro-emprego', 'comida-mesa'] as $modularEnvironment) {
     $assert(str_contains($source, 'ModuleRegistry::findPage'), "{$modularEnvironment}: registry de páginas ausente");
 }
 
-foreach (['registro.php', 'cadastro-anexo.php'] as $detailPath) {
-    $source = file_get_contents($root . '/' . $detailPath) ?: '';
-    $assert(str_contains($source, '/frontend/modules/protecao-social-basica/menu.php'), "{$detailPath}: contexto da Proteção Básica ausente");
+foreach (['pessoas.php', 'familias.php', 'atendimentos.php', 'cadastro-anexo.php', 'registro.php'] as $legacyPath) {
+    $assert(!is_file($root . '/' . $legacyPath), "página setorial legada não deve existir na raiz: {$legacyPath}");
 }
 
 $navigationScript = file_get_contents($root . '/assets/js/module-navigation.js') ?: '';
