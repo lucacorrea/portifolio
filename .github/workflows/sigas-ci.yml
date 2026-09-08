@@ -57,6 +57,7 @@ jobs:
           node --check sigas/assets/js/modules/gestao-acessos-matrix.js
           node --check sigas/assets/js/modules/gestao-acessos-levels.js
           node --check sigas/assets/js/modules/gestao-acessos-permissions.js
+          node --check sigas/assets/js/modules/gestao-acessos-sectors.js
 
       - name: Authorization level regression
         run: php sigas/tests/authorization-level-test.php
@@ -90,6 +91,9 @@ jobs:
 
       - name: Governance permissions regression
         run: php sigas/tests/governance-permissions-test.php
+
+      - name: Governance sectors regression
+        run: php sigas/tests/governance-sectors-test.php
 
       - name: Root structure regression
         run: php sigas/tests/root-structure-test.php
