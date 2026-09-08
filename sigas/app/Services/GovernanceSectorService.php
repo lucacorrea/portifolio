@@ -27,6 +27,7 @@ final class GovernanceSectorService
     {
         $moduleCatalog = AccessModuleCatalog::operational();
         $moduleRules = $this->repository->moduleRules();
+        $configuredSectors = array_fill_keys($this->repository->configuredSectorIds(), true);
         $rows = [];
         $active = 0;
         $inactive = 0;
@@ -37,10 +38,14 @@ final class GovernanceSectorService
             $isActive = (int) ($sector['ativo'] ?? 0) === 1;
             $sectorUsers = (int) ($sector['usuarios'] ?? 0);
             $slug = (string) ($sector['slug'] ?? '');
-            $allowed = array_values(array_filter(
-                $moduleRules[$sectorId] ?? [],
-                static fn (string $module): bool => isset($moduleCatalog[$module])
-            ));
+            $hasExplicitConfiguration = isset($configuredSectors[$sectorId]);
+            $allowed = $hasExplicitConfiguration
+                ? array_values(array_filter(
+                    $moduleRules[$sectorId] ?? [],
+                    static fn (string $module): bool => isset($moduleCatalog[$module])
+                ))
+                : array_keys($moduleCatalog);
+            sort($allowed, SORT_STRING);
 
             $users += $sectorUsers;
             $isActive ? $active++ : $inactive++;
@@ -53,6 +58,7 @@ final class GovernanceSectorService
                 'users' => $sectorUsers,
                 'active' => $isActive,
                 'protected' => in_array($slug, self::PROTECTED_SECTORS, true),
+                'configuration_mode' => $hasExplicitConfiguration ? 'explicit' : 'legacy_fallback',
                 'allowed_modules' => $allowed,
                 'allowed_module_labels' => array_values(array_map(
                     static fn (string $module): string => (string) ($moduleCatalog[$module]['label'] ?? $module),
@@ -127,7 +133,10 @@ final class GovernanceSectorService
         $current = $this->requireSector($sectorId);
         [$name, $description, $modules, $reason] = $this->normalize($name, $description, $modules, $reason);
 
-        $currentModules = $this->repository->moduleRules()[$sectorId] ?? [];
+        $configuredSectors = array_fill_keys($this->repository->configuredSectorIds(), true);
+        $currentModules = isset($configuredSectors[$sectorId])
+            ? ($this->repository->moduleRules()[$sectorId] ?? [])
+            : array_keys(AccessModuleCatalog::operational());
         sort($currentModules, SORT_STRING);
         $nextModules = $modules;
         sort($nextModules, SORT_STRING);
@@ -180,7 +189,7 @@ final class GovernanceSectorService
 
         return [
             'message' => $modulesChanged
-                ? 'Setor atualizado. As sessões dos usuários afetados foram renovadas para aplicar a nova matriz de módulos.'
+                ? 'Setor atualizado. As sessões dos usuários afetados foram encerradas para aplicar a nova matriz de módulos.'
                 : 'Setor atualizado com sucesso.',
             'affected_users' => (int) $result['affected_users'],
             'revoked_sessions' => (int) $result['revoked_sessions'],
