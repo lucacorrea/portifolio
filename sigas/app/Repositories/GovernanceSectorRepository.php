@@ -100,6 +100,23 @@ final class GovernanceSectorRepository
         }
     }
 
+    /** @return list<int> */
+    public function configuredSectorIds(): array
+    {
+        try {
+            $rows = $this->pdo->query(
+                'SELECT DISTINCT setor_id FROM setor_modulos ORDER BY setor_id'
+            )->fetchAll(PDO::FETCH_COLUMN);
+
+            return array_values(array_filter(
+                array_map('intval', is_array($rows) ? $rows : []),
+                static fn (int $id): bool => $id > 0
+            ));
+        } catch (PDOException $exception) {
+            throw $this->fail('configuredSectorIds', 'Falha ao consultar configuração dos setores.', $exception);
+        }
+    }
+
     public function slugExists(string $slug): bool
     {
         try {
