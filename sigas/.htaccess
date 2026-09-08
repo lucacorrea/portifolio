@@ -2,6 +2,18 @@ DirectoryIndex index.php index.html
 
 Options -Indexes
 
+RewriteEngine On
+
+# Compatibilidade de URLs antigas sem manter páginas PHP legadas na raiz.
+# Usamos 302 enquanto a arquitetura segue em evolução; os parâmetros de query
+# são preservados pelo Apache quando a substituição não define uma nova query.
+RewriteRule ^(?:pessoas|familias|cadastro-anexo|registro|integracao-semth)\.php$ prontuario-socioeconomico.php [R=302,L,NE]
+RewriteRule ^(?:atendimentos|solicitacoes)\.php$ historico-pessoa.php [R=302,L,NE]
+RewriteRule ^(?:beneficios|natalidade|funeral|outros)\.php$ beneficios-eventuais/ [R=302,L,NE]
+RewriteRule ^consulta-documento\.php$ comida-mesa/consulta-cpf.php [R=302,L,NE]
+RewriteRule ^modulo\.php$ comida-mesa/beneficiarios.php [R=302,L,NE]
+RewriteRule ^(?:cras1|cras2|creas|casa|cidadania|crianca|relatorios)\.php$ portal.php [R=302,L,NE]
+
 # Bloqueia arquivos ocultos (.env, .gitignore etc.).
 <FilesMatch "^\.">
     Require all denied
