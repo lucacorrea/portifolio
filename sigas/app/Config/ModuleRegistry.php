@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Config;
 
 /**
- * Fonte única da navegação visual. O registro não concede autorização.
+ * Fonte única da navegação visual dos módulos independentes do SIGAS.
+ *
+ * Setores como CRAS 1, CRAS 2 e CREAS pertencem à governança/tra trajetória
+ * da pessoa e não são módulos de navegação.
  */
 final class ModuleRegistry
 {
@@ -13,102 +16,11 @@ final class ModuleRegistry
     public static function all(): array
     {
         return [
-            'planejamento-gestao' => self::environment(
-                'planejamento-gestao',
-                'Planejamento e Gestão',
-                'diagram-3',
-                'planning',
-                'sector',
-                [
-                    'painel' => ['Painel', 'speedometer2'],
-                    'planos-acao' => ['Planos de ação', 'clipboard2-check'],
-                    'metas' => ['Metas', 'bullseye'],
-                    'cronogramas' => ['Cronogramas', 'calendar3'],
-                    'rede-unidades' => ['Rede de unidades', 'buildings'],
-                    'equipes' => ['Equipes', 'people'],
-                    'documentos' => ['Documentos', 'folder2-open'],
-                    'monitoramento' => ['Monitoramento', 'activity'],
-                    'relatorios' => ['Relatórios', 'bar-chart-line'],
-                    'configuracoes' => ['Configurações', 'gear'],
-                ],
-                ['painel', 'planos-acao', 'metas', 'cronogramas']
-            ),
-            'vigilancia-socioassistencial' => self::environment(
-                'vigilancia-socioassistencial',
-                'Vigilância Socioassistencial',
-                'bar-chart-steps',
-                'vigilance',
-                'sector',
-                [
-                    'painel' => ['Painel', 'speedometer2'],
-                    'indicadores' => ['Indicadores', 'graph-up-arrow'],
-                    'territorios' => ['Territórios', 'map'],
-                    'bairros-comunidades' => ['Bairros e comunidades', 'geo-alt'],
-                    'diagnosticos' => ['Diagnósticos', 'clipboard2-data'],
-                    'vulnerabilidades' => ['Vulnerabilidades', 'exclamation-diamond'],
-                    'busca-ativa' => ['Busca ativa', 'search'],
-                    'monitoramento' => ['Monitoramento', 'activity'],
-                    'mapas' => ['Mapas', 'pin-map'],
-                    'relatorios' => ['Relatórios', 'bar-chart-line'],
-                ],
-                ['painel', 'indicadores', 'territorios', 'busca-ativa']
-            ),
-            'protecao-social-basica' => self::environment(
-                'protecao-social-basica',
-                'Proteção Social Básica',
-                'house-heart',
-                'basic',
-                'sector',
-                [
-                    'painel' => ['Painel', 'speedometer2'],
-                    'pessoas-prontuarios' => ['Pessoas e prontuários', 'people', 'pessoas.php'],
-                    'familias' => ['Famílias', 'house-heart', 'familias.php'],
-                    'atendimentos' => ['Atendimentos', 'clipboard2-pulse', 'atendimentos.php'],
-                    'solicitacoes' => ['Solicitações', 'inboxes', 'solicitacoes.php'],
-                    'beneficios-eventuais' => ['Benefícios Eventuais', 'gift', 'beneficios.php'],
-                    'cras-1' => ['CRAS 1', 'geo-alt', 'cras1.php'],
-                    'cras-2' => ['CRAS 2', 'geo-alt', 'cras2.php'],
-                    'cadastro-unico' => ['Cadastro Único', 'person-vcard'],
-                    'bolsa-familia' => ['Bolsa Família', 'wallet2'],
-                    'crianca-feliz' => ['Criança Feliz', 'emoji-smile'],
-                    'bpc-escola' => ['BPC na Escola', 'mortarboard'],
-                    'centro-convivencia-idoso' => ['Centro de Convivência do Idoso', 'person-hearts'],
-                    'caic' => ['Centro de Atenção Integral à Criança — CAIC', 'building'],
-                    'darquilana-amorim' => ['Centro Integrado Darquilana Amorim', 'buildings'],
-                    'casa-cidadao' => ['Casa do Cidadão', 'house-door', 'casa.php'],
-                    'inss-digital' => ['INSS Digital', 'laptop'],
-                    'relatorios' => ['Relatórios', 'bar-chart-line', 'relatorios.php'],
-                ],
-                ['painel', 'pessoas-prontuarios', 'familias', 'atendimentos']
-            ),
-            'protecao-social-especial' => self::environment(
-                'protecao-social-especial',
-                'Proteção Social Especial',
-                'shield-check',
-                'special',
-                'sector',
-                [
-                    'painel' => ['Painel', 'speedometer2'],
-                    'creas' => ['CREAS', 'shield-check', 'creas.php'],
-                    'casa-acolhimento' => ['Casa de Acolhimento', 'house-lock'],
-                    'acompanhamentos-especializados' => ['Acompanhamentos especializados', 'clipboard2-pulse'],
-                    'violacoes-direitos' => ['Violações de direitos', 'exclamation-octagon'],
-                    'crianca-adolescente' => ['Criança e adolescente', 'emoji-smile'],
-                    'protecao-mulher' => ['Proteção à mulher', 'gender-female'],
-                    'pessoa-idosa' => ['Pessoa idosa', 'person-hearts'],
-                    'pessoa-deficiencia' => ['Pessoa com deficiência', 'universal-access'],
-                    'direitos-humanos' => ['Direitos Humanos', 'people'],
-                    'encaminhamentos' => ['Encaminhamentos', 'send'],
-                    'relatorios' => ['Relatórios', 'bar-chart-line'],
-                ],
-                ['painel', 'creas', 'acompanhamentos-especializados', 'encaminhamentos']
-            ),
             'kit-maternidade' => self::environment(
                 'kit-maternidade',
                 'Kit Maternidade',
                 'gift',
                 'kit',
-                'module',
                 [
                     'painel' => ['Painel', 'speedometer2'],
                     'beneficiarias' => ['Beneficiárias', 'person-hearts'],
@@ -127,7 +39,6 @@ final class ModuleRegistry
                 'Aluguel Social',
                 'house-check',
                 'housing',
-                'module',
                 [
                     'painel' => ['Painel', 'speedometer2'],
                     'beneficiarios' => ['Beneficiários', 'people'],
@@ -146,7 +57,6 @@ final class ModuleRegistry
                 'Benefícios Eventuais',
                 'gift-fill',
                 'benefits',
-                'module',
                 [
                     'painel' => ['Painel', 'speedometer2'],
                     'solicitacoes' => ['Solicitações', 'inboxes'],
@@ -164,7 +74,6 @@ final class ModuleRegistry
                 'Governança e Acessos',
                 'shield-lock',
                 'governance',
-                'module',
                 [
                     'painel' => ['Painel', 'speedometer2'],
                     'usuarios' => ['Usuários', 'people'],
@@ -183,7 +92,6 @@ final class ModuleRegistry
                 'Coari Comida na Mesa',
                 'basket2',
                 'food',
-                'module',
                 [
                     'painel' => ['Painel', 'speedometer2', 'comida-mesa/index.php'],
                     'beneficiarios' => ['Beneficiários', 'people', 'comida-mesa/beneficiarios.php'],
@@ -204,7 +112,6 @@ final class ModuleRegistry
                 'Coari Meu Primeiro Emprego',
                 'briefcase',
                 'employment',
-                'module',
                 [
                     'painel' => ['Painel', 'speedometer2', 'primeiro-emprego/index.php'],
                     'candidatos' => ['Candidatos', 'people', 'primeiro-emprego/candidatos.php'],
@@ -249,7 +156,6 @@ final class ModuleRegistry
         string $name,
         string $icon,
         string $theme,
-        string $kind,
         array $specs,
         array $mobilePages
     ): array {
@@ -271,22 +177,18 @@ final class ModuleRegistry
         }
 
         $first = array_key_first($pages);
-        $description = $kind === 'module'
-            ? 'Ambiente independente com fluxos e navegação próprios.'
-            : 'Ambiente próprio da SEMAS, com indicadores e páginas contextuais.';
 
         return [
             'key' => $key,
             'name' => $name,
-            'kind' => $kind,
+            'kind' => 'module',
             'icon' => $icon,
             'theme' => $theme,
-            'description' => $description,
+            'description' => 'Ambiente independente com fluxos e navegação próprios.',
             'home_page' => $first,
             'home' => $pages[$first]['href'],
             'pages' => $pages,
             'menu' => 'frontend/modules/' . $key . '/menu.php',
-            // Compatibilidade temporária com os consumidores existentes.
             'items' => array_values($pages),
             'assets' => [
                 'css' => 'assets/css/modules/' . $key . '.css',
