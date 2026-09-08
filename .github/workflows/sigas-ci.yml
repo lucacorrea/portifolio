@@ -55,6 +55,7 @@ jobs:
           node --check sigas/assets/js/modules/kit-maternidade-flow.js
           node --check sigas/assets/js/prontuario-socioeconomico.js
           node --check sigas/assets/js/modules/gestao-acessos-matrix.js
+          node --check sigas/assets/js/modules/gestao-acessos-levels.js
 
       - name: Authorization level regression
         run: php sigas/tests/authorization-level-test.php
@@ -82,6 +83,9 @@ jobs:
 
       - name: Governance access matrix regression
         run: php sigas/tests/governance-access-matrix-test.php
+
+      - name: Governance access levels regression
+        run: php sigas/tests/governance-access-levels-test.php
 
       - name: Root structure regression
         run: php sigas/tests/root-structure-test.php
