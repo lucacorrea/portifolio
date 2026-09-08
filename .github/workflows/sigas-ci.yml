@@ -61,6 +61,15 @@ jobs:
       - name: Authorization policy regression
         run: php sigas/tests/authorization-policy-test.php
 
+      - name: Portal authentication and catalog regression
+        run: php sigas/tests/portal-auth-flow-test.php
+
+      - name: Navigation links regression
+        run: php sigas/tests/navigation-links-test.php
+
+      - name: Module menu regression
+        run: php sigas/tests/module-menu-test.php
+
       - name: Individual access and journey regression
         run: php sigas/tests/individual-access-journey-test.php
 
