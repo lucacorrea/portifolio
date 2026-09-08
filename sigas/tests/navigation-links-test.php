@@ -27,13 +27,14 @@ function navigation_assert(bool $condition, string $message): void
     }
 }
 
-navigation_assert(count($registry) === 10, 'o portal deve possuir dez ambientes');
+navigation_assert(count($registry) === 6, 'o portal deve possuir seis módulos independentes');
 
 foreach ($registry as $environmentKey => $environment) {
     foreach (['key', 'name', 'kind', 'icon', 'theme', 'home_page', 'home', 'pages', 'menu', 'assets'] as $field) {
         navigation_assert(isset($environment[$field]) && $environment[$field] !== '', "{$environmentKey}: campo {$field} ausente");
     }
 
+    navigation_assert(($environment['kind'] ?? null) === 'module', "{$environmentKey}: ambiente deve ser módulo independente");
     navigation_assert(($environment['key'] ?? null) === $environmentKey, "{$environmentKey}: chave interna divergente");
     navigation_assert(isset($environment['pages'][$environment['home_page']]), "{$environmentKey}: página inicial não registrada");
     navigation_assert(is_file($root . '/' . $environment['menu']), "{$environmentKey}: arquivo próprio de menu ausente");
