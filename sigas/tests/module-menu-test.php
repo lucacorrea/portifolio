@@ -21,11 +21,13 @@ $assert = static function (bool $condition, string $message) use (&$failures): v
 
 $assert(count($registry) === 6, 'somente os seis módulos independentes devem possuir menu no catálogo');
 
-$renderMenu = static function (string $path, string $surface, string $activePage): string {
+$renderMenu = static function (string $environmentKey, array $environment, string $surface, string $activePage): string {
+    $menuEnvironmentKey = $environmentKey;
+    $menuVisiblePageKeys = array_keys($environment['pages']);
     $menuSurface = $surface;
     $menuPageKey = $activePage;
     ob_start();
-    require $path;
+    require dirname(__DIR__) . '/frontend/navigation/module-menu.php';
     return (string) ob_get_clean();
 };
 
@@ -33,8 +35,12 @@ foreach ($registry as $environmentKey => $environment) {
     $menuPath = $root . '/' . $environment['menu'];
     $assert(is_file($menuPath), "{$environmentKey}: menu próprio ausente");
 
+    $menuSource = is_file($menuPath) ? (file_get_contents($menuPath) ?: '') : '';
+    $assert(str_contains($menuSource, "menuEnvironmentKey = '{$environmentKey}'"), "{$environmentKey}: menu não declara o ambiente correto");
+    $assert(str_contains($menuSource, 'navigation/module-menu.php'), "{$environmentKey}: menu não usa o renderer central");
+
     foreach ($environment['pages'] as $pageKey => $page) {
-        $sidebar = $renderMenu($menuPath, 'sidebar', $pageKey);
+        $sidebar = $renderMenu($environmentKey, $environment, 'sidebar', $pageKey);
         $assert(str_contains($sidebar, 'data-menu-environment="' . $environmentKey . '"'), "{$environmentKey}: ambiente ausente no menu");
         $assert(substr_count($sidebar, 'class="module-nav-link') === count($environment['pages']), "{$environmentKey}: quantidade de links divergente");
         $assert(substr_count($sidebar, 'aria-current="page"') === 1, "{$environmentKey}/{$pageKey}: página ativa inválida");
@@ -46,11 +52,18 @@ foreach ($registry as $environmentKey => $environment) {
         }
     }
 
-    $mobile = $renderMenu($menuPath, 'mobile', (string) $environment['home_page']);
+    $mobile = $renderMenu($environmentKey, $environment, 'mobile', (string) $environment['home_page']);
     $mobileCount = count(array_filter($environment['pages'], static fn (array $page): bool => (bool) $page['mobile']));
     $assert(substr_count($mobile, 'class="module-nav-link') === $mobileCount, "{$environmentKey}: navegação móvel divergente");
     $assert(str_contains($mobile, 'data-module-menu-toggle'), "{$environmentKey}: botão Mais ausente");
 }
+
+$comidaMenu = file_get_contents($root . '/frontend/modules/comida-mesa/menu.php') ?: '';
+$assert(str_contains($comidaMenu, "cm_can('comida_mesa.cadastrar')"), 'Comida na Mesa: menu deve continuar filtrando cadastro por permissão');
+$assert(str_contains($comidaMenu, "cm_can('comida_mesa.entregar')"), 'Comida na Mesa: menu deve continuar filtrando entrega por permissão');
+
+$empregoMenu = file_get_contents($root . '/frontend/modules/primeiro-emprego/menu.php') ?: '';
+$assert(str_contains($empregoMenu, 'pe_visible_page_keys()'), 'Primeiro Emprego: menu deve continuar filtrando páginas por permissão');
 
 foreach (['primeiro-emprego', 'comida-mesa'] as $modularEnvironment) {
     $layoutPath = $root . '/' . $modularEnvironment . '/_layout.php';
