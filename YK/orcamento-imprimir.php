@@ -139,21 +139,101 @@ function budget_print_initials(string $name): string
     return $upper($slice($name, 2));
 }
 
-/** @param BudgetItem[] $items */
-function budget_print_items(array $items, string $type, string $title): void
-{
+/**
+ * @param BudgetItem[] $items
+ * @param array<int,string> $referenceNames
+ */
+function budget_print_items(
+    array $items,
+    string $type,
+    string $title,
+    array $referenceNames = [],
+    bool $withLocation = false
+): void {
     $filtered = array_values(array_filter($items, static fn(BudgetItem $item): bool => $item->type() === $type));
     if ($filtered === []) {
         return;
     }
 
+    $firstHeader = $type === 'servico'
+        ? 'Serviço realizado'
+        : ($type === 'produto' ? 'Produto / peça' : 'Descrição');
+
     echo '<section class="document-section"><h2>' . h($title) . '</h2>';
-    echo '<table class="item-table"><colgroup><col class="description-column"><col class="unit-column"><col class="quantity-column"><col class="money-column"><col class="money-column"><col class="money-column"></colgroup>';
-    echo '<thead><tr><th>Descrição</th><th>Un.</th><th>Qtd.</th><th>Valor unit.</th><th>Desconto</th><th>Subtotal</th></tr></thead><tbody>';
-    foreach ($filtered as $item) {
-        echo '<tr><td>' . h($item->description()) . '</td><td>' . h($item->unit()) . '</td><td class="numeric">' . h(number_format((float) $item->quantity(), 3, ',', '.')) . '</td><td class="numeric">' . h(budget_print_money($item->unitPrice())) . '</td><td class="numeric">' . h(budget_print_money($item->discount())) . '</td><td class="numeric">' . h(budget_print_money($item->subtotal())) . '</td></tr>';
+
+    if ($withLocation) {
+        echo '<table class="item-table with-location"><colgroup><col class="description-column"><col class="location-column"><col class="unit-column"><col class="quantity-column"><col class="money-column"><col class="money-column"><col class="money-column"></colgroup>';
+        echo '<thead><tr><th>' . h($firstHeader) . '</th><th>Local / ambiente</th><th>Un.</th><th>Qtd.</th><th>Valor unit.</th><th>Desconto</th><th>Subtotal</th></tr></thead><tbody>';
+    } else {
+        echo '<table class="item-table"><colgroup><col class="description-column"><col class="unit-column"><col class="quantity-column"><col class="money-column"><col class="money-column"><col class="money-column"></colgroup>';
+        echo '<thead><tr><th>' . h($firstHeader) . '</th><th>Un.</th><th>Qtd.</th><th>Valor unit.</th><th>Desconto</th><th>Subtotal</th></tr></thead><tbody>';
     }
+
+    foreach ($filtered as $item) {
+        $referenceId = $item->referenceId();
+        $catalogName = $referenceId !== null ? trim((string) ($referenceNames[$referenceId] ?? '')) : '';
+        $storedDescription = trim($item->description());
+
+        if ($withLocation) {
+            if ($catalogName !== '') {
+                $itemName = $catalogName;
+                $location = $storedDescription !== '' ? $storedDescription : '-';
+            } else {
+                // Compatibilidade com itens antigos ou referências removidas:
+                // não perde a descrição já salva.
+                $itemName = $storedDescription !== '' ? $storedDescription : '-';
+                $location = '-';
+            }
+
+            echo '<tr>';
+            echo '<td>' . h($itemName) . '</td>';
+            echo '<td>' . h($location) . '</td>';
+            echo '<td>' . h($item->unit()) . '</td>';
+            echo '<td class="numeric">' . h(number_format((float) $item->quantity(), 3, ',', '.')) . '</td>';
+            echo '<td class="numeric">' . h(budget_print_money($item->unitPrice())) . '</td>';
+            echo '<td class="numeric">' . h(budget_print_money($item->discount())) . '</td>';
+            echo '<td class="numeric">' . h(budget_print_money($item->subtotal())) . '</td>';
+            echo '</tr>';
+            continue;
+        }
+
+        echo '<tr>';
+        echo '<td>' . h($storedDescription !== '' ? $storedDescription : '-') . '</td>';
+        echo '<td>' . h($item->unit()) . '</td>';
+        echo '<td class="numeric">' . h(number_format((float) $item->quantity(), 3, ',', '.')) . '</td>';
+        echo '<td class="numeric">' . h(budget_print_money($item->unitPrice())) . '</td>';
+        echo '<td class="numeric">' . h(budget_print_money($item->discount())) . '</td>';
+        echo '<td class="numeric">' . h(budget_print_money($item->subtotal())) . '</td>';
+        echo '</tr>';
+    }
+
     echo '</tbody></table></section>';
+}
+
+$serviceNames = [];
+$productNames = [];
+
+foreach ($items as $item) {
+    $referenceId = $item->referenceId();
+    if ($referenceId === null) {
+        continue;
+    }
+
+    if ($item->type() === 'servico' && !isset($serviceNames[$referenceId])) {
+        try {
+            $serviceNames[$referenceId] = $application->serviceManagement()->getService($referenceId)->name();
+        } catch (Throwable) {
+            // Mantém fallback seguro para a descrição salva no orçamento.
+        }
+    }
+
+    if ($item->type() === 'produto' && !isset($productNames[$referenceId])) {
+        try {
+            $productNames[$referenceId] = $application->productManagement()->getProduct($referenceId)->name();
+        } catch (Throwable) {
+            // Mantém fallback seguro para a descrição salva no orçamento.
+        }
+    }
 }
 
 $companyName = budget_print_company_name($company);
@@ -203,9 +283,15 @@ $companyDetails = array_values(array_filter([
         .item-table th, .item-table td { padding: 3px 4px; border: 1px solid #dbe7ee; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
         .item-table th { background: #f3f8fb; color: #475569; font-size: 7.5px; letter-spacing: .02em; text-transform: uppercase; }
         .item-table .description-column { width: 40%; }
+        .item-table .location-column { width: 18%; }
         .item-table .unit-column { width: 7%; }
         .item-table .quantity-column { width: 9%; }
         .item-table .money-column { width: 14.66%; }
+        .item-table.with-location .description-column { width: 25%; }
+        .item-table.with-location .location-column { width: 17%; }
+        .item-table.with-location .unit-column { width: 6%; }
+        .item-table.with-location .quantity-column { width: 8%; }
+        .item-table.with-location .money-column { width: 14.66%; }
         .numeric { text-align: right !important; white-space: nowrap; }
         .notes-grid { display: grid; grid-template-columns: 1fr; gap: 5px; }
         .note-card { min-width: 0; min-height: 43px; padding: 5px 6px; border: 1px solid #dbe7ee; border-radius: 4px; break-inside: avoid; }
@@ -307,8 +393,8 @@ $companyDetails = array_values(array_filter([
                 </div>
             </section>
 
-            <?php budget_print_items($items, 'servico', 'Serviços'); ?>
-            <?php budget_print_items($items, 'produto', 'Produtos'); ?>
+            <?php budget_print_items($items, 'servico', 'Serviços', $serviceNames, true); ?>
+            <?php budget_print_items($items, 'produto', 'Produtos', $productNames, true); ?>
             <?php budget_print_items($items, 'outro', 'Outros itens'); ?>
 
             <section class="document-section">
