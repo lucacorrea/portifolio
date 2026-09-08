@@ -50,7 +50,7 @@ final class PageContext
                 'sector' => $sector?->nome ?: 'Sem setor',
             ],
             'urls' => [
-                'dashboard' => 'dashboard.php',
+                'dashboard' => 'portal.php',
                 'logout' => 'sair.php',
             ],
             'csrf' => [
