@@ -1,8 +1,8 @@
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-top">
-        <a class="brand" href="dashboard.php" aria-label="L&J Comandas">
-            <span class="brand-mark">LJ</span>
-            <span class="brand-copy"><b>L&J Comandas</b><small>Gestão inteligente</small></span>
+        <a class="brand" href="dashboard.php" aria-label="JL Soluções Tecnológicas - Comandas">
+            <span class="brand-mark">JL</span>
+            <span class="brand-copy"><b>JL Soluções</b><small>Tecnológicas · Comandas</small></span>
         </a>
         <button class="sidebar-collapse" type="button" data-sidebar-toggle aria-label="Fechar menu">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
