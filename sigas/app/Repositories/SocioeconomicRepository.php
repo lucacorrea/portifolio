@@ -29,7 +29,7 @@ final class SocioeconomicRepository
                         a.nome AS atualizado_por_nome
                  FROM pessoa_socioeconomico s
                  LEFT JOIN usuarios u ON u.id = s.entrevistado_por
-                 LEFT JOIN usuarios c ON c.id = s.confirmirmado_por
+                 LEFT JOIN usuarios c ON c.id = s.confirmado_por
                  LEFT JOIN usuarios a ON a.id = s.atualizado_por
                  WHERE s.pessoa_id = :pessoa_id
                  LIMIT 1'
