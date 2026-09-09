@@ -39,10 +39,10 @@ final class AnexoIntegrationService
                 ];
             }
 
-            $id = (int) $solicitante['id'];
+            $id = (int) ($solicitante['id'] ?? 0);
             $historicoAjudas = array_map(
                 [$this, 'deliveryPayload'],
-                $repository->entregasPorPessoa($id, (string) $solicitante['cpf'])
+                $repository->entregasPorPessoa($id, (string) ($solicitante['cpf'] ?? ''))
             );
 
             return [
@@ -51,7 +51,7 @@ final class AnexoIntegrationService
                 'found' => true,
                 'person' => $this->personPayload($solicitante),
                 'familiares' => array_map([$this, 'familyMemberPayload'], $repository->familiares($id)),
-                'solicitacoes' => array_map([$this, 'requestPayload'], $repository->solicitacoes($id, (string) $solicitante['cpf'])),
+                'solicitacoes' => array_map([$this, 'requestPayload'], $repository->solicitacoes($id, (string) ($solicitante['cpf'] ?? ''))),
                 'historico_ajudas' => $historicoAjudas,
                 'received_help' => $historicoAjudas !== [],
                 'received_help_count' => count($historicoAjudas),
@@ -125,32 +125,36 @@ final class AnexoIntegrationService
 
         try {
             if (!method_exists($repository, 'findSolicitantesSummaryByCpfs')) {
-                return ['enabled'=>true, 'available'=>false, 'matches'=>[], 'state'=>'unsupported'];
+                return ['enabled' => true, 'available' => false, 'matches' => [], 'state' => 'unsupported'];
             }
 
             $rows = $repository->findSolicitantesSummaryByCpfs($cpfs);
             $matches = [];
             foreach ($rows as $row) {
-                $cpf = Validator::onlyDigits((string)($row['cpf'] ?? ''));
-                if ($cpf === '') continue;
-                $benefitsRaw = trim((string)($row['beneficios'] ?? ''));
-                $benefits = $benefitsRaw === '' ? [] : array_values(array_unique(array_filter(array_map('trim', explode('||', $benefitsRaw)))));
+                $cpf = Validator::onlyDigits((string) ($row['cpf'] ?? ''));
+                if ($cpf === '') {
+                    continue;
+                }
+                $benefitsRaw = trim((string) ($row['beneficios'] ?? ''));
+                $benefits = $benefitsRaw === ''
+                    ? []
+                    : array_values(array_unique(array_filter(array_map('trim', explode('||', $benefitsRaw)))));
                 $matches[$cpf] = [
-                    'id'=>(int)($row['id'] ?? 0),
-                    'nome'=>(string)($row['nome'] ?? ''),
-                    'cpf'=>$cpf,
-                    'solicitacoes'=>(int)($row['solicitacoes_count'] ?? 0),
-                    'beneficios'=>$benefits,
+                    'id' => (int) ($row['id'] ?? 0),
+                    'nome' => (string) ($row['nome'] ?? ''),
+                    'cpf' => $cpf,
+                    'solicitacoes' => (int) ($row['solicitacoes_count'] ?? 0),
+                    'beneficios' => $benefits,
                 ];
             }
 
-            return ['enabled'=>true, 'available'=>true, 'matches'=>$matches, 'state'=>'available'];
+            return ['enabled' => true, 'available' => true, 'matches' => $matches, 'state' => 'available'];
         } catch (Throwable $exception) {
             Logger::application('ANEXO batch CPF consultation unavailable.', [
                 'type' => $exception::class,
                 'code' => $exception->getCode(),
             ]);
-            return ['enabled'=>true, 'available'=>false, 'matches'=>[], 'state'=>'unavailable'];
+            return ['enabled' => true, 'available' => false, 'matches' => [], 'state' => 'unavailable'];
         }
     }
 
@@ -159,11 +163,21 @@ final class AnexoIntegrationService
     {
         $repository = $this->repository();
         if (!$repository instanceof AnexoRepository) {
-            return ['enabled' => false, 'available' => false, 'count' => null, 'state' => $this->configurationState ?? 'not_configured'];
+            return [
+                'enabled' => false,
+                'available' => false,
+                'count' => null,
+                'state' => $this->configurationState ?? 'not_configured',
+            ];
         }
 
         try {
-            return ['enabled' => true, 'available' => true, 'count' => $repository->countSolicitantes(), 'state' => 'available'];
+            return [
+                'enabled' => true,
+                'available' => true,
+                'count' => $repository->countSolicitantes(),
+                'state' => 'available',
+            ];
         } catch (Throwable $exception) {
             Logger::application('ANEXO summary unavailable.', [
                 'type' => $exception::class,
@@ -212,12 +226,12 @@ final class AnexoIntegrationService
     private function basicPersonPayload(array $row): array
     {
         return [
-            'id' => (int) $row['id'],
-            'name' => (string) $row['nome'],
-            'cpf_formatted' => $this->formatCpf((string) $row['cpf']),
-            'cpf_masked' => $this->maskCpf((string) $row['cpf']),
-            'phone' => $row['telefone'] === null ? null : (string) $row['telefone'],
-            'district' => $row['bairro_nome'] === null ? null : (string) $row['bairro_nome'],
+            'id' => (int) ($row['id'] ?? 0),
+            'name' => (string) ($row['nome'] ?? ''),
+            'cpf_formatted' => $this->formatCpf((string) ($row['cpf'] ?? '')),
+            'cpf_masked' => $this->maskCpf((string) ($row['cpf'] ?? '')),
+            'phone' => $this->stringOrNull($row, 'telefone'),
+            'district' => $this->stringOrNull($row, 'bairro_nome'),
         ];
     }
 
@@ -241,40 +255,82 @@ final class AnexoIntegrationService
     /** @param array<string,mixed> $row @return array<string,mixed> */
     private function personPayload(array $row): array
     {
+        $spouseCpf = $this->stringOrNull($row, 'conj_cpf');
+
         return [
-            'id' => (int) $row['id'],
-            'name' => (string) $row['nome'],
-            'cpf' => Validator::onlyDigits((string) $row['cpf']),
-            'cpf_formatted' => $this->formatCpf((string) $row['cpf']),
-            'cpf_masked' => $this->maskCpf((string) $row['cpf']),
-            'nis' => $row['nis'] === null ? null : (string) $row['nis'],
-            'phone' => $row['telefone'] === null ? null : (string) $row['telefone'],
-            'district' => $row['bairro_nome'] === null ? null : (string) $row['bairro_nome'],
-            'gender' => $row['genero'] === null ? null : (string) $row['genero'],
-            'marital_status' => $row['estado_civil'] === null ? null : (string) $row['estado_civil'],
-            'birth_date' => $row['data_nascimento'] === null ? null : (string) $row['data_nascimento'],
-            'nationality' => $row['nacionalidade'] === null ? null : (string) $row['nacionalidade'],
-            'birthplace' => $row['naturalidade'] === null ? null : (string) $row['naturalidade'],
-            'rg' => $row['rg'] === null ? null : (string) $row['rg'],
-            'rg_issued_at' => $row['rg_emissao'] === null ? null : (string) $row['rg_emissao'],
-            'rg_state' => $row['rg_uf'] === null ? null : (string) $row['rg_uf'],
-            'street' => $row['endereco'] === null ? null : (string) $row['endereco'],
-            'number' => $row['numero'] === null ? null : (string) $row['numero'],
-            'complement' => $row['complemento'] === null ? null : (string) $row['complemento'],
-            'reference_point' => $row['referencia'] === null ? null : (string) $row['referencia'],
-            'family_income' => $row['renda_familiar'] === null ? null : (string) $row['renda_familiar'],
-            'members_count' => $row['total_moradores'] === null ? null : (int) $row['total_moradores'],
-            'families_count' => $row['total_familias'] === null ? null : (int) $row['total_familias'],
-            'summary' => $row['resumo_caso'] === null ? null : mb_substr((string) $row['resumo_caso'], 0, 500),
-            'spouse_name' => $row['conj_nome'] === null ? null : (string) $row['conj_nome'],
-            'spouse_cpf' => $row['conj_cpf'] === null ? null : $this->maskCpf((string) $row['conj_cpf']),
-            'spouse_cpf_formatted' => $row['conj_cpf'] === null ? null : $this->formatCpf((string) $row['conj_cpf']),
-            'spouse_nis' => $row['conj_nis'] === null ? null : (string) $row['conj_nis'],
-            'spouse_rg' => $row['conj_rg'] === null ? null : (string) $row['conj_rg'],
-            'spouse_birth_date' => $row['conj_nasc'] === null ? null : (string) $row['conj_nasc'],
-            'created_by' => $row['responsavel'] === null ? null : (string) $row['responsavel'],
-            'created_at' => $row['created_at'] === null ? null : (string) $row['created_at'],
-            'updated_at' => $row['updated_at'] === null ? null : (string) $row['updated_at'],
+            'id' => (int) ($row['id'] ?? 0),
+            'name' => (string) ($row['nome'] ?? ''),
+            'cpf' => Validator::onlyDigits((string) ($row['cpf'] ?? '')),
+            'cpf_formatted' => $this->formatCpf((string) ($row['cpf'] ?? '')),
+            'cpf_masked' => $this->maskCpf((string) ($row['cpf'] ?? '')),
+            'nis' => $this->stringOrNull($row, 'nis'),
+            'phone' => $this->stringOrNull($row, 'telefone'),
+            'district' => $this->stringOrNull($row, 'bairro_nome'),
+            'gender' => $this->stringOrNull($row, 'genero'),
+            'marital_status' => $this->stringOrNull($row, 'estado_civil'),
+            'birth_date' => $this->stringOrNull($row, 'data_nascimento'),
+            'nationality' => $this->stringOrNull($row, 'nacionalidade'),
+            'birthplace' => $this->stringOrNull($row, 'naturalidade'),
+            'rg' => $this->stringOrNull($row, 'rg'),
+            'rg_issued_at' => $this->stringOrNull($row, 'rg_emissao'),
+            'rg_state' => $this->stringOrNull($row, 'rg_uf'),
+
+            'street' => $this->stringOrNull($row, 'endereco'),
+            'number' => $this->stringOrNull($row, 'numero'),
+            'complement' => $this->stringOrNull($row, 'complemento'),
+            'reference_point' => $this->stringOrNull($row, 'referencia'),
+            'residence_years' => $this->intOrNull($row, 'tempo_anos'),
+            'residence_months' => $this->intOrNull($row, 'tempo_meses'),
+
+            'traditional_group' => $this->stringOrNull($row, 'grupo_tradicional'),
+            'traditional_group_other' => $this->stringOrNull($row, 'grupo_outros'),
+            'disability_status' => $this->stringOrNull($row, 'pcd'),
+            'disability_type' => $this->stringOrNull($row, 'pcd_tipo'),
+            'bpc_status' => $this->stringOrNull($row, 'bpc'),
+            'bpc_value' => $this->stringOrNull($row, 'bpc_valor'),
+            'pbf_status' => $this->stringOrNull($row, 'pbf'),
+            'pbf_value' => $this->stringOrNull($row, 'pbf_valor'),
+            'municipal_benefit_status' => $this->stringOrNull($row, 'beneficio_municipal'),
+            'municipal_benefit_value' => $this->stringOrNull($row, 'beneficio_municipal_valor'),
+            'state_benefit_status' => $this->stringOrNull($row, 'beneficio_estadual'),
+            'state_benefit_value' => $this->stringOrNull($row, 'beneficio_estadual_valor'),
+
+            'income_range' => $this->stringOrNull($row, 'renda_mensal_faixa'),
+            'income_range_other' => $this->stringOrNull($row, 'renda_mensal_outros'),
+            'work_status' => $this->stringOrNull($row, 'trabalho'),
+            'individual_income' => $this->stringOrNull($row, 'renda_individual'),
+            'family_income' => $this->stringOrNull($row, 'renda_familiar'),
+            'total_income' => $this->stringOrNull($row, 'total_rendimentos'),
+            'typification' => $this->stringOrNull($row, 'tipificacao'),
+
+            'members_count' => $this->intOrNull($row, 'total_moradores'),
+            'families_count' => $this->intOrNull($row, 'total_familias'),
+            'household_disability_status' => $this->stringOrNull($row, 'pcd_residencia'),
+            'household_disability_count' => $this->intOrNull($row, 'total_pcd'),
+
+            'housing_status' => $this->stringOrNull($row, 'situacao_imovel'),
+            'housing_cost' => $this->stringOrNull($row, 'situacao_imovel_valor'),
+            'housing_material' => $this->stringOrNull($row, 'tipo_moradia'),
+            'water_supply' => $this->stringOrNull($row, 'abastecimento'),
+            'lighting' => $this->stringOrNull($row, 'iluminacao'),
+            'sewer' => $this->stringOrNull($row, 'esgoto'),
+            'trash_destination' => $this->stringOrNull($row, 'lixo'),
+            'surroundings' => $this->stringOrNull($row, 'entorno'),
+
+            'summary' => ($summary = $this->stringOrNull($row, 'resumo_caso')) === null
+                ? null
+                : mb_substr($summary, 0, 5000),
+
+            'spouse_name' => $this->stringOrNull($row, 'conj_nome'),
+            'spouse_cpf' => $spouseCpf === null ? null : $this->maskCpf($spouseCpf),
+            'spouse_cpf_formatted' => $spouseCpf === null ? null : $this->formatCpf($spouseCpf),
+            'spouse_nis' => $this->stringOrNull($row, 'conj_nis'),
+            'spouse_rg' => $this->stringOrNull($row, 'conj_rg'),
+            'spouse_birth_date' => $this->stringOrNull($row, 'conj_nasc'),
+
+            'created_by' => $this->stringOrNull($row, 'responsavel'),
+            'created_at' => $this->stringOrNull($row, 'created_at'),
+            'updated_at' => $this->stringOrNull($row, 'updated_at'),
         ];
     }
 
@@ -282,10 +338,11 @@ final class AnexoIntegrationService
     private function familyMemberPayload(array $row): array
     {
         return [
-            'name' => (string) $row['nome'],
-            'birth_date' => $row['data_nascimento'] === null ? null : (string) $row['data_nascimento'],
-            'relationship' => $row['parentesco'] === null ? null : (string) $row['parentesco'],
-            'schooling' => $row['escolaridade'] === null ? null : (string) $row['escolaridade'],
+            'name' => (string) ($row['nome'] ?? ''),
+            'birth_date' => $this->stringOrNull($row, 'data_nascimento'),
+            'relationship' => $this->stringOrNull($row, 'parentesco'),
+            'schooling' => $this->stringOrNull($row, 'escolaridade'),
+            'observation' => $this->stringOrNull($row, 'obs'),
         ];
     }
 
@@ -293,18 +350,18 @@ final class AnexoIntegrationService
     private function requestPayload(array $row): array
     {
         return [
-            'id' => (int) $row['id'],
-            'type_id' => $row['ajuda_tipo_id'] === null ? null : (int) $row['ajuda_tipo_id'],
-            'type_name' => $row['ajuda_nome'] === null ? null : (string) $row['ajuda_nome'],
-            'type_category' => $row['ajuda_categoria'] === null ? null : (string) $row['ajuda_categoria'],
-            'summary' => $row['resumo_caso'] === null ? null : mb_substr((string) $row['resumo_caso'], 0, 500),
-            'requested_at' => $row['data_solicitacao'] === null ? null : (string) $row['data_solicitacao'],
-            'status' => $row['status'] === null ? null : (string) $row['status'],
-            'created_by' => $row['created_by'] === null ? null : (string) $row['created_by'],
-            'origin' => $row['origem'] === null ? null : (string) $row['origem'],
+            'id' => (int) ($row['id'] ?? 0),
+            'type_id' => isset($row['ajuda_tipo_id']) && $row['ajuda_tipo_id'] !== null ? (int) $row['ajuda_tipo_id'] : null,
+            'type_name' => $this->stringOrNull($row, 'ajuda_nome'),
+            'type_category' => $this->stringOrNull($row, 'ajuda_categoria'),
+            'summary' => ($summary = $this->stringOrNull($row, 'resumo_caso')) === null ? null : mb_substr($summary, 0, 500),
+            'requested_at' => $this->stringOrNull($row, 'data_solicitacao'),
+            'status' => $this->stringOrNull($row, 'status'),
+            'created_by' => $this->stringOrNull($row, 'created_by'),
+            'origin' => $this->stringOrNull($row, 'origem'),
             'deliveries_count' => isset($row['entregas_count']) ? (int) $row['entregas_count'] : 0,
-            'last_delivery_date' => $row['data_entrega'] === null ? null : (string) $row['data_entrega'],
-            'last_delivery_time' => $row['hora_entrega'] === null ? null : (string) $row['hora_entrega'],
+            'last_delivery_date' => $this->stringOrNull($row, 'data_entrega'),
+            'last_delivery_time' => $this->stringOrNull($row, 'hora_entrega'),
             'assigned' => isset($row['entregas_count']) && (int) $row['entregas_count'] > 0,
         ];
     }
@@ -313,12 +370,33 @@ final class AnexoIntegrationService
     private function deliveryPayload(array $row): array
     {
         return [
-            'type_name' => $row['ajuda_nome'] === null ? null : (string) $row['ajuda_nome'],
-            'delivered_date' => $row['data_entrega'] === null ? null : (string) $row['data_entrega'],
-            'delivered_time' => $row['hora_entrega'] === null ? null : (string) $row['hora_entrega'],
+            'type_name' => $this->stringOrNull($row, 'ajuda_nome'),
+            'delivered_date' => $this->stringOrNull($row, 'data_entrega'),
+            'delivered_time' => $this->stringOrNull($row, 'hora_entrega'),
             'delivered' => strtoupper((string) ($row['entregue'] ?? '')) === 'SIM',
-            'created_at' => $row['created_at'] === null ? null : (string) $row['created_at'],
+            'created_at' => $this->stringOrNull($row, 'created_at'),
         ];
+    }
+
+    /** @param array<string,mixed> $row */
+    private function stringOrNull(array $row, string $key): ?string
+    {
+        if (!array_key_exists($key, $row) || $row[$key] === null) {
+            return null;
+        }
+
+        $value = trim((string) $row[$key]);
+        return $value === '' ? null : $value;
+    }
+
+    /** @param array<string,mixed> $row */
+    private function intOrNull(array $row, string $key): ?int
+    {
+        if (!array_key_exists($key, $row) || $row[$key] === null || $row[$key] === '') {
+            return null;
+        }
+
+        return is_numeric($row[$key]) ? (int) $row[$key] : null;
     }
 
     private function maskCpf(string $cpf): string
