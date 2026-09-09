@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/app.php';
 require_once __DIR__ . '/demo.php';
-$pageTitle = $pageTitle ?? 'L&J Comandas';
+$pageTitle = $pageTitle ?? 'JL Comandas';
 $currentPage = $currentPage ?? '';
 $hideChrome = $hideChrome ?? false;
 ?>
@@ -11,7 +11,7 @@ $hideChrome = $hideChrome ?? false;
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#111827">
-    <title><?= e($pageTitle) ?> · L&J Comandas</title>
+    <title><?= e($pageTitle) ?> · JL Soluções Tecnológicas</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -28,7 +28,7 @@ $hideChrome = $hideChrome ?? false;
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
                 </button>
                 <div class="topbar-title">
-                    <div class="eyebrow">L&J Comandas</div>
+                    <div class="eyebrow">JL Soluções Tecnológicas</div>
                     <strong><?= e($pageTitle) ?></strong>
                 </div>
             </div>
