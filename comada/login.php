@@ -1,0 +1,6 @@
+<?php $pageTitle='Login'; $currentPage=''; $hideChrome=true; include 'includes/header.php'; ?>
+<div class="auth-wrap">
+  <section class="auth-brand"><a class="brand" href="login.php"><span class="brand-mark">LJ</span><span><b>L&J</b><small>Comandas</small></span></a><div><h1>Gestão simples. Operação rápida.</h1><p>Plataforma de comandas, pedidos, caixa e gestão preparada para bares, restaurantes e outros estabelecimentos.</p></div><small>Protótipo de layout · L&J Soluções Tecnológicas</small></section>
+  <section class="auth-panel"><form class="auth-card" action="dashboard.php"><h2>Acessar sistema</h2><p>Entre com suas credenciais para continuar.</p><div class="field"><label>E-mail ou usuário</label><input class="input" value="admin@demo.com"></div><div class="field"><label>Senha</label><input class="input" type="password" value="12345678"></div><label style="display:flex;gap:8px;align-items:center;margin:8px 0 18px"><input type="checkbox" checked> Lembrar acesso</label><button class="btn btn-primary" style="width:100%">Entrar</button><a href="#" style="display:block;text-align:center;margin-top:16px;color:#6d28d9;font-weight:700">Esqueci minha senha</a></form></section>
+</div>
+<?php include 'includes/footer.php'; ?>

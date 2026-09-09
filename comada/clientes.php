@@ -1,0 +1,4 @@
+<?php $pageTitle='Clientes'; $currentPage='clientes'; include 'includes/header.php'; ?>
+<div class="page-head"><div><h1>Clientes</h1><p>Histórico e relacionamento com seus clientes.</p></div><button class="btn btn-primary" data-open-modal data-modal-title="Novo cliente" data-modal-text="Cadastre nome, telefone, CPF opcional e observações.">+ Cliente</button></div>
+<div class="filters"><input class="input search" placeholder="Buscar cliente"></div><div class="card table-wrap"><table class="table"><thead><tr><th>Cliente</th><th>Telefone</th><th>Última visita</th><th>Total gasto</th><th></th></tr></thead><tbody><?php foreach($clientes as $c): ?><tr><td><strong><?= e($c['nome']) ?></strong></td><td><?= e($c['telefone']) ?></td><td><?= e($c['ultima']) ?></td><td><?= money($c['total']) ?></td><td><a class="btn btn-secondary btn-sm" href="cliente.php">Ver perfil</a></td></tr><?php endforeach; ?></tbody></table></div>
+<?php include 'includes/footer.php'; ?>

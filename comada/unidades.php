@@ -1,0 +1,3 @@
+<?php $pageTitle='Unidades'; $currentPage='empresa'; include 'includes/header.php'; ?>
+<div class="page-head"><div><h1>Unidades</h1><p>Filiais e locais de operação.</p></div><button class="btn btn-primary" data-open-modal data-modal-title="Nova unidade" data-modal-text="Cadastre nome, endereço, telefone e configurações locais.">+ Unidade</button></div><div class="grid grid-2"><div class="card card-body"><strong>Unidade Centro</strong><p style="color:#6b7280">Coari - AM · principal</p><span class="pill success">Ativa</span></div><div class="card card-body"><strong>Unidade Shopping</strong><p style="color:#6b7280">Coari - AM</p><span class="pill success">Ativa</span></div></div>
+<?php include 'includes/footer.php'; ?>

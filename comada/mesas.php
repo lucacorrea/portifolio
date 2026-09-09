@@ -1,0 +1,9 @@
+<?php $pageTitle='Mesas'; $currentPage='mesas'; include 'includes/header.php'; ?>
+<div class="page-head"><div><h1>Mesas e pontos de atendimento</h1><p>Acompanhe ocupação, consumo e solicitações de conta.</p></div><div class="actions"><a class="btn btn-secondary" href="mapa.php">Mapa visual</a><a class="btn btn-primary" href="comanda.php">+ Nova comanda</a></div></div>
+<div class="filters"><input class="input search" placeholder="Buscar mesa ou cliente"><div class="tabs"><button class="tab active" data-tab-filter="Todos">Todos</button><button class="tab" data-tab-filter="Livre">Livres</button><button class="tab" data-tab-filter="Ocupada">Ocupadas</button><button class="tab" data-tab-filter="Conta">Aguardando conta</button></div></div>
+<div class="mesa-grid">
+<?php foreach($mesas as $m): $cls=strtolower($m['status']); ?>
+<div class="card mesa-card <?= $cls ?>" data-status="<?= e($m['status']) ?>"><div style="display:flex;justify-content:space-between"><h3>Mesa <?= str_pad((string)$m['n'],2,'0',STR_PAD_LEFT) ?></h3><?php if($m['tempo']): ?><small><?= e($m['tempo']) ?></small><?php endif; ?></div><div class="meta"><span class="pill <?= $m['status']==='Livre'?'neutral':($m['status']==='Conta'?'warning':'info') ?>"><?= e($m['status']) ?></span></div><?php if($m['status']!=='Livre'): ?><div class="meta"><?= e($m['cliente']) ?> · <?= $m['itens'] ?> itens</div><div class="price"><?= money($m['total']) ?></div><a class="btn <?= $m['status']==='Conta'?'btn-success':'btn-secondary' ?> btn-sm" href="<?= $m['status']==='Conta'?'fechar-conta.php':'comanda.php' ?>"><?= $m['status']==='Conta'?'Fechar conta':'Abrir comanda' ?></a><?php else: ?><div class="price" style="color:#9ca3af">Disponível</div><a class="btn btn-primary btn-sm" href="comanda.php">Abrir</a><?php endif; ?></div>
+<?php endforeach; ?>
+</div>
+<?php include 'includes/footer.php'; ?>

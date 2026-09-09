@@ -1,0 +1,3 @@
+<?php $pageTitle='Integrações'; $currentPage='empresa'; include 'includes/header.php'; ?>
+<div class="page-head"><div><h1>Integrações</h1><p>Conectores opcionais para ampliar a plataforma.</p></div></div><div class="grid grid-3"><?php foreach([['WhatsApp','Mensagens e avisos ao cliente'],['PIX','Cobrança e conciliação'],['NFC-e','Integração fiscal futura'],['Delivery','Pedidos externos'],['Webhooks','Integrações com terceiros'],['API','Acesso controlado à plataforma']] as $i): ?><div class="card card-body"><h3 style="margin-top:0"><?= $i[0] ?></h3><p style="color:#6b7280"><?= $i[1] ?></p><button class="btn btn-secondary btn-sm" data-demo-action="Configuração da integração aberta">Configurar</button></div><?php endforeach; ?></div>
+<?php include 'includes/footer.php'; ?>
