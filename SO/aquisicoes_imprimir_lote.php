@@ -48,24 +48,32 @@ if ($busca !== '') {
     $params[':busca_fornecedor'] = $busca_like;
 }
 
-if ($secretaria_id !== '') {
+if ($secretaria_id !== '' && ctype_digit($secretaria_id) && (int)$secretaria_id > 0) {
     $where_parts[] = 'o.secretaria_id = :secretaria_id';
     $params[':secretaria_id'] = (int)$secretaria_id;
+} else {
+    $secretaria_id = '';
 }
 
-if ($fornecedor_id !== '') {
+if ($fornecedor_id !== '' && ctype_digit($fornecedor_id) && (int)$fornecedor_id > 0) {
     $where_parts[] = 'a.fornecedor_id = :fornecedor_id';
     $params[':fornecedor_id'] = (int)$fornecedor_id;
+} else {
+    $fornecedor_id = '';
 }
 
 if ($data_inicio_valida) {
     $where_parts[] = 'a.criado_em >= :data_inicio';
     $params[':data_inicio'] = $data_inicio . ' 00:00:00';
+} else {
+    $data_inicio = '';
 }
 
 if ($data_fim_valida) {
     $where_parts[] = 'a.criado_em <= :data_fim';
     $params[':data_fim'] = $data_fim . ' 23:59:59';
+} else {
+    $data_fim = '';
 }
 
 $where = implode(' AND ', $where_parts);
@@ -97,38 +105,59 @@ $stmt = $pdo->prepare("
 $stmt->execute($params);
 $aquisicoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$stmt_items = $pdo->prepare("
-    SELECT
-        ia.*,
-        COALESCE(
-            (
-                SELECT io.unidade
-                FROM itens_oficio io
-                WHERE io.oficio_id = :oficio_id
-                  AND (
-                      io.id = ia.oficio_item_id
-                      OR (
-                          ia.oficio_item_id IS NULL
-                          AND TRIM(UPPER(io.produto)) = TRIM(UPPER(ia.produto))
-                      )
-                  )
-                ORDER BY io.id ASC
-                LIMIT 1
-            ),
-            'UN'
-        ) AS unidade
-    FROM itens_aquisicao ia
-    WHERE ia.aquisicao_id = :aquisicao_id
-    ORDER BY ia.id ASC
-");
-
+/*
+|--------------------------------------------------------------------------
+| ITENS EM LOTE
+|--------------------------------------------------------------------------
+| Carrega os itens de todas as aquisições em uma única consulta para evitar
+| centenas de round-trips ao banco ao imprimir grandes lotes.
+|--------------------------------------------------------------------------
+*/
 $itens_por_aquisicao = [];
-foreach ($aquisicoes as $aq) {
-    $stmt_items->execute([
-        ':oficio_id' => (int)$aq['oficio_id'],
-        ':aquisicao_id' => (int)$aq['id'],
-    ]);
-    $itens_por_aquisicao[(int)$aq['id']] = $stmt_items->fetchAll(PDO::FETCH_ASSOC);
+
+if (!empty($aquisicoes)) {
+    $ids = [];
+    foreach ($aquisicoes as $aq_item) {
+        $ids[] = (int)$aq_item['id'];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+
+    $stmt_items = $pdo->prepare("
+        SELECT
+            ia.*,
+            a_it.oficio_id,
+            COALESCE(
+                (
+                    SELECT io.unidade
+                    FROM itens_oficio io
+                    WHERE io.oficio_id = a_it.oficio_id
+                      AND (
+                          io.id = ia.oficio_item_id
+                          OR (
+                              ia.oficio_item_id IS NULL
+                              AND TRIM(UPPER(io.produto)) = TRIM(UPPER(ia.produto))
+                          )
+                      )
+                    ORDER BY io.id ASC
+                    LIMIT 1
+                ),
+                'UN'
+            ) AS unidade
+        FROM itens_aquisicao ia
+        INNER JOIN aquisicoes a_it ON a_it.id = ia.aquisicao_id
+        WHERE ia.aquisicao_id IN ($placeholders)
+        ORDER BY ia.aquisicao_id ASC, ia.id ASC
+    ");
+    $stmt_items->execute($ids);
+
+    foreach ($stmt_items->fetchAll(PDO::FETCH_ASSOC) as $item) {
+        $aq_id = (int)$item['aquisicao_id'];
+        if (!isset($itens_por_aquisicao[$aq_id])) {
+            $itens_por_aquisicao[$aq_id] = [];
+        }
+        $itens_por_aquisicao[$aq_id][] = $item;
+    }
 }
 
 $filtros_lista = [
@@ -157,6 +186,71 @@ function h_lote($value): string
 function money_br_lote($value): string
 {
     return 'R$ ' . number_format((float)$value, 2, ',', '.');
+}
+
+function render_aquisicao_lote_header(array $aq, string $titulo, string $viaLabel): void
+{
+    $data_emissao = strtotime((string)($aq['criado_em'] ?? '')) ?: time();
+?>
+    <div class="ordem-header">
+        <div class="ordem-logo">
+            <img src="assets/img/prefeitura.jpg" alt="Logo Prefeitura">
+        </div>
+
+        <div class="ordem-center">
+            <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
+                PREFEITURA MUNICIPAL DE COARI
+            </h1>
+            <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
+                <?= h_lote($titulo) ?>
+            </h2>
+            <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">
+                COARI - AM | CNPJ: 04.262.432/0001-21
+            </div>
+        </div>
+
+        <div class="ordem-right">
+            <div style="font-weight: 800; color: #999; font-size: 0.65rem; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.1em;">
+                <?= h_lote($viaLabel) ?>
+            </div>
+            <div class="ordem-right-box">
+                <div style="font-size: 0.6rem; font-weight: 800; color: #000; text-transform: uppercase;">Ordem Nº</div>
+                <div style="font-size: 1.25rem; font-weight: 900; color: #000; line-height: 1.1;">
+                    <?= h_lote(str_replace('AQ-', '', (string)$aq['numero_aq'])) ?>
+                </div>
+            </div>
+            <div style="font-size: 0.7rem; color: #666; margin-top: 8px; font-weight: 600; text-transform: uppercase;">
+                DATA: <?= date('d/m/Y', $data_emissao) ?> | <?= date('H:i', $data_emissao) ?>
+            </div>
+        </div>
+    </div>
+<?php
+}
+
+function render_aquisicao_lote_signature_footer(string $assinaturaLabel): void
+{
+?>
+    <div class="rodape-documento print-signature-footer">
+        <div class="assinaturas-grid">
+            <div>
+                <div class="assinatura-linha">
+                    <div style="font-weight: 800; color: #000; font-size: 0.875rem;">AUTORIZAÇÃO DE FORNECEDOR</div>
+                    <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
+                        <?= h_lote($assinaturaLabel) ?>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="assinatura-linha">
+                    <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
+                    <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
+                        Assinatura e Carimbo
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<?php
 }
 
 function render_itens_aquisicao_lote(array $items, float $valorTotal): void
@@ -196,23 +290,18 @@ function render_itens_aquisicao_lote(array $items, float $valorTotal): void
                             <td style="text-align: center; font-weight: 700; color: #333;">
                                 <?= str_pad((string)$i++, 2, '0', STR_PAD_LEFT) ?>
                             </td>
-
                             <td style="text-align: center; font-weight: 600; color: #555;">
                                 <?= h_lote(strtoupper($unidade)) ?>
                             </td>
-
                             <td style="text-align: center; font-weight: 700;">
                                 <?= number_format($quantidade, 0, ',', '.') ?>
                             </td>
-
                             <td style="font-weight: 600;">
                                 <?= h_lote(strtoupper((string)($item['produto'] ?? ''))) ?>
                             </td>
-
                             <td style="text-align: center;">
                                 <?= money_br_lote($valorUnitario) ?>
                             </td>
-
                             <td style="text-align: center; font-weight: 700;">
                                 <?= money_br_lote($valorItem) ?>
                             </td>
@@ -244,86 +333,50 @@ function render_aquisicao_lote_page(array $aq, array $items, string $via): void
 ?>
     <div class="card printable-page">
         <div class="card-body">
-            <div class="ordem-header">
-                <div class="ordem-logo">
-                    <img src="assets/img/prefeitura.jpg" alt="Logo Prefeitura">
-                </div>
-
-                <div class="ordem-center">
-                    <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #000; text-transform: uppercase;">
-                        PREFEITURA MUNICIPAL DE COARI
-                    </h1>
-                    <h2 style="font-size: 0.8rem; font-weight: 700; margin: 2px 0 0; color: #333; text-transform: uppercase;">
-                        <?= h_lote($titulo) ?>
-                    </h2>
-                    <div style="font-size: 0.7rem; margin-top: 4px; color: #666; font-weight: 600;">
-                        COARI - AM | CNPJ: 04.262.432/0001-21
-                    </div>
-                </div>
-
-                <div class="ordem-right">
-                    <div style="font-weight: 800; color: #999; font-size: 0.65rem; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.1em;">
-                        <?= h_lote($label_via) ?>
-                    </div>
-                    <div class="ordem-right-box">
-                        <div style="font-size: 0.6rem; font-weight: 800; color: #000; text-transform: uppercase;">Ordem Nº</div>
-                        <div style="font-size: 1.25rem; font-weight: 900; color: #000; line-height: 1.1;">
-                            <?= h_lote(str_replace('AQ-', '', (string)$aq['numero_aq'])) ?>
-                        </div>
-                    </div>
-                    <div style="font-size: 0.7rem; color: #666; margin-top: 8px; font-weight: 600; text-transform: uppercase;">
-                        DATA: <?= date('d/m/Y', $data_emissao) ?> | <?= date('H:i', $data_emissao) ?>
-                    </div>
-                </div>
-            </div>
-
-            <div class="ordem-info-wrap">
-                <table class="ordem-info-table">
+            <table class="print-repeat-table">
+                <thead>
                     <tr>
-                        <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Fornecedor:</td>
-                        <td style="font-weight: 700;"><?= h_lote(strtoupper((string)$aq['fornecedor'])) ?></td>
-                        <td class="ordem-info-label" style="width: 30%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local e Data de Emissão:</td>
-                        <td style="width: 20%; font-weight: 700;">COARI-AM - <?= date('d/m/Y', $data_emissao) ?></td>
+                        <td><?php render_aquisicao_lote_header($aq, $titulo, $label_via); ?></td>
                     </tr>
+                </thead>
+                <tbody>
                     <tr>
-                        <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
-                        <td style="font-weight: 700;"><?= h_lote(strtoupper((string)$aq['secretaria'])) ?></td>
-                        <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Referência:</td>
-                        <td style="font-family: monospace; font-weight: 900; letter-spacing: 1px;"><?= h_lote($aq['oficio_num']) ?></td>
-                    </tr>
-                    <tr>
-                        <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local:</td>
-                        <td colspan="3" style="font-weight: 700; text-transform: uppercase;">
-                            <?= !empty($aq['oficio_local']) ? h_lote($aq['oficio_local']) : '---' ?>
+                        <td>
+                            <div class="ordem-info-wrap">
+                                <table class="ordem-info-table">
+                                    <tr>
+                                        <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Fornecedor:</td>
+                                        <td style="font-weight: 700;"><?= h_lote(strtoupper((string)$aq['fornecedor'])) ?></td>
+                                        <td class="ordem-info-label" style="width: 30%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local e Data de Emissão:</td>
+                                        <td style="width: 20%; font-weight: 700;">COARI-AM - <?= date('d/m/Y', $data_emissao) ?></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Para:</td>
+                                        <td style="font-weight: 700;"><?= h_lote(strtoupper((string)$aq['secretaria'])) ?></td>
+                                        <td class="ordem-info-label" style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Referência:</td>
+                                        <td style="font-family: monospace; font-weight: 900; letter-spacing: 1px;"><?= h_lote($aq['oficio_num']) ?></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="ordem-info-label" style="width: 15%; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Local:</td>
+                                        <td colspan="3" style="font-weight: 700; text-transform: uppercase;">
+                                            <?= !empty($aq['oficio_local']) ? h_lote($aq['oficio_local']) : '---' ?>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <h3 class="ordem-section-title">AUTORIZAÇÃO DE FORNECIMENTO - AF</h3>
+
+                            <?php render_itens_aquisicao_lote($items, (float)$aq['valor_total']); ?>
                         </td>
                     </tr>
-                </table>
-            </div>
-
-            <h3 class="ordem-section-title">AUTORIZAÇÃO DE FORNECIMENTO - AF</h3>
-
-            <?php render_itens_aquisicao_lote($items, (float)$aq['valor_total']); ?>
-
-            <div class="rodape-documento">
-                <div class="assinaturas-grid">
-                    <div>
-                        <div class="assinatura-linha">
-                            <div style="font-weight: 800; color: #000; font-size: 0.875rem;">RECEBEDOR</div>
-                            <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
-                                <?= h_lote($assinatura_label) ?>
-                            </div>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="assinatura-linha">
-                            <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
-                            <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
-                                Assinatura e Carimbo
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td><?php render_aquisicao_lote_signature_footer($assinatura_label); ?></td>
+                    </tr>
+                </tfoot>
+            </table>
         </div>
     </div>
 <?php
@@ -363,6 +416,7 @@ include 'views/layout/header.php';
         font-size: .875rem;
     }
 
+    /* Mesmo documento visual de aquisicoes_visualizar.php */
     .print-doc {
         max-width: 1120px;
         margin: 0 auto;
@@ -420,9 +474,17 @@ include 'views/layout/header.php';
     }
 
     .ordem-info-table,
-    .ordem-items-table {
+    .ordem-items-table,
+    .print-repeat-table {
         width: 100%;
         border-collapse: collapse;
+    }
+
+    .print-repeat-table > thead > tr > td,
+    .print-repeat-table > tfoot > tr > td,
+    .print-repeat-table > tbody > tr > td {
+        padding: 0;
+        border: 0;
     }
 
     .ordem-info-wrap,
@@ -475,6 +537,13 @@ include 'views/layout/header.php';
         margin-top: 1.25rem;
     }
 
+    .texto-entrega {
+        font-size: 0.75rem;
+        color: #555;
+        margin: 0 0 1.25rem 0;
+        line-height: 1.5;
+    }
+
     .assinaturas-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -517,7 +586,7 @@ include 'views/layout/header.php';
 
         .ordem-right,
         .ordem-logo,
-        .ordem-header>div:first-child {
+        .ordem-header > div:first-child {
             text-align: center;
             justify-self: center;
             margin-right: 0;
@@ -644,10 +713,33 @@ include 'views/layout/header.php';
         }
 
         .ordem-info-table,
-        .ordem-items-table {
+        .ordem-items-table,
+        .print-repeat-table {
             width: 100% !important;
             min-width: 0 !important;
             font-size: 10px !important;
+        }
+
+        .print-repeat-table > thead {
+            display: table-header-group !important;
+        }
+
+        .print-repeat-table > tbody {
+            display: table-row-group !important;
+        }
+
+        .print-repeat-table > tfoot {
+            display: table-footer-group !important;
+        }
+
+        .print-repeat-table > thead > tr,
+        .print-repeat-table > tfoot > tr,
+        .print-repeat-table > tbody > tr,
+        .print-repeat-table > thead > tr > td,
+        .print-repeat-table > tfoot > tr > td,
+        .print-repeat-table > tbody > tr > td {
+            page-break-inside: auto !important;
+            break-inside: auto !important;
         }
 
         .ordem-items-table {
@@ -682,12 +774,22 @@ include 'views/layout/header.php';
             break-inside: avoid !important;
         }
 
+        .texto-entrega {
+            margin: 8px 0 10px !important;
+            font-size: 10px !important;
+            line-height: 1.35 !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            orphans: 3;
+            widows: 3;
+        }
+
         .assinaturas-grid {
             display: grid !important;
             grid-template-columns: 1fr 1fr !important;
             gap: 2rem !important;
             text-align: center !important;
-            margin-top: 70px !important;
+            margin-top: 24mm !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
         }
