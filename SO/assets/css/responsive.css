@@ -449,3 +449,222 @@
         height: 210px !important;
     }
 }
+
+/* =========================================================
+   PADRÃO GLOBAL - CABEÇALHO DE FILTROS E PESQUISA DO SO
+   Aplicado a todas as páginas que reutilizam .filtros-grid
+========================================================= */
+.card.no-print:has(.filtros-grid) {
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.045);
+    overflow: hidden;
+}
+
+.card.no-print:has(.filtros-grid) .card-body {
+    padding: 16px 18px !important;
+}
+
+.card.no-print:has(.filtros-grid) .card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 14px !important;
+    color: #1e293b;
+    font-size: 0.95rem !important;
+    font-weight: 700 !important;
+    line-height: 1.2;
+}
+
+.card.no-print:has(.filtros-grid) .card-title .fa-filter,
+.card.no-print:has(.filtros-grid) .card-title .fas.fa-filter {
+    width: 30px;
+    height: 30px;
+    margin: 0 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 30px;
+    border-radius: 8px;
+    background: #eaf2fb;
+    color: var(--primary) !important;
+    font-size: 0.82rem;
+}
+
+form.filtros-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important;
+    gap: 12px 14px !important;
+    align-items: end !important;
+    margin: 0 !important;
+}
+
+form.filtros-grid > .form-group,
+form.filtros-grid > div {
+    min-width: 0;
+    margin-bottom: 0 !important;
+    grid-column: span 1 !important;
+}
+
+form.filtros-grid .filtro-busca,
+form.filtros-grid .filtro-secretaria,
+form.filtros-grid .filtro-fornecedor {
+    grid-column: span 2 !important;
+}
+
+form.filtros-grid .filtro-limite,
+form.filtros-grid .filtro-status,
+form.filtros-grid .filtro-data,
+form.filtros-grid .filtro-tipo {
+    grid-column: span 1 !important;
+}
+
+form.filtros-grid > div:last-child {
+    grid-column: span 2 !important;
+    min-height: 42px;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+}
+
+form.filtros-grid .form-label,
+form.filtros-grid label {
+    display: block;
+    margin: 0 0 5px !important;
+    color: #475569;
+    font-size: 0.76rem;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+form.filtros-grid .form-control,
+form.filtros-grid input:not([type="hidden"]),
+form.filtros-grid select {
+    width: 100% !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    padding: 0 12px !important;
+    border: 1px solid #d8e0ea !important;
+    border-radius: 8px !important;
+    background: #ffffff !important;
+    color: #1e293b !important;
+    font-size: 0.86rem !important;
+    line-height: 1.2 !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03) !important;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease !important;
+}
+
+form.filtros-grid input::placeholder {
+    color: #94a3b8;
+    opacity: 1;
+}
+
+form.filtros-grid .form-control:hover,
+form.filtros-grid input:not([type="hidden"]):hover,
+form.filtros-grid select:hover {
+    border-color: #b8c5d4 !important;
+}
+
+form.filtros-grid .form-control:focus,
+form.filtros-grid input:not([type="hidden"]):focus,
+form.filtros-grid select:focus {
+    outline: none !important;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(0, 84, 166, 0.10) !important;
+}
+
+form.filtros-grid .btn,
+form.filtros-grid .btn-sm,
+form.filtros-grid .btn-outline,
+form.filtros-grid .btn-limpar-filtros {
+    min-height: 42px !important;
+    height: 42px !important;
+    padding: 0 13px !important;
+    border-radius: 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    font-size: 0.82rem !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+}
+
+form.filtros-grid .btn-limpar-filtros {
+    width: 42px !important;
+    min-width: 42px !important;
+    padding: 0 !important;
+}
+
+@media (max-width: 1024px) {
+    form.filtros-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    }
+
+    form.filtros-grid .filtro-busca,
+    form.filtros-grid .filtro-secretaria,
+    form.filtros-grid .filtro-fornecedor,
+    form.filtros-grid > div:last-child {
+        grid-column: span 2 !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .card.no-print:has(.filtros-grid) .card-body {
+        padding: 14px !important;
+    }
+
+    form.filtros-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 10px !important;
+    }
+
+    form.filtros-grid .filtro-busca,
+    form.filtros-grid .filtro-secretaria,
+    form.filtros-grid .filtro-fornecedor,
+    form.filtros-grid > div:last-child {
+        grid-column: span 2 !important;
+    }
+
+    form.filtros-grid > div:last-child {
+        justify-content: flex-start !important;
+    }
+}
+
+@media (max-width: 520px) {
+    .card.no-print:has(.filtros-grid) {
+        border-radius: 12px;
+    }
+
+    form.filtros-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    form.filtros-grid > .form-group,
+    form.filtros-grid > div,
+    form.filtros-grid .filtro-busca,
+    form.filtros-grid .filtro-secretaria,
+    form.filtros-grid .filtro-fornecedor,
+    form.filtros-grid .filtro-limite,
+    form.filtros-grid .filtro-status,
+    form.filtros-grid .filtro-data,
+    form.filtros-grid .filtro-tipo,
+    form.filtros-grid > div:last-child {
+        grid-column: 1 / -1 !important;
+    }
+
+    form.filtros-grid > div:last-child {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        width: 100%;
+    }
+
+    form.filtros-grid > div:last-child .btn,
+    form.filtros-grid > div:last-child .btn-sm,
+    form.filtros-grid > div:last-child .btn-outline {
+        width: 100% !important;
+    }
+}
