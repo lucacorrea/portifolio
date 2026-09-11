@@ -1464,7 +1464,7 @@ include 'views/layout/header.php';
                 <div class="form-group">
                     <label class="form-label">Ofício de Solicitação (Opcional)</label>
                     <input type="file" name="arquivo_oficio[]" id="arquivo-oficio-input" class="form-control" accept="<?php echo oficio_upload_accept_attr(); ?>" multiple>
-                    <small class="text-muted">PDF, JPG, PNG ou Word (.doc/.docx). PDF com texto selecionável e Word .docx podem preencher dados e itens automaticamente.</small>
+                    <small class="text-muted">PDF, JPG, PNG ou Word (.doc/.docx). Word .docx pode preencher dados e itens. Para extrair tabelas de PDFs, use <a href="orcamentos_lote.php">Orçamentos em lote</a>.</small>
                     <div id="oficio-import-status" class="oficio-import-status" aria-live="polite"></div>
                 </div>
 
@@ -1542,8 +1542,6 @@ include 'views/layout/header.php';
     </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.6.172/pdf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
     function pad(n) {
         return String(n).padStart(2, '0');
@@ -1594,15 +1592,9 @@ include 'views/layout/header.php';
     const semOficioCheckbox = document.getElementById('sem-oficio-checkbox');
     const semOficioPreview = document.getElementById('sem-oficio-preview');
     const secretariaSelect = document.getElementById('secretaria-id-select');
-    const pdfWorkerUrl = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.6.172/pdf.worker.min.js';
-    const ocrLanguages = 'por+eng';
-    const maxOcrPdfPages = 12;
     let manualNumeroOficio = numeroOficioInput?.value || '';
     let semOficioPreviewCode = '';
 
-    if (window.pdfjsLib) {
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
-    }
 
     function escapeHtml(value) {
         return String(value ?? '')
@@ -2077,102 +2069,6 @@ include 'views/layout/header.php';
         }
     }
 
-    function canUseOcr() {
-        return Boolean(window.Tesseract && typeof window.Tesseract.recognize === 'function');
-    }
-
-    async function extractImageText(file, label = 'imagem') {
-        if (!canUseOcr()) {
-            throw new Error('OCR não carregou no navegador.');
-        }
-
-        const result = await window.Tesseract.recognize(file, ocrLanguages, {
-            logger(message) {
-                if (message.status === 'recognizing text') {
-                    const pct = Math.round((message.progress || 0) * 100);
-                    setImportStatus(`Lendo texto por OCR (${label})... ${pct}%`, 'warning');
-                }
-            }
-        });
-
-        return result?.data?.text || '';
-    }
-
-    async function extractPdfOcrText(pdf) {
-        if (!canUseOcr()) {
-            return '';
-        }
-
-        const texts = [];
-        const totalPages = Math.min(pdf.numPages, maxOcrPdfPages);
-
-        for (let pageNumber = 1; pageNumber <= totalPages; pageNumber++) {
-            setImportStatus(`PDF parece ser escaneado. Aplicando OCR na página ${pageNumber}/${totalPages}...`, 'warning');
-
-            const page = await pdf.getPage(pageNumber);
-            const viewport = page.getViewport({ scale: 2 });
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d', { willReadFrequently: true });
-
-            canvas.width = Math.ceil(viewport.width);
-            canvas.height = Math.ceil(viewport.height);
-            await page.render({ canvasContext: context, viewport }).promise;
-
-            const text = await extractImageText(canvas, `página ${pageNumber}`);
-            if (text.trim()) {
-                texts.push(text);
-            }
-        }
-
-        if (pdf.numPages > maxOcrPdfPages) {
-            texts.push(`OCR limitado às primeiras ${maxOcrPdfPages} páginas de ${pdf.numPages}.`);
-        }
-
-        return texts.join('\n');
-    }
-
-    async function extractPdfText(file, forceOcr = false) {
-        if (!window.pdfjsLib) {
-            throw new Error('Não foi possível carregar o leitor de PDF.');
-        }
-
-        const buffer = await file.arrayBuffer();
-        const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
-        const pages = [];
-
-        for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
-            const page = await pdf.getPage(pageNumber);
-            const content = await page.getTextContent();
-            const rows = new Map();
-
-            for (const item of content.items) {
-                const value = String(item.str || '').trim();
-                if (!value) continue;
-
-                const y = Math.round(item.transform?.[5] || 0);
-                const x = Number(item.transform?.[4] || 0);
-                if (!rows.has(y)) rows.set(y, []);
-                rows.get(y).push({ x, value });
-            }
-
-            const pageLines = Array.from(rows.entries())
-                .sort((a, b) => b[0] - a[0])
-                .map(([, values]) => values.sort((a, b) => a.x - b.x).map(item => item.value).join(' '));
-
-            pages.push(pageLines.join('\n'));
-        }
-
-        const textLayer = pages.join('\n');
-        const shouldUseOcr = forceOcr || textLayer.replace(/\s+/g, '').length < 80;
-
-        if (!shouldUseOcr) {
-            return textLayer;
-        }
-
-        const ocrText = await extractPdfOcrText(pdf);
-        return [textLayer, ocrText].filter(Boolean).join('\n');
-    }
-
     async function extractDocxData(file) {
         const formData = new FormData();
         formData.append('arquivo', file);
@@ -2242,28 +2138,8 @@ include 'views/layout/header.php';
                     continue;
                 }
 
-                if (extension === 'pdf') {
-                    let text = await extractPdfText(file);
-                    let items = parseOficioItemsFromText(text);
-
-                    if (!items.length && canUseOcr()) {
-                        const ocrText = await extractPdfText(file, true);
-                        if (ocrText.trim().length > text.trim().length) {
-                            text = ocrText;
-                            items = parseOficioItemsFromText(text);
-                        }
-                    }
-
-                    merged = mergeAutoData(merged, parseAutoDataFromText(text, file.name, items));
-                    messages.push(items.length ? `${items.length} item(ns) detectado(s) no PDF.` : 'PDF lido, mas nenhum item foi detectado automaticamente.');
-                    continue;
-                }
-
-                if (['jpg', 'jpeg', 'png'].includes(extension)) {
-                    const text = await extractImageText(file, file.name);
-                    const items = parseOficioItemsFromText(text);
-                    merged = mergeAutoData(merged, parseAutoDataFromText(text, file.name, items));
-                    messages.push(items.length ? `${items.length} item(ns) detectado(s) na imagem.` : 'Imagem lida por OCR, mas nenhum item foi detectado automaticamente.');
+                if (['pdf', 'jpg', 'jpeg', 'png'].includes(extension)) {
+                    messages.push(`${file.name}: anexado. Para extrair tabelas de PDFs e gerar documentos separados, use Orçamentos em lote.`);
                     continue;
                 }
 
