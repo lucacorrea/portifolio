@@ -29,8 +29,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $secretarias = $pdo->query("SELECT * FROM secretarias ORDER BY nome")->fetchAll();
 $fornecedores = $pdo->query("SELECT * FROM fornecedores ORDER BY nome")->fetchAll();
 
+$assinatura_ativa = false;
+try {
+    $stmt_assinatura = $pdo->query("SELECT id FROM assinaturas_sistema WHERE finalidade = 'AUTORIZACAO_FORNECEDOR' AND ativo = 1 ORDER BY id DESC LIMIT 1");
+    $assinatura_ativa = (bool)$stmt_assinatura->fetchColumn();
+} catch (Throwable $e) {
+    $assinatura_ativa = false;
+}
+
 include 'views/layout/header.php';
 ?>
+
+<?php display_flash(); ?>
+
+<div class="card" style="margin-bottom:1.5rem;border-left:4px solid var(--primary);">
+    <div class="card-body" style="display:flex;align-items:center;justify-content:space-between;gap:1.25rem;flex-wrap:wrap;">
+        <div style="display:flex;align-items:flex-start;gap:1rem;min-width:280px;flex:1;">
+            <div style="width:46px;height:46px;border-radius:12px;background:#eff6ff;color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:1.25rem;flex:0 0 46px;">
+                <i class="fas fa-signature"></i>
+            </div>
+            <div>
+                <h3 style="margin:0 0 .35rem;font-size:1rem;">Assinatura de Autorização</h3>
+                <div style="color:var(--text-muted);font-size:.88rem;line-height:1.5;">Envie, visualize, ative ou desative a assinatura usada nas autorizações de fornecedor. Recurso exclusivo do SUPORTE.</div>
+                <div style="margin-top:.6rem;font-size:.8rem;font-weight:800;color:<?= $assinatura_ativa ? '#15803d' : '#64748b' ?>;">
+                    <i class="fas <?= $assinatura_ativa ? 'fa-check-circle' : 'fa-pause-circle' ?>"></i>
+                    <?= $assinatura_ativa ? 'ASSINATURA ATIVA' : 'SEM ASSINATURA ATIVA' ?>
+                </div>
+            </div>
+        </div>
+        <a href="configuracoes_assinatura.php" class="btn btn-primary btn-sm" style="white-space:nowrap;">
+            <i class="fas fa-cog"></i> Gerenciar assinatura
+        </a>
+    </div>
+</div>
 
 <div class="row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
     <!-- Gerenciar Secretarias -->
