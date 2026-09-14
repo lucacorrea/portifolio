@@ -160,7 +160,7 @@ function secretariaSiglaRelatorio($nome): string
         'SECRETARIA MUNICIPAL DE MEIO AMBIENTE' => 'SEMMA',
         'SECRETARIA MUNICIPAL EXTRAORDINÁRIA' => 'SME',
         'PROCURADORIA GERAL DO MUNICÍPIO' => 'PGM',
-        'CONTROLADORIA GERAL DO MUNICICÍPIO' => 'CGM',
+        'CONTROLADORIA GERAL DO MUNICÍPIO' => 'CGM',
         'SECRETARIA MUNICIPAL DE CIÊNCIA, TECNOLOGIA E INOVAÇÃO' => 'SMCTI',
         'SECRETARIA MUNICIPAL DE DESENVOLVIMENTO RURAL E ECONÔMICO' => 'SMDRE',
         'SECRETARIA MUNICIPAL DE SEGURANÇA PÚBLICA E DEFESA SOCIAL' => 'SMSPDS',
@@ -362,6 +362,8 @@ $data_inicio = trim((string)($_GET['data_inicio'] ?? ''));
 $data_fim = trim((string)($_GET['data_fim'] ?? ''));
 $export = trim((string)($_GET['export'] ?? ''));
 $tipo_relatorio = trim((string)($_GET['tipo_relatorio'] ?? 'sintetico'));
+$modo_relatorio = trim((string)($_GET['modo'] ?? 'cor'));
+$modo_pb = $modo_relatorio === 'pb';
 if (!in_array($tipo_relatorio, ['sintetico', 'analitico'], true)) {
     $tipo_relatorio = 'sintetico';
 }
@@ -553,13 +555,23 @@ if (in_array($export, ['excel', 'pdf'], true)) {
     }
     $descricao_limite = $tipo_relatorio === 'analitico' ? 420 : 180;
 
-    $filename = 'relatorio_aquisicoes_' . date('Ymd_His');
+    $filename = 'relatorio_aquisicoes' . ($modo_pb ? '_preto_branco' : '') . '_' . date('Ymd_His');
     $back_query = $_GET;
-    unset($back_query['export'], $back_query['page']);
+    unset($back_query['export'], $back_query['page'], $back_query['modo']);
     $back_url = 'aquisicoes_lista.php';
     if (!empty($back_query)) {
         $back_url .= '?' . http_build_query($back_query);
     }
+
+    $modo_query = $_GET;
+    $modo_query['export'] = 'pdf';
+    unset($modo_query['page']);
+    if ($modo_pb) {
+        unset($modo_query['modo']);
+    } else {
+        $modo_query['modo'] = 'pb';
+    }
+    $modo_url = 'aquisicoes_lista.php?' . http_build_query($modo_query);
 
     if ($is_pdf_export) {
         header('Content-Type: text/html; charset=UTF-8');
@@ -577,7 +589,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Relatório de Aquisições</title>
+        <title>Relatório de Aquisições<?php echo $modo_pb ? ' - Preto e Branco' : ''; ?></title>
         <?php if ($is_pdf_export): ?>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -701,6 +713,12 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             .pdf-btn-primary {
                 background: #1d4ed8;
                 border-color: #1d4ed8;
+                color: #ffffff;
+            }
+
+            .pdf-btn-mode {
+                background: #111827;
+                border-color: #111827;
                 color: #ffffff;
             }
 
@@ -836,6 +854,77 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                 height: 5px;
             }
 
+            /* Modo preto e branco: substitui as cores por tons de cinza de alto contraste. */
+            body.pdf-export.modo-pb,
+            body.pdf-export.modo-pb .pdf-page {
+                background: #ffffff !important;
+                color: #000000 !important;
+            }
+
+            body.pdf-export.modo-pb .sheet td,
+            body.pdf-export.modo-pb .sheet th {
+                color: #000000 !important;
+                border-color: #333333 !important;
+            }
+
+            body.pdf-export.modo-pb .title-main {
+                background: #e3e3e3 !important;
+                color: #000000 !important;
+                border-color: #333333 !important;
+            }
+
+            body.pdf-export.modo-pb .sub-info,
+            body.pdf-export.modo-pb .summary-value {
+                background: #ffffff !important;
+                color: #000000 !important;
+            }
+
+            body.pdf-export.modo-pb .summary-label,
+            body.pdf-export.modo-pb .secretaria-card-head th {
+                background: #eeeeee !important;
+                color: #000000 !important;
+            }
+
+            body.pdf-export.modo-pb .section-title {
+                background: #bdbdbd !important;
+                color: #000000 !important;
+                border-color: #333333 !important;
+            }
+
+            body.pdf-export.modo-pb .supplier-section td {
+                background: #d0d0d0 !important;
+                color: #000000 !important;
+            }
+
+            body.pdf-export.modo-pb .secretaria-card-title td {
+                background: #d9d9d9 !important;
+                color: #000000 !important;
+                border-color: #333333 !important;
+            }
+
+            body.pdf-export.modo-pb .report-row td {
+                background: #ffffff !important;
+                color: #000000 !important;
+            }
+
+            body.pdf-export.modo-pb .group-total-row td {
+                background: #e4e4e4 !important;
+                color: #000000 !important;
+                border-color: #333333 !important;
+            }
+
+            body.pdf-export.modo-pb .supplier-total-row td {
+                background: #dddddd !important;
+                color: #000000 !important;
+                border-color: #333333 !important;
+            }
+
+            body.pdf-export.modo-pb .total-row td {
+                background: #d5d5d5 !important;
+                color: #000000 !important;
+                border-color: #222222 !important;
+            }
+
             .sheet tr {
                 break-inside: avoid;
                 page-break-inside: avoid;
@@ -863,13 +952,16 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             <?php endif; ?>
         </style>
     </head>
-    <body class="<?php echo $is_pdf_export ? 'pdf-export' : ''; ?>">
+    <body class="<?php echo $is_pdf_export ? 'pdf-export' . ($modo_pb ? ' modo-pb' : '') : ''; ?>">
         <?php if ($is_pdf_export): ?>
             <div class="print-toolbar no-print">
-                <div class="toolbar-title">Relatório de Aquisições - PDF em paisagem</div>
+                <div class="toolbar-title">Relatório de Aquisições - PDF em paisagem<?php echo $modo_pb ? ' - Preto e Branco' : ''; ?></div>
                 <div class="toolbar-actions">
                     <a href="<?php echo h($back_url); ?>" class="pdf-btn">
                         <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                    <a href="<?php echo h($modo_url); ?>" class="pdf-btn <?php echo !$modo_pb ? 'pdf-btn-mode' : ''; ?>">
+                        <i class="fas fa-circle-half-stroke"></i> <?php echo $modo_pb ? 'Colorido' : 'Preto e Branco'; ?>
                     </a>
                     <button type="button" id="download-pdf-btn" class="pdf-btn pdf-btn-primary" onclick="downloadAquisicoesPdf()">
                         <i class="fas fa-file-pdf"></i> Baixar PDF
