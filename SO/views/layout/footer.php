@@ -518,5 +518,170 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+<script>
+/* =========================================================
+   FLUXO DE FORNECEDOR V2 - compatibilidade da lista principal
+   O fornecedor é definido antes dos itens e nunca na aprovação.
+========================================================= */
+(function () {
+    const currentPage = (window.location.pathname.split('/').pop() || '').toLowerCase();
+    if (currentPage !== 'oficios_lista.php') {
+        return;
+    }
+
+    function supplierDefined(checkbox) {
+        if (!checkbox) return false;
+        if (checkbox.dataset.hasFornecedor === '1') return true;
+        if (checkbox.dataset.hasFornecedor === '0') return false;
+
+        const row = checkbox.closest('tr');
+        const supplier = row ? row.querySelector('.fornecedor-lista') : null;
+        const value = supplier ? supplier.textContent.trim() : '';
+        const hasSupplier = value !== '' && value !== '---';
+        checkbox.dataset.hasFornecedor = hasSupplier ? '1' : '0';
+        return hasSupplier;
+    }
+
+    function eligibleForApproval(checkbox) {
+        const status = checkbox?.dataset.status || '';
+        const hasAcquisition = checkbox?.dataset.hasAquisicao === '1';
+        return supplierDefined(checkbox)
+            && (status === 'ENVIADO' || (status === 'APROVADO' && !hasAcquisition));
+    }
+
+    function refreshApprovalButton() {
+        const selected = Array.from(document.querySelectorAll('.checkOficio:checked'));
+        const eligible = selected.filter(eligibleForApproval);
+        const button = document.getElementById('btn-aprovar-selecionados');
+        if (button) {
+            button.disabled = eligible.length === 0;
+        }
+    }
+
+    function initSupplierFlowUI() {
+        const button = document.getElementById('btn-aprovar-selecionados');
+        if (!button) return;
+
+        button.innerHTML = '<i class="fas fa-check-circle"></i> Aprovar / gerar aquisições';
+
+        document.querySelectorAll('.fornecedor-lista').forEach(function (supplierCell) {
+            const row = supplierCell.closest('tr');
+            const checkbox = row ? row.querySelector('.checkOficio') : null;
+            if (checkbox) {
+                const value = supplierCell.textContent.trim();
+                checkbox.dataset.hasFornecedor = value !== '' && value !== '---' ? '1' : '0';
+            }
+        });
+
+        document.querySelectorAll('small').forEach(function (small) {
+            if (small.textContent.trim() === 'Indicado na aprovação') {
+                small.textContent = 'Definido antes dos itens';
+            }
+        });
+
+        const supplierSelect = document.getElementById('fornecedor-aprovacao-lote');
+        if (supplierSelect) {
+            supplierSelect.required = false;
+            supplierSelect.value = '';
+            const group = supplierSelect.closest('.form-group');
+            if (group) {
+                group.style.display = 'none';
+            }
+        }
+
+        const modal = document.getElementById('modalAprovacao');
+        if (modal) {
+            const title = modal.querySelector('#modal-aprovacao-title');
+            if (title) {
+                title.innerHTML = '<i class="fas fa-check-circle text-success"></i> Aprovar e gerar aquisições';
+            }
+
+            const subtitle = modal.querySelector('.modal-header-custom small');
+            if (subtitle) {
+                subtitle.textContent = 'Cada solicitação usará o fornecedor que já foi definido antes do preenchimento dos itens.';
+            }
+
+            const info = modal.querySelector('.alert-info');
+            if (info && !modal.querySelector('[data-supplier-flow-notice]')) {
+                const notice = document.createElement('div');
+                notice.setAttribute('data-supplier-flow-notice', '1');
+                notice.style.cssText = 'margin-top:12px;padding:10px 12px;border-radius:9px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;font-size:.85rem;font-weight:700;';
+                notice.innerHTML = '<i class="fas fa-truck"></i> O fornecedor não pode ser trocado nesta etapa. Solicitações sem fornecedor serão ignoradas.';
+                info.insertAdjacentElement('afterend', notice);
+            }
+        }
+
+        window.abrirModalAprovacao = function () {
+            const selected = Array.from(document.querySelectorAll('.checkOficio:checked'));
+            const eligible = selected.filter(eligibleForApproval);
+            const withoutSupplier = selected.filter(function (checkbox) {
+                const status = checkbox.dataset.status || '';
+                const hasAcquisition = checkbox.dataset.hasAquisicao === '1';
+                const statusEligible = status === 'ENVIADO' || (status === 'APROVADO' && !hasAcquisition);
+                return statusEligible && !supplierDefined(checkbox);
+            });
+            const ignored = selected.length - eligible.length;
+
+            if (eligible.length === 0) {
+                alert(withoutSupplier.length > 0
+                    ? 'As solicitações selecionadas precisam ter o fornecedor definido antes da aprovação.'
+                    : 'Selecione pelo menos uma solicitação elegível com status ENVIADO ou APROVADO sem aquisição.');
+                return;
+            }
+
+            const form = document.getElementById('form-aprovacao-lote');
+            const dateField = document.getElementById('nova-data-lote');
+            const select = document.getElementById('fornecedor-aprovacao-lote');
+            if (form) form.setAttribute('action', 'aprovar_multiplos.php');
+            if (dateField) dateField.required = false;
+            if (select) select.required = false;
+
+            let summary = eligible.length + ' solicitação(ões) elegível(is) será(ão) processada(s) com o fornecedor já definido em cada uma.';
+            if (withoutSupplier.length > 0) {
+                summary += ' ' + withoutSupplier.length + ' sem fornecedor será(ão) ignorada(s).';
+            }
+            if (ignored > withoutSupplier.length) {
+                summary += ' ' + (ignored - withoutSupplier.length) + ' com status/aquisição incompatível(is) será(ão) ignorada(s).';
+            }
+
+            const summaryElement = document.getElementById('totalSelecionados');
+            if (summaryElement) summaryElement.textContent = summary;
+
+            if (modal) {
+                modal.classList.add('show');
+                modal.setAttribute('aria-hidden', 'false');
+                const confirmButton = modal.querySelector('button[type="submit"]');
+                if (confirmButton) confirmButton.focus();
+            }
+        };
+
+        window.fecharModalAprovacao = function () {
+            if (!modal) return;
+            modal.classList.remove('show');
+            modal.setAttribute('aria-hidden', 'true');
+            if (supplierSelect) supplierSelect.required = false;
+        };
+
+        document.querySelectorAll('.checkOficio').forEach(function (checkbox) {
+            checkbox.addEventListener('change', refreshApprovalButton);
+        });
+        const selectAll = document.getElementById('selecionarTodos');
+        if (selectAll) {
+            selectAll.addEventListener('change', function () {
+                window.setTimeout(refreshApprovalButton, 0);
+            });
+        }
+
+        refreshApprovalButton();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSupplierFlowUI);
+    } else {
+        initSupplierFlowUI();
+    }
+})();
+</script>
+
 </body>
 </html>
