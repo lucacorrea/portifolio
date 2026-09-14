@@ -4,25 +4,28 @@ require_once 'config/functions.php';
 login_check();
 admin_check();
 
-$id = $_GET['id'] ?? 0;
+$id = (int)($_GET['id'] ?? 0);
+if ($id <= 0) {
+    die('Solicitação inválida.');
+}
 
 $stmt = $pdo->prepare("
-    SELECT o.*, s.nome as secretaria, s.responsavel as sec_responsavel 
-    FROM oficios o 
-    JOIN secretarias s ON o.secretaria_id = s.id 
+    SELECT
+        o.*,
+        s.nome AS secretaria,
+        s.responsavel AS sec_responsavel,
+        f.nome AS fornecedor_nome,
+        f.cnpj AS fornecedor_cnpj
+    FROM oficios o
+    JOIN secretarias s ON s.id = o.secretaria_id
+    LEFT JOIN fornecedores f ON f.id = o.fornecedor_indicado_id
     WHERE o.id = ?
 ");
 $stmt->execute([$id]);
-$oficio = $stmt->fetch();
+$oficio = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$oficio) {
-    die("Ofício não encontrado.");
-}
-
-$fornecedores = $pdo->query("SELECT id, nome, cnpj FROM fornecedores ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
-$fornecedores_by_id = [];
-foreach ($fornecedores as $fornecedor) {
-    $fornecedores_by_id[(int)$fornecedor['id']] = $fornecedor;
+    die('Solicitação não encontrada.');
 }
 
 if (empty($_SESSION['csrf_analise_oficio'])) {
@@ -30,7 +33,6 @@ if (empty($_SESSION['csrf_analise_oficio'])) {
 }
 $csrf_analise_oficio = (string)$_SESSION['csrf_analise_oficio'];
 $error = null;
-$fornecedor_id = 0;
 $justificativa_admin = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -39,48 +41,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ? trim((string)$_POST['justificativa_admin'])
         : '';
     $csrf_token = is_scalar($_POST['csrf_token'] ?? null) ? (string)$_POST['csrf_token'] : '';
-    $fornecedor_post = $_POST['fornecedor_id'] ?? null;
-    $fornecedor_id = is_scalar($fornecedor_post) && ctype_digit((string)$fornecedor_post)
-        ? (int)$fornecedor_post
-        : 0;
 
     if ($csrf_token === '' || !hash_equals($csrf_analise_oficio, $csrf_token)) {
         $error = 'A sessão de análise expirou. Atualize a página e tente novamente.';
     } elseif (!in_array($status, ['APROVADO', 'REPROVADO'], true)) {
         $error = 'A decisão informada é inválida.';
     } elseif ((string)$oficio['status'] !== 'ENVIADO') {
-        $error = 'Este ofício não está mais disponível para análise.';
-    } elseif ($status === 'APROVADO' && !isset($fornecedores_by_id[$fornecedor_id])) {
-        $error = 'Selecione um fornecedor válido para aprovar a solicitação.';
+        $error = 'Esta solicitação não está mais disponível para análise.';
+    } elseif ($status === 'APROVADO' && (int)($oficio['fornecedor_indicado_id'] ?? 0) <= 0) {
+        $error = 'Esta solicitação não possui fornecedor definido. Retorne à etapa de itens e informe o fornecedor antes de aprovar.';
     }
 
     if ($error === null) {
         try {
             $pdo->beginTransaction();
 
-            $stmt_lock = $pdo->prepare("SELECT id, numero, status, criado_em FROM oficios WHERE id = ? FOR UPDATE");
+            $stmt_lock = $pdo->prepare("
+                SELECT id, numero, status, criado_em, fornecedor_indicado_id
+                FROM oficios
+                WHERE id = ?
+                FOR UPDATE
+            ");
             $stmt_lock->execute([$id]);
             $oficio_atual = $stmt_lock->fetch(PDO::FETCH_ASSOC);
 
             if (!$oficio_atual || (string)$oficio_atual['status'] !== 'ENVIADO') {
-                throw new DomainException('Este ofício foi alterado por outro usuário e não está mais disponível para análise.');
+                throw new DomainException('Esta solicitação foi alterada por outro usuário e não está mais disponível para análise.');
             }
 
+            $fornecedor_id = (int)($oficio_atual['fornecedor_indicado_id'] ?? 0);
             $aquisicao_id = null;
             $numero_aquisicao = null;
+            $fornecedor_aprovado = null;
 
             if ($status === 'APROVADO') {
-                $stmt_fornecedor_lock = $pdo->prepare("SELECT id, nome FROM fornecedores WHERE id = ? FOR UPDATE");
-                $stmt_fornecedor_lock->execute([$fornecedor_id]);
-                $fornecedor_aprovado = $stmt_fornecedor_lock->fetch(PDO::FETCH_ASSOC);
+                if ($fornecedor_id <= 0) {
+                    throw new DomainException('Fornecedor não definido. A aprovação foi bloqueada.');
+                }
+
+                $stmt_fornecedor = $pdo->prepare("SELECT id, nome, cnpj FROM fornecedores WHERE id = ? FOR UPDATE");
+                $stmt_fornecedor->execute([$fornecedor_id]);
+                $fornecedor_aprovado = $stmt_fornecedor->fetch(PDO::FETCH_ASSOC);
                 if (!$fornecedor_aprovado) {
-                    throw new DomainException('O fornecedor selecionado não existe mais. Atualize a página e tente novamente.');
+                    throw new DomainException('O fornecedor desta solicitação não existe mais. Atualize os dados antes de aprovar.');
                 }
 
                 $stmt_existente = $pdo->prepare("SELECT id FROM aquisicoes WHERE oficio_id = ? ORDER BY id LIMIT 1 FOR UPDATE");
                 $stmt_existente->execute([$id]);
                 if ($stmt_existente->fetchColumn()) {
-                    throw new DomainException('Este ofício já possui aquisição vinculada e não pode gerar outra automaticamente.');
+                    throw new DomainException('Esta solicitação já possui aquisição vinculada e não pode gerar outra automaticamente.');
                 }
 
                 $stmt_itens = $pdo->prepare("
@@ -94,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $itens = $stmt_itens->fetchAll(PDO::FETCH_ASSOC);
 
                 if (empty($itens)) {
-                    throw new DomainException('Este ofício não possui itens para gerar a aquisição automaticamente.');
+                    throw new DomainException('Esta solicitação não possui itens para gerar a aquisição automaticamente.');
                 }
 
                 $valor_total = 0.0;
@@ -102,15 +111,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $valor_total += (float)$item['quantidade'] * (float)($item['valor_unitario'] ?? 0);
                 }
 
-                $stmt = $pdo->prepare("
-                    UPDATE oficios
-                    SET status = 'APROVADO', fornecedor_indicado_id = ?
-                    WHERE id = ? AND status = 'ENVIADO'
-                ");
-                $stmt->execute([$fornecedor_id, $id]);
-
-                if ($stmt->rowCount() !== 1) {
-                    throw new DomainException('O ofício foi alterado por outro usuário.');
+                $stmt_update = $pdo->prepare("UPDATE oficios SET status = 'APROVADO' WHERE id = ? AND status = 'ENVIADO'");
+                $stmt_update->execute([$id]);
+                if ($stmt_update->rowCount() !== 1) {
+                    throw new DomainException('A solicitação foi alterada por outro usuário.');
                 }
 
                 $numero_aquisicao = generate_aquisicao_number($pdo);
@@ -143,17 +147,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ]);
                 }
             } else {
-                $stmt = $pdo->prepare("UPDATE oficios SET status = 'REPROVADO' WHERE id = ? AND status = 'ENVIADO'");
-                $stmt->execute([$id]);
-                if ($stmt->rowCount() !== 1) {
-                    throw new DomainException('O ofício foi alterado por outro usuário.');
+                $stmt_update = $pdo->prepare("UPDATE oficios SET status = 'REPROVADO' WHERE id = ? AND status = 'ENVIADO'");
+                $stmt_update->execute([$id]);
+                if ($stmt_update->rowCount() !== 1) {
+                    throw new DomainException('A solicitação foi alterada por outro usuário.');
                 }
             }
 
-            $detalhes = "Solicitação {$oficio['numero']} alterada para {$status}";
-            if ($status === 'APROVADO') {
-                $detalhes .= ' com aquisição ' . $numero_aquisicao . ' gerada automaticamente para o fornecedor '
-                    . $fornecedor_aprovado['nome'];
+            $detalhes = 'Solicitação ' . $oficio['numero'] . ' alterada para ' . $status;
+            if ($status === 'APROVADO' && $fornecedor_aprovado) {
+                $detalhes .= ' com aquisição ' . $numero_aquisicao . ' gerada para o fornecedor previamente definido ' . $fornecedor_aprovado['nome'];
+            }
+            if ($justificativa_admin !== '') {
+                $detalhes .= '. Parecer: ' . mb_substr($justificativa_admin, 0, 500, 'UTF-8');
             }
             log_action($pdo, 'ANALISAR_SOLICITACAO', $detalhes);
 
@@ -161,13 +167,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['csrf_analise_oficio'] = bin2hex(random_bytes(32));
 
             if ($status === 'APROVADO') {
-                flash_message('success', "Solicitação {$oficio['numero']} APROVADA e aquisição {$numero_aquisicao} gerada automaticamente.");
-                header("Location: aquisicoes_visualizar.php?id={$aquisicao_id}", true, 303);
+                flash_message('success', 'Solicitação aprovada. A aquisição ' . $numero_aquisicao . ' foi gerada para ' . $fornecedor_aprovado['nome'] . '.');
+                header('Location: aquisicoes_visualizar.php?id=' . $aquisicao_id, true, 303);
             } else {
-                flash_message('danger', "Solicitação {$oficio['numero']} foi REPROVADA e ARQUIVADA.");
+                flash_message('danger', 'Solicitação ' . $oficio['numero'] . ' reprovada e arquivada.');
                 header('Location: oficios_lista.php', true, 303);
             }
-            exit();
+            exit;
         } catch (DomainException $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
@@ -182,233 +188,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$page_title = "Analisar Solicitação: " . $oficio['numero'];
+$page_title = 'Analisar Solicitação: ' . $oficio['numero'];
 include 'views/layout/header.php';
 ?>
 
 <style>
-    .analise-wrapper {
-        width: 100%;
-    }
-
-    .analise-card {
-        border-radius: 14px;
-        overflow: hidden;
-    }
-
-    .analise-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-        margin-bottom: 1.25rem;
-        flex-wrap: wrap;
-    }
-
-    .analise-header .btn {
-        white-space: nowrap;
-    }
-
-    .resumo-oficio {
-        background: #f8f9fa;
-        padding: 1.25rem;
-        border-radius: 12px;
-        margin-bottom: 1.5rem;
-        border-left: 5px solid var(--primary) !important;
-    }
-
-    .resumo-oficio p {
-        margin: 0 0 .6rem 0;
-        line-height: 1.5;
-        color: var(--text-dark);
-        word-break: break-word;
-    }
-
-    .resumo-oficio p:last-child {
-        margin-bottom: 0;
-    }
-
-    .resumo-label {
-        font-weight: 700;
-    }
-
-    .analise-form .form-label {
-        font-weight: 700;
-        margin-bottom: .6rem;
-    }
-
-    .analise-form textarea.form-control {
-        min-height: 130px;
-        resize: vertical;
-    }
-
-    .analise-actions {
-        display: flex;
-        gap: 15px;
-        margin-top: 30px;
-        justify-content: flex-end;
-        flex-wrap: wrap;
-        border-top: 1px solid var(--border-color);
-        padding-top: 1.25rem;
-    }
-
-    .btn-reprovar {
-        background: #dc3545 !important;
-        border-color: #dc3545 !important;
-        color: #fff !important;
-        padding: 12px 30px;
-    }
-
-    .btn-reprovar:hover {
-        background: #bb2d3b !important;
-        border-color: #bb2d3b !important;
-        color: #fff !important;
-    }
-
-    .btn-aprovar {
-        background: #198754 !important;
-        border-color: #198754 !important;
-        color: #fff !important;
-        padding: 12px 30px;
-    }
-
-    .btn-aprovar:hover {
-        background: #157347 !important;
-        border-color: #157347 !important;
-        color: #fff !important;
-    }
-
-    .btn-reprovar i,
-    .btn-aprovar i {
-        margin-right: 8px;
-    }
-
-    @media (max-width: 768px) {
-        .analise-header {
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        .analise-header .btn {
-            width: 100%;
-            text-align: center;
-            justify-content: center;
-        }
-
-        .resumo-oficio {
-            padding: 1rem;
-        }
-
-        .analise-actions {
-            flex-direction: column-reverse;
-            gap: 12px;
-        }
-
-        .analise-actions .btn {
-            width: 100%;
-            justify-content: center;
-            text-align: center;
-        }
-
-        .analise-form textarea.form-control {
-            min-height: 120px;
-        }
-    }
+.analise-wrapper{width:100%}.analise-card{border-radius:14px;overflow:hidden}.analise-header{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:1.25rem;flex-wrap:wrap}.resumo-oficio{background:#f8fafc;padding:1.15rem;border-radius:12px;margin-bottom:1.25rem;border:1px solid #e2e8f0}.resumo-oficio p{margin:0 0 .55rem;line-height:1.5}.resumo-oficio p:last-child{margin-bottom:0}.resumo-label{font-weight:800}.fornecedor-fixo{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:1rem;margin-bottom:1.25rem}.fornecedor-fixo strong{display:block;font-size:1rem;color:#0f172a}.fornecedor-fixo small{color:#475569}.analise-form textarea{min-height:120px;resize:vertical}.analise-actions{display:flex;justify-content:flex-end;gap:.75rem;margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid #e2e8f0;flex-wrap:wrap}.btn-reprovar{background:#dc2626!important;border-color:#dc2626!important;color:#fff!important}.btn-aprovar{background:#15803d!important;border-color:#15803d!important;color:#fff!important}@media(max-width:768px){.analise-header,.fornecedor-fixo{flex-direction:column;align-items:stretch}.analise-actions{flex-direction:column-reverse}.analise-actions .btn,.analise-header .btn{width:100%;justify-content:center}}
 </style>
 
 <div class="analise-wrapper">
     <div class="card analise-card">
         <div class="card-body">
-
             <div class="analise-header">
-                <h3 style="margin: 0; color: var(--text-dark); font-weight: 700; font-size: 1.2rem;">
-                    <i class="fas fa-search" style="margin-right: 10px; color: var(--primary);"></i>
-                    Analisar Solicitação
-                </h3>
-
-                <a href="oficios_visualizar.php?id=<?php echo (int)$id; ?>" class="btn btn-primary btn-sm">
-                    <i class="fas fa-eye"></i> Ver Detalhes
-                </a>
+                <h3 style="margin:0;"><i class="fas fa-search"></i> Analisar Solicitação</h3>
+                <a href="oficios_visualizar.php?id=<?= (int)$id ?>" class="btn btn-primary btn-sm"><i class="fas fa-eye"></i> Ver detalhes</a>
             </div>
 
             <div class="resumo-oficio">
-                <p>
-                    <span class="resumo-label">Número do Ofício:</span>
-                    <?php echo htmlspecialchars($oficio['numero']); ?>
-                </p>
-                <p>
-                    <span class="resumo-label">Secretaria:</span>
-                    <?php echo htmlspecialchars($oficio['secretaria']); ?>
-                </p>
-                <p>
-                    <span class="resumo-label">Justificativa do Solicitante:</span>
-                    <?php echo nl2br(htmlspecialchars($oficio['justificativa'])); ?>
-                </p>
-                <p>
-                    <span class="resumo-label">Data de Envio:</span>
-                    <?php echo format_date($oficio['criado_em']); ?>
-                </p>
+                <p><span class="resumo-label">Número:</span> <?= htmlspecialchars($oficio['numero'], ENT_QUOTES, 'UTF-8') ?></p>
+                <p><span class="resumo-label">Secretaria:</span> <?= htmlspecialchars($oficio['secretaria'], ENT_QUOTES, 'UTF-8') ?></p>
+                <p><span class="resumo-label">Justificativa:</span> <?= nl2br(htmlspecialchars((string)$oficio['justificativa'], ENT_QUOTES, 'UTF-8')) ?></p>
+                <p><span class="resumo-label">Data:</span> <?= format_date($oficio['criado_em']) ?></p>
             </div>
 
-            <form action="" method="POST" class="analise-form">
-                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_analise_oficio, ENT_QUOTES, 'UTF-8'); ?>">
+            <?php if (!empty($oficio['fornecedor_indicado_id'])): ?>
+                <div class="fornecedor-fixo">
+                    <div>
+                        <small>Fornecedor definido antes dos itens</small>
+                        <strong><i class="fas fa-truck" style="margin-right:.4rem;color:#2563eb;"></i><?= htmlspecialchars((string)$oficio['fornecedor_nome'], ENT_QUOTES, 'UTF-8') ?></strong>
+                        <?php if (!empty($oficio['fornecedor_cnpj'])): ?><small>CNPJ: <?= htmlspecialchars((string)$oficio['fornecedor_cnpj'], ENT_QUOTES, 'UTF-8') ?></small><?php endif; ?>
+                    </div>
+                    <span class="badge badge-approved">Fornecedor bloqueado nesta etapa</span>
+                </div>
+            <?php else: ?>
+                <div class="alert alert-warning"><strong>Fornecedor não informado.</strong> A aprovação está bloqueada. Retorne à etapa de itens e defina o fornecedor primeiro.</div>
+            <?php endif; ?>
 
-                <?php if ($error !== null): ?>
-                    <div class="alert alert-danger"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
-                <?php endif; ?>
+            <?php if ($error !== null): ?><div class="alert alert-danger"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div><?php endif; ?>
 
+            <form method="POST" class="analise-form">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_analise_oficio, ENT_QUOTES, 'UTF-8') ?>">
                 <div class="form-group">
                     <label class="form-label">Parecer / Observação da Administração</label>
-                    <textarea
-                        name="justificativa_admin"
-                        class="form-control"
-                        placeholder="Descreva o motivo da aprovação ou reprovação..."><?php echo htmlspecialchars($justificativa_admin, ENT_QUOTES, 'UTF-8'); ?></textarea>
+                    <textarea name="justificativa_admin" class="form-control" placeholder="Descreva o motivo da aprovação ou reprovação..."><?= htmlspecialchars($justificativa_admin, ENT_QUOTES, 'UTF-8') ?></textarea>
                 </div>
-
-                <div class="form-group">
-                    <label for="fornecedor-aprovacao" class="form-label">Fornecedor para aprovação</label>
-                    <select name="fornecedor_id" id="fornecedor-aprovacao" class="form-control" required>
-                        <option value="">Selecione o fornecedor...</option>
-                        <?php foreach ($fornecedores as $fornecedor): ?>
-                            <option
-                                value="<?php echo (int)$fornecedor['id']; ?>"
-                                <?php echo $fornecedor_id === (int)$fornecedor['id'] ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($fornecedor['nome'], ENT_QUOTES, 'UTF-8'); ?>
-                                <?php if (!empty($fornecedor['cnpj'])): ?>
-                                    (<?php echo htmlspecialchars($fornecedor['cnpj'], ENT_QUOTES, 'UTF-8'); ?>)
-                                <?php endif; ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <small class="text-muted">Obrigatório para aprovar. A aquisição será gerada automaticamente com este fornecedor.</small>
-                </div>
-
-                <?php if (empty($fornecedores)): ?>
-                    <div class="alert alert-warning">Cadastre um fornecedor antes de aprovar esta solicitação.</div>
-                <?php endif; ?>
 
                 <div class="analise-actions">
-                    <button
-                        type="submit"
-                        name="status"
-                        value="REPROVADO"
-                        class="btn btn-reprovar"
-                        formnovalidate
-                        onclick="return confirm('Tem certeza que deseja REPROVAR esta solicitação?')">
-                        <i class="fas fa-times"></i> REPROVAR E ARQUIVAR
-                    </button>
-
-                    <button
-                        type="submit"
-                        name="status"
-                        value="APROVADO"
-                        <?php echo empty($fornecedores) ? 'disabled' : ''; ?>
-                        class="btn btn-aprovar">
-                        <i class="fas fa-check"></i> APROVAR E GERAR AQUISIÇÃO
-                    </button>
+                    <button type="submit" name="status" value="REPROVADO" class="btn btn-reprovar" formnovalidate onclick="return confirm('Tem certeza que deseja REPROVAR esta solicitação?')"><i class="fas fa-times"></i> Reprovar e arquivar</button>
+                    <button type="submit" name="status" value="APROVADO" class="btn btn-aprovar" <?= empty($oficio['fornecedor_indicado_id']) ? 'disabled' : '' ?>><i class="fas fa-check"></i> Aprovar e gerar aquisição</button>
                 </div>
             </form>
-
         </div>
     </div>
 </div>
