@@ -19,25 +19,48 @@ if ($nivel !== 'SUPORTE') {
     assinatura_http_error(403, 'Acesso negado.');
 }
 
+$assinatura_id = 0;
+if (isset($_GET['id']) && is_scalar($_GET['id'])) {
+    $id_raw = trim((string)$_GET['id']);
+    if (ctype_digit($id_raw)) {
+        $assinatura_id = (int)$id_raw;
+    }
+}
+
 try {
-    $stmt = $pdo->prepare("
-        SELECT id, nome, arquivo_path
-        FROM assinaturas_sistema
-        WHERE finalidade = :finalidade
-          AND ativo = 1
-        ORDER BY id DESC
-        LIMIT 1
-    ");
-    $stmt->execute([
-        ':finalidade' => 'AUTORIZACAO_FORNECEDOR',
-    ]);
+    if ($assinatura_id > 0) {
+        $stmt = $pdo->prepare("
+            SELECT id, nome, arquivo_path
+            FROM assinaturas_sistema
+            WHERE id = :id
+              AND finalidade = :finalidade
+            LIMIT 1
+        ");
+        $stmt->execute([
+            ':id' => $assinatura_id,
+            ':finalidade' => 'AUTORIZACAO_FORNECEDOR',
+        ]);
+    } else {
+        $stmt = $pdo->prepare("
+            SELECT id, nome, arquivo_path
+            FROM assinaturas_sistema
+            WHERE finalidade = :finalidade
+              AND ativo = 1
+            ORDER BY id DESC
+            LIMIT 1
+        ");
+        $stmt->execute([
+            ':finalidade' => 'AUTORIZACAO_FORNECEDOR',
+        ]);
+    }
+
     $assinatura = $stmt->fetch(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
     assinatura_http_error(500, 'Não foi possível carregar a assinatura.');
 }
 
 if (!$assinatura || empty($assinatura['arquivo_path'])) {
-    assinatura_http_error(404, 'Nenhuma assinatura ativa foi encontrada.');
+    assinatura_http_error(404, 'Nenhuma assinatura foi encontrada.');
 }
 
 $arquivo_relativo = trim((string)$assinatura['arquivo_path']);
@@ -51,10 +74,6 @@ if (preg_match('~(^|/)\.\.(/|$)~', $arquivo_relativo)) {
     assinatura_http_error(404, 'Arquivo de assinatura indisponível.');
 }
 
-/*
- * Aceita tanto "storage/assinaturas/..." quanto "SO/storage/assinaturas/..."
- * no banco, mas nunca permite sair da pasta privada de assinaturas.
- */
 if (strpos($arquivo_relativo, 'SO/') === 0) {
     $arquivo_relativo = substr($arquivo_relativo, 3);
 }
@@ -96,7 +115,7 @@ if ($mime === '') {
         'webp' => 'image/webp',
         'svg' => 'image/svg+xml',
     ];
-    $mime = $mime_por_extensao[$extensao] ?? '';
+    $mime = isset($mime_por_extensao[$extensao]) ? $mime_por_extensao[$extensao] : '';
 }
 
 $mimes_permitidos = [
