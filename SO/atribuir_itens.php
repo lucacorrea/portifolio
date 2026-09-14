@@ -5,10 +5,18 @@ login_check();
 sefaz_check();
 
 $id = (int)($_GET['id'] ?? 0);
+if ($id <= 0) {
+    die('Solicitação inválida.');
+}
 
-function parse_atribuicao_money($valor): float {
+function ai_h($value): string
+{
+    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+}
+
+function ai_parse_money($valor): float
+{
     $valor = trim((string)$valor);
-
     if ($valor === '') {
         return 0.0;
     }
@@ -24,253 +32,365 @@ function parse_atribuicao_money($valor): float {
     }
 
     if (!is_numeric($valor)) {
-        throw new Exception("Informe um valor monetário válido.");
+        throw new DomainException('Informe um valor monetário válido.');
     }
 
     $valor = (float)$valor;
     if ($valor < 0) {
-        throw new Exception("Valores monetários não podem ser negativos.");
+        throw new DomainException('Valores monetários não podem ser negativos.');
     }
 
     return $valor;
 }
 
-function parse_atribuicao_quantity($valor, int $itemIndex): float {
-    $valor = trim((string)$valor);
-    $valor = str_replace(',', '.', $valor);
-
+function ai_parse_quantity($valor, int $itemIndex): float
+{
+    $valor = str_replace(',', '.', trim((string)$valor));
     if ($valor === '' || !is_numeric($valor)) {
-        throw new Exception("Informe uma quantidade válida para o item " . ($itemIndex + 1) . ".");
+        throw new DomainException('Informe uma quantidade válida para o item ' . ($itemIndex + 1) . '.');
     }
 
     $valor = (float)$valor;
     if ($valor <= 0) {
-        throw new Exception("A quantidade do item " . ($itemIndex + 1) . " deve ser maior que zero.");
+        throw new DomainException('A quantidade do item ' . ($itemIndex + 1) . ' deve ser maior que zero.');
     }
 
     return $valor;
 }
 
-if (($_GET['ajax'] ?? '') === 'sugerir_itens') {
-    header('Content-Type: application/json; charset=utf-8');
-
-    $termo = trim((string)($_GET['q'] ?? ''));
-    if (strlen($termo) < 2) {
-        echo json_encode([]);
-        exit;
-    }
-
-    try {
-        $termo_like = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $termo);
-
-        $stmt_sugestoes = $pdo->prepare("
-            SELECT
-                produto,
-                unidade,
-                CAST(SUBSTRING_INDEX(GROUP_CONCAT(valor_unitario ORDER BY ultima_data DESC SEPARATOR ','), ',', 1) AS DECIMAL(15,2)) AS valor_unitario,
-                COUNT(*) AS usos,
-                MAX(ultima_data) AS ultima_data,
-                GROUP_CONCAT(DISTINCT origem ORDER BY origem SEPARATOR ',') AS origens
-            FROM (
-                SELECT
-                    TRIM(io.produto) AS produto,
-                    COALESCE(NULLIF(TRIM(io.unidade), ''), 'UN') AS unidade,
-                    COALESCE(io.valor_unitario, 0) AS valor_unitario,
-                    COALESCE(o.criado_em, NOW()) AS ultima_data,
-                    'oficio' AS origem
-                FROM itens_oficio io
-                LEFT JOIN oficios o ON o.id = io.oficio_id
-                WHERE io.produto LIKE :termo_oficio ESCAPE '\\\\'
-
-                UNION ALL
-
-                SELECT
-                    TRIM(ia.produto) AS produto,
-                    COALESCE(
-                        NULLIF(TRIM((
-                            SELECT io2.unidade
-                            FROM itens_oficio io2
-                            JOIN aquisicoes aq2 ON aq2.oficio_id = io2.oficio_id
-                            WHERE aq2.id = ia.aquisicao_id
-                              AND (
-                                  io2.id = ia.oficio_item_id
-                                  OR (
-                                      ia.oficio_item_id IS NULL
-                                      AND TRIM(UPPER(io2.produto)) = TRIM(UPPER(ia.produto))
-                                  )
-                              )
-                            ORDER BY io2.id ASC
-                            LIMIT 1
-                        )), ''),
-                        'UN'
-                    ) AS unidade,
-                    COALESCE(ia.valor_unitario, 0) AS valor_unitario,
-                    COALESCE(a.criado_em, NOW()) AS ultima_data,
-                    'aquisicao' AS origem
-                FROM itens_aquisicao ia
-                LEFT JOIN aquisicoes a ON a.id = ia.aquisicao_id
-                WHERE ia.produto LIKE :termo_aquisicao ESCAPE '\\\\'
-            ) base
-            WHERE produto <> ''
-            GROUP BY produto, unidade
-            ORDER BY
-                CASE WHEN produto LIKE :termo_prefixo ESCAPE '\\\\' THEN 0 ELSE 1 END,
-                usos DESC,
-                ultima_data DESC,
-                produto ASC
-            LIMIT 12
-        ");
-
-        $stmt_sugestoes->execute([
-            ':termo_oficio' => '%' . $termo_like . '%',
-            ':termo_aquisicao' => '%' . $termo_like . '%',
-            ':termo_prefixo' => $termo_like . '%',
-        ]);
-
-        $sugestoes = [];
-        foreach ($stmt_sugestoes->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $origens = array_filter(explode(',', (string)($row['origens'] ?? '')));
-            $labels = [];
-
-            if (in_array('oficio', $origens, true)) {
-                $labels[] = 'Ofícios';
-            }
-
-            if (in_array('aquisicao', $origens, true)) {
-                $labels[] = 'Aquisições';
-            }
-
-            $sugestoes[] = [
-                'produto' => (string)$row['produto'],
-                'unidade' => (string)($row['unidade'] ?: 'UN'),
-                'valor_unitario' => (float)($row['valor_unitario'] ?? 0),
-                'usos' => (int)($row['usos'] ?? 0),
-                'origem' => !empty($labels) ? implode(' + ', $labels) : 'Histórico',
-            ];
-        }
-
-        echo json_encode($sugestoes, JSON_UNESCAPED_UNICODE);
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['erro' => 'Não foi possível buscar sugestões de itens.'], JSON_UNESCAPED_UNICODE);
-    }
-
-    exit;
-}
-
 $stmt = $pdo->prepare("
-    SELECT o.*, s.nome as secretaria
+    SELECT
+        o.*,
+        s.nome AS secretaria,
+        f.nome AS fornecedor_nome,
+        f.cnpj AS fornecedor_cnpj
     FROM oficios o
-    JOIN secretarias s ON o.secretaria_id = s.id
+    JOIN secretarias s ON s.id = o.secretaria_id
+    LEFT JOIN fornecedores f ON f.id = o.fornecedor_indicado_id
     WHERE o.id = ?
 ");
 $stmt->execute([$id]);
 $oficio = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$oficio) {
-    die("Solicitação não encontrada.");
+    die('Solicitação não encontrada.');
 }
 
-// Buscar itens existentes
+$fornecedores = $pdo->query("SELECT id, nome, cnpj FROM fornecedores ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
+$fornecedores_by_id = [];
+foreach ($fornecedores as $fornecedor) {
+    $fornecedores_by_id[(int)$fornecedor['id']] = $fornecedor;
+}
+
+if (empty($_SESSION['csrf_atribuir_itens'])) {
+    $_SESSION['csrf_atribuir_itens'] = bin2hex(random_bytes(32));
+}
+$csrf_atribuir_itens = (string)$_SESSION['csrf_atribuir_itens'];
+
 $stmt_items = $pdo->prepare("SELECT * FROM itens_oficio WHERE oficio_id = ? ORDER BY id ASC");
 $stmt_items->execute([$id]);
 $items_existentes = $stmt_items->fetchAll(PDO::FETCH_ASSOC);
 
-// Resumo por produto
-$stmt_resumo = $pdo->prepare("
-    SELECT
-        TRIM(produto) AS produto,
-        COALESCE(NULLIF(TRIM(unidade), ''), 'UN') AS unidade,
-        COUNT(*) AS total_registros,
-        SUM(quantidade) AS quantidade_total,
-        SUM(quantidade * valor_unitario) AS valor_total_produto
-    FROM itens_oficio
-    WHERE oficio_id = ?
-    GROUP BY TRIM(produto), COALESCE(NULLIF(TRIM(unidade), ''), 'UN')
-    ORDER BY produto ASC
-");
-$stmt_resumo->execute([$id]);
-$resumo_produtos = $stmt_resumo->fetchAll(PDO::FETCH_ASSOC);
+$stmt_aquisicao = $pdo->prepare("SELECT id FROM aquisicoes WHERE oficio_id = ? ORDER BY id LIMIT 1");
+$stmt_aquisicao->execute([$id]);
+$aquisicao_existente_id = (int)($stmt_aquisicao->fetchColumn() ?: 0);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $produtos = $_POST['produtos'] ?? [];
+/*
+ * Autocomplete estritamente vinculado ao fornecedor previamente informado.
+ * Prioridade: aquisições efetivamente geradas para o fornecedor; em seguida,
+ * solicitações indicadas para ele que ainda não geraram aquisição.
+ */
+if (($_GET['ajax'] ?? '') === 'sugerir_itens') {
+    header('Content-Type: application/json; charset=utf-8');
+
+    $termo = trim((string)($_GET['q'] ?? ''));
+    $fornecedor_id = (int)($oficio['fornecedor_indicado_id'] ?? 0);
+
+    if ($fornecedor_id <= 0) {
+        http_response_code(409);
+        echo json_encode(['erro' => 'Informe o fornecedor antes de pesquisar itens.'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    if (mb_strlen($termo, 'UTF-8') < 2) {
+        echo json_encode([]);
+        exit;
+    }
 
     try {
-        $orcamento_esperado = (float)($oficio['valor_orcamento'] ?? 0);
-        $total_calculado = 0;
-        $itens_sanitizados = [];
+        $termo_like = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $termo);
+        $stmt_sugestoes = $pdo->prepare("
+            SELECT
+                produto,
+                unidade,
+                CAST(
+                    SUBSTRING_INDEX(
+                        GROUP_CONCAT(valor_unitario ORDER BY prioridade ASC, ultima_data DESC, origem_id DESC SEPARATOR ','),
+                        ',',
+                        1
+                    ) AS DECIMAL(15,2)
+                ) AS valor_unitario,
+                COUNT(*) AS usos,
+                MAX(ultima_data) AS ultima_data,
+                GROUP_CONCAT(DISTINCT origem ORDER BY prioridade ASC SEPARATOR ',') AS origens
+            FROM (
+                SELECT
+                    TRIM(ia.produto) AS produto,
+                    COALESCE(NULLIF(TRIM(io.unidade), ''), 'UN') AS unidade,
+                    COALESCE(ia.valor_unitario, 0) AS valor_unitario,
+                    COALESCE(a.criado_em, NOW()) AS ultima_data,
+                    ia.id AS origem_id,
+                    0 AS prioridade,
+                    'Aquisições' AS origem
+                FROM itens_aquisicao ia
+                JOIN aquisicoes a ON a.id = ia.aquisicao_id
+                LEFT JOIN itens_oficio io ON io.id = ia.oficio_item_id
+                WHERE a.fornecedor_id = :fornecedor_aq
+                  AND ia.produto LIKE :termo_aq ESCAPE '\\\\'
 
-        foreach ($produtos as $idx => $p) {
-            $nome = trim((string)($p['nome'] ?? ''));
+                UNION ALL
 
-            if ($nome === '') {
-                continue;
-            }
+                SELECT
+                    TRIM(io.produto) AS produto,
+                    COALESCE(NULLIF(TRIM(io.unidade), ''), 'UN') AS unidade,
+                    COALESCE(io.valor_unitario, 0) AS valor_unitario,
+                    COALESCE(o.criado_em, NOW()) AS ultima_data,
+                    io.id AS origem_id,
+                    1 AS prioridade,
+                    'Solicitações' AS origem
+                FROM itens_oficio io
+                JOIN oficios o ON o.id = io.oficio_id
+                WHERE o.fornecedor_indicado_id = :fornecedor_oficio
+                  AND o.id <> :oficio_atual
+                  AND io.produto LIKE :termo_oficio ESCAPE '\\\\'
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM aquisicoes aq_hist
+                      WHERE aq_hist.oficio_id = o.id
+                  )
+            ) historico
+            WHERE produto <> ''
+            GROUP BY produto, unidade
+            ORDER BY
+                CASE WHEN produto LIKE :termo_prefixo ESCAPE '\\\\' THEN 0 ELSE 1 END,
+                ultima_data DESC,
+                usos DESC,
+                produto ASC
+            LIMIT 15
+        ");
+        $stmt_sugestoes->execute([
+            ':fornecedor_aq' => $fornecedor_id,
+            ':termo_aq' => '%' . $termo_like . '%',
+            ':fornecedor_oficio' => $fornecedor_id,
+            ':oficio_atual' => $id,
+            ':termo_oficio' => '%' . $termo_like . '%',
+            ':termo_prefixo' => $termo_like . '%',
+        ]);
 
-            $qtd = parse_atribuicao_quantity($p['qtd'] ?? '', (int)$idx);
-            $unidade = trim((string)($p['unidade'] ?? 'UN'));
-            $valor_unitario = parse_atribuicao_money($p['valor'] ?? '0');
-
-            if ($unidade === '') {
-                $unidade = 'UN';
-            }
-
-            $total_calculado += ($valor_unitario * $qtd);
-
-            $itens_sanitizados[] = [
-                'produto' => $nome,
-                'quantidade' => $qtd,
-                'unidade' => $unidade,
-                'valor_unitario' => $valor_unitario,
+        $resultado = [];
+        foreach ($stmt_sugestoes->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $resultado[] = [
+                'produto' => (string)$row['produto'],
+                'unidade' => (string)($row['unidade'] ?: 'UN'),
+                'valor_unitario' => (float)($row['valor_unitario'] ?? 0),
+                'usos' => (int)($row['usos'] ?? 0),
+                'origem' => (string)($row['origens'] ?: 'Histórico do fornecedor'),
             ];
         }
 
-        if (empty($itens_sanitizados)) {
-            throw new Exception("Informe pelo menos um item para a solicitação.");
+        echo json_encode($resultado, JSON_UNESCAPED_UNICODE);
+    } catch (Throwable $e) {
+        http_response_code(500);
+        echo json_encode(['erro' => 'Não foi possível consultar o histórico deste fornecedor.'], JSON_UNESCAPED_UNICODE);
+    }
+    exit;
+}
+
+$error = null;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $acao = is_scalar($_POST['acao'] ?? null) ? (string)$_POST['acao'] : 'salvar_itens';
+    $csrf_token = is_scalar($_POST['csrf_token'] ?? null) ? (string)$_POST['csrf_token'] : '';
+
+    if ($csrf_token === '' || !hash_equals($csrf_atribuir_itens, $csrf_token)) {
+        $error = 'A sessão expirou. Atualize a página e tente novamente.';
+    } elseif ($acao === 'definir_fornecedor') {
+        try {
+            $fornecedor_post = $_POST['fornecedor_id'] ?? null;
+            if (!is_scalar($fornecedor_post) || !ctype_digit((string)$fornecedor_post)) {
+                throw new DomainException('Selecione um fornecedor válido.');
+            }
+
+            $novo_fornecedor_id = (int)$fornecedor_post;
+            if ($novo_fornecedor_id <= 0 || !isset($fornecedores_by_id[$novo_fornecedor_id])) {
+                throw new DomainException('O fornecedor selecionado não é válido.');
+            }
+
+            if ($aquisicao_existente_id > 0) {
+                throw new DomainException('Esta solicitação já possui aquisição. O fornecedor não pode mais ser alterado.');
+            }
+
+            $fornecedor_atual_id = (int)($oficio['fornecedor_indicado_id'] ?? 0);
+            if ($fornecedor_atual_id > 0 && $fornecedor_atual_id !== $novo_fornecedor_id && !empty($items_existentes)) {
+                throw new DomainException('Não é permitido trocar o fornecedor depois que os itens foram preenchidos. Revise a solicitação antes de continuar.');
+            }
+
+            if (!in_array((string)$oficio['status'], ['PENDENTE_ITENS', 'ENVIADO'], true)) {
+                throw new DomainException('O fornecedor não pode ser alterado no status atual da solicitação.');
+            }
+
+            $pdo->beginTransaction();
+            $stmt_lock = $pdo->prepare("SELECT fornecedor_indicado_id, status FROM oficios WHERE id = ? FOR UPDATE");
+            $stmt_lock->execute([$id]);
+            $lock = $stmt_lock->fetch(PDO::FETCH_ASSOC);
+            if (!$lock) {
+                throw new DomainException('Solicitação não encontrada.');
+            }
+
+            $pdo->prepare("UPDATE oficios SET fornecedor_indicado_id = ? WHERE id = ?")->execute([$novo_fornecedor_id, $id]);
+            log_action(
+                $pdo,
+                'DEFINIR_FORNECEDOR_SOLICITACAO',
+                'Fornecedor ' . $fornecedores_by_id[$novo_fornecedor_id]['nome'] . ' definido para a solicitação ' . $oficio['numero']
+            );
+            $pdo->commit();
+
+            $_SESSION['csrf_atribuir_itens'] = bin2hex(random_bytes(32));
+            flash_message('success', 'Fornecedor definido. Agora os itens e preços serão pesquisados somente no histórico desse fornecedor.');
+            header('Location: atribuir_itens.php?id=' . $id, true, 303);
+            exit;
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $error = $e instanceof DomainException ? $e->getMessage() : 'Não foi possível definir o fornecedor.';
         }
+    } elseif ($acao === 'salvar_itens') {
+        try {
+            $fornecedor_id = (int)($oficio['fornecedor_indicado_id'] ?? 0);
+            if ($fornecedor_id <= 0 || !isset($fornecedores_by_id[$fornecedor_id])) {
+                throw new DomainException('Informe o fornecedor antes de adicionar os itens.');
+            }
 
-        if ($orcamento_esperado > 0 && abs($total_calculado - $orcamento_esperado) > 0.02) {
-            throw new Exception("O valor total dos itens deve ser exatamente igual ao orçamento previsto de R$ " . number_format($orcamento_esperado, 2, ',', '.'));
+            if (!in_array((string)$oficio['status'], ['PENDENTE_ITENS', 'ENVIADO'], true)) {
+                throw new DomainException('Os itens não podem ser alterados no status atual da solicitação.');
+            }
+
+            $produtos = $_POST['produtos'] ?? [];
+            if (!is_array($produtos)) {
+                $produtos = [];
+            }
+
+            $orcamento_esperado = (float)($oficio['valor_orcamento'] ?? 0);
+            $total_calculado = 0.0;
+            $itens_sanitizados = [];
+
+            foreach ($produtos as $idx => $p) {
+                if (!is_array($p)) {
+                    continue;
+                }
+
+                $nome = trim((string)($p['nome'] ?? ''));
+                if ($nome === '') {
+                    continue;
+                }
+
+                $qtd = ai_parse_quantity($p['qtd'] ?? '', (int)$idx);
+                $unidade = strtoupper(trim((string)($p['unidade'] ?? 'UN')));
+                $valor_unitario = ai_parse_money($p['valor'] ?? '0');
+
+                if ($unidade === '') {
+                    $unidade = 'UN';
+                }
+
+                $total_calculado += $qtd * $valor_unitario;
+                $itens_sanitizados[] = [
+                    'produto' => $nome,
+                    'quantidade' => $qtd,
+                    'unidade' => $unidade,
+                    'valor_unitario' => $valor_unitario,
+                ];
+            }
+
+            if (empty($itens_sanitizados)) {
+                throw new DomainException('Informe pelo menos um item para a solicitação.');
+            }
+
+            if ($orcamento_esperado > 0 && abs($total_calculado - $orcamento_esperado) > 0.02) {
+                throw new DomainException(
+                    'O total dos itens deve ser exatamente igual ao orçamento previsto de R$ ' . number_format($orcamento_esperado, 2, ',', '.') . '.'
+                );
+            }
+
+            $pdo->beginTransaction();
+            $stmt_lock = $pdo->prepare("
+                SELECT status, fornecedor_indicado_id, valor_orcamento
+                FROM oficios
+                WHERE id = ?
+                FOR UPDATE
+            ");
+            $stmt_lock->execute([$id]);
+            $lock = $stmt_lock->fetch(PDO::FETCH_ASSOC);
+
+            if (!$lock) {
+                throw new DomainException('Solicitação não encontrada.');
+            }
+            if ((int)($lock['fornecedor_indicado_id'] ?? 0) !== $fornecedor_id) {
+                throw new DomainException('O fornecedor desta solicitação foi alterado por outro usuário. Atualize a página.');
+            }
+            if (!in_array((string)$lock['status'], ['PENDENTE_ITENS', 'ENVIADO'], true)) {
+                throw new DomainException('A solicitação foi alterada por outro usuário e não aceita mais edição de itens.');
+            }
+
+            $stmt_aq_lock = $pdo->prepare("SELECT id FROM aquisicoes WHERE oficio_id = ? LIMIT 1 FOR UPDATE");
+            $stmt_aq_lock->execute([$id]);
+            if ($stmt_aq_lock->fetchColumn()) {
+                throw new DomainException('Esta solicitação já possui aquisição e os itens não podem mais ser alterados.');
+            }
+
+            $pdo->prepare("DELETE FROM itens_oficio WHERE oficio_id = ?")->execute([$id]);
+            $stmt_ins = $pdo->prepare("
+                INSERT INTO itens_oficio (oficio_id, produto, quantidade, unidade, valor_unitario)
+                VALUES (?, ?, ?, ?, ?)
+            ");
+
+            foreach ($itens_sanitizados as $item) {
+                $stmt_ins->execute([
+                    $id,
+                    $item['produto'],
+                    $item['quantidade'],
+                    $item['unidade'],
+                    $item['valor_unitario'],
+                ]);
+            }
+
+            $pdo->prepare("UPDATE oficios SET status = 'ENVIADO' WHERE id = ?")->execute([$id]);
+            log_action(
+                $pdo,
+                'ATRIBUIR_ITENS',
+                count($itens_sanitizados) . ' item(ns) atribuídos à solicitação ' . $oficio['numero'] . ' usando o fornecedor ' . $oficio['fornecedor_nome']
+            );
+            $pdo->commit();
+
+            $_SESSION['csrf_atribuir_itens'] = bin2hex(random_bytes(32));
+            flash_message('success', 'Itens atribuídos com sucesso. A solicitação foi enviada para aprovação.');
+            header('Location: oficios_lista_sefaz.php', true, 303);
+            exit;
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $error = $e instanceof DomainException ? $e->getMessage() : 'Não foi possível salvar os itens.';
         }
-
-        $pdo->beginTransaction();
-
-        $pdo->prepare("DELETE FROM itens_oficio WHERE oficio_id = ?")->execute([$id]);
-
-        $stmt_ins = $pdo->prepare("
-            INSERT INTO itens_oficio (oficio_id, produto, quantidade, unidade, valor_unitario)
-            VALUES (?, ?, ?, ?, ?)
-        ");
-
-        foreach ($itens_sanitizados as $item) {
-            $stmt_ins->execute([
-                $id,
-                $item['produto'],
-                $item['quantidade'],
-                $item['unidade'],
-                $item['valor_unitario']
-            ]);
-        }
-
-        $pdo->prepare("UPDATE oficios SET status = 'ENVIADO' WHERE id = ?")->execute([$id]);
-
-        log_action($pdo, "ATRIBUIR_ITENS", "Itens atribuídos ao ofício {$oficio['numero']}");
-        $pdo->commit();
-
-        flash_message('success', "Itens atribuídos com sucesso à solicitação {$oficio['numero']}!");
-        header("Location: oficios_lista_sefaz.php");
-        exit();
-    } catch (Exception $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        $error = "Erro ao salvar itens: " . $e->getMessage();
     }
 }
 
 $items_form = [];
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string)($_POST['acao'] ?? '') === 'salvar_itens') {
     foreach (($_POST['produtos'] ?? []) as $p) {
+        if (!is_array($p)) {
+            continue;
+        }
         $items_form[] = [
             'produto' => (string)($p['nome'] ?? ''),
             'quantidade_input' => (string)($p['qtd'] ?? '1'),
@@ -281,1027 +401,258 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$page_title = "Atribuir Itens - " . $oficio['numero'];
+$items = !empty($items_form)
+    ? $items_form
+    : (!empty($items_existentes)
+        ? $items_existentes
+        : [['produto' => '', 'quantidade' => 1, 'unidade' => 'UN', 'valor_unitario' => 0]]);
+
+$page_title = 'Atribuir Itens - ' . $oficio['numero'];
 include 'views/layout/header.php';
 ?>
 
 <style>
-    .item-row {
-        display: grid;
-        grid-template-columns: 80px 2fr 1fr 1fr 1fr 1.2fr auto;
-        gap: 1rem;
-        margin-bottom: 1rem;
-        align-items: end;
-        padding: 1rem;
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        background: #fff;
-    }
-
-    .budget-info {
-        background: #f1f5f9;
-        padding: 1.5rem;
-        border-radius: 12px;
-        margin-bottom: 2rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .total-calc {
-        font-size: 1.25rem;
-        font-weight: 700;
-    }
-
-    .diff-warning {
-        color: #dc3545;
-    }
-
-    .diff-ok {
-        color: #198754;
-    }
-
-    .item-seq {
-        text-align: center;
-        font-weight: 800;
-        background: #f8fafc;
-    }
-
-    .item-total {
-        font-weight: 800;
-        color: #198754;
-        text-align: right;
-    }
-
-    .planilha-import {
-        margin-bottom: 1.5rem;
-        padding: 1rem;
-        border: 1px dashed #b8c6d8;
-        border-radius: 12px;
-        background: #f8fafc;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-        flex-wrap: wrap;
-    }
-
-    .planilha-import-title {
-        margin: 0 0 .25rem;
-        font-size: 1rem;
-        color: #0f172a;
-    }
-
-    .planilha-import-text {
-        margin: 0;
-        color: #64748b;
-        font-size: .88rem;
-        font-weight: 600;
-    }
-
-    .planilha-import-status {
-        width: 100%;
-        display: none;
-        padding: .75rem .85rem;
-        border-radius: 10px;
-        font-weight: 700;
-        font-size: .88rem;
-    }
-
-    .planilha-import-status.show {
-        display: block;
-    }
-
-    .planilha-import-status.success {
-        background: #dcfce7;
-        color: #166534;
-    }
-
-    .planilha-import-status.warning {
-        background: #fef3c7;
-        color: #92400e;
-    }
-
-    .planilha-import-status.error {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-
-    .item-count-control {
-        margin-bottom: 1.25rem;
-        padding: 1rem;
-        border: 1px solid #dbe2ea;
-        border-radius: 12px;
-        background: #f8fafc;
-        display: grid;
-        grid-template-columns: minmax(180px, 260px) auto 1fr;
-        gap: .85rem;
-        align-items: end;
-    }
-
-    .item-count-help {
-        margin: 0;
-        color: #64748b;
-        font-size: .86rem;
-        font-weight: 600;
-        line-height: 1.35;
-    }
-
-    .item-name-group {
-        position: relative;
-    }
-
-    .item-suggestions {
-        position: absolute;
-        top: calc(100% + 8px);
-        left: 0;
-        right: 0;
-        z-index: 40;
-        display: none;
-        max-height: 320px;
-        overflow-y: auto;
-        background: #fff;
-        border: 1px solid #dbe2ea;
-        border-radius: 14px;
-        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.16);
-        padding: .45rem;
-    }
-
-    .item-suggestions.show {
-        display: block;
-    }
-
-    .suggestion-option {
-        width: 100%;
-        border: 0;
-        background: transparent;
-        text-align: left;
-        cursor: pointer;
-        border-radius: 10px;
-        padding: .72rem .78rem;
-        display: block;
-        color: #0f172a;
-        transition: background .16s ease, transform .16s ease;
-    }
-
-    .suggestion-option:hover,
-    .suggestion-option.active {
-        background: #eef6ff;
-    }
-
-    .suggestion-option:active {
-        transform: scale(.99);
-    }
-
-    .suggestion-title {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: .75rem;
-        font-weight: 800;
-        line-height: 1.25;
-    }
-
-    .suggestion-name {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .suggestion-price {
-        flex-shrink: 0;
-        color: #157347;
-        font-weight: 900;
-        white-space: nowrap;
-    }
-
-    .suggestion-meta {
-        margin-top: .4rem;
-        display: flex;
-        align-items: center;
-        gap: .4rem;
-        flex-wrap: wrap;
-        color: #64748b;
-        font-size: .76rem;
-        font-weight: 700;
-    }
-
-    .suggestion-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: .3rem;
-        border-radius: 999px;
-        background: #f1f5f9;
-        color: #334155;
-        padding: .22rem .5rem;
-    }
-
-    .suggestion-empty,
-    .suggestion-loading {
-        padding: .85rem .9rem;
-        color: #64748b;
-        font-weight: 700;
-        font-size: .85rem;
-    }
-
-    @media (max-width: 1200px) {
-        .item-row {
-            grid-template-columns: 70px 1.8fr 1fr 1fr 1fr 1fr auto;
-        }
-    }
-
-    @media (max-width: 992px) {
-        .item-row {
-            grid-template-columns: 1fr;
-        }
-
-        .item-count-control {
-            grid-template-columns: 1fr;
-        }
-    }
+.ai-toolbar{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem}.ai-supplier{border:1px solid #bfdbfe;background:#eff6ff;border-radius:14px;padding:1rem 1.15rem;margin-bottom:1.5rem;display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap}.ai-supplier strong{display:block;color:#0f172a;font-size:1rem}.ai-supplier small{color:#475569}.ai-step{display:flex;align-items:center;gap:.65rem;font-size:.82rem;font-weight:800;color:#64748b;margin-bottom:1rem}.ai-step .active{color:#0369a1}.ai-step i{font-size:.65rem}.budget-info{background:#f8fafc;padding:1.15rem;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:1.5rem;display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap}.total-calc{font-size:1.2rem;font-weight:800}.diff-warning{color:#dc2626}.diff-ok{color:#15803d}.item-count-control{display:flex;align-items:end;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem;padding:1rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px}.item-count-control .form-group{min-width:180px;margin:0}.item-row{display:grid;grid-template-columns:60px minmax(240px,2fr) 110px 110px 140px 150px 44px;gap:.75rem;align-items:end;padding:1rem;margin-bottom:.85rem;border:1px solid #e2e8f0;border-radius:12px;background:#fff}.item-seq{text-align:center;font-weight:800;background:#f8fafc}.item-name-group{position:relative}.item-suggestions{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:80;display:none;max-height:330px;overflow:auto;background:#fff;border:1px solid #cbd5e1;border-radius:12px;box-shadow:0 18px 45px rgba(15,23,42,.16);padding:.4rem}.item-suggestions.show{display:block}.suggestion-option{width:100%;border:0;background:transparent;text-align:left;cursor:pointer;border-radius:9px;padding:.7rem}.suggestion-option:hover,.suggestion-option.active{background:#eff6ff}.suggestion-title{display:flex;justify-content:space-between;gap:.75rem;font-weight:800}.suggestion-price{color:#15803d;white-space:nowrap}.suggestion-meta{margin-top:.35rem;font-size:.76rem;color:#64748b;font-weight:700;display:flex;gap:.5rem;flex-wrap:wrap}.suggestion-chip{background:#f1f5f9;border-radius:999px;padding:.18rem .45rem}.suggestion-empty{padding:.8rem;color:#64748b;font-size:.84rem;font-weight:700}.supplier-choice-card{max-width:760px;margin:0 auto}.supplier-choice-card .card-body{padding:1.5rem}.supplier-choice-help{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:.9rem;margin-bottom:1rem;color:#475569;font-size:.9rem}.item-total{font-weight:800;color:#15803d}@media(max-width:1100px){.item-row{grid-template-columns:60px 2fr 1fr 1fr}.item-row>div:nth-child(6),.item-row>div:nth-child(7){grid-column:auto}}@media(max-width:768px){.item-row{grid-template-columns:1fr}.ai-toolbar,.budget-info,.ai-supplier{align-items:stretch;flex-direction:column}.ai-toolbar .btn{width:100%;justify-content:center}.item-count-control{display:grid;grid-template-columns:1fr}.supplier-choice-card{max-width:none}}
 </style>
 
-<div class="card">
-    <div class="card-body">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h3><i class="fas fa-box-open"></i> Atribuição de Itens - <?php echo htmlspecialchars($oficio['numero']); ?></h3>
-            <a href="oficios_lista_sefaz.php" class="btn btn-outline btn-sm">Voltar</a>
+<div class="ai-toolbar">
+    <div>
+        <h3 style="margin:0;"><i class="fas fa-box-open"></i> Itens da Solicitação - <?= ai_h($oficio['numero']) ?></h3>
+        <div class="ai-step" style="margin-top:.45rem;margin-bottom:0;">
+            <span class="<?= empty($oficio['fornecedor_indicado_id']) ? 'active' : '' ?>">1. Fornecedor</span><i class="fas fa-chevron-right"></i><span class="<?= !empty($oficio['fornecedor_indicado_id']) ? 'active' : '' ?>">2. Itens e preços</span><i class="fas fa-chevron-right"></i><span>3. Aprovação</span>
         </div>
-
-        <?php if (isset($error)): ?>
-            <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
-        <?php endif; ?>
-
-        <div class="budget-info">
-            <div>
-                <span class="text-muted">Secretaria:</span>
-                <strong><?php echo htmlspecialchars($oficio['secretaria']); ?></strong><br>
-
-                <span class="text-muted">Orçamento Previsto:</span>
-                <strong id="orcamento-previsto" data-valor="<?php echo (float)($oficio['valor_orcamento'] ?? 0); ?>">
-                    <?php echo !empty($oficio['valor_orcamento']) ? format_money($oficio['valor_orcamento']) : 'Não informado'; ?>
-                </strong>
-            </div>
-
-            <div style="text-align: right;">
-                <span class="text-muted">Total Atual dos Itens:</span><br>
-                <span id="total-itens" class="total-calc">R$ 0,00</span>
-            </div>
-        </div>
-
-        <div class="planilha-import">
-            <div><h4 class="planilha-import-title">Orçamentos em lote</h4>
-            <p class="planilha-import-text">Crie solicitações separadas a partir de vários PDFs, com conferência de itens e valores.</p></div>
-            <a class="btn btn-outline" href="orcamentos_lote.php">Abrir importador de orçamentos</a>
-        </div>
-
-        <?php if (!empty($resumo_produtos)): ?>
-            <div class="card" style="margin-bottom: 1.5rem; border: 1px solid var(--border-color);">
-                <div class="card-body">
-                    <h4 style="margin-bottom: 1rem;">
-                        <i class="fas fa-chart-bar"></i> Resumo dos Produtos
-                    </h4>
-
-                    <div style="overflow-x:auto;">
-                        <table class="table" style="width:100%; border-collapse: collapse;">
-                            <thead>
-                                <tr style="background:#f8fafc;">
-                                    <th style="padding: 12px; text-align:left;">Produto</th>
-                                    <th style="padding: 12px; text-align:center;">Unidade</th>
-                                    <th style="padding: 12px; text-align:center;">Qtd. de Lançamentos</th>
-                                    <th style="padding: 12px; text-align:center;">Quantidade Total</th>
-                                    <th style="padding: 12px; text-align:right;">Valor Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($resumo_produtos as $rp): ?>
-                                    <tr style="border-top:1px solid #e5e7eb;">
-                                        <td style="padding: 12px; font-weight:600;">
-                                            <?php echo htmlspecialchars($rp['produto']); ?>
-                                        </td>
-                                        <td style="padding: 12px; text-align:center;">
-                                            <?php echo htmlspecialchars($rp['unidade']); ?>
-                                        </td>
-                                        <td style="padding: 12px; text-align:center; font-weight:700;">
-                                            <?php echo (int)$rp['total_registros']; ?>
-                                        </td>
-                                        <td style="padding: 12px; text-align:center; font-weight:700;">
-                                            <?php echo number_format((float)$rp['quantidade_total'], 2, ',', '.'); ?>
-                                        </td>
-                                        <td style="padding: 12px; text-align:right; font-weight:700; color:#198754;">
-                                            <?php echo format_money((float)$rp['valor_total_produto']); ?>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        <?php endif; ?>
-
-        <?php
-        $items = !empty($items_form)
-            ? $items_form
-            : (!empty($items_existentes)
-                ? $items_existentes
-                : [['produto' => '', 'quantidade' => 1, 'unidade' => 'UN', 'valor_unitario' => 0]]);
-        ?>
-
-        <form action="" method="POST" id="items-form">
-            <div class="item-count-control">
-                <div class="form-group" style="margin:0;">
-                    <label class="form-label" for="item-count-input">Total de itens</label>
-                    <input
-                        type="number"
-                        id="item-count-input"
-                        class="form-control"
-                        min="1"
-                        max="300"
-                        step="1"
-                        value="<?php echo count($items); ?>">
-                </div>
-
-                <button type="button" class="btn btn-primary" id="generate-items">
-                    <i class="fas fa-list-ol"></i> Gerar campos
-                </button>
-
-
-            </div>
-
-            <div id="items-container">
-                <?php
-                foreach ($items as $idx => $it):
-                    $qtd_value = isset($it['quantidade_input']) ? (string)$it['quantidade_input'] : (string)((float)($it['quantidade'] ?? 0));
-                    $qtd_item = (float)str_replace(',', '.', $qtd_value);
-                    $valor_unit_item = (float)($it['valor_unitario'] ?? 0);
-                    $valor_value = isset($it['valor_input']) ? (string)$it['valor_input'] : number_format($valor_unit_item, 2, ',', '.');
-                    $valor_total_item = $qtd_item * $valor_unit_item;
-                ?>
-                    <div class="item-row" data-calculation-source="unit">
-                        <div class="form-group" style="margin:0;">
-                            <label class="form-label">Nº</label>
-                            <input type="text" class="form-control item-seq" value="<?php echo $idx + 1; ?>" readonly>
-                        </div>
-
-                        <div class="form-group item-name-group" style="margin:0;">
-                            <label class="form-label">Nome do Item</label>
-                            <input
-                                type="text"
-                                name="produtos[<?php echo $idx; ?>][nome]"
-                                class="form-control item-name"
-                                required
-                                autocomplete="off"
-                                placeholder="Ex: Papel A4"
-                                value="<?php echo htmlspecialchars($it['produto']); ?>">
-                            <div class="item-suggestions" role="listbox"></div>
-                        </div>
-
-                        <div class="form-group" style="margin:0;">
-                            <label class="form-label">Quantidade</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                name="produtos[<?php echo $idx; ?>][qtd]"
-                                class="form-control item-qtd"
-                                required
-                                value="<?php echo htmlspecialchars($qtd_value, ENT_QUOTES, 'UTF-8'); ?>">
-                        </div>
-
-                        <div class="form-group" style="margin:0;">
-                            <label class="form-label">Unidade</label>
-                            <input
-                                type="text"
-                                name="produtos[<?php echo $idx; ?>][unidade]"
-                                class="form-control"
-                                value="<?php echo htmlspecialchars($it['unidade'] ?? 'UN'); ?>">
-                        </div>
-
-                        <div class="form-group" style="margin:0;">
-                            <label class="form-label">Valor Unitário</label>
-                            <input
-                                type="text"
-                                name="produtos[<?php echo $idx; ?>][valor]"
-                                class="form-control item-valor"
-                                required
-                                placeholder="0,00"
-                                value="<?php echo htmlspecialchars($valor_value, ENT_QUOTES, 'UTF-8'); ?>">
-                        </div>
-
-                        <div class="form-group" style="margin:0;">
-                            <label class="form-label">Valor Total</label>
-                            <input
-                                type="text"
-                                class="form-control item-total"
-                                inputmode="decimal"
-                                placeholder="0,00"
-                                title="Digite o total para calcular automaticamente o valor unitário"
-                                value="<?php echo number_format($valor_total_item, 2, ',', '.'); ?>">
-                        </div>
-
-                        <div style="margin-bottom: 5px;">
-                            <button type="button" class="btn btn-outline btn-sm remove-item" style="color:red; border-color:#ff000033;">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-
-            <button type="button" class="btn btn-outline" id="add-item" style="margin-bottom: 2rem;">
-                <i class="fas fa-plus"></i> Adicionar Mais Itens
-            </button>
-
-            <div style="text-align: right; border-top: 1px solid var(--border-color); padding-top: 2rem;">
-                <button type="submit" class="btn btn-primary btn-lg">
-                    <i class="fas fa-check-double"></i> Finalizar Atribuição e Enviar
-                </button>
-            </div>
-        </form>
     </div>
+    <a href="oficios_lista_sefaz.php" class="btn btn-outline btn-sm"><i class="fas fa-arrow-left"></i> Voltar</a>
 </div>
 
+<?php if ($error !== null): ?>
+    <div class="alert alert-danger"><?= ai_h($error) ?></div>
+<?php endif; ?>
+
+<?php if (empty($oficio['fornecedor_indicado_id'])): ?>
+    <div class="card supplier-choice-card">
+        <div class="card-body">
+            <h3 style="margin-top:0;"><i class="fas fa-truck"></i> Informe o fornecedor antes dos itens</h3>
+            <div class="supplier-choice-help">
+                A partir do fornecedor selecionado, a pesquisa de itens mostrará somente o histórico de produtos e preços desse fornecedor. O sistema não utilizará preço de outro fornecedor automaticamente.
+            </div>
+            <form method="POST">
+                <input type="hidden" name="acao" value="definir_fornecedor">
+                <input type="hidden" name="csrf_token" value="<?= ai_h($csrf_atribuir_itens) ?>">
+                <div class="form-group">
+                    <label class="form-label">Fornecedor</label>
+                    <select name="fornecedor_id" class="form-control" required>
+                        <option value="">Selecione...</option>
+                        <?php foreach ($fornecedores as $fornecedor): ?>
+                            <option value="<?= (int)$fornecedor['id'] ?>">
+                                <?= ai_h($fornecedor['nome']) ?><?= !empty($fornecedor['cnpj']) ? ' - ' . ai_h($fornecedor['cnpj']) : '' ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div style="text-align:right;margin-top:1rem;">
+                    <button class="btn btn-primary" type="submit"><i class="fas fa-arrow-right"></i> Confirmar fornecedor e continuar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+<?php else: ?>
+    <div class="ai-supplier">
+        <div>
+            <small>Fornecedor desta solicitação</small>
+            <strong><i class="fas fa-truck" style="margin-right:.4rem;color:#0369a1;"></i><?= ai_h($oficio['fornecedor_nome']) ?></strong>
+            <?php if (!empty($oficio['fornecedor_cnpj'])): ?><small>CNPJ: <?= ai_h($oficio['fornecedor_cnpj']) ?></small><?php endif; ?>
+        </div>
+        <?php if (empty($items_existentes) && $aquisicao_existente_id === 0 && (string)$oficio['status'] === 'PENDENTE_ITENS'): ?>
+            <form method="POST" style="display:flex;gap:.5rem;align-items:end;flex-wrap:wrap;">
+                <input type="hidden" name="acao" value="definir_fornecedor">
+                <input type="hidden" name="csrf_token" value="<?= ai_h($csrf_atribuir_itens) ?>">
+                <div class="form-group" style="margin:0;min-width:260px;">
+                    <label class="form-label">Alterar fornecedor</label>
+                    <select name="fornecedor_id" class="form-control">
+                        <?php foreach ($fornecedores as $fornecedor): ?>
+                            <option value="<?= (int)$fornecedor['id'] ?>" <?= (int)$oficio['fornecedor_indicado_id'] === (int)$fornecedor['id'] ? 'selected' : '' ?>><?= ai_h($fornecedor['nome']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <button class="btn btn-outline btn-sm" type="submit">Atualizar</button>
+            </form>
+        <?php endif; ?>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="budget-info">
+                <div><span class="text-muted">Secretaria:</span> <strong><?= ai_h($oficio['secretaria']) ?></strong><br><span class="text-muted">Orçamento previsto:</span> <strong id="orcamento-previsto" data-valor="<?= (float)($oficio['valor_orcamento'] ?? 0) ?>"><?= !empty($oficio['valor_orcamento']) ? format_money($oficio['valor_orcamento']) : 'Não informado' ?></strong></div>
+                <div style="text-align:right;"><span class="text-muted">Total atual:</span><br><span id="total-itens" class="total-calc">R$ 0,00</span></div>
+            </div>
+
+            <div style="padding:.8rem 1rem;border-radius:10px;background:#ecfdf5;border:1px solid #bbf7d0;color:#166534;margin-bottom:1rem;font-size:.88rem;font-weight:700;">
+                <i class="fas fa-check-circle"></i> A busca abaixo usa somente preços históricos de <strong><?= ai_h($oficio['fornecedor_nome']) ?></strong>. Se um item nunca foi usado com este fornecedor, informe-o manualmente.
+            </div>
+
+            <form method="POST" id="items-form">
+                <input type="hidden" name="acao" value="salvar_itens">
+                <input type="hidden" name="csrf_token" value="<?= ai_h($csrf_atribuir_itens) ?>">
+
+                <div class="item-count-control">
+                    <div class="form-group"><label class="form-label">Total de itens</label><input type="number" id="item-count-input" class="form-control" min="1" max="300" value="<?= count($items) ?>"></div>
+                    <button type="button" class="btn btn-primary" id="generate-items"><i class="fas fa-list-ol"></i> Gerar campos</button>
+                    <small class="text-muted">Digite parte do nome do item para consultar o histórico deste fornecedor.</small>
+                </div>
+
+                <div id="items-container">
+                    <?php foreach ($items as $idx => $it):
+                        $qtd_value = isset($it['quantidade_input']) ? (string)$it['quantidade_input'] : (string)((float)($it['quantidade'] ?? 1));
+                        $valor_unit = isset($it['valor_input']) ? ai_parse_money($it['valor_input']) : (float)($it['valor_unitario'] ?? 0);
+                        $valor_value = isset($it['valor_input']) ? (string)$it['valor_input'] : number_format($valor_unit, 2, ',', '.');
+                        $total_item = (float)str_replace(',', '.', $qtd_value) * $valor_unit;
+                    ?>
+                    <div class="item-row" data-calculation-source="unit">
+                        <div class="form-group" style="margin:0;"><label class="form-label">Nº</label><input class="form-control item-seq" value="<?= $idx + 1 ?>" readonly></div>
+                        <div class="form-group item-name-group" style="margin:0;"><label class="form-label">Item</label><input type="text" name="produtos[<?= $idx ?>][nome]" class="form-control item-name" autocomplete="off" required value="<?= ai_h($it['produto'] ?? '') ?>" placeholder="Digite para pesquisar..."><div class="item-suggestions" role="listbox"></div></div>
+                        <div class="form-group" style="margin:0;"><label class="form-label">Qtd.</label><input type="number" step="0.01" name="produtos[<?= $idx ?>][qtd]" class="form-control item-qtd" required value="<?= ai_h($qtd_value) ?>"></div>
+                        <div class="form-group" style="margin:0;"><label class="form-label">Unid.</label><input type="text" name="produtos[<?= $idx ?>][unidade]" class="form-control item-unidade" value="<?= ai_h($it['unidade'] ?? 'UN') ?>"></div>
+                        <div class="form-group" style="margin:0;"><label class="form-label">Preço unit.</label><input type="text" name="produtos[<?= $idx ?>][valor]" class="form-control item-valor" required value="<?= ai_h($valor_value) ?>" placeholder="0,00"></div>
+                        <div class="form-group" style="margin:0;"><label class="form-label">Total</label><input type="text" class="form-control item-total" inputmode="decimal" value="<?= number_format($total_item, 2, ',', '.') ?>"></div>
+                        <div><button type="button" class="btn btn-outline btn-sm remove-item" title="Remover"><i class="fas fa-trash" style="color:#dc2626;"></i></button></div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <button type="button" class="btn btn-outline" id="add-item" style="margin-bottom:1.5rem;"><i class="fas fa-plus"></i> Adicionar item</button>
+                <div style="text-align:right;border-top:1px solid #e2e8f0;padding-top:1.25rem;"><button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-check-double"></i> Salvar itens e enviar para aprovação</button></div>
+            </form>
+        </div>
+    </div>
+
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const container = document.getElementById('items-container');
+    if (!container) return;
+
+    const oficioId = <?= (int)$id ?>;
     const totalDisplay = document.getElementById('total-itens');
-    const itemCountInput = document.getElementById('item-count-input');
-    const generateItemsBtn = document.getElementById('generate-items');
-    const orcamentoPrevisto = parseFloat(document.getElementById('orcamento-previsto').dataset.valor) || 0;
-    const oficioId = <?php echo (int)$id; ?>;
-    const autocompleteTimers = new WeakMap();
-    const autocompleteControllers = new WeakMap();
+    const previstoEl = document.getElementById('orcamento-previsto');
+    const orcamentoPrevisto = parseFloat(previstoEl?.dataset.valor || '0') || 0;
+    const countInput = document.getElementById('item-count-input');
+    const timers = new WeakMap();
+    const controllers = new WeakMap();
 
-
-    function parseValorBR(valor) {
-        if (!valor) return 0;
-        let v = String(valor).trim();
-        v = v.replace(/R\$/gi, '');
-        v = v.replace(/\s/g, '');
-        v = v.replace(/\./g, '');
-        v = v.replace(',', '.');
+    function parseBR(value) {
+        let v = String(value || '').replace(/R\$/gi, '').replace(/\s/g, '');
+        if (v.includes(',')) v = v.replace(/\./g, '').replace(',', '.');
         return parseFloat(v) || 0;
     }
+    function money(value) { return Number(value || 0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+    function moneyLabel(value) { return 'R$ ' + money(value); }
+    function esc(value) { return String(value ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
 
-    function formatMoneyBR(valor) {
-        return 'R$ ' + Number(valor || 0).toLocaleString('pt-BR', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        });
+    function calculateRow(row, source) {
+        const qtd = parseFloat(String(row.querySelector('.item-qtd')?.value || '').replace(',', '.')) || 0;
+        const unit = row.querySelector('.item-valor');
+        const total = row.querySelector('.item-total');
+        if (!unit || !total) return;
+        if (source === 'total') unit.value = money(qtd > 0 ? parseBR(total.value) / qtd : 0);
+        else total.value = money(qtd * parseBR(unit.value));
     }
-
-    function formatInputMoneyBR(valor) {
-        return Number(valor || 0).toLocaleString('pt-BR', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        });
-    }
-
-    function escapeHtml(value) {
-        return String(value ?? '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
-    }
-
-    function getSuggestionPanel(input) {
-        return input.closest('.item-name-group')?.querySelector('.item-suggestions') || null;
-    }
-
-    function hideSuggestions(input) {
-        const panel = getSuggestionPanel(input);
-        if (!panel) return;
-
-        panel.classList.remove('show');
-        panel.innerHTML = '';
-        input.dataset.activeSuggestion = '-1';
-    }
-
-    function hideAllSuggestions() {
-        container.querySelectorAll('.item-name').forEach(input => hideSuggestions(input));
-    }
-
-    function setActiveSuggestion(input, nextIndex) {
-        const panel = getSuggestionPanel(input);
-        if (!panel) return;
-
-        const options = Array.from(panel.querySelectorAll('.suggestion-option'));
-        if (!options.length) return;
-
-        const safeIndex = Math.max(0, Math.min(nextIndex, options.length - 1));
-        input.dataset.activeSuggestion = String(safeIndex);
-
-        options.forEach((option, index) => {
-            option.classList.toggle('active', index === safeIndex);
-        });
-
-        options[safeIndex].scrollIntoView({ block: 'nearest' });
-    }
-
-    function showSuggestionMessage(input, message, iconClass) {
-        const panel = getSuggestionPanel(input);
-        if (!panel) return;
-
-        panel.innerHTML = `
-            <div class="suggestion-loading">
-                <i class="${iconClass}"></i> ${escapeHtml(message)}
-            </div>
-        `;
-        panel.classList.add('show');
-        input.dataset.activeSuggestion = '-1';
-    }
-
-    function renderSuggestions(input, items) {
-        const panel = getSuggestionPanel(input);
-        if (!panel) return;
-
-        input._itemSuggestions = items;
-        input.dataset.activeSuggestion = '-1';
-
-        if (!items.length) {
-            panel.innerHTML = `
-                <div class="suggestion-empty">
-                    <i class="fas fa-search"></i> Nenhum item encontrado no histórico.
-                </div>
-            `;
-            panel.classList.add('show');
-            return;
-        }
-
-        panel.innerHTML = items.map((item, index) => {
-            const valor = Number(item.valor_unitario || 0);
-            const valorLabel = valor > 0 ? formatMoneyBR(valor) : 'Sem valor';
-            const usos = Number(item.usos || 0);
-
-            return `
-                <button type="button" class="suggestion-option" data-index="${index}" role="option">
-                    <div class="suggestion-title">
-                        <span class="suggestion-name">${escapeHtml(item.produto)}</span>
-                        <span class="suggestion-price">${escapeHtml(valorLabel)}</span>
-                    </div>
-                    <div class="suggestion-meta">
-                        <span class="suggestion-chip"><i class="fas fa-ruler-combined"></i> ${escapeHtml(item.unidade || 'UN')}</span>
-                        <span class="suggestion-chip"><i class="fas fa-database"></i> ${escapeHtml(item.origem || 'Histórico')}</span>
-                        <span class="suggestion-chip"><i class="fas fa-redo"></i> ${usos} uso${usos === 1 ? '' : 's'}</span>
-                    </div>
-                </button>
-            `;
-        }).join('');
-
-        panel.classList.add('show');
-    }
-
-    function searchItemSuggestions(input) {
-        const term = input.value.trim();
-        const previousTimer = autocompleteTimers.get(input);
-
-        if (previousTimer) {
-            clearTimeout(previousTimer);
-        }
-
-        if (term.length < 2) {
-            hideSuggestions(input);
-            return;
-        }
-
-        const timer = setTimeout(async () => {
-            const previousController = autocompleteControllers.get(input);
-            if (previousController) {
-                previousController.abort();
-            }
-
-            const controller = new AbortController();
-            autocompleteControllers.set(input, controller);
-
-            showSuggestionMessage(input, 'Buscando itens cadastrados...', 'fas fa-spinner fa-spin');
-
-            try {
-                const response = await fetch(`atribuir_itens.php?id=${encodeURIComponent(oficioId)}&ajax=sugerir_itens&q=${encodeURIComponent(term)}`, {
-                    headers: { 'Accept': 'application/json' },
-                    signal: controller.signal
-                });
-
-                if (!response.ok) {
-                    throw new Error('Falha na busca');
-                }
-
-                const data = await response.json();
-
-                if (input.value.trim() !== term) {
-                    return;
-                }
-
-                renderSuggestions(input, Array.isArray(data) ? data : []);
-            } catch (error) {
-                if (error.name === 'AbortError') {
-                    return;
-                }
-
-                showSuggestionMessage(input, 'Não foi possível carregar sugestões agora.', 'fas fa-exclamation-circle');
-            }
-        }, 260);
-
-        autocompleteTimers.set(input, timer);
-    }
-
-    function applySuggestion(input, item) {
-        const row = input.closest('.item-row');
-        if (!row || !item) return;
-
-        input.value = item.produto || '';
-
-        const unidadeInput = row.querySelector('input[name$="[unidade]"]');
-        const valorInput = row.querySelector('.item-valor');
-        const qtdInput = row.querySelector('.item-qtd');
-
-        if (unidadeInput) {
-            unidadeInput.value = item.unidade || 'UN';
-        }
-
-        if (valorInput && Number(item.valor_unitario || 0) > 0) {
-            valorInput.value = formatInputMoneyBR(item.valor_unitario);
-            row.dataset.calculationSource = 'unit';
-            updateRowFromUnitValue(row);
-        }
-
-        hideSuggestions(input);
-        calculateTotal();
-
-        if (qtdInput) {
-            qtdInput.focus();
-            qtdInput.select();
-        }
-    }
-
-    function createItemRow(index, item = {}) {
-        const produto = item.produto || '';
-        const quantidade = item.quantidade ?? 1;
-        const unidade = item.unidade || 'UN';
-        const valorUnitario = Number(item.valor_unitario || 0);
-        const hasValorUnitario = Object.prototype.hasOwnProperty.call(item, 'valor_unitario');
-        const valorInput = hasValorUnitario ? formatInputMoneyBR(valorUnitario) : '';
-        const totalItem = (Number(quantidade) || 0) * valorUnitario;
-        const row = document.createElement('div');
-
-        row.className = 'item-row';
-        row.dataset.calculationSource = 'unit';
-        row.innerHTML = `
-            <div class="form-group" style="margin:0;">
-                <label class="form-label">Nº</label>
-                <input type="text" class="form-control item-seq" value="${index + 1}" readonly>
-            </div>
-
-            <div class="form-group item-name-group" style="margin:0;">
-                <label class="form-label">Nome do Item</label>
-                <input type="text" name="produtos[${index}][nome]" class="form-control item-name" required autocomplete="off" placeholder="Ex: Papel A4" value="${escapeHtml(produto)}">
-                <div class="item-suggestions" role="listbox"></div>
-            </div>
-
-            <div class="form-group" style="margin:0;">
-                <label class="form-label">Quantidade</label>
-                <input type="number" step="0.01" name="produtos[${index}][qtd]" class="form-control item-qtd" required value="${escapeHtml(quantidade)}">
-            </div>
-
-            <div class="form-group" style="margin:0;">
-                <label class="form-label">Unidade</label>
-                <input type="text" name="produtos[${index}][unidade]" class="form-control" value="${escapeHtml(unidade)}">
-            </div>
-
-            <div class="form-group" style="margin:0;">
-                <label class="form-label">Valor Unitário</label>
-                <input type="text" name="produtos[${index}][valor]" class="form-control item-valor" required placeholder="0,00" value="${escapeHtml(valorInput)}">
-            </div>
-
-            <div class="form-group" style="margin:0;">
-                <label class="form-label">Valor Total</label>
-                <input type="text" class="form-control item-total" inputmode="decimal" placeholder="0,00" title="Digite o total para calcular automaticamente o valor unitário" value="${escapeHtml(formatInputMoneyBR(totalItem))}">
-            </div>
-
-            <div style="margin-bottom: 5px;">
-                <button type="button" class="btn btn-outline btn-sm remove-item" style="color:red; border-color:#ff000033;">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        `;
-
-        return row;
-    }
-
-    function rowHasUserContent(row) {
-        const produto = row.querySelector('.item-name')?.value.trim() || '';
-        const quantidade = row.querySelector('.item-qtd')?.value.trim() || '';
-        const unidade = (row.querySelector('input[name$="[unidade]"]')?.value.trim() || '').toUpperCase();
-        const valor = row.querySelector('.item-valor')?.value.trim() || '';
-        const total = row.querySelector('.item-total')?.value.trim() || '';
-
-        return produto !== ''
-            || (quantidade !== '' && quantidade !== '1' && quantidade !== '1.00')
-            || (unidade !== '' && unidade !== 'UN')
-            || parseValorBR(valor) > 0
-            || parseValorBR(total) > 0;
-    }
-
-    function syncItemCountInput() {
-        if (itemCountInput) {
-            itemCountInput.value = container.querySelectorAll('.item-row').length;
-        }
-    }
-
-    function setItemsCount(totalDesejado) {
-        const quantidade = Math.max(1, Math.min(300, parseInt(totalDesejado, 10) || 1));
-        const rows = Array.from(container.querySelectorAll('.item-row'));
-
-        if (quantidade < rows.length) {
-            const rowsToRemove = rows.slice(quantidade);
-            const hasFilledRows = rowsToRemove.some(rowHasUserContent);
-
-            if (hasFilledRows && !confirm('Existem itens preenchidos acima da quantidade informada. Deseja remover essas linhas?')) {
-                syncItemCountInput();
-                return;
-            }
-
-            rowsToRemove.forEach(row => row.remove());
-        }
-
-        while (container.querySelectorAll('.item-row').length < quantidade) {
-            const index = container.querySelectorAll('.item-row').length;
-            container.appendChild(createItemRow(index));
-        }
-
-        renumberItems();
-        calculateTotal();
-        syncItemCountInput();
-
-        const firstEmptyName = Array.from(container.querySelectorAll('.item-name'))
-            .find(input => input.value.trim() === '');
-        if (firstEmptyName) {
-            firstEmptyName.focus();
-        }
-    }
-
-    function removeEmptyItemRows() {
-        Array.from(container.querySelectorAll('.item-row')).forEach(row => {
-            if (!rowHasUserContent(row)) {
-                row.remove();
-            }
-        });
-    }
-
-    function appendImportedItems(items) {
-        items.forEach(item => {
-            const index = container.querySelectorAll('.item-row').length;
-            container.appendChild(createItemRow(index, item));
-        });
-        syncItemCountInput();
-    }
-
-    function renumberItems() {
-        const rows = container.querySelectorAll('.item-row');
-        rows.forEach((row, index) => {
-            const seqInput = row.querySelector('.item-seq');
-            if (seqInput) {
-                seqInput.value = index + 1;
-            }
-
-            row.querySelectorAll('input[name^="produtos["]').forEach(input => {
-                input.name = input.name.replace(/produtos\[\d+\]/, `produtos[${index}]`);
-            });
-        });
-        syncItemCountInput();
-    }
-
-    function getItemQuantity(row) {
-        return parseFloat(String(row.querySelector('.item-qtd')?.value || '').replace(',', '.')) || 0;
-    }
-
-    function updateRowFromUnitValue(row) {
-        const qtd = getItemQuantity(row);
-        const valorUnit = parseValorBR(row.querySelector('.item-valor')?.value);
-        const totalField = row.querySelector('.item-total');
-
-        if (totalField) {
-            totalField.value = formatInputMoneyBR(qtd * valorUnit);
-        }
-    }
-
-    function updateRowFromTotalValue(row, normalizeTotal = false) {
-        const qtd = getItemQuantity(row);
-        const totalItem = parseValorBR(row.querySelector('.item-total')?.value);
-        const valorField = row.querySelector('.item-valor');
-        const totalField = row.querySelector('.item-total');
-
-        if (valorField) {
-            valorField.value = formatInputMoneyBR(qtd > 0 ? totalItem / qtd : 0);
-        }
-
-        if (normalizeTotal && totalField && qtd > 0) {
-            totalField.value = formatInputMoneyBR(qtd * parseValorBR(valorField?.value));
-        }
-    }
-
-    function updateRowByCalculationSource(row, normalizeTotal = false) {
-        if (row.dataset.calculationSource === 'total') {
-            updateRowFromTotalValue(row, normalizeTotal);
-            return;
-        }
-
-        updateRowFromUnitValue(row);
-    }
-
     function calculateTotal() {
         let total = 0;
-
-        container.querySelectorAll('.item-row').forEach(row => {
-            total += parseValorBR(row.querySelector('.item-total')?.value);
+        container.querySelectorAll('.item-row').forEach(row => total += parseBR(row.querySelector('.item-total')?.value));
+        totalDisplay.textContent = moneyLabel(total);
+        totalDisplay.classList.toggle('diff-ok', orcamentoPrevisto > 0 && Math.abs(total - orcamentoPrevisto) <= .02);
+        totalDisplay.classList.toggle('diff-warning', orcamentoPrevisto > 0 && Math.abs(total - orcamentoPrevisto) > .02);
+        return total;
+    }
+    function renumber() {
+        container.querySelectorAll('.item-row').forEach((row, index) => {
+            row.querySelector('.item-seq').value = index + 1;
+            row.querySelectorAll('[name^="produtos["]').forEach(input => input.name = input.name.replace(/produtos\[\d+\]/, `produtos[${index}]`));
         });
-
-        totalDisplay.textContent = formatMoneyBR(total);
-
-        if (orcamentoPrevisto > 0) {
-            if (Math.abs(total - orcamentoPrevisto) > 0.02) {
-                totalDisplay.classList.add('diff-warning');
-                totalDisplay.classList.remove('diff-ok');
-            } else {
-                totalDisplay.classList.add('diff-ok');
-                totalDisplay.classList.remove('diff-warning');
-            }
-        }
-
+        countInput.value = container.querySelectorAll('.item-row').length;
+    }
+    function createRow(index) {
+        const row = document.createElement('div');
+        row.className = 'item-row';
+        row.dataset.calculationSource = 'unit';
+        row.innerHTML = `<div class="form-group" style="margin:0"><label class="form-label">Nº</label><input class="form-control item-seq" value="${index+1}" readonly></div><div class="form-group item-name-group" style="margin:0"><label class="form-label">Item</label><input type="text" name="produtos[${index}][nome]" class="form-control item-name" autocomplete="off" required placeholder="Digite para pesquisar..."><div class="item-suggestions" role="listbox"></div></div><div class="form-group" style="margin:0"><label class="form-label">Qtd.</label><input type="number" step="0.01" name="produtos[${index}][qtd]" class="form-control item-qtd" required value="1"></div><div class="form-group" style="margin:0"><label class="form-label">Unid.</label><input type="text" name="produtos[${index}][unidade]" class="form-control item-unidade" value="UN"></div><div class="form-group" style="margin:0"><label class="form-label">Preço unit.</label><input type="text" name="produtos[${index}][valor]" class="form-control item-valor" required placeholder="0,00"></div><div class="form-group" style="margin:0"><label class="form-label">Total</label><input type="text" class="form-control item-total" inputmode="decimal" value="0,00"></div><div><button type="button" class="btn btn-outline btn-sm remove-item"><i class="fas fa-trash" style="color:#dc2626"></i></button></div>`;
+        return row;
+    }
+    function panel(input) { return input.closest('.item-name-group')?.querySelector('.item-suggestions'); }
+    function hide(input) { const p = panel(input); if (p) { p.classList.remove('show'); p.innerHTML=''; } }
+    function render(input, items) {
+        const p = panel(input); if (!p) return;
+        input._suggestions = items;
+        if (!items.length) { p.innerHTML='<div class="suggestion-empty"><i class="fas fa-search"></i> Nenhum item encontrado para este fornecedor. Cadastre manualmente se necessário.</div>'; p.classList.add('show'); return; }
+        p.innerHTML = items.map((item,i)=>`<button type="button" class="suggestion-option" data-index="${i}"><div class="suggestion-title"><span>${esc(item.produto)}</span><span class="suggestion-price">${moneyLabel(item.valor_unitario)}</span></div><div class="suggestion-meta"><span class="suggestion-chip">${esc(item.unidade || 'UN')}</span><span class="suggestion-chip">${esc(item.origem || 'Histórico')}</span><span class="suggestion-chip">${Number(item.usos||0)} uso(s)</span></div></button>`).join('');
+        p.classList.add('show');
+    }
+    function search(input) {
+        const term = input.value.trim();
+        const oldTimer = timers.get(input); if (oldTimer) clearTimeout(oldTimer);
+        if (term.length < 2) { hide(input); return; }
+        timers.set(input, setTimeout(async () => {
+            const oldController = controllers.get(input); if (oldController) oldController.abort();
+            const controller = new AbortController(); controllers.set(input, controller);
+            const p = panel(input); if (p) { p.innerHTML='<div class="suggestion-empty"><i class="fas fa-spinner fa-spin"></i> Buscando preços deste fornecedor...</div>'; p.classList.add('show'); }
+            try {
+                const response = await fetch(`atribuir_itens.php?id=${encodeURIComponent(oficioId)}&ajax=sugerir_itens&q=${encodeURIComponent(term)}`, {headers:{Accept:'application/json'}, signal:controller.signal});
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.erro || 'Falha na busca');
+                if (input.value.trim() === term) render(input, Array.isArray(data) ? data : []);
+            } catch (e) { if (e.name !== 'AbortError' && p) { p.innerHTML=`<div class="suggestion-empty">${esc(e.message || 'Erro ao pesquisar')}</div>`; p.classList.add('show'); } }
+        }, 220));
+    }
+    function apply(input, item) {
+        const row = input.closest('.item-row'); if (!row || !item) return;
+        input.value = item.produto || '';
+        row.querySelector('.item-unidade').value = item.unidade || 'UN';
+        row.querySelector('.item-valor').value = money(item.valor_unitario || 0);
+        row.dataset.calculationSource='unit'; calculateRow(row,'unit'); calculateTotal(); hide(input);
+        row.querySelector('.item-qtd')?.focus();
     }
 
-    container.addEventListener('input', function(e) {
+    container.addEventListener('input', e => {
         const row = e.target.closest('.item-row');
-
+        if (e.target.classList.contains('item-name')) search(e.target);
+        if (!row) return;
+        if (e.target.classList.contains('item-valor')) { row.dataset.calculationSource='unit'; calculateRow(row,'unit'); }
+        if (e.target.classList.contains('item-total')) { row.dataset.calculationSource='total'; calculateRow(row,'total'); }
+        if (e.target.classList.contains('item-qtd')) calculateRow(row,row.dataset.calculationSource || 'unit');
+        calculateTotal();
+    });
+    container.addEventListener('focusout', e => {
         if (e.target.classList.contains('item-valor') || e.target.classList.contains('item-total')) {
-            e.target.value = e.target.value.replace(/[^\d,.\s]/g, '');
-        }
-
-        if (row && e.target.classList.contains('item-valor')) {
-            row.dataset.calculationSource = 'unit';
-            updateRowFromUnitValue(row);
-        } else if (row && e.target.classList.contains('item-total')) {
-            row.dataset.calculationSource = 'total';
-            updateRowFromTotalValue(row);
-        } else if (row && e.target.classList.contains('item-qtd')) {
-            updateRowByCalculationSource(row, true);
-        }
-
-        if (e.target.classList.contains('item-name')) {
-            searchItemSuggestions(e.target);
-        }
-
-        calculateTotal();
-    });
-
-    container.addEventListener('focusout', function(e) {
-        if (!e.target.classList.contains('item-valor') && !e.target.classList.contains('item-total')) {
-            return;
-        }
-
-        const row = e.target.closest('.item-row');
-        e.target.value = formatInputMoneyBR(parseValorBR(e.target.value));
-
-        if (row && e.target.classList.contains('item-total')) {
-            updateRowFromTotalValue(row, true);
-        } else if (row) {
-            updateRowFromUnitValue(row);
-        }
-
-        calculateTotal();
-    });
-
-    container.addEventListener('focusin', function(e) {
-        if (e.target.classList.contains('item-name') && e.target.value.trim().length >= 2) {
-            container.querySelectorAll('.item-name').forEach(input => {
-                if (input !== e.target) {
-                    hideSuggestions(input);
-                }
-            });
-            searchItemSuggestions(e.target);
+            e.target.value = money(parseBR(e.target.value));
+            const row=e.target.closest('.item-row'); calculateRow(row,row.dataset.calculationSource || 'unit'); calculateTotal();
         }
     });
-
-    container.addEventListener('keydown', function(e) {
-        if (!e.target.classList.contains('item-name')) {
-            return;
-        }
-
-        const input = e.target;
-        const panel = getSuggestionPanel(input);
-        if (!panel || !panel.classList.contains('show')) {
-            return;
-        }
-
-        const options = Array.from(panel.querySelectorAll('.suggestion-option'));
-        if (!options.length) {
-            if (e.key === 'Escape') {
-                hideSuggestions(input);
-            }
-            return;
-        }
-
-        const currentIndex = parseInt(input.dataset.activeSuggestion || '-1', 10);
-
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            setActiveSuggestion(input, currentIndex + 1);
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            setActiveSuggestion(input, currentIndex <= 0 ? options.length - 1 : currentIndex - 1);
-        } else if (e.key === 'Enter' && currentIndex >= 0) {
-            e.preventDefault();
-            const item = input._itemSuggestions?.[currentIndex];
-            applySuggestion(input, item);
-        } else if (e.key === 'Escape') {
-            hideSuggestions(input);
-        }
+    container.addEventListener('mousedown', e => {
+        const option=e.target.closest('.suggestion-option'); if (!option) return;
+        e.preventDefault(); const input=option.closest('.item-name-group')?.querySelector('.item-name'); apply(input,input?._suggestions?.[Number(option.dataset.index)]);
+    });
+    container.addEventListener('click', e => {
+        const remove=e.target.closest('.remove-item'); if (!remove) return;
+        if (container.querySelectorAll('.item-row').length <= 1) return;
+        remove.closest('.item-row').remove(); renumber(); calculateTotal();
+    });
+    document.addEventListener('click', e => { if (!e.target.closest('.item-name-group')) container.querySelectorAll('.item-name').forEach(hide); });
+    document.getElementById('add-item').addEventListener('click', () => { container.appendChild(createRow(container.querySelectorAll('.item-row').length)); renumber(); });
+    document.getElementById('generate-items').addEventListener('click', () => {
+        const desired=Math.max(1,Math.min(300,parseInt(countInput.value,10)||1));
+        while(container.querySelectorAll('.item-row').length<desired) container.appendChild(createRow(container.querySelectorAll('.item-row').length));
+        while(container.querySelectorAll('.item-row').length>desired) container.lastElementChild.remove();
+        renumber(); calculateTotal();
+    });
+    document.getElementById('items-form').addEventListener('submit', e => {
+        renumber(); container.querySelectorAll('.item-row').forEach(row=>calculateRow(row,row.dataset.calculationSource || 'unit'));
+        const total=calculateTotal();
+        if (orcamentoPrevisto>0 && Math.abs(total-orcamentoPrevisto)>.02) { e.preventDefault(); alert('Bloqueado: o total dos itens precisa ser igual ao orçamento previsto.'); }
     });
 
-    container.addEventListener('mousedown', function(e) {
-        const option = e.target.closest('.suggestion-option');
-        if (!option) {
-            return;
-        }
-
-        e.preventDefault();
-        const group = option.closest('.item-name-group');
-        const input = group?.querySelector('.item-name');
-        const item = input?._itemSuggestions?.[parseInt(option.dataset.index || '-1', 10)];
-        applySuggestion(input, item);
-    });
-
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('.item-name-group')) {
-            hideAllSuggestions();
-        }
-    });
-
-    document.getElementById('add-item').addEventListener('click', function() {
-        const index = container.querySelectorAll('.item-row').length;
-        const row = createItemRow(index);
-
-        container.appendChild(row);
-        renumberItems();
-        calculateTotal();
-        syncItemCountInput();
-    });
-
-    if (generateItemsBtn && itemCountInput) {
-        generateItemsBtn.addEventListener('click', function() {
-            setItemsCount(itemCountInput.value);
-        });
-
-        itemCountInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                setItemsCount(itemCountInput.value);
-            }
-        });
-    }
-
-    container.addEventListener('click', function(e) {
-        if (e.target.closest('.remove-item')) {
-            const rows = container.querySelectorAll('.item-row');
-            if (rows.length > 1) {
-                e.target.closest('.item-row').remove();
-                renumberItems();
-                calculateTotal();
-                syncItemCountInput();
-            }
-        }
-    });
-
-    document.getElementById('items-form').addEventListener('submit', function(e) {
-        renumberItems();
-
-        container.querySelectorAll('.item-row').forEach(row => {
-            updateRowByCalculationSource(row, true);
-        });
-        calculateTotal();
-
-        if (orcamentoPrevisto > 0) {
-            let total = 0;
-
-            container.querySelectorAll('.item-row').forEach(row => {
-                const qtd = parseFloat(row.querySelector('.item-qtd')?.value) || 0;
-                const valorUnit = parseValorBR(row.querySelector('.item-valor')?.value);
-                total += (qtd * valorUnit);
-            });
-
-            if (Math.abs(total - orcamentoPrevisto) > 0.02) {
-                e.preventDefault();
-                alert("Bloqueado: O valor total atual dos itens não corresponde ao Valor do Orçamento Previsto!\nPor favor, faça a correção das quantidades ou valores.");
-                return false;
-            }
-        }
-    });
-
-    renumberItems();
-    syncItemCountInput();
-    calculateTotal();
+    renumber(); container.querySelectorAll('.item-row').forEach(row=>calculateRow(row,'unit')); calculateTotal();
 });
 </script>
+<?php endif; ?>
 
 <?php include 'views/layout/footer.php'; ?>
