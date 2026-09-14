@@ -3,19 +3,132 @@ require_once 'config/database.php';
 require_once 'config/functions.php';
 login_check();
 
-$nivel = strtoupper((string)($_SESSION['nivel'] ?? ''));
-if ($nivel !== 'SUPORTE') {
-    http_response_code(403);
+function assinatura_http_error($status, $message)
+{
+    http_response_code((int)$status);
     header('Content-Type: text/plain; charset=UTF-8');
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-    echo 'Acesso negado.';
+    header('Pragma: no-cache');
+    header('X-Content-Type-Options: nosniff');
+    echo $message;
     exit;
 }
 
-header('Content-Type: image/png');
-header('Content-Disposition: inline; filename="assinatura.png"');
+$nivel = strtoupper((string)($_SESSION['nivel'] ?? ''));
+if ($nivel !== 'SUPORTE') {
+    assinatura_http_error(403, 'Acesso negado.');
+}
+
+try {
+    $stmt = $pdo->prepare("
+        SELECT id, nome, arquivo_path
+        FROM assinaturas_sistema
+        WHERE finalidade = :finalidade
+          AND ativo = 1
+        ORDER BY id DESC
+        LIMIT 1
+    ");
+    $stmt->execute([
+        ':finalidade' => 'AUTORIZACAO_FORNECEDOR',
+    ]);
+    $assinatura = $stmt->fetch(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {
+    assinatura_http_error(500, 'Não foi possível carregar a assinatura.');
+}
+
+if (!$assinatura || empty($assinatura['arquivo_path'])) {
+    assinatura_http_error(404, 'Nenhuma assinatura ativa foi encontrada.');
+}
+
+$arquivo_relativo = trim((string)$assinatura['arquivo_path']);
+$arquivo_relativo = str_replace('\\', '/', $arquivo_relativo);
+
+if ($arquivo_relativo === '' || strpos($arquivo_relativo, "\0") !== false) {
+    assinatura_http_error(404, 'Arquivo de assinatura indisponível.');
+}
+
+if (preg_match('~(^|/)\.\.(/|$)~', $arquivo_relativo)) {
+    assinatura_http_error(404, 'Arquivo de assinatura indisponível.');
+}
+
+/*
+ * Aceita tanto "storage/assinaturas/..." quanto "SO/storage/assinaturas/..."
+ * no banco, mas nunca permite sair da pasta privada de assinaturas.
+ */
+if (strpos($arquivo_relativo, 'SO/') === 0) {
+    $arquivo_relativo = substr($arquivo_relativo, 3);
+}
+
+$base_assinaturas = realpath(__DIR__ . '/storage/assinaturas');
+$caminho_arquivo = realpath(__DIR__ . '/' . ltrim($arquivo_relativo, '/'));
+
+if ($base_assinaturas === false || $caminho_arquivo === false || !is_file($caminho_arquivo)) {
+    assinatura_http_error(404, 'Arquivo de assinatura indisponível.');
+}
+
+$prefixo_permitido = rtrim($base_assinaturas, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+if (strpos($caminho_arquivo, $prefixo_permitido) !== 0) {
+    assinatura_http_error(403, 'Arquivo de assinatura não autorizado.');
+}
+
+$mime = '';
+$inicio_arquivo = @file_get_contents($caminho_arquivo, false, null, 0, 512);
+if (is_string($inicio_arquivo) && preg_match('/^\s*<svg\b/i', $inicio_arquivo)) {
+    $mime = 'image/svg+xml';
+} elseif (function_exists('finfo_open')) {
+    $finfo = @finfo_open(FILEINFO_MIME_TYPE);
+    if ($finfo) {
+        $mime_detectado = @finfo_file($finfo, $caminho_arquivo);
+        @finfo_close($finfo);
+        if (is_string($mime_detectado)) {
+            $mime = strtolower(trim($mime_detectado));
+        }
+    }
+}
+
+$extensao = strtolower(pathinfo($caminho_arquivo, PATHINFO_EXTENSION));
+if ($mime === '') {
+    $mime_por_extensao = [
+        'png' => 'image/png',
+        'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'gif' => 'image/gif',
+        'webp' => 'image/webp',
+        'svg' => 'image/svg+xml',
+    ];
+    $mime = $mime_por_extensao[$extensao] ?? '';
+}
+
+$mimes_permitidos = [
+    'image/png',
+    'image/jpeg',
+    'image/gif',
+    'image/webp',
+    'image/svg+xml',
+];
+
+if (!in_array($mime, $mimes_permitidos, true)) {
+    assinatura_http_error(415, 'Formato de assinatura não suportado.');
+}
+
+$extensao_saida = 'png';
+if ($mime === 'image/jpeg') {
+    $extensao_saida = 'jpg';
+} elseif ($mime === 'image/gif') {
+    $extensao_saida = 'gif';
+} elseif ($mime === 'image/webp') {
+    $extensao_saida = 'webp';
+} elseif ($mime === 'image/svg+xml') {
+    $extensao_saida = 'svg';
+}
+
+header('Content-Type: ' . $mime);
+header('Content-Disposition: inline; filename="assinatura.' . $extensao_saida . '"');
+header('Content-Length: ' . (string)filesize($caminho_arquivo));
 header('Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('X-Content-Type-Options: nosniff');
+header('Content-Security-Policy: default-src \'none\'; style-src \'none\'; sandbox');
 
-echo base64_decode('iVBORw0KGgoAAAANSUhEUgAAAggAAABVCAAAAAAJGEO/AAAUTUlEQVR42u1deXxU1dl+zrl3MpPFJCRkISFAQAJIMCxKWESpC4rghlTcUNlURD9bRWn9UKhtXRDrXqtWxSqfVXGJtkLZtBWUIEvYwg5CgCQQkpAFkrnnnOf7YybJJNB8/VoVZpj3j/yY/C5zc8/7nHd93nMFEZawADK8BGEJAyEsYSCEJQyEsISBEJYwEMLSqtih8ygkIERYpf+eiJCpIxgJAAwj4TS3CEZWL9vZd6Dw4QFEGBGnJRCMXPjblXXx185sTwGQMgyF09I1GPnXcYdkm8MY8UYyhZHQyh12E6cfEIxcPWpv1oPd3nnDmfY4BHbNLVCdJ2SHkfD/irWDXwy9NyDjH2TtJLTbYZz3egFAn500DMu/KCFRRyA2zbd+MUQ5UXenFn8u5k3Y0PaKa9qufT68zU+7gtL8ysyrKV0q+1zsKH6k5ty5eR9cj/cLhQlr+DQCAmX9N+KSFEhI2QZ8cXu7F4Zp61JPSSHCbIvTKX2kKFnFiyxtAQAKD+G2XC3YIfagFdbvaVZH2FV2RiYEKVCHgiNx11FAeL0iAjQ/VNU51DKSkHANyHe6doEAYCpRrfr2EILYf6RdNyOlFOb79g+GJMMW4VSUCqTHEULbS5ZZBgPdRgI7mJQqq/dbGR5/G+L7C0lgZMiVKEIDCF64AGHs2ueOdvbuawfSwjc4z/uHjwqt7ItuTv4e1UYhdrZ3h14QGgquQaAW0YCS5VPmR4+QVmcIsnitJcdNXrR/7+f3X7Hg+3QPzqP9r5ovQISWewgNIBzFGUbZe3/6lr7jynJPGgCR950971P31a++Pip65Y3zZYPSqB0aZf4Dg1D5TPnfbphlGGrOISQqzDfhHnLpuXDPOJofEbeJypT2hm25XyfJj7LRfQc1Sfp+GtL8u8VnzeIkmQQ8Q21MKFWwQyNGUJDfvjLvSOwTk1HrtIkBxNMFEcp+erwxQlwTP2bLtLc9FICR+7/dsI59Lxz4n6R/5pGv3/3twFwjwxbh1BJlxqBTAtD3UzpmIdIOkMvjLRfup2NI4/BFlzWHjjGac7MAADG37DtBQ8rQOF79f1mf0lQsKe+KobU6pFpaIQAERY4B0O2pQ9SKf0Pyd6ZsENzofdBnu42uuxpnHzRGc64bkdljLm8PDNp/PBJMwM9/DoSy9pjHDyLkH6jDQDiVAgTFsplJiH1kH6mpuBDtijgTtiXeatCU5sq2eJ5erkhEzoJSXb9tmgfXeU8AhC1PzlrfOhIMy7PwZ6NuRPbBkIoRgh0I2nDBIADDyDpNOlyMpMrl8TICQ2oabbfmvehZog8NQmYBqTX5K9v1XssdbVh9CdCrsFUkGFbm4G1yYzJeogoD4RSxBkax5rfxSDxP9io2hqTmhsSIDy9GkgdvNClac0OS9RofgOcdOoZ0TM0QXNtyQ2sutdweXFjT2k43rB+MV+jwVgytDyXiS3BbBM0t1wH9v1jhcedT+Sx3DjrJtsOsrGKjA9R3N4Z/EYef02clNF9ExrYWJkFxBnKf8OC51py/MbwSM+jlIjt6VShFCUGdAhm5ZPT79p0fDU1Jq9/hJy3HtkWRuSdF56YGFMuI6yKWTz3SbWpjL3JoctHyli0EbkCPaaPxSoX85zVDQbTHNlgYmF37WbiyeKrg4MPbNqa9/GK6yeiDFT49aasb9MXXfosLYAJrj/0HVa3FxDQt/J/PzMLeFrQVcWgjzuMdcZsXwrTW6kzCIQgdfTmW1kuGgXAKVEDkgin7erw50TKwOmG7IwkQ2ovY33h2IbuZjo37JsFzbmgygBGm5dgDcawKGeKcHHzV+qqkoEoL4CJ77SaEgXAK4EDsvr+0z9vDDCUwGAXbQMBYCz4UMloZqVtoOYrMTQ8gqcjjG69UMPBcxhUlrZL8O4l9+wH0yar5NgyEUwIJLxSmzO6npADQJ6NkJQDKI09X2JVfRLSoINNinhDLypoUR42Ill+oHdjARTHr17eiYIHO0SVFgGmTiyUhNEwetE9ixMa5uPlCZQMQ7Ngf+RCg+PjL1FyxoiJAkyRA7l1GUbgSje3og2VIOr7aDgF07+q0TnqNjTOVgEY2inTozBAHMaSXHkyd4Hf6RgzB8jKhRclzHHsXV5UloKRpCxsa8eKBtmnOqoakwWDX3sizWkYJlgVAxfbBt7BasQjxadgHSJyJ4pJw1nDyI0W1TFzYvfHvHxSzZR0o3ixInTwoYUflQPH3pkeT2l48Bz+bgOVG+tkk3FafntbyO11uODDoilL9z02CMJFdsQlCoItn/36ELcLJBgL2r+Fg/wCLkMjurZbA2v4axmam9DNb+nPpoYYkUGh7zy/L+t/bE98V+2MHKb4UvVKaF1EE3PEoA+BBjWrNJ6EtDgBAXLSqOTEQgpG7FLxAWF/U9oIG4y5M5DAsqRKv7c6cRM8ALM+NLcwTJAmjHevAz1YlTI/pmbB7c0N8sX85B1stygiM74J1EMhAcXGr0WIcjkIAnljUnRgGwXhuS/DGCEecmOQAXJxnbdi0+U0xqavBALkieoR+psASglparoJxn3j++wqmt3UO+xRMvL0z+bLjFOjKQqG2kBVZdqjVO3dCaY0AItug4sQgLTkWBsKPJwLQjeGeRN/cY/Nml+XcBiC3e9Wa+9oUTvq06pi0arfOum5h5PR7NKN7YDsEAG1t+SNHn9WSYUSci7V7JRKjj9a0eucssXcfgMgU7DnBYRxG5I24/2jQBQ/BTFVjYAgXd9nXb1XLn7cz0iQO3fzXu2ZNXTWpV1xOzaZtO5D+1JiaWIgu2ARJQat65s5O9x2X+Qn0SyzekgkQJwoWjWgoTye4jlSCRibg4An/rg/XVDwahTAQfiRRCAz2yMueLeeYn1IIg6G/X711YtTjm5bgIwDpI8fX3HRw+PCeiSilgJLOzPfdD3Y5jnIokJmzdOlweJX0HFd/1rBhBIQBEBVbdgwgIvzhKCG0ECCEACl2LhXXtg06QmPwAiHRKitsmlyRomNaRbuHIo2ERE674rVZNw5ZuL18/Rk9Ol3S5TfPHcXSl5+04QUo8dRLYsoEI45PDF0Dl66sianyeiJPsE4HTSoMJYmEtLIiQKISbfxhprFQ67EAI4WRvytOHB+M9jVYmQgHszGliRCg+EIEkgt8HAR1De7x0YfKa0hOB3JvTEJCDs5RxnCWB3dUn4hTorlExq7lFzJpSwumgebKe8/JmfQ1lSINr8IDVKzqgzd9dzH8avzI26a+WUbj8PMoTA9CxgqCl5NyH9oV0Ku11kYps7UDovAQNUnNGbjI0UprQyq9MU3cfEB/NRwW+tXRPOXB2PITUko092TgA+ah4z5qUmsfi8VQMz8LALK2UpGKEzGWivuSMJ+KNDSzkwBADvmYLD4bOYeMDgPhxwNCQTpG7m/8PA3ZN6HXYRpScx7StlOTxhiHLyB5J70sHQ70PapmuHFDZQAOTOCcirlcTOEr6F3TsKW1IY025f2RcOdkNz7xAWEGRlJxc0REPjWp+RcLHa8fPTgGrum7RyB6cTAyl4KXqqY5C+LsO2a8vnjNjq/Litrhuc0x1odUpOamGNcinza0ca4So5Q2DrfloNu2+2zcVNGkKKMCB5Y0H0aufhrn19NQ5S9ZdpjUpOHDsF/nexFY4APCm+hdReahUwkNqTgOWd/q+upPBwi7KzA7KBlswQsEYypH2QBgJXaIHTYWGfs5HONpSMPqwZhFTdJoVnXHbCrS4XRE9RAYXxWAg+aDDIqLXZ5tj2OkoeKmdE987gs1VF61LhFT+FoK+pT6FL8U8TvI32Cob3yOI3AHNcmyAdKyf6WDkuYevFmDYNyc1YWrqw/uLqowCwXGpuHKBUv3dDRCmJgzl2/3X4TiaiTTCAASarN99xNu3ZDaGblnRfIFsjHVk+jVeevi3UgXBKwjdTo/f9HzHS386XD6OXe+VZf2RLLv0ji7pgbYh1QYCQpIuf+Iu3znlrxCA1dH6ftlOGv48WwCSfLorlXzH7jUnbKOLEjAPJ9veBQX1tGQVFwZLz8mydJXz5Qu6zEnwB6Y8mGImdBs+u1Kcf1QPEvHaPNud9gu9P/9e7/PlCkxwJDl9FOgd6VaS1g7AC9TGccoToV78EU9IgBcfAE6FAWlRQjuuQalHN+iX4XbleHRy8Rkn/H+HOm7fb6BpWeKX5QX/+OR/oBt492AqRTNr2ABw8obkaDM00iNsuZRa62452ftGwtL4uwnS/wQMqwbjOe5IVYuoiKpuTUXAKIyxvzZ2ZKCR4Jy8CX4Zx+1dvSKGPk5leZj6HeEhpqr3PY6/wy8uhnxPbtFAXFRsHFzwHbV/Fi0vTTSZ0X8QcLnMgLtdvuNCXfN6Wd7strKTr/4/DAbTYnmKPyXeRWZh4wpfWkzFQ+/Oe3hP6zcRSrehx41wTj4EgrT0A6fRO8jNJpfWnEF1NTc3UV85E8buKoLAHfW/fPauVJwRbO8Iw+ZhQPEhMbwTnNPRwtXN8xMKvI9pBZPwSh/Jtlw1S2YwKvFDdS8EYMq6DTgyHFMQZR7UTCahFBgX1rcgP6xFEBa9JFSEAIZHbneHwCy3yfPPvXsZ1/Ntoo7j0Ph3sChBTeq2lzFVd5GB4CMTI1L/RRoaSkdBcc6hnitKEVTs6sP9uz8hsMJbLTy8yFptNaGlm2JjLj6ijBD6eSEu6JyDQbQQCCxK9ZDQNDykY18iUP2vVPvvSTJfIUeI8SBZlSDM0StSYFiUyYiuiH50qbIwIqALtqHNEs2SwOyUfJaafuLhYBL602gkJblv0RGwwkD4SR1o4+Uor0ABBN6oRACIDqjyPHPIQmjtXLo/Qo/SYmp29sMCFF11W7UH2vClN6D2KSA3iNh23WIPa4FtfsdDG9nBAzQbIKC0grOF4aEBDFfOy6PT2vtUUpBEP2wrqzxGS3LlnLNBnefzL78R2DfOeNMLI+EU9uUS69cLkq3BrARKuA+Q0G16FdHRBwtdt8Aku3RnPFsjtUH5xqGBBC8yvbvw0RU+RSRbpcfDmSXEB/V5eTYXbG1rpGRIhDfE2vrYHsaLxJzqiOq16DpigKkJ8eivAUQ2qcIc8V5tIw4D3AF3MZYa/dHdQkD4WQ9hFTKp7wzUFULQKJDRnXgxjb27g9wTSwuQP6BJmqSwfn4ZiliYhvt+pK59hliVcOqEN7lGBSdhuIWzig13STe7yIEhifiQDNX8KHTsy+sMBBOirhsxx+gxaHWxyxOzeD2Zte8vDd9jEZOXPk3gb/tE7H+Ywxx+yrCRlRMr714Ir8o92NFywWrxfmIRVWzrzLi6624fICREEiLEX9aazWECY61LA8/tXXYIpwcccf6BpuIdFHj4426I1EdEETI/DmYlCnQtbdYFmjju3VzKsVwGIAAxcsrIh+82vPdKhpjYJS9deaxwUMRhcPHAgbgjSx+oAIHvJIwWFtsHbh9q6UJ0CjX6smHzhoblDl5CABBIKk38owkBCzpaAACiIM3IMGsffxQ77sojCeXqw83KlWYuEHQVwz1rYKxVr6E237S8yxngQClol04YW3ir9sgVxZsaZpZMUJPXSV9sShR4nVFrhq/2aLWlPaSWzcmPpManGeyhkBlUfNVGbOAmpor7diNPgrBfRijG+klnG3FfEJNzSWRns8CasVqLOT/NJQgD12MHrsMp6HDd3QcOu9kIf5VKu5LDzg4S9P8WnjGJtlfUlPxdzjndzE4e64iuemBtkicF6RHbIXGEbyl52JAGbXmSjt6HTWp+Cz6VvqB4HBFOu704aM6F3cYZUhjtKbza7fEr+gllZfHJiPyfXq5JgF3aHLLRA86vUVtjB6D3Ert71yw7nEXJlX3xeNUNByNifxjAjy3vDvn9kygz9+ow0A4iSbhsyhMUvRydYRrtQ8IHzX0jqi4cyD6F/npjDORtJqOUo4m14x2IQXdyugozcM/d4sZjjaGv4R86JtpnYDL1/iYb4vc8nkqRylF7r3NxjVlHI8RXmpWZOFFw4XnA1ICHR/6LmjP10Jz0k9wilZ8BOKho9QFsfIbo4xRZkOy/NgoY4zDiuuQtIjKGGO02Z6BYXtI0rvh4Q7AhPdj8OhRmuJ3LxSYeFRro3TZMCASSH/qCJXRxuj60cj8qyHJg3P6Q4wrp35PJG7U9WaBFbPK1PPQzAGxCUMfXUffXYJDQtAikKy7EWJCEbelYLG/JXke/stnEUrGIeqVps7wyzZypuf9ZdbIVKD7i/W8BZEX3Hr92QJRUxtIbFtGx1hdHyhkIwFhfUe0nTzvL69O6iuR/LhDzf3t8QQNJ+D8YzSGrFiRX0MG8cGLgYNfxoEI0pcQ6IiKKXl1Q2ZHXlKaN9KRICOmPtdpbm8lxfqHF0Y/OM33ZBSEeey5KkTAC9Fp5O3Z9XLXncsUgDYDbh1lOZICUJ7a1ccyu7Fe+suNxpP3y23ahibiL7t7YD1sbd/1Rrd5XdaMKn3swWO2oLFcUIqWL2MJiiRB2s2yGxGYH9+1ONIEKRIYfXgHkJK2SWW0UQLSG3lwHzp1cIS1oxjo1UQipNu7wf/P6G6uWoroogMAILKSq1RDRVFGQtU3qZSWZ5N/Llb0sY5BUMjSEnTusG8HOiV4Xcp37E5QLZ1xz+kVOJcXAASKp9bYwXoCiPS6ovS362GbYWl1ArS0jfm+lnPOubIGouFBhRYxWghQso60BL0REQCkdnRgTi2a7WzCbVOAkKylZSSNiKj/tBaIucrltYLxdbOC9vQzA02CCKUXE3336p93d/57+4aPX3yYfySu+7nXZPwwd3vhaW/cg+NCZe2aAyG4UUGJ3R/3HtpEK0H1UXe8b3//C//7X7LsTS5GiGJvdFuYoH21k2gFCEEupnnF3PdRyx9IVRRNhyaEmkUIdiEpZEsL94O9EpiEQBgIpyQQQu39rOHu4/fh9sJy2gIhLGEghCUMhLCEgRCWMBDC8r3K/wLjGmCi5PfVKwAAAABJRU5ErkJggg==');
+readfile($caminho_arquivo);
+exit;
