@@ -1,8 +1,6 @@
 <?php
-
 require_once 'config/database.php';
 require_once 'config/functions.php';
-
 login_check();
 
 function approval_return_url(array $source): string
@@ -13,30 +11,21 @@ function approval_return_url(array $source): string
     if (isset($source['busca']) && is_scalar($source['busca'])) {
         $safe['busca'] = substr(trim((string)$source['busca']), 0, 120);
     }
-
     if (isset($source['status']) && is_scalar($source['status']) && in_array((string)$source['status'], $allowed_statuses, true)) {
         $safe['status'] = (string)$source['status'];
     }
-
     foreach (['secretaria_id', 'fornecedor_id', 'page'] as $integer_key) {
         if (isset($source[$integer_key]) && is_numeric($source[$integer_key]) && (int)$source[$integer_key] > 0) {
             $safe[$integer_key] = (int)$source[$integer_key];
         }
     }
-
     foreach (['data_inicio', 'data_fim'] as $date_key) {
         if (isset($source[$date_key]) && is_scalar($source[$date_key]) && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$source[$date_key])) {
             $safe[$date_key] = (string)$source[$date_key];
         }
     }
-
     $por_pagina_options = [6, 10, 25, 50, 100];
-    if (
-        isset($source['por_pagina'])
-        && is_scalar($source['por_pagina'])
-        && ctype_digit((string)$source['por_pagina'])
-        && in_array((int)$source['por_pagina'], $por_pagina_options, true)
-    ) {
+    if (isset($source['por_pagina']) && is_scalar($source['por_pagina']) && ctype_digit((string)$source['por_pagina']) && in_array((int)$source['por_pagina'], $por_pagina_options, true)) {
         $safe['por_pagina'] = (int)$source['por_pagina'];
     }
 
@@ -53,7 +42,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header("Location: {$return_url}");
     exit;
 }
-
 if (!in_array($nivel, ['ADMIN', 'SUPORTE'], true)) {
     flash_message('danger', 'Você não possui permissão para aprovar solicitações.');
     header("Location: {$return_url}");
@@ -67,14 +55,6 @@ if ($session_token === '' || $csrf_token === '' || !hash_equals($session_token, 
     header("Location: {$return_url}");
     exit;
 }
-
-$fornecedor_post = $_POST['fornecedor_id'] ?? null;
-if (!is_scalar($fornecedor_post) || !ctype_digit((string)$fornecedor_post) || (int)$fornecedor_post <= 0) {
-    flash_message('warning', 'Selecione um fornecedor válido para concluir a operação em lote.');
-    header("Location: {$return_url}", true, 303);
-    exit;
-}
-$fornecedor_id = (int)$fornecedor_post;
 
 $posted_ids = $_POST['oficios'] ?? [];
 if (!is_array($posted_ids)) {
@@ -100,70 +80,66 @@ $placeholders = implode(',', array_fill(0, count($ids), '?'));
 try {
     $pdo->beginTransaction();
 
-    $stmt_fornecedor = $pdo->prepare("SELECT id, nome FROM fornecedores WHERE id = ? FOR UPDATE");
-    $stmt_fornecedor->execute([$fornecedor_id]);
-    $fornecedor = $stmt_fornecedor->fetch(PDO::FETCH_ASSOC);
-
-    if (!$fornecedor) {
-        $pdo->rollBack();
-        flash_message('warning', 'O fornecedor selecionado não existe mais. Atualize a página e tente novamente.');
-        header("Location: {$return_url}", true, 303);
-        exit;
-    }
-
     $stmt_aquisicoes = $pdo->prepare("SELECT oficio_id FROM aquisicoes WHERE oficio_id IN ($placeholders) FOR UPDATE");
     $stmt_aquisicoes->execute($ids);
-    $oficios_com_aquisicao = array_fill_keys(
-        array_map('intval', $stmt_aquisicoes->fetchAll(PDO::FETCH_COLUMN)),
-        true
-    );
+    $com_aquisicao_map = array_fill_keys(array_map('intval', $stmt_aquisicoes->fetchAll(PDO::FETCH_COLUMN)), true);
 
-    $stmt = $pdo->prepare("
-        SELECT id, numero, status, criado_em
-        FROM oficios
-        WHERE id IN ($placeholders)
-        ORDER BY id
+    $stmt_oficios = $pdo->prepare("
+        SELECT
+            o.id,
+            o.numero,
+            o.status,
+            o.criado_em,
+            o.fornecedor_indicado_id,
+            f.nome AS fornecedor_nome
+        FROM oficios o
+        LEFT JOIN fornecedores f ON f.id = o.fornecedor_indicado_id
+        WHERE o.id IN ($placeholders)
+        ORDER BY o.id
         FOR UPDATE
     ");
-    $stmt->execute($ids);
-    $oficios_encontrados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $stmt_oficios->execute($ids);
+    $oficios_encontrados = $stmt_oficios->fetchAll(PDO::FETCH_ASSOC);
 
     $oficios_elegiveis = [];
     $com_aquisicao = 0;
+    $sem_fornecedor = 0;
+    $status_ignorado = 0;
+
     foreach ($oficios_encontrados as $oficio) {
         $oficio_id = (int)$oficio['id'];
         if (!in_array((string)$oficio['status'], ['ENVIADO', 'APROVADO'], true)) {
+            $status_ignorado++;
             continue;
         }
-
-        if (isset($oficios_com_aquisicao[$oficio_id])) {
+        if (isset($com_aquisicao_map[$oficio_id])) {
             $com_aquisicao++;
             continue;
         }
-
+        if ((int)($oficio['fornecedor_indicado_id'] ?? 0) <= 0 || empty($oficio['fornecedor_nome'])) {
+            $sem_fornecedor++;
+            continue;
+        }
         $oficios_elegiveis[$oficio_id] = $oficio;
     }
 
     $itens_por_oficio = [];
     if (!empty($oficios_elegiveis)) {
         $ids_elegiveis = array_keys($oficios_elegiveis);
-        $placeholders_elegiveis = implode(',', array_fill(0, count($ids_elegiveis), '?'));
+        $ph_itens = implode(',', array_fill(0, count($ids_elegiveis), '?'));
         $stmt_itens = $pdo->prepare("
             SELECT id, oficio_id, produto, quantidade, valor_unitario
             FROM itens_oficio
-            WHERE oficio_id IN ($placeholders_elegiveis)
+            WHERE oficio_id IN ($ph_itens)
             ORDER BY oficio_id, id
             FOR UPDATE
         ");
         $stmt_itens->execute($ids_elegiveis);
-
         foreach ($stmt_itens->fetchAll(PDO::FETCH_ASSOC) as $item) {
             $itens_por_oficio[(int)$item['oficio_id']][] = $item;
         }
     }
 
-    $ids_aprovar = [];
-    $ids_aprovados = [];
     $oficios_processar = [];
     $sem_itens = 0;
     foreach ($oficios_elegiveis as $oficio_id => $oficio) {
@@ -171,53 +147,22 @@ try {
             $sem_itens++;
             continue;
         }
-
         $oficios_processar[$oficio_id] = $oficio;
-        if ((string)$oficio['status'] === 'ENVIADO') {
-            $ids_aprovar[] = $oficio_id;
-        } else {
-            $ids_aprovados[] = $oficio_id;
-        }
     }
 
     if (empty($oficios_processar)) {
         $pdo->rollBack();
-        $ignorados = count($ids) - $com_aquisicao - $sem_itens;
-        $mensagem = 'Nenhum ofício selecionado pôde gerar aquisição automaticamente.';
-        if ($com_aquisicao > 0) {
-            $mensagem .= ' ' . $com_aquisicao . ' já possuía(m) aquisição.';
-        }
-        if ($sem_itens > 0) {
-            $mensagem .= ' ' . $sem_itens . ' não possui(em) itens para gerar a aquisição.';
-        }
-        if ($ignorados > 0) {
-            $mensagem .= ' ' . $ignorados . ' item(ns) com outro status foram ignorados.';
-        }
+        $mensagem = 'Nenhuma solicitação selecionada pôde gerar aquisição.';
+        if ($sem_fornecedor > 0) $mensagem .= ' ' . $sem_fornecedor . ' sem fornecedor definido.';
+        if ($sem_itens > 0) $mensagem .= ' ' . $sem_itens . ' sem itens.';
+        if ($com_aquisicao > 0) $mensagem .= ' ' . $com_aquisicao . ' já possuía(m) aquisição.';
+        if ($status_ignorado > 0) $mensagem .= ' ' . $status_ignorado . ' com status não elegível.';
         flash_message('warning', $mensagem);
         header("Location: {$return_url}", true, 303);
         exit;
     }
 
-    if (!empty($ids_aprovar)) {
-        $update_placeholders = implode(',', array_fill(0, count($ids_aprovar), '?'));
-        $stmt_update = $pdo->prepare("
-            UPDATE oficios
-            SET status = 'APROVADO', fornecedor_indicado_id = ?
-            WHERE status = 'ENVIADO' AND id IN ($update_placeholders)
-        ");
-        $stmt_update->execute(array_merge([$fornecedor_id], $ids_aprovar));
-    }
-
-    if (!empty($ids_aprovados)) {
-        $update_placeholders = implode(',', array_fill(0, count($ids_aprovados), '?'));
-        $stmt_update = $pdo->prepare("
-            UPDATE oficios
-            SET fornecedor_indicado_id = ?
-            WHERE status = 'APROVADO' AND id IN ($update_placeholders)
-        ");
-        $stmt_update->execute(array_merge([$fornecedor_id], $ids_aprovados));
-    }
-
+    $stmt_update = $pdo->prepare("UPDATE oficios SET status = 'APROVADO' WHERE id = ? AND status = 'ENVIADO'");
     $stmt_aquisicao = $pdo->prepare("
         INSERT INTO aquisicoes (numero_aq, codigo_entrega, oficio_id, fornecedor_id, valor_total, criado_em)
         VALUES (?, ?, ?, ?, ?, ?)
@@ -226,14 +171,27 @@ try {
         INSERT INTO itens_aquisicao (aquisicao_id, oficio_item_id, produto, quantidade, valor_unitario)
         VALUES (?, ?, ?, ?, ?)
     ");
+
+    $aprovados_agora = 0;
+    $gerados = 0;
+    $por_fornecedor = [];
     $numeros_oficio = [];
+
     foreach ($oficios_processar as $oficio_id => $oficio) {
+        if ((string)$oficio['status'] === 'ENVIADO') {
+            $stmt_update->execute([$oficio_id]);
+            if ($stmt_update->rowCount() === 1) {
+                $aprovados_agora++;
+            }
+        }
+
         $itens = $itens_por_oficio[$oficio_id];
         $valor_total = 0.0;
         foreach ($itens as $item) {
             $valor_total += (float)$item['quantidade'] * (float)($item['valor_unitario'] ?? 0);
         }
 
+        $fornecedor_id = (int)$oficio['fornecedor_indicado_id'];
         $stmt_aquisicao->execute([
             generate_aquisicao_number($pdo),
             generate_unique_code($pdo),
@@ -253,38 +211,38 @@ try {
                 (float)($item['valor_unitario'] ?? 0),
             ]);
         }
+
+        $gerados++;
+        $nome_fornecedor = (string)$oficio['fornecedor_nome'];
+        $por_fornecedor[$nome_fornecedor] = ($por_fornecedor[$nome_fornecedor] ?? 0) + 1;
         $numeros_oficio[] = (string)$oficio['numero'];
+    }
+
+    $resumo_fornecedores = [];
+    foreach ($por_fornecedor as $nome => $qtd) {
+        $resumo_fornecedores[] = $nome . ' (' . $qtd . ')';
     }
 
     log_action(
         $pdo,
         'APROVACAO_GERACAO_AQUISICAO_MULTIPLOS_OFICIOS',
-        count($ids_aprovar) . ' solicitação(ões) aprovada(s), '
-            . count($oficios_processar) . ' aquisição(ões) gerada(s) para '
-            . $fornecedor['nome'] . ': ' . implode(', ', $numeros_oficio)
+        $aprovados_agora . ' solicitação(ões) aprovada(s), ' . $gerados . ' aquisição(ões) gerada(s) usando fornecedores previamente definidos: ' . implode(', ', $resumo_fornecedores) . '. Solicitações: ' . implode(', ', $numeros_oficio)
     );
 
     $pdo->commit();
     $_SESSION['csrf_aprovacao_multipla'] = bin2hex(random_bytes(32));
 
-    $ignorados = count($ids) - count($oficios_processar) - $com_aquisicao - $sem_itens;
-    $mensagem = count($ids_aprovar) . ' solicitação(ões) aprovada(s) e '
-        . count($oficios_processar) . ' aquisição(ões) gerada(s) para ' . $fornecedor['nome'] . '.';
-    if ($com_aquisicao > 0) {
-        $mensagem .= ' ' . $com_aquisicao . ' já possuía(m) aquisição e foi(ram) preservado(s).';
-    }
-    if ($sem_itens > 0) {
-        $mensagem .= ' ' . $sem_itens . ' não possui(em) itens e não gerou(ram) aquisição.';
-    }
-    if ($ignorados > 0) {
-        $mensagem .= ' ' . $ignorados . ' item(ns) com outro status foram ignorados.';
-    }
+    $mensagem = $aprovados_agora . ' solicitação(ões) aprovada(s) e ' . $gerados . ' aquisição(ões) gerada(s) com os fornecedores previamente definidos.';
+    if ($sem_fornecedor > 0) $mensagem .= ' ' . $sem_fornecedor . ' sem fornecedor foi(ram) ignorada(s).';
+    if ($sem_itens > 0) $mensagem .= ' ' . $sem_itens . ' sem itens foi(ram) ignorada(s).';
+    if ($com_aquisicao > 0) $mensagem .= ' ' . $com_aquisicao . ' já possuía(m) aquisição e foi(ram) preservada(s).';
+    if ($status_ignorado > 0) $mensagem .= ' ' . $status_ignorado . ' com status não elegível foi(ram) ignorada(s).';
     flash_message('success', $mensagem);
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    flash_message('danger', 'Não foi possível concluir a aprovação múltipla. Tente novamente.');
+    flash_message('danger', 'Não foi possível concluir a aprovação múltipla. Nenhuma alteração parcial foi mantida.');
 }
 
 header("Location: {$return_url}", true, 303);
