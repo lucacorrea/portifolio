@@ -108,7 +108,9 @@ $aquisicoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $itens_por_aquisicao = [];
 if (!empty($aquisicoes)) {
-    $ids = array_map(static fn(array $aq): int => (int)$aq['id'], $aquisicoes);
+    $ids = array_map(static function (array $aq): int {
+        return (int)$aq['id'];
+    }, $aquisicoes);
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
 
     $stmt_items = $pdo->prepare("
@@ -152,7 +154,9 @@ $filtros_lista = array_filter([
     'fornecedor_id' => $fornecedor_id,
     'data_inicio' => $data_inicio,
     'data_fim' => $data_fim,
-], static fn($value): bool => $value !== '');
+], static function ($value): bool {
+    return $value !== '';
+});
 
 $voltar_url = 'aquisicoes_lista.php';
 if (!empty($filtros_lista)) {
@@ -423,7 +427,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateStatus() {
-        const signed = pages.filter(page => page.classList.contains('signature-enabled')).length;
+        const signed = pages.filter(function (page) {
+            return page.classList.contains('signature-enabled');
+        }).length;
+
         if (signed === 0) {
             status.textContent = 'Nenhuma página será assinada.';
         } else if (signed === pages.length) {
@@ -437,7 +444,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const value = mode.value;
         doc.classList.toggle('signature-select-mode', value === 'select');
 
-        pages.forEach(page => {
+        pages.forEach(function (page) {
             const checkbox = checkboxFor(page);
             if (!checkbox) return;
 
@@ -455,7 +462,7 @@ document.addEventListener('DOMContentLoaded', function () {
         updateStatus();
     }
 
-    pages.forEach(page => {
+    pages.forEach(function (page) {
         const checkbox = checkboxFor(page);
         if (!checkbox) return;
         checkbox.addEventListener('change', function () {
