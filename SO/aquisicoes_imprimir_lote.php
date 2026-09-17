@@ -8,8 +8,8 @@ function h($v): string
 {
     return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 }
-$perfil = strtoupper(trim((string) ($_SESSION['nivel'] ?? $_SESSION['perfil'] ?? $_SESSION['tipo_usuario'] ?? '')));
-$usuario = (string) ($_SESSION['user_nome'] ?? $_SESSION['nome'] ?? $_SESSION['usuario'] ?? 'SUPORTE');
+$perfil = strtoupper(trim((string) ($_SESSION['perfil'] ?? $_SESSION['tipo_usuario'] ?? $_SESSION['nivel'] ?? '')));
+$usuario = (string) ($_SESSION['nome'] ?? $_SESSION['usuario'] ?? 'SUPORTE');
 if ($perfil !== 'SUPORTE') {
     http_response_code(403);
     exit('Acesso permitido somente ao SUPORTE.');
@@ -38,8 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
     if (!$assinatura)
-        exit('Nenhuma assinatura ativa está cadastrada em Configurações > Assinatura.');
-    $stmt = $pdo->prepare("INSERT INTO assinaturas_aquisicoes (aquisicao_id,assinatura_id,assinado_por) VALUES (?,?,?)");
+        exit('Nenhuma assinatura ativa cadastrada.');
+    $stmt = $pdo->prepare("INSERT INTO assinaturas_aquisicoes(aquisicao_id,assinatura_id,assinado_por) VALUES(?,?,?)");
     $stmt->execute([$id, (int) $assinatura['id'], $usuario]);
     header('Location: aquisicoes_visualizar.php?id=' . $id . '&assinatura=ok');
     exit;
