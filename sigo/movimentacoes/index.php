@@ -1,0 +1,22 @@
+<?php
+declare(strict_types=1);
+?>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGO - Movimentações</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+<section class="module-placeholder">
+    <article class="panel">
+        <span class="eyebrow">SIGO</span>
+        <h1>Movimentações</h1>
+        <p>Área reservada para o histórico de encaminhamentos e movimentações.</p>
+        <a class="primary-button" href="../dashboard.php">Voltar ao dashboard</a>
+    </article>
+</section>
+</body>
+</html>
