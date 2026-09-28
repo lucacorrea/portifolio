@@ -9,20 +9,12 @@ $prefixo = $paginaAtual === 'dashboard' ? '' : '../';
         <i data-lucide="search"></i>
     </button>
 
+    <a class="rail-button rail-accent" href="<?= $prefixo ?>oficios/cadastrar.php" title="Novo ofício" aria-label="Novo ofício">
+        <i data-lucide="plus"></i>
+    </a>
+
     <div class="rail-divider"></div>
 
-    <a class="rail-button <?= $paginaAtual === 'dashboard' ? 'active' : '' ?>" href="<?= $prefixo ?>dashboard.php" title="Dashboard" aria-label="Dashboard">
-        <i data-lucide="layout-dashboard"></i>
-    </a>
-    <a class="rail-button <?= $paginaAtual === 'oficios' ? 'active' : '' ?>" href="<?= $prefixo ?>oficios/index.php" title="Ofícios" aria-label="Ofícios">
-        <i data-lucide="file-text"></i>
-    </a>
-    <a class="rail-button <?= $paginaAtual === 'movimentacoes' ? 'active' : '' ?>" href="<?= $prefixo ?>movimentacoes/index.php" title="Movimentações" aria-label="Movimentações">
-        <i data-lucide="arrow-left-right"></i>
-    </a>
-    <a class="rail-button <?= $paginaAtual === 'recebimento' ? 'active' : '' ?>" href="<?= $prefixo ?>recebimento/index.php" title="Recebimento rápido" aria-label="Recebimento rápido">
-        <i data-lucide="circle-check"></i>
-    </a>
     <a class="rail-button <?= $paginaAtual === 'pessoas' ? 'active' : '' ?>" href="<?= $prefixo ?>pessoas/index.php" title="Pessoas" aria-label="Pessoas">
         <i data-lucide="users"></i>
     </a>
