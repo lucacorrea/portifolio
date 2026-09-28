@@ -35,8 +35,8 @@ $movimentacoes = [
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0b1739">
     <title>SIGO - Dashboard</title>
-    <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="stylesheet" href="assets/css/dashboard.css">
+    <link rel="stylesheet" href="assets/css/style.css?v=20260928-1">
+    <link rel="stylesheet" href="assets/css/dashboard.css?v=20260928-1">
 </head>
 <body>
 <div class="app">
@@ -243,6 +243,6 @@ $movimentacoes = [
     </div>
 </div>
 
-<script src="assets/js/app.js"></script>
+<script src="assets/js/app.js?v=20260928-1"></script>
 </body>
 </html>
