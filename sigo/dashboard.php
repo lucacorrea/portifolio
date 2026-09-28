@@ -5,6 +5,22 @@ $paginaAtual = 'dashboard';
 $paginaTitulo = 'Visão geral';
 $paginaDescricao = 'Acompanhe os ofícios da Casa Civil em tempo real.';
 
+date_default_timezone_set('America/Manaus');
+
+$diasSemana = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+$meses = [1 => 'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+$agora = new DateTimeImmutable();
+$dataExtenso = sprintf(
+    '%s, %d de %s',
+    $diasSemana[(int) $agora->format('w')],
+    (int) $agora->format('j'),
+    $meses[(int) $agora->format('n')]
+);
+
+$horaAtual = (int) $agora->format('G');
+$saudacao = $horaAtual < 12 ? 'Bom dia' : ($horaAtual < 18 ? 'Boa tarde' : 'Boa noite');
+
 $indicadores = [
     ['titulo' => 'Recebidos hoje', 'valor' => '12', 'detalhe' => '3 nas últimas 2 horas', 'icone' => 'inbox', 'classe' => 'blue'],
     ['titulo' => 'Aguardando encaminhamento', 'valor' => '7', 'detalhe' => 'Precisam de destino', 'icone' => 'send', 'classe' => 'amber'],
@@ -35,8 +51,8 @@ $movimentacoes = [
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0b1739">
     <title>SIGO - Dashboard</title>
-    <link rel="stylesheet" href="assets/css/style.css?v=20260928-1">
-    <link rel="stylesheet" href="assets/css/dashboard.css?v=20260928-1">
+    <link rel="stylesheet" href="assets/css/style.css?v=20260928-2">
+    <link rel="stylesheet" href="assets/css/dashboard.css?v=20260928-2">
 </head>
 <body>
 <div class="app">
@@ -48,8 +64,8 @@ $movimentacoes = [
         <main class="page-content">
             <section class="welcome-row">
                 <div>
-                    <span class="eyebrow">Domingo, 28 de setembro</span>
-                    <h1>Bom dia, Administrador</h1>
+                    <span class="eyebrow"><?= htmlspecialchars($dataExtenso, ENT_QUOTES, 'UTF-8') ?></span>
+                    <h1><?= htmlspecialchars($saudacao, ENT_QUOTES, 'UTF-8') ?>, Administrador</h1>
                     <p>Veja o que precisa da sua atenção hoje na Casa Civil.</p>
                 </div>
 
@@ -243,6 +259,6 @@ $movimentacoes = [
     </div>
 </div>
 
-<script src="assets/js/app.js?v=20260928-1"></script>
+<script src="assets/js/app.js?v=20260928-2"></script>
 </body>
 </html>

@@ -626,3 +626,61 @@ button {
         display: none;
     }
 }
+
+
+/* Refinamentos visuais do dashboard */
+body {
+    background:
+        radial-gradient(circle at 75% 0%, rgba(37, 99, 235, .045), transparent 28%),
+        var(--bg);
+}
+
+.sidebar::-webkit-scrollbar,
+.table-wrap::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.sidebar::-webkit-scrollbar-thumb,
+.table-wrap::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(127, 145, 176, .28);
+}
+
+.sidebar-nav a,
+.primary-button,
+.secondary-button,
+.notification-button,
+.user-chip,
+.panel {
+    -webkit-tap-highlight-color: transparent;
+}
+
+.sidebar-nav a:focus-visible,
+.primary-button:focus-visible,
+.secondary-button:focus-visible,
+.notification-button:focus-visible,
+.user-chip:focus-visible,
+.quick-search input:focus-visible {
+    outline: 3px solid rgba(67, 128, 255, .22);
+    outline-offset: 2px;
+}
+
+.topbar {
+    box-shadow: 0 1px 0 rgba(20, 35, 65, .025);
+}
+
+.quick-search input::placeholder {
+    color: #98a3b4;
+}
+
+.panel {
+    transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+@media (hover: hover) {
+    .panel:hover {
+        border-color: #dce4ef;
+        box-shadow: 0 12px 34px rgba(20, 40, 80, .075);
+    }
+}
