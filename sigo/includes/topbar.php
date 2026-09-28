@@ -1,35 +1,51 @@
 <?php
 declare(strict_types=1);
+
+$paginaAtual = $paginaAtual ?? '';
+$prefixo = $paginaAtual === 'dashboard' ? '' : '../';
 ?>
 <header class="topbar">
-    <div class="topbar-left">
-        <button class="menu-toggle" type="button" data-sidebar-open aria-label="Abrir menu">☰</button>
-        <div class="topbar-title">
-            <strong><?= htmlspecialchars($paginaTitulo ?? 'SIGO', ENT_QUOTES, 'UTF-8') ?></strong>
-            <span><?= htmlspecialchars($paginaDescricao ?? 'Sistema Integrado de Gestão de Ofícios', ENT_QUOTES, 'UTF-8') ?></span>
-        </div>
-    </div>
+    <a class="topbar-brand" href="<?= $prefixo ?>dashboard.php" aria-label="SIGO - Início">
+        <span class="brand-symbol">
+            <span></span><span></span><span></span>
+        </span>
+        <span class="brand-text">SIGO</span>
+    </a>
+
+    <nav class="top-nav" aria-label="Navegação principal">
+        <a class="<?= $paginaAtual === 'dashboard' ? 'active' : '' ?>" href="<?= $prefixo ?>dashboard.php">
+            <span class="nav-circle"><i data-lucide="house"></i></span>
+            Dashboard
+        </a>
+        <a class="<?= $paginaAtual === 'oficios' ? 'active' : '' ?>" href="<?= $prefixo ?>oficios/index.php">
+            <span class="nav-circle"><i data-lucide="file-text"></i></span>
+            Ofícios
+        </a>
+        <a class="<?= $paginaAtual === 'movimentacoes' ? 'active' : '' ?>" href="<?= $prefixo ?>movimentacoes/index.php">
+            <span class="nav-circle"><i data-lucide="arrow-left-right"></i></span>
+            Movimentações
+        </a>
+        <a class="<?= $paginaAtual === 'recebimento' ? 'active' : '' ?>" href="<?= $prefixo ?>recebimento/index.php">
+            <span class="nav-circle"><i data-lucide="circle-check"></i></span>
+            Recebimento
+        </a>
+    </nav>
 
     <div class="topbar-actions">
-        <label class="quick-search">
-            <span class="search-icon">⌕</span>
-            <span class="sr-only">Buscar protocolo, ofício ou responsável</span>
-            <input type="search" placeholder="Buscar protocolo, ofício ou responsável">
-            <kbd>Ctrl K</kbd>
-        </label>
-
-        <button class="notification-button" type="button" aria-label="Notificações">
-            <span>♢</span>
-            <i></i>
+        <button class="icon-button" type="button" data-search-open aria-label="Buscar">
+            <i data-lucide="search"></i>
         </button>
-
-        <button class="user-chip" type="button" aria-label="Abrir menu do usuário">
-            <span class="user-avatar">AD</span>
-            <span class="user-info">
+        <button class="icon-button notification" type="button" aria-label="Notificações">
+            <i data-lucide="bell"></i>
+            <span></span>
+        </button>
+        <button class="profile-button" type="button" aria-label="Perfil do administrador">
+            <span class="profile-avatar">AD</span>
+            <span class="profile-copy">
                 <strong>Administrador</strong>
                 <small>Casa Civil</small>
             </span>
-            <span class="user-chevron">⌄</span>
+            <i data-lucide="chevron-down"></i>
         </button>
     </div>
 </header>

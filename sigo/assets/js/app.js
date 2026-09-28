@@ -3,28 +3,56 @@
 document.documentElement.classList.add('js-enabled');
 
 const body = document.body;
-const openButton = document.querySelector('[data-sidebar-open]');
-const closeButtons = document.querySelectorAll('[data-sidebar-close]');
+const railToggle = document.querySelector('[data-rail-toggle]');
+const searchOpenButtons = document.querySelectorAll('[data-search-open]');
+const searchOverlay = document.querySelector('[data-search-overlay]');
+const searchClose = document.querySelector('[data-search-close]');
+const searchInput = document.querySelector('[data-search-input]');
 
-if (openButton) {
-    openButton.addEventListener('click', () => {
-        body.classList.add('sidebar-open');
-    });
-}
+const refreshIcons = () => {
+    if (window.lucide) {
+        window.lucide.createIcons();
+    }
+};
 
-closeButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-        body.classList.remove('sidebar-open');
-    });
+const openSearch = () => {
+    if (!searchOverlay) return;
+    searchOverlay.hidden = false;
+    window.setTimeout(() => searchInput?.focus(), 20);
+};
+
+const closeSearch = () => {
+    if (!searchOverlay) return;
+    searchOverlay.hidden = true;
+};
+
+railToggle?.addEventListener('click', () => {
+    body.classList.toggle('rail-open');
 });
+
+searchOpenButtons.forEach((button) => {
+    button.addEventListener('click', openSearch);
+});
+
+searchClose?.addEventListener('click', closeSearch);
 
 document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-        body.classList.remove('sidebar-open');
-    }
-
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
-        document.querySelector('.quick-search input')?.focus();
+        openSearch();
+    }
+
+    if (event.key === 'Escape') {
+        closeSearch();
+        body.classList.remove('rail-open');
     }
 });
+
+document.addEventListener('click', (event) => {
+    if (!body.classList.contains('rail-open')) return;
+    const rail = document.querySelector('[data-utility-rail]');
+    if (rail?.contains(event.target) || railToggle?.contains(event.target)) return;
+    body.classList.remove('rail-open');
+});
+
+refreshIcons();
