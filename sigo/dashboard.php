@@ -42,10 +42,10 @@ $oficios = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#f3f2ef">
+    <meta name="theme-color" content="#e9eef7">
     <title>SIGO - Dashboard</title>
-    <link rel="stylesheet" href="assets/css/style.css?v=20260928-3">
-    <link rel="stylesheet" href="assets/css/dashboard.css?v=20260928-3">
+    <link rel="stylesheet" href="assets/css/style.css?v=20260928-4">
+    <link rel="stylesheet" href="assets/css/dashboard.css?v=20260928-4">
 </head>
 <body>
 <div class="app-shell">
@@ -68,11 +68,45 @@ $oficios = [
                 </div>
 
                 <div class="hero-actions">
-                    <button class="ghost-button" type="button">
-                        <i data-lucide="sliders-horizontal"></i>
-                        Filtros
-                    </button>
-                    <button class="ghost-button" type="button">
+                    <div class="filter-control">
+                        <button class="ghost-button" type="button" data-filter-toggle aria-expanded="false">
+                            <i data-lucide="sliders-horizontal"></i>
+                            Filtros
+                            <span class="filter-count" data-filter-count hidden>1</span>
+                        </button>
+
+                        <div class="filter-popover" data-filter-panel hidden>
+                            <div class="filter-popover-head">
+                                <div>
+                                    <strong>Filtrar ofícios</strong>
+                                    <small>Refine o histórico por situação.</small>
+                                </div>
+                                <button class="round-button compact" type="button" data-filter-close aria-label="Fechar filtros">
+                                    <i data-lucide="x"></i>
+                                </button>
+                            </div>
+
+                            <div class="filter-options" data-filter-options>
+                                <button class="filter-option active" type="button" data-status-filter="all">
+                                    <span>Todos</span><b>4</b>
+                                </button>
+                                <button class="filter-option" type="button" data-status-filter="pending">
+                                    <span>Aguardando</span><b>1</b>
+                                </button>
+                                <button class="filter-option" type="button" data-status-filter="progress">
+                                    <span>Em andamento</span><b>1</b>
+                                </button>
+                                <button class="filter-option" type="button" data-status-filter="received">
+                                    <span>Recebidos</span><b>1</b>
+                                </button>
+                                <button class="filter-option" type="button" data-status-filter="archived">
+                                    <span>Arquivados</span><b>1</b>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="ghost-button" type="button" data-export>
                         <i data-lucide="download"></i>
                         Exportar
                     </button>
@@ -90,28 +124,34 @@ $oficios = [
                             <h2>Resumo</h2>
                             <p>Acompanhe a entrada de documentos.</p>
                         </div>
-                        <button class="period-button" type="button">
-                            Esta semana
+                        <button class="period-button" type="button" data-period-toggle aria-expanded="false">
+                            <span data-period-label>Esta semana</span>
                             <i data-lucide="chevron-down"></i>
                         </button>
                     </div>
 
+                    <div class="period-menu" data-period-menu hidden>
+                        <button type="button" data-period="Hoje">Hoje</button>
+                        <button class="active" type="button" data-period="Esta semana">Esta semana</button>
+                        <button type="button" data-period="Este mês">Este mês</button>
+                    </div>
+
                     <div class="summary-metrics">
-                        <div class="summary-metric">
+                        <button class="summary-metric metric-button" type="button" data-status-filter="all">
                             <span class="metric-icon"><i data-lucide="inbox"></i></span>
-                            <div>
+                            <span>
                                 <small>Recebidos hoje</small>
                                 <strong>12</strong>
-                            </div>
-                        </div>
+                            </span>
+                        </button>
                         <div class="summary-divider"></div>
-                        <div class="summary-metric">
+                        <button class="summary-metric metric-button" type="button" data-status-filter="progress">
                             <span class="metric-icon"><i data-lucide="send"></i></span>
-                            <div>
+                            <span>
                                 <small>Encaminhados</small>
                                 <strong>7</strong>
-                            </div>
-                        </div>
+                            </span>
+                        </button>
                     </div>
 
                     <div class="volume-chart" aria-label="Volume semanal de ofícios">
@@ -135,7 +175,7 @@ $oficios = [
                             <p>Situação dos ofícios neste momento.</p>
                         </div>
                         <div class="heading-actions">
-                            <button class="round-button" type="button" aria-label="Ajustar visualização">
+                            <button class="round-button" type="button" data-filter-toggle aria-label="Filtrar atividade">
                                 <i data-lucide="sliders-horizontal"></i>
                             </button>
                             <a class="round-button" href="movimentacoes/index.php" aria-label="Abrir movimentações">
@@ -145,33 +185,35 @@ $oficios = [
                     </div>
 
                     <div class="activity-grid">
-                        <article class="activity-mini-card">
-                            <span class="mini-icon"><i data-lucide="clock-3"></i></span>
-                            <h3>Aguardando recebimento</h3>
+                        <button class="activity-mini-card" type="button" data-status-filter="pending">
+                            <span class="mini-icon warning"><i data-lucide="clock-3"></i></span>
+                            <span class="activity-title">Aguardando recebimento</span>
                             <small>Confirmação pendente</small>
                             <strong>5</strong>
-                            <div class="sparkline">
+                            <div class="sparkline warning">
                                 <span style="height: 34%"></span><span style="height: 48%"></span><span style="height: 41%"></span>
                                 <span style="height: 66%"></span><span style="height: 58%"></span><span style="height: 76%"></span>
                                 <span style="height: 63%"></span><span style="height: 70%"></span><span style="height: 54%"></span>
                             </div>
-                        </article>
+                            <span class="card-action">Ver ofícios <i data-lucide="arrow-right"></i></span>
+                        </button>
 
-                        <article class="activity-mini-card">
-                            <span class="mini-icon"><i data-lucide="workflow"></i></span>
-                            <h3>Em andamento</h3>
+                        <button class="activity-mini-card" type="button" data-status-filter="progress">
+                            <span class="mini-icon info"><i data-lucide="workflow"></i></span>
+                            <span class="activity-title">Em andamento</span>
                             <small>Com responsáveis</small>
                             <strong>18</strong>
-                            <div class="sparkline">
+                            <div class="sparkline info">
                                 <span style="height: 45%"></span><span style="height: 38%"></span><span style="height: 58%"></span>
                                 <span style="height: 52%"></span><span style="height: 69%"></span><span style="height: 62%"></span>
                                 <span style="height: 74%"></span><span style="height: 67%"></span><span style="height: 79%"></span>
                             </div>
-                        </article>
+                            <span class="card-action">Ver ofícios <i data-lucide="arrow-right"></i></span>
+                        </button>
 
-                        <article class="activity-mini-card attention">
+                        <button class="activity-mini-card attention" type="button" data-status-filter="pending">
                             <span class="mini-icon"><i data-lucide="circle-alert"></i></span>
-                            <h3>Precisam de atenção</h3>
+                            <span class="activity-title">Precisam de atenção</span>
                             <small>Parados há mais de 24h</small>
                             <strong>3</strong>
                             <div class="sparkline">
@@ -179,33 +221,35 @@ $oficios = [
                                 <span style="height: 45%"></span><span style="height: 52%"></span><span style="height: 39%"></span>
                                 <span style="height: 43%"></span><span style="height: 30%"></span><span style="height: 22%"></span>
                             </div>
-                        </article>
+                            <span class="card-action">Revisar agora <i data-lucide="arrow-right"></i></span>
+                        </button>
                     </div>
                 </article>
 
                 <div class="left-stats">
-                    <article class="small-stat-card">
+                    <button class="small-stat-card stat-success" type="button" data-status-filter="received">
                         <div class="small-stat-label">
                             <span><i data-lucide="check-circle-2"></i></span>
                             Concluídos no mês
                         </div>
                         <strong>34</strong>
                         <small>+11,5% em relação ao mês anterior</small>
-                    </article>
+                    </button>
 
-                    <article class="small-stat-card">
+                    <button class="small-stat-card stat-neutral" type="button" data-status-filter="archived">
                         <div class="small-stat-label">
                             <span><i data-lucide="archive"></i></span>
                             Arquivados
                         </div>
                         <strong>126</strong>
                         <small>100% com localização registrada</small>
-                    </article>
+                    </button>
 
                     <article class="management-card">
+                        <div class="management-icon"><i data-lucide="shield-alert"></i></div>
                         <div>
-                            <strong>Como está o fluxo de documentos?</strong>
-                            <small>3 pendências precisam de acompanhamento.</small>
+                            <strong>3 pendências precisam de acompanhamento</strong>
+                            <small>Documentos sem confirmação há mais de 24 horas.</small>
                         </div>
                         <a href="movimentacoes/index.php" aria-label="Ver pendências">
                             <i data-lucide="arrow-right"></i>
@@ -213,15 +257,26 @@ $oficios = [
                     </article>
                 </div>
 
-                <article class="dashboard-card history-card">
-                    <div class="card-heading">
+                <article class="dashboard-card history-card" id="historico">
+                    <div class="card-heading history-heading">
                         <div>
                             <h2>Histórico de ofícios</h2>
-                            <p>Últimas movimentações registradas.</p>
+                            <p><span data-visible-count><?= count($oficios) ?></span> registros exibidos.</p>
                         </div>
-                        <button class="round-button" type="button" aria-label="Filtrar histórico">
-                            <i data-lucide="sliders-horizontal"></i>
-                        </button>
+                        <div class="history-tools">
+                            <label class="table-search">
+                                <i data-lucide="search"></i>
+                                <input type="search" placeholder="Buscar na tabela" data-table-search>
+                            </label>
+                            <button class="round-button" type="button" data-filter-toggle aria-label="Filtrar histórico">
+                                <i data-lucide="sliders-horizontal"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="active-filter" data-active-filter hidden>
+                        <span>Filtro: <strong data-active-filter-label></strong></span>
+                        <button type="button" data-clear-filter>Limpar</button>
                     </div>
 
                     <div class="history-table-wrap">
@@ -235,9 +290,13 @@ $oficios = [
                                     <th>Hora</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody data-history-body>
                                 <?php foreach ($oficios as $oficio): ?>
-                                    <tr>
+                                    <tr
+                                        data-office-row
+                                        data-status="<?= htmlspecialchars($oficio['classe'], ENT_QUOTES, 'UTF-8') ?>"
+                                        data-search="<?= htmlspecialchars(strtolower($oficio['protocolo'] . ' ' . $oficio['oficio'] . ' ' . $oficio['status'] . ' ' . $oficio['responsavel']), ENT_QUOTES, 'UTF-8') ?>"
+                                    >
                                         <td><strong><?= htmlspecialchars($oficio['protocolo'], ENT_QUOTES, 'UTF-8') ?></strong></td>
                                         <td><?= htmlspecialchars($oficio['oficio'], ENT_QUOTES, 'UTF-8') ?></td>
                                         <td>
@@ -251,6 +310,12 @@ $oficios = [
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
+
+                        <div class="table-empty" data-table-empty hidden>
+                            <i data-lucide="search-x"></i>
+                            <strong>Nenhum ofício encontrado</strong>
+                            <span>Ajuste a busca ou remova os filtros.</span>
+                        </div>
                     </div>
                 </article>
             </section>
@@ -269,7 +334,12 @@ $oficios = [
     </div>
 </div>
 
+<div class="toast" data-toast hidden>
+    <i data-lucide="circle-check"></i>
+    <span data-toast-text>Concluído</span>
+</div>
+
 <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
-<script src="assets/js/app.js?v=20260928-3"></script>
+<script src="assets/js/app.js?v=20260928-4"></script>
 </body>
 </html>
