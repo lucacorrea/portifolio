@@ -408,3 +408,43 @@ svg { width: 18px; height: 18px; stroke-width: 1.8; }
     .app-footer { display: none; }
     .toast { right: 16px; bottom: 90px; left: 16px; }
 }
+
+
+/* Scrollbar refinada do SIGO */
+html {
+    scrollbar-width: thin;
+    scrollbar-color: #9eabc0 #eef2f7;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+    width: 10px;
+}
+
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track {
+    background: #eef2f7;
+}
+
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb {
+    min-height: 60px;
+    border: 2px solid #eef2f7;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #b8c4d6 0%, #8f9db3 100%);
+}
+
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #7f94bc 0%, #5f78a8 100%);
+}
+
+html::-webkit-scrollbar-thumb:active,
+body::-webkit-scrollbar-thumb:active {
+    background: var(--accent);
+}
+
+html::-webkit-scrollbar-corner,
+body::-webkit-scrollbar-corner {
+    background: transparent;
+}
