@@ -1509,132 +1509,161 @@ include 'views/layout/header.php';
     }
 </style>
 
-<div class="card no-print">
+<div class="card no-print lista-filtros-card">
     <div class="card-body">
-        <h3 class="card-title" style="margin-bottom: 1rem; font-weight: 700; font-size: 1rem;">
-            <i class="fas fa-filter" style="margin-right: 5px; color: var(--primary);"></i> Filtros de Busca
-        </h3>
+        <div class="lista-filtros-header">
+            <div class="lista-filtros-titulo-wrap">
+                <span class="lista-filtros-icone">
+                    <i class="fas fa-filter"></i>
+                </span>
+                <div>
+                    <h3 class="lista-filtros-titulo">Filtros de Busca</h3>
+                    <p class="lista-filtros-subtitulo">Encontre aquisições e gere relatórios sem misturar os controles.</p>
+                </div>
+            </div>
+            <span class="lista-filtros-resumo">
+                <i class="fas fa-sliders-h"></i>
+                Busca e relatórios
+            </span>
+        </div>
 
-        <form action="" method="GET" class="filtros-grid">
-            <div class="form-group filtro-limite" style="margin-bottom: 0;">
-                <label class="form-label">Linhas por página</label>
-                <select name="por_pagina" class="form-control">
-                    <?php foreach ($por_pagina_options as $por_pagina_option): ?>
-                        <option value="<?php echo $por_pagina_option; ?>" <?php echo $itens_por_pagina === $por_pagina_option ? 'selected' : ''; ?>>
-                            <?php echo $por_pagina_option; ?> linhas
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+        <form action="" method="GET" class="lista-filtros-form lista-filtros-form--aquisicoes">
+            <div class="lista-filtros-principais">
+                <div class="lista-filtro lista-filtro-busca">
+                    <label for="filtro-aquisicao-busca">Termo de busca</label>
+                    <div class="lista-filtro-input-icon">
+                        <i class="fas fa-search"></i>
+                        <input
+                            id="filtro-aquisicao-busca"
+                            type="text"
+                            name="busca"
+                            class="form-control"
+                            placeholder="Nº aquisição, ofício, secretaria, fornecedor ou valor..."
+                            value="<?php echo htmlspecialchars($_GET['busca'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                    </div>
+                </div>
+
+                <div class="lista-filtro">
+                    <label for="filtro-aquisicao-status">Status</label>
+                    <select id="filtro-aquisicao-status" name="status" class="form-control">
+                        <option value="">Todos Status</option>
+                        <option value="AGUARDANDO ENTREGA" <?php echo $status === 'AGUARDANDO ENTREGA' ? 'selected' : ''; ?>>AGUARDANDO ENTREGA</option>
+                        <option value="FINALIZADO" <?php echo $status === 'FINALIZADO' ? 'selected' : ''; ?>>FINALIZADO</option>
+                    </select>
+                </div>
+
+                <div class="lista-filtro">
+                    <label for="filtro-aquisicao-secretaria">Secretaria</label>
+                    <select id="filtro-aquisicao-secretaria" name="secretaria_id" class="form-control">
+                        <option value="">Todas as Secretarias</option>
+                        <?php foreach ($secretarias_list as $sec): ?>
+                            <option value="<?php echo (int)$sec['id']; ?>" <?php echo $secretaria_id == $sec['id'] ? 'selected' : ''; ?>>
+                                <?php echo h($sec['nome']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="lista-filtro lista-filtro-fornecedor">
+                    <label for="filtro-aquisicao-fornecedor">Fornecedor</label>
+                    <select id="filtro-aquisicao-fornecedor" name="fornecedor_id" class="form-control">
+                        <option value="">Todos os Fornecedores</option>
+                        <?php foreach ($fornecedores_list as $fornecedor): ?>
+                            <option value="<?php echo (int)$fornecedor['id']; ?>" <?php echo $fornecedor_id == $fornecedor['id'] ? 'selected' : ''; ?>>
+                                <?php echo h($fornecedor['nome']); ?>
+                                <?php if (!empty($fornecedor['cnpj'])): ?>
+                                    (<?php echo h($fornecedor['cnpj']); ?>)
+                                <?php endif; ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
             </div>
 
-            <div class="form-group filtro-busca" style="margin-bottom: 0;">
-                <label class="form-label">Termo de busca</label>
-                <input
-                    type="text"
-                    name="busca"
-                    class="form-control"
-                    placeholder="Nº aquisição, ofício, secretaria, fornecedor ou valor..."
-                    value="<?php echo htmlspecialchars($_GET['busca'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
-            </div>
+            <div class="lista-filtros-secundarios">
+                <div class="lista-filtros-secundarios-campos">
+                    <div class="lista-filtro">
+                        <label for="filtro-aquisicao-data-inicio">Data inicial</label>
+                        <input
+                            id="filtro-aquisicao-data-inicio"
+                            type="date"
+                            name="data_inicio"
+                            class="form-control"
+                            value="<?php echo h($data_inicio); ?>">
+                    </div>
 
-            <div class="form-group filtro-status" style="margin-bottom: 0;">
-                <label class="form-label">Status</label>
-                <select name="status" class="form-control">
-                    <option value="">Todos Status</option>
-                    <option value="AGUARDANDO ENTREGA" <?php echo $status === 'AGUARDANDO ENTREGA' ? 'selected' : ''; ?>>AGUARDANDO ENTREGA</option>
-                    <option value="FINALIZADO" <?php echo $status === 'FINALIZADO' ? 'selected' : ''; ?>>FINALIZADO</option>
-                </select>
-            </div>
+                    <div class="lista-filtro">
+                        <label for="filtro-aquisicao-data-fim">Data final</label>
+                        <input
+                            id="filtro-aquisicao-data-fim"
+                            type="date"
+                            name="data_fim"
+                            class="form-control"
+                            value="<?php echo h($data_fim); ?>">
+                    </div>
 
-            <div class="form-group filtro-secretaria" style="margin-bottom: 0;">
-                <label class="form-label">Secretaria</label>
-                <select name="secretaria_id" class="form-control">
-                    <option value="">Todas as Secretarias</option>
-                    <?php foreach ($secretarias_list as $sec): ?>
-                        <option value="<?php echo (int)$sec['id']; ?>" <?php echo $secretaria_id == $sec['id'] ? 'selected' : ''; ?>>
-                            <?php echo h($sec['nome']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+                    <div class="lista-filtro">
+                        <label for="filtro-aquisicao-por-pagina">Linhas por página</label>
+                        <select id="filtro-aquisicao-por-pagina" name="por_pagina" class="form-control">
+                            <?php foreach ($por_pagina_options as $por_pagina_option): ?>
+                                <option value="<?php echo $por_pagina_option; ?>" <?php echo $itens_por_pagina === $por_pagina_option ? 'selected' : ''; ?>>
+                                    <?php echo $por_pagina_option; ?> linhas
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
 
-            <div class="form-group filtro-fornecedor" style="margin-bottom: 0;">
-                <label class="form-label">Fornecedor</label>
-                <select name="fornecedor_id" class="form-control">
-                    <option value="">Todos os Fornecedores</option>
-                    <?php foreach ($fornecedores_list as $fornecedor): ?>
-                        <option value="<?php echo (int)$fornecedor['id']; ?>" <?php echo $fornecedor_id == $fornecedor['id'] ? 'selected' : ''; ?>>
-                            <?php echo h($fornecedor['nome']); ?>
-                            <?php if (!empty($fornecedor['cnpj'])): ?>
-                                (<?php echo h($fornecedor['cnpj']); ?>)
-                            <?php endif; ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+                    <div class="lista-filtro">
+                        <label for="filtro-aquisicao-tipo">Tipo relatório</label>
+                        <select id="filtro-aquisicao-tipo" name="tipo_relatorio" class="form-control">
+                            <option value="sintetico" <?php echo $tipo_relatorio === 'sintetico' ? 'selected' : ''; ?>>Sintético</option>
+                            <option value="analitico" <?php echo $tipo_relatorio === 'analitico' ? 'selected' : ''; ?>>Analítico</option>
+                        </select>
+                    </div>
+                </div>
 
-            <div class="form-group filtro-data" style="margin-bottom: 0;">
-                <label class="form-label">Data inicial</label>
-                <input
-                    type="date"
-                    name="data_inicio"
-                    class="form-control"
-                    value="<?php echo h($data_inicio); ?>">
-            </div>
+                <div class="lista-filtros-acoes">
+                    <button type="submit" class="filtro-btn filtro-btn-primary" title="Aplicar filtros">
+                        <i class="fas fa-search"></i>
+                        Filtrar
+                    </button>
 
-            <div class="form-group filtro-data" style="margin-bottom: 0;">
-                <label class="form-label">Data final</label>
-                <input
-                    type="date"
-                    name="data_fim"
-                    class="form-control"
-                    value="<?php echo h($data_fim); ?>">
-            </div>
+                    <button
+                        type="submit"
+                        name="export"
+                        value="excel"
+                        class="filtro-btn filtro-btn-excel"
+                        title="Exportar Excel">
+                        <i class="fas fa-file-excel"></i>
+                        Excel
+                    </button>
 
-            <div class="form-group filtro-tipo" style="margin-bottom: 0;">
-                <label class="form-label">Tipo relatório</label>
-                <select name="tipo_relatorio" class="form-control">
-                    <option value="sintetico" <?php echo $tipo_relatorio === 'sintetico' ? 'selected' : ''; ?>>Sintético</option>
-                    <option value="analitico" <?php echo $tipo_relatorio === 'analitico' ? 'selected' : ''; ?>>Analítico</option>
-                </select>
-            </div>
+                    <button
+                        type="submit"
+                        name="export"
+                        value="pdf"
+                        formtarget="_blank"
+                        class="filtro-btn filtro-btn-pdf"
+                        title="Baixar PDF">
+                        <i class="fas fa-file-pdf"></i>
+                        PDF
+                    </button>
 
-            <div class="form-group filtros-acoes" style="margin-bottom: 0;">
-                <button type="submit" class="btn btn-outline btn-sm" title="Filtrar">
-                    <i class="fas fa-search"></i> Filtrar
-                </button>
+                    <button
+                        type="submit"
+                        formaction="aquisicoes_imprimir_lote.php"
+                        formtarget="_blank"
+                        class="filtro-btn filtro-btn-print"
+                        title="Imprimir aquisições filtradas">
+                        <i class="fas fa-print"></i>
+                        Imprimir
+                    </button>
 
-                <button
-                    type="submit"
-                    name="export"
-                    value="excel"
-                    class="btn btn-primary btn-sm"
-                    title="Exportar Excel">
-                    <i class="fas fa-file-excel"></i> Excel
-                </button>
-
-                <button
-                    type="submit"
-                    name="export"
-                    value="pdf"
-                    formtarget="_blank"
-                    class="btn btn-outline btn-sm"
-                    title="Baixar PDF">
-                    <i class="fas fa-file-pdf"></i> PDF
-                </button>
-
-                <button
-                    type="submit"
-                    formaction="aquisicoes_imprimir_lote.php"
-                    formtarget="_blank"
-                    class="btn btn-outline btn-sm"
-                    title="Imprimir aquisições filtradas">
-                    <i class="fas fa-print"></i> Imprimir
-                </button>
-
-                <a href="aquisicoes_lista.php" class="btn btn-outline btn-sm" title="Limpar Filtros">
-                    <i class="fas fa-eraser"></i> Limpar
-                </a>
+                    <a href="aquisicoes_lista.php" class="filtro-btn filtro-btn-clear" title="Limpar filtros">
+                        <i class="fas fa-eraser"></i>
+                        Limpar
+                    </a>
+                </div>
             </div>
         </form>
     </div>
