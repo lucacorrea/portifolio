@@ -1275,102 +1275,139 @@ include 'views/layout/header.php';
     }
 </style>
 
-<div class="card no-print">
+<div class="card no-print lista-filtros-card">
     <div class="card-body">
-        <h3 class="card-title" style="margin-bottom: 1rem; font-weight: 700; font-size: 1rem;">
-            <i class="fas fa-filter" style="margin-right: 5px; color: var(--primary);"></i> Filtros de Busca
-        </h3>
+        <div class="lista-filtros-header">
+            <div class="lista-filtros-titulo-wrap">
+                <span class="lista-filtros-icone">
+                    <i class="fas fa-filter"></i>
+                </span>
+                <div>
+                    <h3 class="lista-filtros-titulo">Filtros de Busca</h3>
+                    <p class="lista-filtros-subtitulo">Localize solicitações por dados, período ou situação.</p>
+                </div>
+            </div>
+            <span class="lista-filtros-resumo">
+                <i class="fas fa-sliders-h"></i>
+                Refine a listagem
+            </span>
+        </div>
 
-        <form action="" method="GET" class="filtros-grid">
-            <div class="form-group filtro-limite" style="margin-bottom: 0;">
-                <label class="form-label">Linhas por página</label>
-                <select name="por_pagina" class="form-control">
-                    <?php foreach ($por_pagina_options as $por_pagina_option): ?>
-                        <option value="<?php echo $por_pagina_option; ?>" <?php echo $itens_por_pagina === $por_pagina_option ? 'selected' : ''; ?>>
-                            <?php echo $por_pagina_option; ?> linhas
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+        <form action="" method="GET" class="lista-filtros-form lista-filtros-form--oficios">
+            <div class="lista-filtros-principais">
+                <div class="lista-filtro lista-filtro-busca">
+                    <label for="filtro-oficio-busca">Termo de busca</label>
+                    <div class="lista-filtro-input-icon">
+                        <i class="fas fa-search"></i>
+                        <input
+                            id="filtro-oficio-busca"
+                            type="text"
+                            name="busca"
+                            class="form-control"
+                            placeholder="Número, secretaria, fornecedor ou valor..."
+                            value="<?php echo htmlspecialchars($busca_texto, ENT_QUOTES, 'UTF-8'); ?>">
+                    </div>
+                </div>
+
+                <div class="lista-filtro">
+                    <label for="filtro-oficio-status">Status</label>
+                    <select id="filtro-oficio-status" name="status" class="form-control">
+                        <option value="">Todos Status</option>
+                        <option value="PENDENTE_ITENS" <?php echo $status_filtro === 'PENDENTE_ITENS' ? 'selected' : ''; ?>>PENDENTE_ITENS</option>
+                        <option value="ENVIADO" <?php echo $status_filtro === 'ENVIADO' ? 'selected' : ''; ?>>ENVIADO</option>
+                        <option value="EM_ANALISE" <?php echo $status_filtro === 'EM_ANALISE' ? 'selected' : ''; ?>>EM_ANALISE</option>
+                        <option value="APROVADO" <?php echo $status_filtro === 'APROVADO' ? 'selected' : ''; ?>>APROVADO</option>
+                        <option value="REPROVADO" <?php echo $status_filtro === 'REPROVADO' ? 'selected' : ''; ?>>REPROVADO</option>
+                        <option value="ARQUIVADO" <?php echo $status_filtro === 'ARQUIVADO' ? 'selected' : ''; ?>>ARQUIVADO</option>
+                    </select>
+                </div>
+
+                <div class="lista-filtro">
+                    <label for="filtro-oficio-secretaria">Secretaria</label>
+                    <select id="filtro-oficio-secretaria" name="secretaria_id" class="form-control">
+                        <option value="">Todas as Secretarias</option>
+                        <?php foreach ($secretarias_list as $sec): ?>
+                            <option value="<?php echo $sec['id']; ?>" <?php echo $secretaria_id_filtro == $sec['id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($sec['nome'], ENT_QUOTES, 'UTF-8'); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="lista-filtro lista-filtro-fornecedor">
+                    <label for="filtro-oficio-fornecedor">Fornecedor</label>
+                    <select id="filtro-oficio-fornecedor" name="fornecedor_id" class="form-control">
+                        <option value="">Todos os Fornecedores</option>
+                        <?php foreach ($fornecedores_list as $fornecedor): ?>
+                            <option value="<?php echo (int)$fornecedor['id']; ?>" <?php echo $fornecedor_id_filtro == $fornecedor['id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($fornecedor['nome'], ENT_QUOTES, 'UTF-8'); ?>
+                                <?php if (!empty($fornecedor['cnpj'])): ?>
+                                    (<?php echo htmlspecialchars($fornecedor['cnpj'], ENT_QUOTES, 'UTF-8'); ?>)
+                                <?php endif; ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
             </div>
 
-            <div class="form-group filtro-busca" style="margin-bottom: 0;">
-                <label class="form-label">Termo de busca</label>
-                <input type="text" name="busca" class="form-control" placeholder="Número, secretaria, fornecedor ou valor..." value="<?php echo htmlspecialchars($busca_texto, ENT_QUOTES, 'UTF-8'); ?>">
-            </div>
+            <div class="lista-filtros-secundarios">
+                <div class="lista-filtros-secundarios-campos">
+                    <div class="lista-filtro">
+                        <label for="filtro-oficio-data-inicio">Data inicial</label>
+                        <input
+                            id="filtro-oficio-data-inicio"
+                            type="date"
+                            name="data_inicio"
+                            class="form-control"
+                            value="<?php echo htmlspecialchars($data_inicio_valida ? $data_inicio_filtro : '', ENT_QUOTES, 'UTF-8'); ?>">
+                    </div>
 
-            <div class="form-group filtro-status" style="margin-bottom: 0;">
-                <label class="form-label">Status</label>
-                <select name="status" class="form-control">
-                    <option value="">Todos Status</option>
-                    <option value="PENDENTE_ITENS" <?php echo $status_filtro === 'PENDENTE_ITENS' ? 'selected' : ''; ?>>PENDENTE_ITENS</option>
-                    <option value="ENVIADO" <?php echo $status_filtro === 'ENVIADO' ? 'selected' : ''; ?>>ENVIADO</option>
-                    <option value="EM_ANALISE" <?php echo $status_filtro === 'EM_ANALISE' ? 'selected' : ''; ?>>EM_ANALISE</option>
-                    <option value="APROVADO" <?php echo $status_filtro === 'APROVADO' ? 'selected' : ''; ?>>APROVADO</option>
-                    <option value="REPROVADO" <?php echo $status_filtro === 'REPROVADO' ? 'selected' : ''; ?>>REPROVADO</option>
-                    <option value="ARQUIVADO" <?php echo $status_filtro === 'ARQUIVADO' ? 'selected' : ''; ?>>ARQUIVADO</option>
-                </select>
-            </div>
+                    <div class="lista-filtro">
+                        <label for="filtro-oficio-data-fim">Data final</label>
+                        <input
+                            id="filtro-oficio-data-fim"
+                            type="date"
+                            name="data_fim"
+                            class="form-control"
+                            value="<?php echo htmlspecialchars($data_fim_valida ? $data_fim_filtro : '', ENT_QUOTES, 'UTF-8'); ?>">
+                    </div>
 
-            <div class="form-group filtro-secretaria" style="margin-bottom: 0;">
-                <label class="form-label">Secretaria</label>
-                <select name="secretaria_id" class="form-control">
-                    <option value="">Todas as Secretarias</option>
-                    <?php foreach ($secretarias_list as $sec): ?>
-                        <option value="<?php echo $sec['id']; ?>" <?php echo $secretaria_id_filtro == $sec['id'] ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($sec['nome'], ENT_QUOTES, 'UTF-8'); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+                    <div class="lista-filtro">
+                        <label for="filtro-oficio-por-pagina">Linhas por página</label>
+                        <select id="filtro-oficio-por-pagina" name="por_pagina" class="form-control">
+                            <?php foreach ($por_pagina_options as $por_pagina_option): ?>
+                                <option value="<?php echo $por_pagina_option; ?>" <?php echo $itens_por_pagina === $por_pagina_option ? 'selected' : ''; ?>>
+                                    <?php echo $por_pagina_option; ?> linhas
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
 
-            <div class="form-group filtro-fornecedor" style="margin-bottom: 0;">
-                <label class="form-label">Fornecedor</label>
-                <select name="fornecedor_id" class="form-control">
-                    <option value="">Todos os Fornecedores</option>
-                    <?php foreach ($fornecedores_list as $fornecedor): ?>
-                        <option value="<?php echo (int)$fornecedor['id']; ?>" <?php echo $fornecedor_id_filtro == $fornecedor['id'] ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($fornecedor['nome'], ENT_QUOTES, 'UTF-8'); ?>
-                            <?php if (!empty($fornecedor['cnpj'])): ?>
-                                (<?php echo htmlspecialchars($fornecedor['cnpj'], ENT_QUOTES, 'UTF-8'); ?>)
-                            <?php endif; ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+                <div class="lista-filtros-acoes">
+                    <button type="submit" class="filtro-btn filtro-btn-primary" title="Aplicar filtros">
+                        <i class="fas fa-search"></i>
+                        Filtrar
+                    </button>
 
-            <div class="form-group filtro-data" style="margin-bottom: 0;">
-                <label class="form-label">Data inicial</label>
-                <input
-                    type="date"
-                    name="data_inicio"
-                    class="form-control"
-                    value="<?php echo htmlspecialchars($data_inicio_valida ? $data_inicio_filtro : '', ENT_QUOTES, 'UTF-8'); ?>">
-            </div>
+                    <?php
+                    $pdf_query = $_GET;
+                    unset($pdf_query['page']);
+                    $pdf_query['export'] = 'pdf_fornecedores';
+                    ?>
+                    <a
+                        href="oficios_lista.php?<?php echo h(http_build_query($pdf_query)); ?>"
+                        class="filtro-btn filtro-btn-pdf"
+                        title="PDF por fornecedor">
+                        <i class="fas fa-file-pdf"></i>
+                        PDF Fornecedores
+                    </a>
 
-            <div class="form-group filtro-data" style="margin-bottom: 0;">
-                <label class="form-label">Data final</label>
-                <input
-                    type="date"
-                    name="data_fim"
-                    class="form-control"
-                    value="<?php echo htmlspecialchars($data_fim_valida ? $data_fim_filtro : '', ENT_QUOTES, 'UTF-8'); ?>">
-            </div>
-
-            <div class="form-group filtros-acoes" style="margin-bottom: 0;">
-                <button type="submit" class="btn btn-outline btn-sm" title="Filtrar">
-                    <i class="fas fa-search"></i> Filtrar
-                </button>
-                <?php
-                $pdf_query = $_GET;
-                unset($pdf_query['page']);
-                $pdf_query['export'] = 'pdf_fornecedores';
-                ?>
-                <a href="oficios_lista.php?<?php echo h(http_build_query($pdf_query)); ?>" class="btn btn-outline btn-sm" title="PDF por fornecedor">
-                    <i class="fas fa-file-pdf"></i> PDF Fornecedores
-                </a>
-                <a href="oficios_lista.php" class="btn btn-outline btn-sm" title="Limpar Filtros">
-                    <i class="fas fa-eraser"></i> Limpar
-                </a>
+                    <a href="oficios_lista.php" class="filtro-btn filtro-btn-clear" title="Limpar filtros">
+                        <i class="fas fa-eraser"></i>
+                        Limpar
+                    </a>
+                </div>
             </div>
         </form>
     </div>
