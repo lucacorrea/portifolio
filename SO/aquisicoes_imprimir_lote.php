@@ -213,7 +213,7 @@ function render_aquisicao_lote_signature_footer(string $assinaturaLabel, bool $i
 ?>
     <div class="rodape-documento print-signature-footer">
         <div class="assinaturas-grid">
-            <div class="assinatura-fornecedor-col" style="margin-top:8px !important;">
+            <div class="assinatura-col assinatura-fornecedor-col">
                 <div class="assinatura-linha assinatura-fornecedor-linha">
                     <div class="assinatura-campo assinatura-campo-fornecedor">
                         <?php if ($isSupport && $assinaturaDisponivel): ?>
@@ -228,7 +228,7 @@ function render_aquisicao_lote_signature_footer(string $assinaturaLabel, bool $i
                     <div class="assinatura-subtitulo"><?= h_lote($assinaturaLabel) ?></div>
                 </div>
             </div>
-            <div>
+            <div class="assinatura-col assinatura-recebimento-col">
                 <div class="assinatura-linha">
                     <div class="assinatura-campo"></div>
                     <div class="assinatura-titulo">CONFIRMAÇÃO DE RECEBIMENTO</div>
@@ -380,7 +380,7 @@ include 'views/layout/header.php';
 .info-col-label-a{width:14%}.info-col-value-a{width:40%}.info-col-label-b{width:23%}.info-col-value-b{width:23%}
 .ordem-info-table td,.ordem-items-table th,.ordem-items-table td{border:1px solid #000;padding:8px 9px;vertical-align:middle;line-height:1.3}.ordem-items-table thead tr,.ordem-total-row,.ordem-info-label{background:#f1f1f1}.ordem-items-table th{text-align:center;font-size:.73rem;font-weight:800;text-transform:uppercase}.ordem-items-table td{font-size:.82rem}.ordem-info-label{font-weight:800;font-size:.69rem;text-transform:uppercase;white-space:normal}.data-emissao{white-space:nowrap}.referencia{font-family:Arial,Helvetica,sans-serif;font-size:.78rem;font-weight:800;letter-spacing:0;word-break:normal;overflow-wrap:break-word;line-height:1.25}.c-item{width:7%}.c-unid{width:8%}.c-qtd{width:9%}.c-preco{width:15%}.c-total{width:16%}.valor-monetario{white-space:nowrap;font-variant-numeric:tabular-nums}.ordem-total-row td{border-bottom:1px solid #000!important}.total-label{font-size:.86rem;text-transform:uppercase;padding-right:10px!important}.total-value{font-size:.94rem;white-space:nowrap;font-variant-numeric:tabular-nums}.ordem-section-title{font-size:.78rem;font-weight:800;color:#222;text-transform:uppercase;margin:1.05rem 0 .45rem}
 
-.rodape-documento{margin-top:1.8rem}.assinaturas-grid{display:grid;grid-template-columns:1fr 1fr;gap:3.5rem;text-align:center;margin-top:2.2rem}.assinatura-linha{min-height:100px;box-sizing:border-box}.assinatura-campo{height:62px;border-bottom:1.5px solid #000;display:flex;align-items:flex-end;justify-content:center;overflow:hidden;box-sizing:border-box}.assinatura-titulo{font-weight:800;color:#000;font-size:.84rem;line-height:1.2;margin-top:8px}.assinatura-subtitulo{font-size:.63rem;color:#555;font-weight:700;text-transform:uppercase;margin-top:3px}
+.rodape-documento{margin-top:1.8rem}.assinaturas-grid{display:grid;grid-template-columns:1fr 1fr;gap:3.5rem;text-align:center;margin-top:2.2rem}.assinaturas-grid>.assinatura-col{min-width:0;margin:0!important;padding:0!important;align-self:start}.assinatura-linha{min-height:100px;box-sizing:border-box}.assinatura-campo{height:62px;border-bottom:1.5px solid #000;display:flex;align-items:flex-end;justify-content:center;overflow:hidden;box-sizing:border-box}.assinatura-titulo{font-weight:800;color:#000;font-size:.84rem;line-height:1.2;margin-top:8px}.assinatura-subtitulo{font-size:.63rem;color:#555;font-weight:700;text-transform:uppercase;margin-top:3px}
 .support-signature-image{display:none;width:100%;height:100%;object-fit:contain;object-position:center bottom}.printable-page.signature-enabled .assinatura-campo-fornecedor{border-bottom-color:transparent}.printable-page.signature-enabled .support-signature-image{display:block}
 
 @media(max-width:768px){.print-topbar{flex-direction:column;align-items:stretch}.print-topbar .btn,.print-options .btn,.print-options .form-group,.support-signature-panel,.support-signature-panel .form-group,.signature-warning{width:100%;justify-content:center;text-align:center}.print-options{width:100%}.printable-page .card-body{padding:1rem}.ordem-header{grid-template-columns:1fr;text-align:center}.ordem-right,.ordem-logo{justify-self:center;text-align:center;align-items:center;justify-content:center;width:100%;max-width:260px;margin:0 auto}.ordem-center h1{white-space:normal}.assinaturas-grid{grid-template-columns:1fr;gap:2rem}.ordem-info-table,.ordem-items-table{min-width:760px}.signature-page-control{position:static;margin:10px}}
