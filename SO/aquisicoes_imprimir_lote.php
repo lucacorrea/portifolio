@@ -487,7 +487,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function syncPage(page) {
         var checkbox = checkboxFor(page);
-        page.classList.toggle('signature-enabled', !!checkbox && checkbox.checked);
+        var assinaturaSelecionada = !!checkbox && checkbox.checked;
+        var colunaFornecedor = page.querySelector('.assinatura-fornecedor-col');
+
+        page.classList.toggle('signature-enabled', assinaturaSelecionada);
+
+        // Ajuste exclusivo de páginas assinadas, também na impressão.
+        if (colunaFornecedor) {
+            if (assinaturaSelecionada) {
+                colunaFornecedor.style.setProperty('margin-top', '8px', 'important');
+            } else {
+                colunaFornecedor.style.removeProperty('margin-top');
+            }
+        }
     }
 
     function updateStatus() {
