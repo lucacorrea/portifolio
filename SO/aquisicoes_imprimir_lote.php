@@ -19,7 +19,7 @@ if (!in_array($via, $vias_permitidas, true)) {
     $via = 'administrativa';
 }
 
-// Na opção "ambas", cada aquisição gera duas páginas consecutivas.
+// Na opção "ambas", imprimimos primeiro todo o lote administrativo e depois todo o lote do fornecedor.
 $vias_impressao = $via === 'ambas' ? ['administrativa', 'fornecedor'] : [$via];
 
 $data_inicio_valida = $data_inicio !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_inicio);
@@ -465,8 +465,8 @@ include 'views/layout/header.php';
 <?php else: ?>
     <div class="print-doc" id="print-doc">
         <?php $pagina = 1; ?>
-        <?php foreach ($aquisicoes as $aq): ?>
-            <?php foreach ($vias_impressao as $via_documento): ?>
+        <?php foreach ($vias_impressao as $via_documento): ?>
+            <?php foreach ($aquisicoes as $aq): ?>
                 <?php
                 render_aquisicao_lote_page(
                     $aq,
