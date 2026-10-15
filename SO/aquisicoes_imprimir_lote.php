@@ -14,10 +14,13 @@ $data_inicio = trim((string)($_GET['data_inicio'] ?? ''));
 $data_fim = trim((string)($_GET['data_fim'] ?? ''));
 $via = trim((string)($_GET['via'] ?? 'administrativa'));
 
-$vias_permitidas = ['administrativa', 'fornecedor'];
+$vias_permitidas = ['administrativa', 'fornecedor', 'ambas'];
 if (!in_array($via, $vias_permitidas, true)) {
     $via = 'administrativa';
 }
+
+// Na opção "ambas", cada aquisição gera duas páginas consecutivas.
+$vias_impressao = $via === 'ambas' ? ['administrativa', 'fornecedor'] : [$via];
 
 $data_inicio_valida = $data_inicio !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_inicio);
 $data_fim_valida = $data_fim !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_fim);
@@ -303,11 +306,11 @@ function render_aquisicao_lote_page(
     $assinatura_label = $is_fornecedor ? 'Autorização de Saída' : 'Autorização de Recebimento';
     $data_emissao = strtotime((string)($aq['criado_em'] ?? '')) ?: time();
 ?>
-    <div class="card printable-page" data-page="<?= $pagina ?>" data-aquisicao="<?= (int)$aq['id'] ?>">
+    <div class="card printable-page" data-page="<?= $pagina ?>" data-aquisicao="<?= (int)$aq['id'] ?>" data-via="<?= h_lote($via) ?>">
         <?php if ($isSupport && $assinaturaDisponivel): ?>
-            <label class="signature-page-control no-print" title="Assinar somente esta aquisição">
+            <label class="signature-page-control no-print" title="Assinar somente esta via da aquisição">
                 <input type="checkbox" class="signature-page-checkbox">
-                <span>Página <?= $pagina ?> • <?= h_lote($aq['numero_aq']) ?></span>
+                <span>Página <?= $pagina ?> • <?= h_lote($aq['numero_aq']) ?> • <?= h_lote($label_via) ?></span>
             </label>
         <?php endif; ?>
 
@@ -406,7 +409,7 @@ include 'views/layout/header.php';
 
 <div class="no-print print-topbar">
     <a href="<?= h_lote($voltar_url) ?>" class="btn btn-outline btn-sm"><i class="fas fa-arrow-left"></i> Voltar</a>
-    <span class="print-count"><?= count($aquisicoes) ?> aquisição(ões) encontrada(s)</span>
+    <span class="print-count"><?= count($aquisicoes) ?> aquisição(ões) encontrada(s) • <?= count($aquisicoes) * count($vias_impressao) ?> via(s) para impressão</span>
     <div class="spacer"></div>
 
     <?php if ($is_support && !empty($aquisicoes)): ?>
@@ -416,8 +419,12 @@ include 'views/layout/header.php';
                     <label class="form-label" for="signature-mode"><i class="fas fa-signature"></i> Assinatura</label>
                     <select id="signature-mode" class="form-control">
                         <option value="none" selected>Sem assinatura</option>
-                        <option value="all">Assinar todas</option>
-                        <option value="select">Selecionar páginas</option>
+                        <option value="all">Assinar todas as vias</option>
+                        <?php if ($via === 'ambas'): ?>
+                            <option value="administrativa">Assinar apenas vias administrativas</option>
+                            <option value="fornecedor">Assinar apenas vias do fornecedor</option>
+                        <?php endif; ?>
+                        <option value="select">Selecionar páginas / vias</option>
                     </select>
                 </div>
                 <div class="signature-status" id="signature-status">Nenhuma página será assinada.</div>
@@ -443,6 +450,7 @@ include 'views/layout/header.php';
             <select name="via" class="form-control" onchange="this.form.submit()">
                 <option value="administrativa" <?= $via === 'administrativa' ? 'selected' : '' ?>>Via Administrativa</option>
                 <option value="fornecedor" <?= $via === 'fornecedor' ? 'selected' : '' ?>>Via Fornecedor</option>
+                <option value="ambas" <?= $via === 'ambas' ? 'selected' : '' ?>>As duas vias (Administrativa + Fornecedor)</option>
             </select>
         </div>
         <button type="submit" class="btn btn-outline btn-sm"><i class="fas fa-sync-alt"></i> Aplicar</button>
@@ -458,17 +466,18 @@ include 'views/layout/header.php';
     <div class="print-doc" id="print-doc">
         <?php $pagina = 1; ?>
         <?php foreach ($aquisicoes as $aq): ?>
-            <?php
-            $aq_id = (int)$aq['id'];
-            render_aquisicao_lote_page(
-                $aq,
-                $itens_por_aquisicao[$aq_id] ?? [],
-                $via,
-                $is_support,
-                $assinatura_disponivel,
-                $pagina++
-            );
-            ?>
+            <?php foreach ($vias_impressao as $via_documento): ?>
+                <?php
+                render_aquisicao_lote_page(
+                    $aq,
+                    $itens_por_aquisicao[(int)$aq['id']] ?? [],
+                    $via_documento,
+                    $is_support,
+                    $assinatura_disponivel,
+                    $pagina++
+                );
+                ?>
+            <?php endforeach; ?>
         <?php endforeach; ?>
     </div>
 <?php endif; ?>
@@ -526,14 +535,12 @@ document.addEventListener('DOMContentLoaded', function () {
             var checkbox = checkboxFor(page);
             if (!checkbox) return;
 
-            if (value === 'all') {
-                checkbox.checked = true;
-                checkbox.disabled = true;
-            } else if (value === 'none') {
-                checkbox.checked = false;
-                checkbox.disabled = true;
-            } else {
+            if (value === 'select') {
                 checkbox.disabled = false;
+            } else {
+                // Cada via é uma página independente e pode ter assinatura própria.
+                checkbox.checked = value === 'all' || value === page.dataset.via;
+                checkbox.disabled = true;
             }
             syncPage(page);
         });
