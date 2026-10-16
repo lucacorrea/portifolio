@@ -1,0 +1,36 @@
+:root { color-scheme: light; --primary: #2458ae; --border: #e0e6ef; --text: #1c2b43; --muted: #64748b; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 30px 16px; font-family: Arial, Helvetica, sans-serif; color: var(--text); background: #f3f6fb; }
+.signature-card { max-width: 700px; margin: 24px auto; padding: 32px; border: 1px solid var(--border); border-radius: 18px; background: #fff; box-shadow: 0 12px 36px rgba(21,39,72,.08); }
+.signature-eyebrow { display: block; margin-bottom: 12px; color: var(--primary); font-weight: 800; text-transform: uppercase; letter-spacing: .075em; font-size: .73rem; }
+.signature-heading h1 { margin: 0 0 8px; font-size: 1.6rem; }
+.signature-heading p { margin: 0 0 24px; color: var(--muted); line-height: 1.5; }
+.signature-details { margin: 0 0 22px; padding: 16px 20px; border-radius: 12px; background: #f7f9fd; }
+.signature-details div { display: grid; grid-template-columns: 145px 1fr; gap: 10px; padding: 9px 0; }
+.signature-details dt { font-size: .84rem; color: var(--muted); }
+.signature-details dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+.signature-alert { padding: 14px 16px; margin: 0 0 18px; border-radius: 10px; line-height: 1.55; }
+.signature-ok { color: #166534; background: #edf9ef; border: 1px solid #c5e8cd; }
+.signature-error { color: #991b1b; background: #fef2f2; border: 1px solid #fecaca; }
+.signature-preview { display: flex; align-items: center; flex-direction: column; gap: 12px; padding: 18px; margin: 0 0 24px; background: #fff; border: 1px dashed #b7c6d9; border-radius: 12px; }
+.signature-preview span { font-size: .8rem; color: var(--muted); font-weight: 700; }
+.signature-preview img { max-height: 130px; max-width: 100%; object-fit: contain; }
+.signature-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; }
+.signature-button { display: inline-flex; align-items: center; justify-content: center; padding: 12px 18px; border-radius: 9px; border: 1px solid transparent; font-size: .9rem; text-decoration: none; font-weight: 700; cursor: pointer; }
+.signature-back { color: var(--text); background: #f3f6fb; border-color: var(--border); }
+.signature-submit { color: white; background: var(--primary); }
+.signature-submit:disabled { background: #9daec5; cursor: not-allowed; }
+@media (max-width: 550px) { .signature-card { margin: 0 auto; padding: 22px; } .signature-details div { grid-template-columns: 1fr; gap: 4px; } .signature-actions .signature-button { flex: 1; } }
+
+/* Selo na visualização e assinatura aplicada nas duas vias da aquisição. */
+.aq-signature-status { display: inline-flex; align-items: center; gap: .5rem; flex-wrap: wrap; padding: .6rem .8rem; border-radius: 9px; background: #eef9f1; border: 1px solid #b6dfc2; color: #166534; font-weight: 700; font-size: .8rem; }
+.aq-signature-warning { color: #92400e; background: #fff7ed; border: 1px solid #fed7aa; padding: .6rem .8rem; border-radius: 9px; font-size: .8rem; }
+.aq-signature-photo { display: block; width: auto; height: auto; max-width: 100%; max-height: 50px; margin: 0 auto -1px; object-fit: contain; object-position: center bottom; }
+.aq-signature-photo-wrap { height: 50px; display: flex; align-items: flex-end; justify-content: center; }
+.aq-signature-signed-by { margin-top: 3px; font-size: .6rem; color: #555; line-height: 1.2; }
+@media print {
+    .aq-signature-photo { display: block !important; max-height: 45px !important; }
+    .aq-signature-photo-wrap { height: 45px !important; }
+    .aq-signature-status, .aq-signature-warning { display: none !important; }
+    .print-signature-footer:has(.aq-signature-photo) .assinaturas-grid { margin-top: 5mm !important; }
+}
