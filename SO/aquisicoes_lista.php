@@ -1226,6 +1226,7 @@ function get_pagination_url($page)
 
 include 'views/layout/header.php';
 ?>
+<link rel="stylesheet" href="assets/css/lista-acoes-modal.css">
 
 <style>
     .filtros-grid {
@@ -1679,6 +1680,7 @@ include 'views/layout/header.php';
         </div>
 
         <?php display_flash(); ?>
+        <p class="so-list-tip"><i class="fas fa-mouse-pointer" aria-hidden="true"></i> Clique em uma linha para visualizar as ações da aquisição.</p>
 
         <div class="table-responsive lista-table-wrap">
             <table class="table-vcenter text-nowrap lista-table">
@@ -1691,12 +1693,15 @@ include 'views/layout/header.php';
                         <th>Data</th>
                         <th style="text-align: right;">Valor Total</th>
                         <th style="text-align: center;">Status</th>
-                        <th style="text-align: right;">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($aquisicoes as $aq): ?>
-                        <tr>
+                        <tr class="so-list-row" data-so-list-row tabindex="0" aria-haspopup="dialog"
+                            data-so-actions-template="acoes-aquisicao-<?php echo (int)$aq['id']; ?>"
+                            data-so-actions-title="Aquisição <?php echo h($aq['numero_aq']); ?>"
+                            data-so-actions-subtitle="<?php echo h($aq['fornecedor']); ?> • <?php echo h($aq['secretaria']); ?>"
+                            title="Clique para ver as ações desta aquisição">
                             <td>
                                 <strong style="color: var(--text-dark);">
                                     <?php echo htmlspecialchars($aq['numero_aq'], ENT_QUOTES, 'UTF-8'); ?>
@@ -1722,48 +1727,12 @@ include 'views/layout/header.php';
                                     <?php echo htmlspecialchars($aq['status'], ENT_QUOTES, 'UTF-8'); ?>
                                 </span>
                             </td>
-                            <td style="text-align: right;">
-                                <div class="acoes-wrap">
-                                    <div class="dropdown">
-                                        <button class="btn-three-dots" data-dropdown-toggle title="Ações">
-                                            <i class="fas fa-ellipsis-v"></i>
-                                        </button>
-                                        <div class="dropdown-menu">
-                                            <a class="dropdown-item" href="aquisicoes_visualizar.php?id=<?php echo (int)$aq['id']; ?>">
-                                                <i class="fas fa-eye"></i> Visualizar
-                                            </a>
-                                            <?php if ($pode_assinar_aquisicao): ?>
-                                                <a class="dropdown-item" href="aquisicoes_visualizar.php?id=<?= (int)$aq['id'] ?>">
-                                                    <i class="fas fa-signature"></i> Visualizar e assinar
-                                                </a>
-                                            <?php endif; ?>
-
-                                            <?php
-                                                $nivel_user = strtoupper($_SESSION['nivel'] ?? '');
-                                                if ($aq['status'] !== 'FINALIZADO' && ($nivel_user === 'ADMIN' || $nivel_user === 'SUPORTE')):
-                                            ?>
-                                                <a class="dropdown-item" href="editar_aquisicoes.php?id=<?php echo (int)$aq['id']; ?>">
-                                                    <i class="fas fa-edit"></i> Editar
-                                                </a>
-                                            <?php endif; ?>
-
-                                            <?php
-                                                if ($aq['status'] === 'AGUARDANDO ENTREGA' && ($nivel_user === 'ADMIN' || $nivel_user === 'SUPORTE')):
-                                            ?>
-                                                <a class="dropdown-item" href="aquisicao_finalizar.php?id=<?php echo (int)$aq['id']; ?>" style="color: var(--status-finalized) !important;" onclick="return confirm('Confirmar o recebimento desta aquisição?')">
-                                                    <i class="fas fa-check-circle"></i> Marcar como Recebido
-                                                </a>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            </td>
                         </tr>
                     <?php endforeach; ?>
 
                     <?php if (empty($aquisicoes)): ?>
                         <tr>
-                            <td colspan="8" style="text-align:center; padding: 3rem; color: var(--text-muted);">
+                            <td colspan="7" style="text-align:center; padding: 3rem; color: var(--text-muted);">
                                 Nenhuma aquisição gerada até o momento.
                             </td>
                         </tr>
@@ -1791,5 +1760,51 @@ include 'views/layout/header.php';
         <?php endif; ?>
     </div>
 </div>
+
+
+<?php foreach ($aquisicoes as $aq): ?>
+    <template id="acoes-aquisicao-<?php echo (int)$aq['id']; ?>">
+        <a class="so-action-link" href="aquisicoes_visualizar.php?id=<?php echo (int)$aq['id']; ?>">
+            <i class="fas fa-eye" aria-hidden="true"></i> Visualizar aquisição
+        </a>
+        <?php if ($pode_assinar_aquisicao): ?>
+            <a class="so-action-link" href="aquisicoes_visualizar.php?id=<?php echo (int)$aq['id']; ?>">
+                <i class="fas fa-signature" aria-hidden="true"></i> Visualizar e assinar
+            </a>
+        <?php endif; ?>
+        <?php if ($aq['status'] !== 'FINALIZADO' && in_array(strtoupper((string)($_SESSION['nivel'] ?? '')), ['ADMIN', 'SUPORTE'], true)): ?>
+            <a class="so-action-link" href="editar_aquisicoes.php?id=<?php echo (int)$aq['id']; ?>">
+                <i class="fas fa-edit" aria-hidden="true"></i> Editar aquisição
+            </a>
+        <?php endif; ?>
+        <?php if ($aq['status'] === 'AGUARDANDO ENTREGA' && in_array(strtoupper((string)($_SESSION['nivel'] ?? '')), ['ADMIN', 'SUPORTE'], true)): ?>
+            <a class="so-action-link" href="aquisicao_finalizar.php?id=<?php echo (int)$aq['id']; ?>"
+               onclick="return confirm('Confirmar o recebimento desta aquisição?')">
+                <i class="fas fa-check-circle" aria-hidden="true"></i> Marcar como recebido
+            </a>
+        <?php endif; ?>
+    </template>
+<?php endforeach; ?>
+
+<div class="so-action-modal" id="so-list-actions-modal" hidden aria-hidden="true">
+    <div class="so-action-modal__panel" role="dialog" aria-modal="true"
+         aria-labelledby="so-list-actions-title" aria-describedby="so-list-actions-subtitle">
+        <div class="so-action-modal__header">
+            <div>
+                <p class="so-action-modal__eyebrow">Ações da aquisição</p>
+                <h3 class="so-action-modal__title" id="so-list-actions-title">Ações disponíveis</h3>
+            </div>
+            <button type="button" class="so-action-modal__close" data-so-action-close aria-label="Fechar ações">
+                <i class="fas fa-times" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="so-action-modal__body">
+            <p class="so-action-modal__subtitle" id="so-list-actions-subtitle"></p>
+            <div class="so-action-modal__links" data-so-actions-container></div>
+        </div>
+    </div>
+</div>
+
+<script src="assets/js/lista-acoes-modal.js" defer></script>
 
 <?php include 'views/layout/footer.php'; ?>
