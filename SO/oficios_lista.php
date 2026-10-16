@@ -859,6 +859,7 @@ function get_pagination_url($page)
 
 include 'views/layout/header.php';
 ?>
+<link rel="stylesheet" href="assets/css/lista-acoes-modal.css">
 
 <style>
     .filtros-grid {
@@ -1427,6 +1428,7 @@ include 'views/layout/header.php';
         </div>
 
         <?php display_flash(); ?>
+        <p class="so-list-tip"><i class="fas fa-mouse-pointer" aria-hidden="true"></i> Clique em uma linha para visualizar as ações disponíveis. Use as caixas de seleção para operações em lote.</p>
         <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'])): ?>
             <?php if ($auto_gerar_aquisicoes_indicadas): ?>
                 <div class="alert alert-info" id="auto-geracao-indicadas-aviso">
@@ -1516,12 +1518,15 @@ include 'views/layout/header.php';
                             <th style="text-align: right;">Valor</th>
                             <th>Status</th>
                             <th>Cadastrado por</th>
-                            <th class="w-1">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($oficios as $o): ?>
-                            <tr>
+                            <tr class="so-list-row" data-so-list-row tabindex="0" aria-haspopup="dialog"
+                                data-so-actions-template="acoes-oficio-<?php echo (int)$o['id']; ?>"
+                                data-so-actions-title="Ofício <?php echo h($o['numero']); ?>"
+                                data-so-actions-subtitle="<?php echo h($o['secretaria']); ?>"
+                                title="Clique para ver as ações deste ofício">
                                 <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'])): ?>
 
                                     <td>
@@ -1574,55 +1579,12 @@ include 'views/layout/header.php';
                                 <td>
                                     <span class="text-muted"><?php echo htmlspecialchars($o['usuario'], ENT_QUOTES, 'UTF-8'); ?></span>
                                 </td>
-                                <td>
-                                    <div class="acoes-wrap">
-                                        <a href="oficios_visualizar.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Visualizar/Imprimir">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-
-                                        <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'], true)): ?>
-                                            <a href="oficios_editar.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Editar Ofício e Itens">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                        <?php endif; ?>
-
-                                        <?php
-                                        if ($o['status'] == 'ENVIADO' && ($nivel_user == 'ADMIN' || $nivel_user == 'SUPORTE')):
-                                        ?>
-                                            <a href="analisar_oficio.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Analisar">
-                                                <i class="fas fa-gavel"></i> Analisar
-                                            </a>
-                                        <?php endif; ?>
-
-                                        <a href="oficios_anexar.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Anexar Ofício de Solicitação" style="color: var(--secondary); border-color: var(--secondary);">
-                                            <i class="fas fa-paperclip"></i>
-                                        </a>
-
-                                        <?php if ($o['status'] == 'APROVADO' && (int)($o['total_aquisicoes'] ?? 0) === 0 && ($nivel_user == 'ADMIN' || $nivel_user == 'SUPORTE')): ?>
-                                            <a href="gerar_aquisicao.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Gerar Aquisição">
-                                                <i class="fas fa-shopping-cart"></i> Gerar
-                                            </a>
-                                        <?php endif; ?>
-
-                                        <?php if ($nivel_user === 'SUPORTE'): ?>
-                                            <button
-                                                type="button"
-                                                class="btn btn-outline btn-sm btn-delete-oficio"
-                                                title="Excluir ofício e aquisições vinculadas"
-                                                data-delete-oficio
-                                                data-oficio-id="<?php echo (int)$o['id']; ?>"
-                                                data-oficio-numero="<?php echo htmlspecialchars($o['numero'], ENT_QUOTES, 'UTF-8'); ?>">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        <?php endif; ?>
-                                    </div>
-                                </td>
                             </tr>
                         <?php endforeach; ?>
 
                         <?php if (empty($oficios)): ?>
                             <tr>
-                                <td colspan="<?php echo in_array($nivel_user, ['ADMIN', 'SUPORTE']) ? 9 : 8; ?>">
+                                <td colspan="<?php echo in_array($nivel_user, ['ADMIN', 'SUPORTE']) ? 8 : 7; ?>">
                                     Nenhuma solicitação encontrada.
                                 </td>
                             </tr>
@@ -1753,6 +1715,58 @@ include 'views/layout/header.php';
     </div>
 </div>
 
+
+<?php foreach ($oficios as $o): ?>
+    <template id="acoes-oficio-<?php echo (int)$o['id']; ?>">
+        <a class="so-action-link" href="oficios_visualizar.php?id=<?php echo (int)$o['id']; ?>">
+            <i class="fas fa-eye" aria-hidden="true"></i> Visualizar / Imprimir
+        </a>
+        <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'], true)): ?>
+            <a class="so-action-link" href="oficios_editar.php?id=<?php echo (int)$o['id']; ?>">
+                <i class="fas fa-edit" aria-hidden="true"></i> Editar ofício e itens
+            </a>
+        <?php endif; ?>
+        <?php if ($o['status'] === 'ENVIADO' && in_array($nivel_user, ['ADMIN', 'SUPORTE'], true)): ?>
+            <a class="so-action-link" href="analisar_oficio.php?id=<?php echo (int)$o['id']; ?>">
+                <i class="fas fa-gavel" aria-hidden="true"></i> Analisar solicitação
+            </a>
+        <?php endif; ?>
+        <a class="so-action-link" href="oficios_anexar.php?id=<?php echo (int)$o['id']; ?>">
+            <i class="fas fa-paperclip" aria-hidden="true"></i> Anexar documento
+        </a>
+        <?php if ($o['status'] === 'APROVADO' && (int)($o['total_aquisicoes'] ?? 0) === 0 && in_array($nivel_user, ['ADMIN', 'SUPORTE'], true)): ?>
+            <a class="so-action-link" href="gerar_aquisicao.php?id=<?php echo (int)$o['id']; ?>">
+                <i class="fas fa-shopping-cart" aria-hidden="true"></i> Gerar aquisição
+            </a>
+        <?php endif; ?>
+        <?php if ($nivel_user === 'SUPORTE'): ?>
+            <button type="button" class="so-action-link so-action-link--danger" data-delete-oficio
+                    data-oficio-id="<?php echo (int)$o['id']; ?>" data-oficio-numero="<?php echo h($o['numero']); ?>">
+                <i class="fas fa-trash" aria-hidden="true"></i> Excluir ofício
+            </button>
+        <?php endif; ?>
+    </template>
+<?php endforeach; ?>
+
+<div class="so-action-modal" id="so-list-actions-modal" hidden aria-hidden="true">
+    <div class="so-action-modal__panel" role="dialog" aria-modal="true"
+         aria-labelledby="so-list-actions-title" aria-describedby="so-list-actions-subtitle">
+        <div class="so-action-modal__header">
+            <div>
+                <p class="so-action-modal__eyebrow">Ações da solicitação</p>
+                <h3 class="so-action-modal__title" id="so-list-actions-title">Ações disponíveis</h3>
+            </div>
+            <button type="button" class="so-action-modal__close" data-so-action-close aria-label="Fechar ações">
+                <i class="fas fa-times" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="so-action-modal__body">
+            <p class="so-action-modal__subtitle" id="so-list-actions-subtitle"></p>
+            <div class="so-action-modal__links" data-so-actions-container></div>
+        </div>
+    </div>
+</div>
+
 <?php if ($nivel_user === 'SUPORTE'): ?>
     <div class="modal-backdrop-oficio" id="delete-oficio-modal" aria-hidden="true">
         <div class="modal-oficio" role="dialog" aria-modal="true" aria-labelledby="delete-oficio-title">
@@ -1810,16 +1824,16 @@ include 'views/layout/header.php';
                 oficioNumero.textContent = '';
             }
 
-            document.querySelectorAll('[data-delete-oficio]').forEach(function(button) {
-                button.addEventListener('click', function() {
-                    oficioId.value = button.getAttribute('data-oficio-id') || '';
-                    oficioNumero.textContent = button.getAttribute('data-oficio-numero') || '';
-                    modal.classList.add('is-open');
-                    modal.setAttribute('aria-hidden', 'false');
-                    setTimeout(function() {
-                        senhaInput.focus();
-                    }, 50);
-                });
+            document.addEventListener('click', function(event) {
+                const button = event.target.closest('[data-delete-oficio]');
+                if (!button) return;
+                oficioId.value = button.getAttribute('data-oficio-id') || '';
+                oficioNumero.textContent = button.getAttribute('data-oficio-numero') || '';
+                modal.classList.add('is-open');
+                modal.setAttribute('aria-hidden', 'false');
+                setTimeout(function() {
+                    senhaInput.focus();
+                }, 50);
             });
 
             document.querySelectorAll('[data-close-delete-modal]').forEach(function(button) {
@@ -2021,4 +2035,5 @@ include 'views/layout/header.php';
     atualizarContador();
 </script>
 
+<script src="assets/js/lista-acoes-modal.js" defer></script>
 <?php include 'views/layout/footer.php'; ?>
