@@ -4,7 +4,8 @@ require_once 'config/functions.php';
 login_check();
 
 $page_title = 'Imprimir Aquisições em Lote';
-$is_support = strtoupper((string)($_SESSION['nivel'] ?? '')) === 'SUPORTE';
+// A seleção de assinatura na impressão em lote é exclusiva dos logins autorizados.
+$is_support = usuario_pode_assinar_aquisicao($pdo);
 
 $busca = trim((string)($_GET['busca'] ?? ''));
 $status = trim((string)($_GET['status'] ?? ''));
