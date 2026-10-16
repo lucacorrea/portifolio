@@ -22,6 +22,14 @@ body { margin: 0; padding: 30px 16px; font-family: Arial, Helvetica, sans-serif;
 .signature-submit:disabled { background: #9daec5; cursor: not-allowed; }
 @media (max-width: 550px) { .signature-card { margin: 0 auto; padding: 22px; } .signature-details div { grid-template-columns: 1fr; gap: 4px; } .signature-actions .signature-button { flex: 1; } }
 
+/* O clique no botão da visualização envia POST direto e mantém a barra alinhada. */
+.aq-signature-direct-form { display: inline-flex; align-items: center; margin: 0; padding: 0; }
+.aq-signature-direct-form .btn { white-space: nowrap; }
+@media (max-width: 768px) {
+    .aq-signature-direct-form { display: flex; width: 100%; }
+    .aq-signature-direct-form .btn { width: 100%; justify-content: center; }
+}
+
 /* Situação da assinatura nas ações da página de visualização. */
 .aq-signature-status { display: inline-flex; align-items: center; gap: .5rem; flex-wrap: wrap; padding: .6rem .8rem; border-radius: 9px; background: #eef9f1; border: 1px solid #b6dfc2; color: #166534; font-weight: 700; font-size: .8rem; }
 .aq-signature-warning { color: #92400e; background: #fff7ed; border: 1px solid #fed7aa; padding: .6rem .8rem; border-radius: 9px; font-size: .8rem; }
