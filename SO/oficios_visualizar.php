@@ -50,7 +50,7 @@ include 'views/layout/header.php';
 <div class="no-print" style="margin-bottom: 2rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
     <?php
     $nivel = strtoupper($_SESSION['nivel'] ?? '');
-    $back_url = ($nivel === 'SEMFAZ') ? 'oficios_lista_sefaz.php' : 'oficios_lista.php';
+    $back_url = 'oficios_lista.php';
     ?>
     <a href="<?php echo $back_url; ?>" class="btn btn-outline btn-sm"><i class="fas fa-arrow-left"></i> Voltar para Lista</a>
     <div style="flex-grow: 1;"></div>
