@@ -849,6 +849,24 @@ $stmt = $pdo->prepare("
 $stmt->execute($params);
 $oficios = $stmt->fetchAll();
 
+// Consulta única das aquisições dos ofícios exibidos nesta página.
+// Evita consultas por linha e permite abrir diretamente a impressão correta.
+$aquisicoes_por_oficio = [];
+if (!empty($oficios)) {
+    $ids_oficios = array_map('intval', array_column($oficios, 'id'));
+    $marcadores_oficios = implode(',', array_fill(0, count($ids_oficios), '?'));
+    $stmt_aquisicoes_oficios = $pdo->prepare("
+        SELECT id, oficio_id, numero_aq
+        FROM aquisicoes
+        WHERE oficio_id IN ($marcadores_oficios)
+        ORDER BY oficio_id ASC, id ASC
+    ");
+    $stmt_aquisicoes_oficios->execute($ids_oficios);
+    foreach ($stmt_aquisicoes_oficios->fetchAll(PDO::FETCH_ASSOC) as $aquisicao_oficio) {
+        $aquisicoes_por_oficio[(int)$aquisicao_oficio['oficio_id']][] = $aquisicao_oficio;
+    }
+}
+
 // Função auxiliar para manter parâmetros na URL da paginação
 function get_pagination_url($page)
 {
@@ -1718,9 +1736,23 @@ include 'views/layout/header.php';
 
 <?php foreach ($oficios as $o): ?>
     <template id="acoes-oficio-<?php echo (int)$o['id']; ?>">
-        <a class="so-action-link" href="oficios_visualizar.php?id=<?php echo (int)$o['id']; ?>">
-            <i class="fas fa-eye" aria-hidden="true"></i> Visualizar / Imprimir
-        </a>
+        <?php $aquisicoes_do_oficio = $aquisicoes_por_oficio[(int)$o['id']] ?? []; ?>
+        <?php if (!empty($aquisicoes_do_oficio)): ?>
+            <?php foreach ($aquisicoes_do_oficio as $aquisicao_do_oficio): ?>
+                <a class="so-action-link" href="aquisicoes_visualizar.php?id=<?php echo (int)$aquisicao_do_oficio['id']; ?>">
+                    <i class="fas fa-print" aria-hidden="true"></i>
+                    <?php if (count($aquisicoes_do_oficio) === 1): ?>
+                        Visualizar / Imprimir aquisição
+                    <?php else: ?>
+                        Visualizar / Imprimir <?php echo h($aquisicao_do_oficio['numero_aq']); ?>
+                    <?php endif; ?>
+                </a>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <a class="so-action-link" href="oficios_visualizar.php?id=<?php echo (int)$o['id']; ?>">
+                <i class="fas fa-eye" aria-hidden="true"></i> Visualizar solicitação (sem aquisição)
+            </a>
+        <?php endif; ?>
         <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'], true)): ?>
             <a class="so-action-link" href="oficios_editar.php?id=<?php echo (int)$o['id']; ?>">
                 <i class="fas fa-edit" aria-hidden="true"></i> Editar ofício e itens
