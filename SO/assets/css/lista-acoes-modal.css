@@ -24,3 +24,20 @@
 .so-action-modal__links .so-action-link--danger:hover,.so-action-modal__links .so-action-link--danger:focus-visible{background:#fef2f2;border-color:#f87171;color:#991b1b}
 body.so-list-modal-open{overflow:hidden}
 @media(max-width:575px){.so-action-modal{padding:12px}.so-action-modal__header{padding:17px 16px 12px}.so-action-modal__body{padding:15px 16px 18px}}
+
+/* Aprovação rápida: confirma o fornecedor já associado ao ofício. */
+.so-quick-approval-info{display:flex;align-items:flex-start;gap:11px;padding:12px 13px;border-radius:10px;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;font-size:.82rem;line-height:1.45;margin:0 0 10px}
+.so-quick-approval-info>i{font-size:1rem;margin-top:3px;flex:none}
+.so-quick-approval-info strong,.so-quick-approval-info span{display:block}
+.so-quick-approval-info strong{font-weight:800;margin-bottom:2px}
+.so-quick-approval-info span{overflow-wrap:anywhere}
+.so-quick-approval-info--warning{color:#92400e;background:#fffbeb;border-color:#fde68a}
+.so-quick-approval-form{margin:0 0 4px}
+.so-action-modal__links .so-action-link--success{background:#15803d;border-color:#15803d;color:#fff;justify-content:center}
+.so-action-modal__links .so-action-link--success i{color:#fff}
+.so-action-modal__links .so-action-link--success:hover,.so-action-modal__links .so-action-link--success:focus-visible{background:#166534;border-color:#166534;color:#fff}
+.so-approval-batch-info{display:flex;align-items:flex-start;gap:12px;padding:14px;border:1px solid #bbf7d0;background:#f0fdf4;border-radius:12px;color:#166534}
+.so-approval-batch-info>i{font-size:1.1rem;margin-top:2px}
+.so-approval-batch-info strong{display:block;font-size:.9rem;margin-bottom:4px}
+.so-approval-batch-info p{margin:0;line-height:1.5;font-size:.83rem}
+.so-approval-batch-alert:not([hidden]){padding:10px 12px;border:1px solid #fde68a;border-radius:9px;background:#fffbeb;color:#92400e;margin:12px 0 0;font-size:.83rem;line-height:1.4}
