@@ -2,18 +2,171 @@
 require_once 'config/database.php';
 require_once 'config/functions.php';
 login_check();
-if (session_status() !== PHP_SESSION_ACTIVE) session_start();
-function h($v): string { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
-$perfil = strtoupper(trim((string)($_SESSION['perfil'] ?? $_SESSION['tipo_usuario'] ?? $_SESSION['nivel'] ?? '')));
-$usuario = (string)($_SESSION['nome'] ?? $_SESSION['usuario'] ?? 'SUPORTE');
-if ($perfil !== 'SUPORTE') { http_response_code(403); exit('Acesso permitido somente ao SUPORTE.'); }
-$id = (int)($_GET['id'] ?? $_POST['id'] ?? 0);
-if ($id <= 0) exit('Aquisição inválida.');
-if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) exit('Token de segurança inválido.');
-$stmt=$pdo->prepare("SELECT a.id,a.numero_aq,f.nome fornecedor FROM aquisicoes a JOIN fornecedores f ON f.id=a.fornecedor_id WHERE a.id=? LIMIT 1"); $stmt->execute([$id]); $aq=$stmt->fetch(PDO::FETCH_ASSOC); if(!$aq) exit('Aquisição não encontrada.');
-$stmt=$pdo->prepare("SELECT aa.id,aa.assinado_por,aa.assinado_em,s.nome,s.arquivo_path FROM assinaturas_aquisicoes aa JOIN assinaturas_sistema s ON s.id=aa.assinatura_id WHERE aa.aquisicao_id=? LIMIT 1"); $stmt->execute([$id]); $registrada=$stmt->fetch(PDO::FETCH_ASSOC);
-$stmt=$pdo->prepare("SELECT id,nome,arquivo_path FROM assinaturas_sistema WHERE finalidade='AUTORIZACAO_FORNECEDOR' AND ativo=1 ORDER BY id DESC LIMIT 1"); $stmt->execute(); $assinatura=$stmt->fetch(PDO::FETCH_ASSOC);
-if($_SERVER['REQUEST_METHOD']==='POST') { if($registrada){header('Location: aquisicoes_visualizar.php?id='.$id.'&assinatura=ja_assinada');exit;} if(!$assinatura) exit('Nenhuma assinatura ativa cadastrada.'); $stmt=$pdo->prepare("INSERT INTO assinaturas_aquisicoes(aquisicao_id,assinatura_id,assinado_por) VALUES(?,?,?)"); $stmt->execute([$id,(int)$assinatura['id'],$usuario]); header('Location: aquisicoes_visualizar.php?id='.$id.'&assinatura=ok'); exit; }
+
+if (!usuario_pode_assinar_aquisicao($pdo)) {
+    http_response_code(403);
+    exit('Apenas os usuários suporte e amandha podem assinar aquisições.');
+}
+
+function h_assinar_aquisicao($valor): string
+{
+    return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
+}
+
+$idRaw = $_SERVER['REQUEST_METHOD'] === 'POST' ? ($_POST['id'] ?? '') : ($_GET['id'] ?? '');
+$id = is_scalar($idRaw) && ctype_digit((string)$idRaw) ? (int)$idRaw : 0;
+if ($id <= 0) {
+    http_response_code(400);
+    exit('Aquisição inválida.');
+}
+
+if (empty($_SESSION['csrf_assinatura_aquisicao'])) {
+    $_SESSION['csrf_assinatura_aquisicao'] = bin2hex(random_bytes(32));
+}
+
+$stmt = $pdo->prepare('
+    SELECT a.id, a.numero_aq, f.nome AS fornecedor
+    FROM aquisicoes a
+    INNER JOIN fornecedores f ON f.id = a.fornecedor_id
+    WHERE a.id = ?
+    LIMIT 1
+');
+$stmt->execute([$id]);
+$aq = $stmt->fetch(PDO::FETCH_ASSOC);
+if (!$aq) {
+    http_response_code(404);
+    exit('Aquisição não encontrada.');
+}
+
+try {
+    $stmt = $pdo->prepare('
+        SELECT aa.id, aa.assinado_por, aa.assinado_em, aa.assinatura_id, s.nome
+        FROM assinaturas_aquisicoes aa
+        INNER JOIN assinaturas_sistema s ON s.id = aa.assinatura_id
+        WHERE aa.aquisicao_id = ?
+        LIMIT 1
+    ');
+    $stmt->execute([$id]);
+    $registrada = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    $stmt = $pdo->prepare("
+        SELECT id, nome
+        FROM assinaturas_sistema
+        WHERE finalidade = 'AUTORIZACAO_FORNECEDOR' AND ativo = 1
+        ORDER BY id DESC
+        LIMIT 1
+    ");
+    $stmt->execute();
+    $assinatura = $stmt->fetch(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    http_response_code(503);
+    exit('A assinatura não está configurada no banco. Solicite ao suporte a instalação de sql/assinatura_aquisicoes.sql.');
+}
+
+$usuario = trim((string)($_SESSION['user_nome'] ?? ''));
+if ($usuario === '') {
+    $stmt = $pdo->prepare('SELECT nome FROM usuarios WHERE id = ?');
+    $stmt->execute([(int)$_SESSION['user_id']]);
+    $usuario = (string)$stmt->fetchColumn();
+}
+$erro = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $tokenPostado = $_POST['csrf_token'] ?? null;
+    if (!is_string($tokenPostado) || !hash_equals((string)$_SESSION['csrf_assinatura_aquisicao'], $tokenPostado)) {
+        http_response_code(403);
+        exit('Token de segurança inválido.');
+    }
+    if ($registrada) {
+        header('Location: aquisicoes_visualizar.php?id=' . $id . '&assinatura=ja_assinada', true, 303);
+        exit;
+    }
+    if (!$assinatura) {
+        $erro = 'Nenhuma assinatura ativa está cadastrada. Solicite ao suporte que configure a assinatura.';
+    } else {
+        try {
+            $pdo->beginTransaction();
+            $stmt = $pdo->prepare('
+                INSERT INTO assinaturas_aquisicoes (aquisicao_id, assinatura_id, assinado_por)
+                VALUES (?, ?, ?)
+            ');
+            $stmt->execute([$id, (int)$assinatura['id'], $usuario]);
+            log_action($pdo, 'ASSINAR_AQUISICAO', 'Aquisição ' . $aq['numero_aq'] . ' assinada por ' . $usuario);
+            $pdo->commit();
+            unset($_SESSION['csrf_assinatura_aquisicao']);
+            header('Location: aquisicoes_visualizar.php?id=' . $id . '&assinatura=ok', true, 303);
+            exit;
+        } catch (PDOException $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            if ((string)$e->getCode() === '23000') {
+                header('Location: aquisicoes_visualizar.php?id=' . $id . '&assinatura=ja_assinada', true, 303);
+                exit;
+            }
+            $erro = 'Não foi possível registrar a assinatura. Tente novamente.';
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $erro = 'Não foi possível registrar a assinatura. Tente novamente.';
+        }
+    }
+}
+
 ?>
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Assinar Aquisição</title><style>body{font-family:Arial,sans-serif;background:#f5f7fa;margin:0;padding:30px}.box{max-width:620px;margin:auto;background:#fff;padding:28px;border-radius:14px;box-shadow:0 5px 25px #0001}h1{margin-top:0;font-size:22px}.info{background:#f7f7f7;padding:14px;border-radius:10px;line-height:1.7}.sig{margin:22px 0;text-align:center;border:1px solid #ddd;border-radius:10px;padding:18px}.sig img{max-width:360px;max-height:130px;object-fit:contain}.actions{display:flex;gap:10px;justify-content:flex-end}.btn{border:0;border-radius:8px;padding:11px 18px;cursor:pointer;font-weight:700;text-decoration:none}.back{background:#eee;color:#222}.ok{background:#0b65c2;color:#fff}.warn{background:#e9f7ef;color:#167a43;padding:12px;border-radius:9px}</style></head><body><div class="box"><h1>Assinar Autorização de Fornecedor</h1><div class="info"><b>Aquisição:</b> <?=h($aq['numero_aq'])?><br><b>Fornecedor:</b> <?=h($aq['fornecedor'])?><br><b>Usuário:</b> <?=h($usuario)?></div><?php if($registrada): ?><div class="warn">Esta aquisição já está assinada por <b><?=h($registrada['assinado_por'])?></b> em <?=h(date('d/m/Y H:i',strtotime($registrada['assinado_em'])))?>.</div><div class="sig"><b>Assinatura utilizada</b><br><img src="<?=h($registrada['arquivo_path'])?>" alt="Assinatura"></div><?php elseif($assinatura): ?><div class="sig"><b>Assinatura ativa</b><br><img src="<?=h($assinatura['arquivo_path'])?>" alt="Assinatura"></div><?php else: ?><div class="sig">Nenhuma assinatura ativa cadastrada.</div><?php endif; ?><form method="post" onsubmit="return confirm('Confirmar a assinatura desta autorização de fornecedor?');"><input type="hidden" name="id" value="<?=h($id)?>"><input type="hidden" name="csrf_token" value="<?=h($_SESSION['csrf_token'])?>"><div class="actions"><a class="btn back" href="aquisicoes_visualizar.php?id=<?=h($id)?>">Voltar</a><?php if(!$registrada): ?><button class="btn ok" type="submit" <?=(!$assinatura?'disabled':'')?>>Confirmar assinatura</button><?php endif; ?></div></form></div></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Assinar aquisição <?= h_assinar_aquisicao($aq['numero_aq']) ?></title>
+    <link rel="stylesheet" href="assets/css/assinatura_aquisicao.css">
+</head>
+<body>
+<main class="signature-card">
+    <div class="signature-heading">
+        <span class="signature-eyebrow">Sistema SO • Autorização de fornecimento</span>
+        <h1>Assinar aquisição</h1>
+        <p>Confirme a autorização. O sistema registrará quem assinou e a data/hora da assinatura.</p>
+    </div>
+    <dl class="signature-details">
+        <div><dt>Aquisição</dt><dd><?= h_assinar_aquisicao($aq['numero_aq']) ?></dd></div>
+        <div><dt>Fornecedor</dt><dd><?= h_assinar_aquisicao($aq['fornecedor']) ?></dd></div>
+        <div><dt>Usuário responsável</dt><dd><?= h_assinar_aquisicao($usuario) ?></dd></div>
+    </dl>
+    <?php if ($erro !== ''): ?>
+        <div class="signature-alert signature-error"><?= h_assinar_aquisicao($erro) ?></div>
+    <?php endif; ?>
+
+    <?php if ($registrada): ?>
+        <div class="signature-alert signature-ok">
+            Esta aquisição já foi assinada por <strong><?= h_assinar_aquisicao($registrada['assinado_por']) ?></strong>,
+            em <?= h_assinar_aquisicao(date('d/m/Y H:i', strtotime((string)$registrada['assinado_em']))) ?>.
+        </div>
+        <div class="signature-preview">
+            <span>Assinatura registrada</span>
+            <img src="assinatura_suporte.php?aquisicao=<?= $id ?>" alt="Assinatura da autorização">
+        </div>
+    <?php elseif ($assinatura): ?>
+        <div class="signature-preview">
+            <span>Assinatura que será aplicada</span>
+            <img src="assinatura_suporte.php?id=<?= (int)$assinatura['id'] ?>" alt="Assinatura ativa de autorização">
+        </div>
+    <?php else: ?>
+        <div class="signature-alert signature-error">Nenhuma assinatura ativa. O suporte precisa cadastrar ou ativar uma assinatura em Configurações.</div>
+    <?php endif; ?>
+
+    <form method="post" onsubmit="return confirm('Confirma a assinatura desta aquisição? Esta ação ficará registrada e não poderá ser repetida.');">
+        <input type="hidden" name="id" value="<?= $id ?>">
+        <input type="hidden" name="csrf_token" value="<?= h_assinar_aquisicao($_SESSION['csrf_assinatura_aquisicao']) ?>">
+        <div class="signature-actions">
+            <a href="aquisicoes_visualizar.php?id=<?= $id ?>" class="signature-button signature-back">Voltar à aquisição</a>
+            <?php if (!$registrada): ?>
+                <button type="submit" class="signature-button signature-submit" <?= $assinatura ? '' : 'disabled' ?>>Confirmar assinatura</button>
+            <?php endif; ?>
+        </div>
+    </form>
+</main>
+</body>
+</html>
