@@ -101,6 +101,12 @@ body { margin: 0; padding: 30px 16px; font-family: Arial, Helvetica, sans-serif;
 .aq-document-signatures.aq-signed .assinatura-campo-fornecedor {
     border-bottom: none !important;
 }
+
+/* Mantém a altura dos dois campos idêntica. Ajustamos apenas a imagem,
+   como na impressão em lote, sem deslocar título/subtítulo. */
+.aq-document-signatures.aq-signed .assinatura-imagem-wrap {
+    transform: translateY(10px);
+}
 .aq-document-signatures .assinatura-titulo {
     color: #000;
     font-size: .84rem;
@@ -115,13 +121,6 @@ body { margin: 0; padding: 30px 16px; font-family: Arial, Helvetica, sans-serif;
     font-weight: 700;
     margin-top: 3px;
 }
-.aq-document-signatures .aq-signature-signed-by {
-    color: #555;
-    font-size: .60rem;
-    line-height: 1.2;
-    margin-top: 5px;
-}
-
 @media (max-width: 768px) {
     .aq-document-signatures .assinaturas-grid {
         grid-template-columns: 1fr;
@@ -191,6 +190,9 @@ body { margin: 0; padding: 30px 16px; font-family: Arial, Helvetica, sans-serif;
     .aq-document-signatures.aq-signed .assinatura-campo-fornecedor {
         border-bottom: none !important;
     }
+    .aq-document-signatures.aq-signed .assinatura-imagem-wrap {
+        transform: translateY(2.6mm) !important;
+    }
     .aq-document-signatures .assinatura-titulo {
         font-size: 9.3px !important;
         line-height: 1.15 !important;
@@ -200,10 +202,5 @@ body { margin: 0; padding: 30px 16px; font-family: Arial, Helvetica, sans-serif;
         font-size: 7px !important;
         line-height: 1.15 !important;
         margin-top: .8mm !important;
-    }
-    .aq-document-signatures .aq-signature-signed-by {
-        font-size: 7px !important;
-        line-height: 1.15 !important;
-        margin-top: 1.2mm !important;
     }
 }
