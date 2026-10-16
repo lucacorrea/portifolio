@@ -636,6 +636,13 @@ include 'views/layout/header.php';
             padding-top: 6px !important;
         }
     }
+    .print-signature-footer.aq-signed .assinaturas-grid > div:first-child .assinatura-linha {
+        border-top: 0 !important;
+        padding-top: 0 !important;
+    }
+    .print-signature-footer.aq-signed .aq-signature-photo-wrap {
+        border-bottom: 1.5px solid #000 !important;
+    }
 </style>
 
 <div class="no-print print-topbar">
@@ -643,12 +650,35 @@ include 'views/layout/header.php';
         <i class="fas fa-arrow-left"></i> Voltar
     </a>
     <div class="spacer"></div>
+    <?php if ($assinatura_registrada): ?>
+        <span class="aq-signature-status">
+            <i class="fas fa-check-circle"></i>
+            Assinada por <?= h($assinatura_registrada['assinado_por']) ?> em
+            <?= h(date('d/m/Y H:i', strtotime((string)$assinatura_registrada['assinado_em']))) ?>
+        </span>
+    <?php elseif ($pode_assinar_aquisicao && !$assinatura_tabela_instalada): ?>
+        <span class="aq-signature-warning">Instale sql/assinatura_aquisicoes.sql para habilitar a assinatura.</span>
+    <?php endif; ?>
+    <?php if ($pode_assinar_aquisicao && $assinatura_tabela_instalada && !$assinatura_registrada): ?>
+        <a href="assinatura_aquisicao_v2.php?id=<?= $id ?>" class="btn btn-primary btn-sm">
+            <i class="fas fa-signature"></i> Assinar aquisição
+        </a>
+    <?php elseif ($pode_assinar_aquisicao && $assinatura_registrada): ?>
+        <a href="assinatura_aquisicao_v2.php?id=<?= $id ?>" class="btn btn-outline btn-sm">
+            <i class="fas fa-file-signature"></i> Ver assinatura
+        </a>
+    <?php endif; ?>
     <button onclick="window.print()" class="btn btn-primary btn-sm">
         <i class="fas fa-print"></i> Imprimir Ordem (2 Vias)
     </button>
 </div>
 
 <?php display_flash(); ?>
+<?php if (($_GET['assinatura'] ?? '') === 'ok'): ?>
+    <div class="alert alert-success no-print">Assinatura registrada com sucesso para esta aquisição.</div>
+<?php elseif (($_GET['assinatura'] ?? '') === 'ja_assinada'): ?>
+    <div class="alert alert-info no-print">Esta aquisição já estava assinada. Nenhuma assinatura duplicada foi criada.</div>
+<?php endif; ?>
 
 <div class="print-doc">
 
