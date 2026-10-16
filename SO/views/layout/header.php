@@ -377,8 +377,8 @@ if (isset($pdo)) {
                                 <?php endif; ?>
 
                                 <?php if (in_array($nivel, ['ADMIN', 'SUPORTE', 'SECRETARIO', 'SEFAZ'])): ?>
-                                    <li class="nav-item <?php echo isActive(['oficios_lista.php', 'analisar_oficio.php', 'gerar_aquisicao.php', 'oficios_visualizar.php', 'oficios_editar.php', 'oficios_lista_sefaz.php', 'oficios_anexar.php', 'atribuir_itens.php']); ?>">
-                                        <a href="<?php echo $nivel === 'SEFAZ' ? 'oficios_lista_sefaz.php' : 'oficios_lista.php'; ?>" class="nav-link">
+                                    <li class="nav-item <?php echo isActive(['oficios_lista.php', 'analisar_oficio.php', 'gerar_aquisicao.php', 'oficios_visualizar.php', 'oficios_editar.php', 'oficios_anexar.php', 'atribuir_itens.php']); ?>">
+                                        <a href="oficios_lista.php" class="nav-link">
                                             <i class="fas fa-folder-open"></i> Lista de Solicitações
                                             <?php if ($badge_pendentes > 0): ?>
                                                 <span class="badge" style="background:#dc3545; color:#fff; font-size:0.7rem; padding: 2px 6px; border-radius:10px; margin-left:4px; vertical-align: middle;">
