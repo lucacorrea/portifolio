@@ -143,6 +143,24 @@ if (!empty($aquisicoes)) {
     }
 }
 
+// Aquisições assinadas aparecem assinadas em qualquer via, para qualquer leitor autorizado.
+$assinaturas_registradas = [];
+if (!empty($aquisicoes)) {
+    $ids_assinaturas = array_map(static function (array $aq): int {
+        return (int)$aq['id'];
+    }, $aquisicoes);
+    $marcadores = implode(',', array_fill(0, count($ids_assinaturas), '?'));
+    try {
+        $stmt_assinadas = $pdo->prepare("SELECT aquisicao_id FROM assinaturas_aquisicoes WHERE aquisicao_id IN ($marcadores)");
+        $stmt_assinadas->execute($ids_assinaturas);
+        foreach ($stmt_assinadas->fetchAll(PDO::FETCH_COLUMN) as $aqIdAssinada) {
+            $assinaturas_registradas[(int)$aqIdAssinada] = true;
+        }
+    } catch (PDOException $e) {
+        // Antes da instalação da tabela, mantém a impressão sem assinatura registrada.
+    }
+}
+
 $assinatura_disponivel = false;
 if ($is_support) {
     try {
@@ -212,7 +230,7 @@ function render_aquisicao_lote_header(array $aq, string $titulo, string $viaLabe
 <?php
 }
 
-function render_aquisicao_lote_signature_footer(string $assinaturaLabel, bool $isSupport, bool $assinaturaDisponivel): void
+function render_aquisicao_lote_signature_footer(string $assinaturaLabel, bool $isSupport, bool $assinaturaDisponivel, int $aquisicaoId, bool $jaAssinada): void
 {
 ?>
     <div class="rodape-documento print-signature-footer">
@@ -220,10 +238,10 @@ function render_aquisicao_lote_signature_footer(string $assinaturaLabel, bool $i
             <div class="assinatura-col assinatura-fornecedor-col">
                 <div class="assinatura-linha assinatura-fornecedor-linha">
                     <div class="assinatura-campo assinatura-campo-fornecedor">
-                        <?php if ($isSupport && $assinaturaDisponivel): ?>
+                        <?php if ($jaAssinada || ($isSupport && $assinaturaDisponivel)): ?>
                             <span class="assinatura-imagem-wrap">
                                 <img
-                                    src="assinatura_suporte.php"
+                                    src="<?= $jaAssinada ? 'assinatura_suporte.php?aquisicao=' . $aquisicaoId : 'assinatura_suporte.php' ?>"
                                     alt="Assinatura autorizada"
                                     class="support-signature-image"
                                     loading="eager">
@@ -299,7 +317,8 @@ function render_aquisicao_lote_page(
     string $via,
     bool $isSupport,
     bool $assinaturaDisponivel,
-    int $pagina
+    int $pagina,
+    bool $jaAssinada
 ): void {
     $is_fornecedor = $via === 'fornecedor';
     $titulo = $is_fornecedor ? 'Ordem de Fornecimento' : 'Ordem de Aquisição e Suprimentos';
@@ -307,8 +326,8 @@ function render_aquisicao_lote_page(
     $assinatura_label = $is_fornecedor ? 'Autorização de Saída' : 'Autorização de Recebimento';
     $data_emissao = strtotime((string)($aq['criado_em'] ?? '')) ?: time();
 ?>
-    <div class="card printable-page" data-page="<?= $pagina ?>" data-aquisicao="<?= (int)$aq['id'] ?>" data-via="<?= h_lote($via) ?>">
-        <?php if ($isSupport && $assinaturaDisponivel): ?>
+    <div class="card printable-page <?= $jaAssinada ? 'signature-enabled' : '' ?>" data-assinada="<?= $jaAssinada ? '1' : '0' ?>" data-page="<?= $pagina ?>" data-aquisicao="<?= (int)$aq['id'] ?>" data-via="<?= h_lote($via) ?>">
+        <?php if ($isSupport && $assinaturaDisponivel && !$jaAssinada): ?>
             <label class="signature-page-control no-print" title="Assinar somente esta via da aquisição">
                 <input type="checkbox" class="signature-page-checkbox">
                 <span>Página <?= $pagina ?> • <?= h_lote($aq['numero_aq']) ?> • <?= h_lote($label_via) ?></span>
@@ -356,7 +375,7 @@ function render_aquisicao_lote_page(
                     </tr>
                 </tbody>
                 <tfoot>
-                    <tr><td><?php render_aquisicao_lote_signature_footer($assinatura_label, $isSupport, $assinaturaDisponivel); ?></td></tr>
+                    <tr><td><?php render_aquisicao_lote_signature_footer($assinatura_label, $isSupport, $assinaturaDisponivel, (int)$aq['id'], $jaAssinada); ?></td></tr>
                 </tfoot>
             </table>
         </div>
@@ -475,7 +494,8 @@ include 'views/layout/header.php';
                     $via_documento,
                     $is_support,
                     $assinatura_disponivel,
-                    $pagina++
+                    $pagina++,
+                    !empty($assinaturas_registradas[(int)$aq['id']])
                 );
                 ?>
             <?php endforeach; ?>
@@ -499,7 +519,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function syncPage(page) {
         var checkbox = checkboxFor(page);
-        var assinaturaSelecionada = !!checkbox && checkbox.checked;
+        var assinaturaSelecionada = page.dataset.assinada === '1' || (!!checkbox && checkbox.checked);
         var colunaFornecedor = page.querySelector('.assinatura-fornecedor-col');
 
         page.classList.toggle('signature-enabled', assinaturaSelecionada);
