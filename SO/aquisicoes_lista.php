@@ -1733,8 +1733,8 @@ include 'views/layout/header.php';
                                                 <i class="fas fa-eye"></i> Visualizar
                                             </a>
                                             <?php if ($pode_assinar_aquisicao): ?>
-                                                <a class="dropdown-item" href="assinatura_aquisicao_v2.php?id=<?= (int)$aq['id'] ?>">
-                                                    <i class="fas fa-signature"></i> Assinar / Ver assinatura
+                                                <a class="dropdown-item" href="aquisicoes_visualizar.php?id=<?= (int)$aq['id'] ?>">
+                                                    <i class="fas fa-signature"></i> Visualizar e assinar
                                                 </a>
                                             <?php endif; ?>
 
