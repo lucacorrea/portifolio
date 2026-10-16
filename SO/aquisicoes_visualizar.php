@@ -157,12 +157,6 @@ function render_aquisicao_signature_footer(string $assinaturaLabel, ?array $assi
                     </div>
                     <div class="assinatura-titulo">AUTORIZAÇÃO DE FORNECEDOR</div>
                     <div class="assinatura-subtitulo"><?= h($assinaturaLabel) ?></div>
-                    <?php if ($estaAssinada): ?>
-                        <div class="aq-signature-signed-by">
-                            Assinado por <?= h($assinaturaRegistrada['assinado_por']) ?>
-                            em <?= h(date('d/m/Y H:i', strtotime((string)$assinaturaRegistrada['assinado_em']))) ?>
-                        </div>
-                    <?php endif; ?>
                 </div>
             </div>
             <div class="assinatura-col assinatura-recebimento-col">
