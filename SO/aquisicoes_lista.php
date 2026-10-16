@@ -4,6 +4,7 @@ require_once 'config/functions.php';
 login_check();
 
 $page_title = "Lista de Aquisições";
+$pode_assinar_aquisicao = usuario_pode_assinar_aquisicao($pdo);
 
 if (!function_exists('h')) {
     function h($value)
@@ -1731,6 +1732,11 @@ include 'views/layout/header.php';
                                             <a class="dropdown-item" href="aquisicoes_visualizar.php?id=<?php echo (int)$aq['id']; ?>">
                                                 <i class="fas fa-eye"></i> Visualizar
                                             </a>
+                                            <?php if ($pode_assinar_aquisicao): ?>
+                                                <a class="dropdown-item" href="assinatura_aquisicao_v2.php?id=<?= (int)$aq['id'] ?>">
+                                                    <i class="fas fa-signature"></i> Assinar / Ver assinatura
+                                                </a>
+                                            <?php endif; ?>
 
                                             <?php
                                                 $nivel_user = strtoupper($_SESSION['nivel'] ?? '');
