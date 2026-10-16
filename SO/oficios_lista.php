@@ -1440,7 +1440,7 @@ include 'views/layout/header.php';
             <h3 style="color: var(--text-dark); font-weight: 700; font-size: 1rem; margin: 0;">
                 <i class="fas fa-list-ul" style="margin-right: 10px; color: var(--primary);"></i> Solicitações Recebidas
             </h3>
-            <?php if (strtoupper($_SESSION['nivel'] ?? '') !== 'SECRETARIO'): ?>
+            <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE', 'FUNCIONARIO', 'CASA_CIVIL'], true)): ?>
                 <a href="oficios_novo.php" class="btn btn-primary btn-sm">
                     <i class="fas fa-plus"></i> Novo Cadastro
                 </a>
@@ -1740,6 +1740,15 @@ include 'views/layout/header.php';
         <?php else: ?>
             <a class="so-action-link" href="oficios_visualizar.php?id=<?php echo (int)$o['id']; ?>">
                 <i class="fas fa-eye" aria-hidden="true"></i> Visualizar solicitação (sem aquisição)
+            </a>
+        <?php endif; ?>
+        <?php // Mantém o fluxo da antiga lista da SEFAZ na lista unificada. ?>
+        <?php if ($nivel_user === 'SEFAZ'
+            && in_array((string)$o['status'], ['PENDENTE_ITENS', 'ENVIADO'], true)
+            && (int)($o['total_aquisicoes'] ?? 0) === 0): ?>
+            <a class="so-action-link" href="atribuir_itens.php?id=<?= (int)$o['id'] ?>">
+                <i class="fas fa-boxes" aria-hidden="true"></i>
+                <?= $o['status'] === 'PENDENTE_ITENS' ? 'Atribuir itens' : 'Editar itens' ?>
             </a>
         <?php endif; ?>
         <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'], true)
