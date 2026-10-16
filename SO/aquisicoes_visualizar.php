@@ -29,6 +29,10 @@ if (!$aq) {
 }
 
 $pode_assinar_aquisicao = usuario_pode_assinar_aquisicao($pdo);
+// Token criado na visualização: apenas POST pode efetivar a assinatura.
+if ($pode_assinar_aquisicao && empty($_SESSION['csrf_assinatura_aquisicao'])) {
+    $_SESSION['csrf_assinatura_aquisicao'] = bin2hex(random_bytes(32));
+}
 $assinatura_registrada = null;
 $assinatura_tabela_instalada = true;
 try {
@@ -615,13 +619,13 @@ include 'views/layout/header.php';
         <span class="aq-signature-warning">Instale sql/assinatura_aquisicoes.sql para habilitar a assinatura.</span>
     <?php endif; ?>
     <?php if ($pode_assinar_aquisicao && $assinatura_tabela_instalada && !$assinatura_registrada): ?>
-        <a href="assinatura_aquisicao_v2.php?id=<?= $id ?>" class="btn btn-primary btn-sm">
-            <i class="fas fa-signature"></i> Assinar aquisição
-        </a>
-    <?php elseif ($pode_assinar_aquisicao && $assinatura_registrada): ?>
-        <a href="assinatura_aquisicao_v2.php?id=<?= $id ?>" class="btn btn-outline btn-sm">
-            <i class="fas fa-file-signature"></i> Ver assinatura
-        </a>
+        <form method="post" action="assinatura_aquisicao_v2.php" class="aq-signature-direct-form no-print">
+            <input type="hidden" name="id" value="<?= (int)$id ?>">
+            <input type="hidden" name="csrf_token" value="<?= h($_SESSION['csrf_assinatura_aquisicao']) ?>">
+            <button type="submit" class="btn btn-primary btn-sm">
+                <i class="fas fa-signature"></i> Assinar aquisição
+            </button>
+        </form>
     <?php endif; ?>
     <button onclick="window.print()" class="btn btn-primary btn-sm">
         <i class="fas fa-print"></i> Imprimir Ordem (2 Vias)
