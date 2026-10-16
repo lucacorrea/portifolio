@@ -825,6 +825,8 @@ $stmt = $pdo->prepare("
         u.nome as usuario,
         COALESCE(fornecedores_oficio.fornecedores, f_indicado.nome) AS fornecedores,
         COALESCE(fornecedores_oficio.total_aquisicoes, 0) AS total_aquisicoes,
+        (SELECT COUNT(*) FROM itens_oficio io_count WHERE io_count.oficio_id = o.id) AS total_itens,
+        CASE WHEN f_indicado.id IS NOT NULL THEN 1 ELSE 0 END AS fornecedor_indicado_valido,
         CASE
             WHEN fornecedores_oficio.fornecedores IS NULL AND f_indicado.id IS NOT NULL THEN 1
             ELSE 0
@@ -1488,7 +1490,7 @@ include 'views/layout/header.php';
 
                             <i class="fas fa-check-circle"></i>
 
-                            Aprovar / informar fornecedor
+                            Aprovar e gerar aquisições
 
                         </button>
 
@@ -1554,6 +1556,8 @@ include 'views/layout/header.php';
                                             value="<?php echo (int)$o['id']; ?>"
                                             data-status="<?php echo h($o['status']); ?>"
                                             data-has-aquisicao="<?php echo (int)$o['total_aquisicoes'] > 0 ? '1' : '0'; ?>"
+                                            data-has-fornecedor="<?php echo (int)($o['fornecedor_indicado_valido'] ?? 0) === 1 ? '1' : '0'; ?>"
+                                            data-has-itens="<?php echo (int)($o['total_itens'] ?? 0) > 0 ? '1' : '0'; ?>"
                                             aria-label="Selecionar ofício <?php echo h($o['numero']); ?>">
                                     </td>
 
@@ -1638,7 +1642,7 @@ include 'views/layout/header.php';
                                     <i class="fas fa-check-circle text-success"></i>
                                     Aprovar e gerar aquisição
                                 </h3>
-                                <small>Uma aquisição será gerada automaticamente para cada ofício elegível selecionado.</small>
+                                <small>O sistema usa o fornecedor já registrado em cada solicitação.</small>
                             </div>
                             <button type="button" class="btn-fechar-modal" onclick="fecharModalAprovacao()" aria-label="Fechar">
                                 <i class="fas fa-times"></i>
@@ -1651,36 +1655,21 @@ include 'views/layout/header.php';
                                 <strong id="totalSelecionados">0 solicitações selecionadas</strong>
                             </div>
 
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label for="fornecedor-aprovacao-lote" class="form-label">Fornecedor</label>
-                                <select
-                                    name="fornecedor_id"
-                                    id="fornecedor-aprovacao-lote"
-                                    class="form-control form-control-lg">
-                                    <option value="">Selecione o fornecedor...</option>
-                                    <?php foreach ($fornecedores_list as $fornecedor): ?>
-                                        <option value="<?php echo (int)$fornecedor['id']; ?>">
-                                            <?php echo h($fornecedor['nome']); ?><?php echo !empty($fornecedor['cnpj']) ? ' (' . h($fornecedor['cnpj']) . ')' : ''; ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <small class="text-muted">
-                                    ENVIADO: aprova e gera a aquisição. APROVADO sem aquisição: gera a aquisição com o fornecedor selecionado.
-                                </small>
-                            </div>
-
-                            <?php if (empty($fornecedores_list)): ?>
-                                <div class="alert alert-warning" style="margin-top: 1rem; margin-bottom: 0;">
-                                    Cadastre um fornecedor antes de usar esta operação.
+                            <div class="so-approval-batch-info">
+                                <i class="fas fa-truck" aria-hidden="true"></i>
+                                <div>
+                                    <strong>Fornecedores preservados</strong>
+                                    <p>As aquisições serão geradas para os fornecedores já vinculados aos ofícios, sem pedir uma nova seleção.</p>
                                 </div>
-                            <?php endif; ?>
+                            </div>
+                            <p class="so-approval-batch-alert" id="aprovacao-ignorados" hidden></p>
                         </div>
 
                         <div class="modal-footer-custom">
                             <button type="button" class="btn btn-secondary" onclick="fecharModalAprovacao()">Cancelar</button>
-                            <button type="submit" class="btn btn-success">
+                            <button type="submit" class="btn btn-success" id="confirmar-aprovacao-lote">
                                 <i class="fas fa-check-circle"></i>
-                                Confirmar operação
+                                Confirmar aprovação
                             </button>
                         </div>
                     </div>
@@ -1752,6 +1741,36 @@ include 'views/layout/header.php';
             <a class="so-action-link" href="oficios_visualizar.php?id=<?php echo (int)$o['id']; ?>">
                 <i class="fas fa-eye" aria-hidden="true"></i> Visualizar solicitação (sem aquisição)
             </a>
+        <?php endif; ?>
+        <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'], true)
+            && in_array((string)$o['status'], ['ENVIADO', 'APROVADO'], true)
+            && empty($aquisicoes_do_oficio)): ?>
+            <?php if ((int)($o['fornecedor_indicado_valido'] ?? 0) === 1 && (int)($o['total_itens'] ?? 0) > 0): ?>
+                <div class="so-quick-approval-info">
+                    <i class="fas fa-check-circle" aria-hidden="true"></i>
+                    <div>
+                        <strong><?= $o['status'] === 'ENVIADO' ? 'Pronta para aprovação' : 'Pronta para gerar aquisição' ?></strong>
+                        <span>Fornecedor: <?= h($o['fornecedores'] ?? 'Indicado') ?> · <?= (int)$o['total_itens'] ?> item(ns)</span>
+                    </div>
+                </div>
+                <form method="post" action="aprovar_multiplos.php" class="so-quick-approval-form">
+                    <input type="hidden" name="csrf_token" value="<?= h($csrf_aprovacao_multipla) ?>">
+                    <input type="hidden" name="return_query" value="<?= h($_SERVER['QUERY_STRING'] ?? '') ?>">
+                    <input type="hidden" name="oficios[]" value="<?= (int)$o['id'] ?>">
+                    <button type="submit" class="so-action-link so-action-link--success">
+                        <i class="fas fa-check-circle" aria-hidden="true"></i>
+                        <?= $o['status'] === 'ENVIADO' ? 'Aprovar e gerar aquisição' : 'Gerar aquisição agora' ?>
+                    </button>
+                </form>
+            <?php elseif ($o['status'] === 'ENVIADO'): ?>
+                <div class="so-quick-approval-info so-quick-approval-info--warning">
+                    <i class="fas fa-info-circle" aria-hidden="true"></i>
+                    <div>
+                        <strong>Faltam informações para aprovar</strong>
+                        <span><?= (int)($o['fornecedor_indicado_valido'] ?? 0) !== 1 ? 'Defina um fornecedor válido. ' : '' ?><?= (int)($o['total_itens'] ?? 0) === 0 ? 'Cadastre os itens antes da aprovação.' : '' ?></span>
+                    </div>
+                </div>
+            <?php endif; ?>
         <?php endif; ?>
         <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'], true)): ?>
             <a class="so-action-link" href="oficios_editar.php?id=<?php echo (int)$o['id']; ?>">
@@ -1888,7 +1907,6 @@ include 'views/layout/header.php';
 <?php endif; ?>
 <script>
     const selecionarTodos = document.getElementById('selecionarTodos');
-    const temFornecedoresAprovacao = <?php echo !empty($fornecedores_list) ? 'true' : 'false'; ?>;
 
     if (selecionarTodos) {
 
@@ -1912,95 +1930,69 @@ include 'views/layout/header.php';
 
     });
 
+    function elegivelParaAprovacao(checkbox) {
+        return checkbox.dataset.hasAquisicao === '0'
+            && checkbox.dataset.hasFornecedor === '1'
+            && checkbox.dataset.hasItens === '1'
+            && ['ENVIADO', 'APROVADO'].includes(checkbox.dataset.status);
+    }
+
     function atualizarContador() {
-
-        let total = document.querySelectorAll('.checkOficio:checked').length;
-        let totalEnviados = document.querySelectorAll('.checkOficio:checked[data-status="ENVIADO"]').length;
-        let totalAprovados = document.querySelectorAll('.checkOficio:checked[data-status="APROVADO"][data-has-aquisicao="0"]').length;
-        let totalElegiveis = totalEnviados + totalAprovados;
-
+        const selecionados = Array.from(document.querySelectorAll('.checkOficio:checked'));
+        const total = selecionados.length;
+        const totalAptos = selecionados.filter(elegivelParaAprovacao).length;
         const contador = document.getElementById('contadorSelecionados');
         const botaoAprovar = document.getElementById('btn-aprovar-selecionados');
         const botaoEditarDatas = document.getElementById('btn-editar-datas');
-        const elegiveis = document.querySelectorAll('.checkOficio');
+        const itensPagina = document.querySelectorAll('.checkOficio');
 
         if (contador) {
-            contador.textContent = total + ' selecionado(s)';
+            contador.textContent = total + ' selecionado(s) · ' + totalAptos + ' apto(s) para aprovar';
         }
-
         if (botaoAprovar) {
-            botaoAprovar.disabled = totalElegiveis === 0 || !temFornecedoresAprovacao;
+            botaoAprovar.disabled = totalAptos === 0;
         }
-
         if (botaoEditarDatas) {
             botaoEditarDatas.disabled = total === 0;
         }
-
         if (selecionarTodos) {
-            selecionarTodos.checked = elegiveis.length > 0 && total === elegiveis.length;
-            selecionarTodos.indeterminate = total > 0 && total < elegiveis.length;
-            selecionarTodos.disabled = elegiveis.length === 0;
+            selecionarTodos.checked = itensPagina.length > 0 && total === itensPagina.length;
+            selecionarTodos.indeterminate = total > 0 && total < itensPagina.length;
+            selecionarTodos.disabled = itensPagina.length === 0;
         }
-
     }
 </script>
 <script>
     function abrirModalAprovacao() {
-
-        const totalSelecionados = document.querySelectorAll('.checkOficio:checked').length;
-        const totalEnviados = document.querySelectorAll('.checkOficio:checked[data-status="ENVIADO"]').length;
-        const totalAprovados = document.querySelectorAll('.checkOficio:checked[data-status="APROVADO"][data-has-aquisicao="0"]').length;
-        const totalElegiveis = totalEnviados + totalAprovados;
-        const totalIgnorados = totalSelecionados - totalElegiveis;
-
-        if (totalElegiveis === 0) {
-
-            alert('Selecione pelo menos uma solicitação com status ENVIADO ou APROVADO.');
-
+        const selecionados = Array.from(document.querySelectorAll('.checkOficio:checked'));
+        const aptos = selecionados.filter(elegivelParaAprovacao);
+        const totalIgnorados = selecionados.length - aptos.length;
+        if (aptos.length === 0) {
+            alert('Selecione pelo menos uma solicitação apta: ENVIADO ou APROVADO, com fornecedor, itens e sem aquisição existente.');
             return;
-
         }
 
-        if (!temFornecedoresAprovacao) {
+        document.getElementById('form-aprovacao-lote').setAttribute('action', 'aprovar_multiplos.php');
+        document.getElementById('nova-data-lote').required = false;
+        const enviados = aptos.filter(item => item.dataset.status === 'ENVIADO').length;
+        document.getElementById('totalSelecionados').textContent =
+            aptos.length + ' aquisição(ões) serão geradas e ' + enviados + ' solicitação(ões) serão aprovadas.';
 
-            alert('Cadastre um fornecedor antes de usar esta operação.');
-
-            return;
-
+        const aviso = document.getElementById('aprovacao-ignorados');
+        if (aviso) {
+            aviso.hidden = totalIgnorados === 0;
+            aviso.textContent = totalIgnorados + ' selecionada(s) sem requisitos completos ou já processada(s) serão ignoradas.';
         }
-
-        const formLote = document.getElementById('form-aprovacao-lote');
-        const campoNovaData = document.getElementById('nova-data-lote');
-        const campoFornecedor = document.getElementById('fornecedor-aprovacao-lote');
-        formLote.setAttribute('action', 'aprovar_multiplos.php');
-        campoNovaData.required = false;
-        campoFornecedor.required = true;
-
-        let resumo = totalEnviados + ' será(ão) aprovado(s) e ' + totalElegiveis
-            + ' aquisição(ões) será(ão) gerada(s) automaticamente.';
-        if (totalIgnorados > 0) {
-            resumo += ' ' + totalIgnorados + ' não é(são) elegível(is) para esta operação.';
-        }
-        document.getElementById('totalSelecionados').textContent = resumo;
-
-        document
-            .getElementById("modalAprovacao")
-            .classList.add("show");
-
-        document.getElementById("modalAprovacao").setAttribute("aria-hidden", "false");
-        campoFornecedor.focus();
-
+        const modal = document.getElementById('modalAprovacao');
+        modal.classList.add('show');
+        modal.setAttribute('aria-hidden', 'false');
+        document.getElementById('confirmar-aprovacao-lote').focus();
     }
 
     function fecharModalAprovacao() {
-
-        document
-            .getElementById("modalAprovacao")
-            .classList.remove("show");
-
-        document.getElementById("modalAprovacao").setAttribute("aria-hidden", "true");
-        document.getElementById('fornecedor-aprovacao-lote').required = false;
-
+        const modal = document.getElementById('modalAprovacao');
+        modal.classList.remove('show');
+        modal.setAttribute('aria-hidden', 'true');
     }
 
     const modalAprovacao = document.getElementById('modalAprovacao');
@@ -2031,10 +2023,8 @@ include 'views/layout/header.php';
 
         const formLote = document.getElementById('form-aprovacao-lote');
         const campoNovaData = document.getElementById('nova-data-lote');
-        const campoFornecedor = document.getElementById('fornecedor-aprovacao-lote');
         formLote.setAttribute('action', 'atualizar_datas_multiplas.php');
         campoNovaData.required = true;
-        campoFornecedor.required = false;
 
         const modal = document.getElementById('modalDatas');
         modal.classList.add('show');
