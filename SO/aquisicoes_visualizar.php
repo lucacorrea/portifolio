@@ -596,7 +596,7 @@ include 'views/layout/header.php';
 
     }
 </style>
-<link rel="stylesheet" href="assets/css/assinatura_aquisicao.css?v=20261016-2">
+<link rel="stylesheet" href="assets/css/assinatura_aquisicao.css?v=20261016-3">
 
 <div class="no-print print-topbar">
     <a href="aquisicoes_lista.php" class="btn btn-outline btn-sm">
