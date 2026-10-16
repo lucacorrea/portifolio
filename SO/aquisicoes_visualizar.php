@@ -134,34 +134,38 @@ function render_aquisicao_print_header(array $aq, string $titulo, string $viaLab
 
 function render_aquisicao_signature_footer(string $assinaturaLabel, ?array $assinaturaRegistrada = null, int $aquisicaoId = 0): void
 {
+    $estaAssinada = $assinaturaRegistrada !== null && $aquisicaoId > 0;
 ?>
-    <div class="rodape-documento print-signature-footer <?= $assinaturaRegistrada ? 'aq-signed' : '' ?>">
+    <div class="rodape-documento print-signature-footer aq-document-signatures <?= $estaAssinada ? 'aq-signed' : '' ?>">
         <div class="assinaturas-grid">
-            <div>
-                <div class="assinatura-linha">
-                    <?php if ($assinaturaRegistrada && $aquisicaoId > 0): ?>
-                        <div class="aq-signature-photo-wrap">
-                            <img class="aq-signature-photo" src="assinatura_suporte.php?aquisicao=<?= $aquisicaoId ?>" alt="Assinatura registrada">
-                        </div>
-                    <?php endif; ?>
-                    <div style="font-weight: 800; color: #000; font-size: 0.875rem;">AUTORIZAÇÃO DE FORNECEDOR</div>
-                    <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
-                        <?= h($assinaturaLabel) ?>
+            <div class="assinatura-col assinatura-fornecedor-col">
+                <div class="assinatura-linha assinatura-fornecedor-linha">
+                    <div class="assinatura-campo assinatura-campo-fornecedor">
+                        <?php if ($estaAssinada): ?>
+                            <span class="assinatura-imagem-wrap">
+                                <img
+                                    src="assinatura_suporte.php?aquisicao=<?= (int)$aquisicaoId ?>"
+                                    class="support-signature-image"
+                                    alt="Assinatura registrada da autorização"
+                                    loading="eager">
+                            </span>
+                        <?php endif; ?>
                     </div>
-                    <?php if ($assinaturaRegistrada): ?>
+                    <div class="assinatura-titulo">AUTORIZAÇÃO DE FORNECEDOR</div>
+                    <div class="assinatura-subtitulo"><?= h($assinaturaLabel) ?></div>
+                    <?php if ($estaAssinada): ?>
                         <div class="aq-signature-signed-by">
-                            Assinado por <?= h($assinaturaRegistrada['assinado_por']) ?> em
-                            <?= h(date('d/m/Y H:i', strtotime((string)$assinaturaRegistrada['assinado_em']))) ?>
+                            Assinado por <?= h($assinaturaRegistrada['assinado_por']) ?>
+                            em <?= h(date('d/m/Y H:i', strtotime((string)$assinaturaRegistrada['assinado_em']))) ?>
                         </div>
                     <?php endif; ?>
                 </div>
             </div>
-            <div>
+            <div class="assinatura-col assinatura-recebimento-col">
                 <div class="assinatura-linha">
-                    <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
-                    <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
-                        Assinatura e Carimbo
-                    </div>
+                    <div class="assinatura-campo"></div>
+                    <div class="assinatura-titulo">CONFIRMAÇÃO DE RECEBIMENTO</div>
+                    <div class="assinatura-subtitulo">Assinatura e Carimbo</div>
                 </div>
             </div>
         </div>
@@ -246,7 +250,7 @@ function render_itens_aquisicao_table(array $items, float $valorTotal): void
 
 include 'views/layout/header.php';
 ?>
-<link rel="stylesheet" href="assets/css/assinatura_aquisicao.css">
+
 <style>
     .print-topbar {
         margin-bottom: 2rem;
@@ -376,28 +380,11 @@ include 'views/layout/header.php';
         margin: 1.85rem 0 0.5rem;
     }
 
-    .rodape-documento {
-        margin-top: 1.25rem;
-    }
-
     .texto-entrega {
         font-size: 0.75rem;
         color: #555;
         margin: 0 0 1.25rem 0;
         line-height: 1.5;
-    }
-
-    .assinaturas-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 3rem;
-        text-align: center;
-        margin-top: 1.5rem;
-    }
-
-    .assinatura-linha {
-        border-top: 1.5px solid #000;
-        padding-top: 0.75rem;
     }
 
     @media (max-width: 768px) {
@@ -431,12 +418,6 @@ include 'views/layout/header.php';
 
         .ordem-right-box {
             display: inline-block;
-        }
-
-        .assinaturas-grid {
-            grid-template-columns: 1fr;
-            gap: 2rem;
-            margin-top: 1.25rem;
         }
 
         .ordem-info-table,
@@ -605,12 +586,6 @@ include 'views/layout/header.php';
             break-inside: avoid !important;
         }
 
-        .rodape-documento {
-            margin-top: 8px !important;
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-        }
-
         .texto-entrega {
             margin: 8px 0 10px !important;
             font-size: 10px !important;
@@ -621,29 +596,9 @@ include 'views/layout/header.php';
             widows: 3;
         }
 
-        .assinaturas-grid {
-            display: grid !important;
-            grid-template-columns: 1fr 1fr !important;
-            gap: 2rem !important;
-            text-align: center !important;
-            margin-top: 24mm !important;
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-        }
-
-        .assinatura-linha {
-            border-top: 1.5px solid #000 !important;
-            padding-top: 6px !important;
-        }
-    }
-    .print-signature-footer.aq-signed .assinaturas-grid > div:first-child .assinatura-linha {
-        border-top: 0 !important;
-        padding-top: 0 !important;
-    }
-    .print-signature-footer.aq-signed .aq-signature-photo-wrap {
-        border-bottom: 1.5px solid #000 !important;
     }
 </style>
+<link rel="stylesheet" href="assets/css/assinatura_aquisicao.css?v=20261016-2">
 
 <div class="no-print print-topbar">
     <a href="aquisicoes_lista.php" class="btn btn-outline btn-sm">
