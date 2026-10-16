@@ -28,6 +28,18 @@ if (!$aq) {
     die('Aquisição não encontrada.');
 }
 
+$pode_assinar_aquisicao = usuario_pode_assinar_aquisicao($pdo);
+$assinatura_registrada = null;
+$assinatura_tabela_instalada = true;
+try {
+    $stmt_assinatura_aq = $pdo->prepare('SELECT assinado_por, assinado_em, assinatura_id FROM assinaturas_aquisicoes WHERE aquisicao_id = ? LIMIT 1');
+    $stmt_assinatura_aq->execute([$id]);
+    $assinatura_registrada = $stmt_assinatura_aq->fetch(PDO::FETCH_ASSOC) ?: null;
+} catch (PDOException $e) {
+    // A página de visualização permanece funcionando antes da instalação do módulo.
+    $assinatura_tabela_instalada = false;
+}
+
 /*
 |--------------------------------------------------------------------------
 | ITENS DA AQUISIÇÃO COM UNIDADE VINDO DE itens_oficio
@@ -120,17 +132,28 @@ function render_aquisicao_print_header(array $aq, string $titulo, string $viaLab
 <?php
 }
 
-function render_aquisicao_signature_footer(string $assinaturaLabel): void
+function render_aquisicao_signature_footer(string $assinaturaLabel, ?array $assinaturaRegistrada = null, int $aquisicaoId = 0): void
 {
 ?>
-    <div class="rodape-documento print-signature-footer">
+    <div class="rodape-documento print-signature-footer <?= $assinaturaRegistrada ? 'aq-signed' : '' ?>">
         <div class="assinaturas-grid">
             <div>
                 <div class="assinatura-linha">
+                    <?php if ($assinaturaRegistrada && $aquisicaoId > 0): ?>
+                        <div class="aq-signature-photo-wrap">
+                            <img class="aq-signature-photo" src="assinatura_suporte.php?aquisicao=<?= $aquisicaoId ?>" alt="Assinatura registrada">
+                        </div>
+                    <?php endif; ?>
                     <div style="font-weight: 800; color: #000; font-size: 0.875rem;">AUTORIZAÇÃO DE FORNECEDOR</div>
                     <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
                         <?= h($assinaturaLabel) ?>
                     </div>
+                    <?php if ($assinaturaRegistrada): ?>
+                        <div class="aq-signature-signed-by">
+                            Assinado por <?= h($assinaturaRegistrada['assinado_por']) ?> em
+                            <?= h(date('d/m/Y H:i', strtotime((string)$assinaturaRegistrada['assinado_em']))) ?>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
             <div>
@@ -223,6 +246,7 @@ function render_itens_aquisicao_table(array $items, float $valorTotal): void
 
 include 'views/layout/header.php';
 ?>
+<link rel="stylesheet" href="assets/css/assinatura_aquisicao.css">
 <style>
     .print-topbar {
         margin-bottom: 2rem;
@@ -673,7 +697,7 @@ include 'views/layout/header.php';
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td><?php render_aquisicao_signature_footer('Autorização de Recebimento'); ?></td>
+                        <td><?php render_aquisicao_signature_footer('Autorização de Recebimento', $assinatura_registrada, $id); ?></td>
                     </tr>
                 </tfoot>
             </table>
@@ -726,7 +750,7 @@ include 'views/layout/header.php';
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td><?php render_aquisicao_signature_footer('Autorização de Saída'); ?></td>
+                        <td><?php render_aquisicao_signature_footer('Autorização de Saída', $assinatura_registrada, $id); ?></td>
                     </tr>
                 </tfoot>
             </table>
