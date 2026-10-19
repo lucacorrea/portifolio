@@ -1766,6 +1766,7 @@ include 'views/layout/header.php';
                     <input type="hidden" name="csrf_token" value="<?= h($csrf_aprovacao_multipla) ?>">
                     <input type="hidden" name="return_query" value="<?= h($_SERVER['QUERY_STRING'] ?? '') ?>">
                     <input type="hidden" name="oficios[]" value="<?= (int)$o['id'] ?>">
+                    <input type="hidden" name="abrir_aquisicao" value="1">
                     <button type="submit" class="so-action-link so-action-link--success">
                         <i class="fas fa-check-circle" aria-hidden="true"></i>
                         <?= $o['status'] === 'ENVIADO' ? 'Aprovar e gerar aquisição' : 'Gerar aquisição agora' ?>
