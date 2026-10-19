@@ -69,6 +69,10 @@ foreach ($posted_ids as $posted_id) {
 }
 $ids = array_values($ids);
 
+// Apenas a aprovação individual do modal solicita abertura da aquisição gerada.
+// Operações em lote e solicitações inválidas continuam retornando à lista.
+$abrir_aquisicao_individual = ($_POST['abrir_aquisicao'] ?? null) === '1' && count($ids) === 1;
+
 if (empty($ids) || count($ids) > 1000) {
     flash_message('warning', 'Selecione entre 1 e 1000 solicitações válidas para aprovar.');
     header("Location: {$return_url}");
@@ -174,6 +178,7 @@ try {
 
     $aprovados_agora = 0;
     $gerados = 0;
+    $aquisicao_gerada_para_abrir = null;
     $por_fornecedor = [];
     $numeros_oficio = [];
 
@@ -213,6 +218,9 @@ try {
         }
 
         $gerados++;
+        if ($abrir_aquisicao_individual) {
+            $aquisicao_gerada_para_abrir = $aquisicao_id;
+        }
         $nome_fornecedor = (string)$oficio['fornecedor_nome'];
         $por_fornecedor[$nome_fornecedor] = ($por_fornecedor[$nome_fornecedor] ?? 0) + 1;
         $numeros_oficio[] = (string)$oficio['numero'];
@@ -238,6 +246,11 @@ try {
     if ($com_aquisicao > 0) $mensagem .= ' ' . $com_aquisicao . ' já possuía(m) aquisição e foi(ram) preservada(s).';
     if ($status_ignorado > 0) $mensagem .= ' ' . $status_ignorado . ' com status não elegível foi(ram) ignorada(s).';
     flash_message('success', $mensagem);
+
+    if ($abrir_aquisicao_individual && $gerados === 1 && $aquisicao_gerada_para_abrir > 0) {
+        header('Location: aquisicoes_visualizar.php?id=' . $aquisicao_gerada_para_abrir, true, 303);
+        exit;
+    }
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
