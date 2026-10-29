@@ -260,6 +260,7 @@ function render_aquisicao_lote_signature_footer(string $assinaturaLabel, bool $i
                 </div>
             </div>
         </div>
+        <div class="credito-aquisicao">Desenvolvido por Lucas Correa</div>
     </div>
 <?php
 }
@@ -411,6 +412,16 @@ include 'views/layout/header.php';
 .printable-page.signature-enabled .assinatura-campo-fornecedor{border-bottom:none!important}
 
 @media(max-width:768px){.print-topbar{flex-direction:column;align-items:stretch}.print-topbar .btn,.print-options .btn,.print-options .form-group,.support-signature-panel,.support-signature-panel .form-group,.signature-warning{width:100%;justify-content:center;text-align:center}.print-options{width:100%}.printable-page .card-body{padding:1rem}.ordem-header{grid-template-columns:1fr;text-align:center}.ordem-right,.ordem-logo{justify-self:center;text-align:center;align-items:center;justify-content:center;width:100%;max-width:260px;margin:0 auto}.ordem-center h1{white-space:normal}.assinaturas-grid{grid-template-columns:1fr;gap:2rem}.ordem-info-table,.ordem-items-table{min-width:760px}.signature-page-control{position:static;margin:10px}}
+
+/* Crédito discreto no rodapé de cada via da aquisição. */
+.credito-aquisicao{margin-top:12px;text-align:right;color:#64748b;font-size:10px;font-weight:500;break-inside:avoid;page-break-inside:avoid}
+@media print{
+  .credito-aquisicao{margin-top:3mm!important;text-align:right!important;color:#555!important;font-size:7.5px!important}
+  .ordem-items-table thead{display:table-header-group!important}
+  .ordem-items-table tr{break-inside:avoid!important;page-break-inside:avoid!important}
+  .ordem-section-title{break-after:avoid!important;page-break-after:avoid!important}
+  
+}
 
 @media print{
     @page{size:A4 portrait;margin:8mm 8mm 8mm 8mm}
