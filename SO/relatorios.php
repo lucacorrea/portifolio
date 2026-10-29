@@ -651,6 +651,13 @@ if (in_array($export, ['excel', 'pdf', 'pdf_fornecedor', 'pdf_secretaria'], true
                 vertical-align: top;
             }
 
+            .credito-desenvolvedor {
+                color: #64748b;
+                font-size: 8px;
+                text-align: right;
+                margin: -3px 0 8px;
+            }
+
             .resumo {
                 margin-bottom: 8px;
             }
@@ -822,6 +829,8 @@ if (in_array($export, ['excel', 'pdf', 'pdf_fornecedor', 'pdf_secretaria'], true
                         <td><strong>Período:</strong> <?php echo h($periodo_texto); ?></td>
                     </tr>
                 </table>
+
+                <div class="credito-desenvolvedor">Desenvolvido por Lucas Correa</div>
 
                 <table class="resumo">
                     <tr>
