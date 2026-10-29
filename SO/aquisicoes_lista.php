@@ -599,7 +599,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             <?php if ($is_pdf_export): ?>
             @page {
                 size: A4 landscape;
-                margin: 0;
+                margin: 6mm;
             }
             <?php endif; ?>
 
@@ -1142,7 +1142,8 @@ if (in_array($export, ['excel', 'pdf'], true)) {
 
                     try {
                         const worker = window.html2pdf().set({
-                            margin: [0, 0, 0, 0],
+                            // Reserva espaço inferior para o crédito e a paginação do PDF.
+                            margin: [0, 0, 7, 0],
                             filename: <?php echo json_encode($filename . '.pdf'); ?>,
                             image: { type: 'jpeg', quality: 0.98 },
                             html2canvas: {
