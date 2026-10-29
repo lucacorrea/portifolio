@@ -743,6 +743,15 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                 padding: 5mm;
             }
 
+            .credito-aquisicoes-lista {
+                text-align: right;
+                margin-top: 8px;
+                color: #64748b;
+                font-size: 8px;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
             body.pdf-export .sheet {
                 width: 100%;
                 table-layout: fixed;
@@ -829,9 +838,10 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                 padding: 2px 5px;
             }
 
+            /* Fornecedores seguem na mesma folha quando houver espaço. */
             body.pdf-export .supplier-page-break {
-                break-before: page;
-                page-break-before: always;
+                break-before: auto;
+                page-break-before: auto;
             }
 
             body.pdf-export .secretaria-card-title td {
@@ -946,8 +956,14 @@ if (in_array($export, ['excel', 'pdf'], true)) {
 
                 .pdf-page {
                     margin: 0 !important;
-                    width: 297mm !important;
-                    min-height: 210mm !important;
+                    width: 100% !important;
+                    min-height: 0 !important;
+                    padding: 0 !important;
+                }
+
+                .sheet tr, .sheet td, .sheet th {
+                    break-inside: avoid;
+                    page-break-inside: avoid;
                 }
             }
             <?php endif; ?>
@@ -1106,6 +1122,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             <?php endif; ?>
         </table>
         <?php if ($is_pdf_export): ?>
+                <div class="credito-aquisicoes-lista">Desenvolvido por Lucas Correa</div>
                 </div>
             </div>
 
@@ -1141,7 +1158,6 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                             },
                             pagebreak: {
                                 mode: ['css', 'legacy'],
-                                before: ['.supplier-page-break'],
                                 avoid: ['tr']
                             }
                         }).from(report).toPdf();
@@ -1157,7 +1173,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
 
                             for (let page = 1; page <= totalPages; page++) {
                                 pdf.setPage(page);
-                                pdf.text(`${emittedAt} | Página ${page} de ${totalPages}`, pageWidth - 6, pageHeight - 4, {
+                                pdf.text(`Desenvolvido por Lucas Correa | ${emittedAt} | Página ${page} de ${totalPages}`, pageWidth - 6, pageHeight - 4, {
                                     align: 'right'
                                 });
                             }
