@@ -86,10 +86,12 @@ if ($is_print) {
             .ordem-items-table th { background: #f0f0f0; font-weight: bold; text-align: center; }
             
             /* Previne quebra de linha feia cortando o texto ao meio */
-            .ordem-items-table tr { page-break-inside: avoid; }
+            .ordem-items-table thead { display: table-header-group; }
+            .ordem-items-table tr { page-break-inside: avoid; break-inside: avoid; }
             td { page-break-inside: avoid; }
             .assinaturas { display: flex; justify-content: space-between; margin-top: 50px; text-align: center; page-break-inside: avoid; }
             .assinaturas > div { width: 45%; border-top: 1px solid #000; padding-top: 5px; font-size: 12px; font-weight: bold; }
+            .credito-aquisicao { text-align: right; font-size: 10px; color: #555; margin-top: 14px; page-break-inside: avoid; break-inside: avoid; }
         </style>
     </head>
     <body>
@@ -197,6 +199,7 @@ if ($is_print) {
                             <?php endif; ?>
                         </tbody>
                     </table>
+                    <div class="credito-aquisicao">Desenvolvido por Lucas Correa</div>
                 </div>
             <?php endforeach; ?>
         </div>
