@@ -547,11 +547,10 @@ if ($export === 'pdf_fornecedores') {
                 margin: 0 auto 10px;
                 padding: 0;
                 background: #ffffff;
-                page-break-after: always;
-            }
-
-            .folha-fornecedor:last-child {
                 page-break-after: auto;
+                break-after: auto;
+                page-break-inside: auto;
+                break-inside: auto;
             }
 
             .titulo-relatorio {
@@ -672,6 +671,20 @@ if ($export === 'pdf_fornecedores') {
                     background: #ffffff !important;
                 }
 
+                .dados thead {
+                    display: table-header-group !important;
+                }
+
+                .dados tr, .dados td, .resumo {
+                    page-break-inside: avoid;
+                    break-inside: avoid;
+                }
+
+                .cabecalho-fornecedor {
+                    page-break-after: avoid;
+                    break-after: avoid;
+                }
+
                 .no-print {
                     display: none !important;
                 }
@@ -759,14 +772,16 @@ if ($export === 'pdf_fornecedores') {
                                 <col class="col-status">
                                 <col class="col-usuario">
                             </colgroup>
-                            <tr>
-                                <th>Número</th>
-                                <th>Secretaria</th>
-                                <th>Data</th>
-                                <th>Valor</th>
-                                <th>Status</th>
-                                <th>Cadastrado por</th>
-                            </tr>
+                            <thead>
+                                <tr>
+                                    <th>Número</th>
+                                    <th>Secretaria</th>
+                                    <th>Data</th>
+                                    <th>Valor</th>
+                                    <th>Status</th>
+                                    <th>Cadastrado por</th>
+                                </tr>
+                            </thead>
                             <?php foreach ($fornecedor['items'] as $oficio_export): ?>
                                 <tr>
                                     <td class="text-center"><?php echo h($oficio_export['numero']); ?></td>
