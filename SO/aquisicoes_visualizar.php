@@ -167,6 +167,7 @@ function render_aquisicao_signature_footer(string $assinaturaLabel, ?array $assi
                 </div>
             </div>
         </div>
+        <div class="credito-aquisicao">Desenvolvido por Lucas Correa</div>
     </div>
 <?php
 }
@@ -597,6 +598,17 @@ include 'views/layout/header.php';
     }
 </style>
 <link rel="stylesheet" href="assets/css/assinatura_aquisicao.css?v=20261016-3">
+<style>
+/* Crédito discreto no rodapé de cada via da aquisição. */
+.credito-aquisicao{margin-top:12px;text-align:right;color:#64748b;font-size:10px;font-weight:500;break-inside:avoid;page-break-inside:avoid}
+@media print{
+  .credito-aquisicao{margin-top:3mm!important;text-align:right!important;color:#555!important;font-size:7.5px!important}
+  .ordem-items-table thead{display:table-header-group!important}
+  .ordem-items-table tr{break-inside:avoid!important;page-break-inside:avoid!important}
+  .ordem-section-title{break-after:avoid!important;page-break-after:avoid!important}
+  
+}
+</style>
 
 <div class="no-print print-topbar">
     <a href="aquisicoes_lista.php" class="btn btn-outline btn-sm">
