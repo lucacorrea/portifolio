@@ -17,6 +17,11 @@ class ObjetoAprendizagem extends Model
         'disciplina_id', 'ano_escolar', 'status', 'arquivo',
     ];
 
+    protected $casts = [
+        'professor_id' => 'integer',
+        'disciplina_id' => 'integer',
+    ];
+
     public function professor()
     {
         return $this->belongsTo(Professor::class);
