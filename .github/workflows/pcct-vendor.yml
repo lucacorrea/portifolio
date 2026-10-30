@@ -50,6 +50,14 @@ jobs:
           tar -czf "$RUNNER_TEMP/pcct-vendor.tar.gz" vendor
           test -s "$RUNNER_TEMP/pcct-vendor.tar.gz"
 
+      - name: Disponibilizar pacote vendor para recuperação manual
+        uses: actions/upload-artifact@v4
+        with:
+          name: pcct-vendor
+          path: ${{ runner.temp }}/pcct-vendor.tar.gz
+          retention-days: 7
+          if-no-files-found: error
+
       - name: Verificar se o acesso SSH foi configurado
         id: ssh_config
         env:
@@ -64,7 +72,8 @@ jobs:
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=PCCT::vendor foi gerado, mas ainda faltam os cinco secrets SSH para enviá-lo à Hostinger."
+            echo "::error title=Deploy PCCT incompleto::vendor foi gerado, mas nao chegou a Hostinger. Configure PCCT_SSH_HOST, PCCT_SSH_USER, PCCT_SSH_PORT, PCCT_SSH_PRIVATE_KEY e PCCT_SSH_KNOWN_HOSTS no GitHub Actions Secrets."
+            exit 1
           fi
 
       - name: Configurar conexão SSH segura
