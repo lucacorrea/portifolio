@@ -1,0 +1,135 @@
+name: PCCT - Dependências Laravel na Hostinger
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'pcct/**'
+      - '.github/workflows/pcct-vendor.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pcct-vendor-main
+  cancel-in-progress: false
+
+jobs:
+  build-and-sync:
+    name: Preparar vendor e sincronizar no servidor (se SSH estiver configurado)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: pcct
+
+    steps:
+      - name: Obter código da main
+        uses: actions/checkout@v4
+
+      - name: Preparar PHP e Composer
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+          extensions: mbstring, pdo_mysql, fileinfo, curl, dom, xml, zip
+          coverage: none
+
+      - name: Instalar dependências do Laravel
+        run: |
+          set -euo pipefail
+          composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+          test -f vendor/autoload.php
+
+      - name: Empacotar somente a pasta vendor
+        run: |
+          set -euo pipefail
+          tar -czf "$RUNNER_TEMP/pcct-vendor.tar.gz" vendor
+          test -s "$RUNNER_TEMP/pcct-vendor.tar.gz"
+
+      - name: Verificar se o acesso SSH foi configurado
+        id: ssh_config
+        env:
+          PCCT_SSH_HOST: ${{ secrets.PCCT_SSH_HOST }}
+          PCCT_SSH_USER: ${{ secrets.PCCT_SSH_USER }}
+          PCCT_SSH_PORT: ${{ secrets.PCCT_SSH_PORT }}
+          PCCT_SSH_PRIVATE_KEY: ${{ secrets.PCCT_SSH_PRIVATE_KEY }}
+          PCCT_SSH_KNOWN_HOSTS: ${{ secrets.PCCT_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$PCCT_SSH_HOST" && -n "$PCCT_SSH_USER" && -n "$PCCT_SSH_PORT" && -n "$PCCT_SSH_PRIVATE_KEY" && -n "$PCCT_SSH_KNOWN_HOSTS" ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=PCCT::vendor foi gerado, mas ainda faltam os cinco secrets SSH para enviá-lo à Hostinger."
+          fi
+
+      - name: Configurar conexão SSH segura
+        if: steps.ssh_config.outputs.ready == 'true'
+        env:
+          PCCT_SSH_PRIVATE_KEY: ${{ secrets.PCCT_SSH_PRIVATE_KEY }}
+          PCCT_SSH_KNOWN_HOSTS: ${{ secrets.PCCT_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "$HOME/.ssh"
+          printf '%s\n' "$PCCT_SSH_PRIVATE_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$PCCT_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+      - name: Transferir dependências sem tocar em .env ou no banco
+        if: steps.ssh_config.outputs.ready == 'true'
+        env:
+          PCCT_SSH_HOST: ${{ secrets.PCCT_SSH_HOST }}
+          PCCT_SSH_USER: ${{ secrets.PCCT_SSH_USER }}
+          PCCT_SSH_PORT: ${{ secrets.PCCT_SSH_PORT }}
+        run: |
+          set -euo pipefail
+          case "$PCCT_SSH_PORT" in
+            ''|*[!0-9]*) echo "Porta SSH inválida"; exit 1;;
+          esac
+
+          REMOTE_DIR="/home/u784961086/domains/lucascorrea.pro/public_html/pcct"
+          REMOTE="$PCCT_SSH_USER@$PCCT_SSH_HOST"
+          SSH_OPTIONS=(-i "$HOME/.ssh/id_ed25519" -p "$PCCT_SSH_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes)
+
+          # Confere destino antes de enviar qualquer arquivo.
+          ssh "${SSH_OPTIONS[@]}" "$REMOTE" \
+            "test -f '$REMOTE_DIR/artisan' && test -f '$REMOTE_DIR/public/index.php' && test -f '$REMOTE_DIR/composer.json' && mkdir -p '$REMOTE_DIR/storage/framework'"
+
+          scp -i "$HOME/.ssh/id_ed25519" -P "$PCCT_SSH_PORT" \
+            -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "$RUNNER_TEMP/pcct-vendor.tar.gz" \
+            "$REMOTE:$REMOTE_DIR/storage/framework/.pcct-vendor-$GITHUB_SHA.tgz"
+
+          ssh "${SSH_OPTIONS[@]}" "$REMOTE" "PCCT_SHA='$GITHUB_SHA' sh -s" <<'REMOTE_SCRIPT'
+          set -eu
+          cd /home/u784961086/domains/lucascorrea.pro/public_html/pcct
+
+          ARCHIVE="storage/framework/.pcct-vendor-$PCCT_SHA.tgz"
+          STAGE="storage/framework/.pcct-vendor-stage-$PCCT_SHA"
+          BACKUP="storage/framework/.pcct-vendor-backup-$PCCT_SHA"
+          mkdir -p "$STAGE"
+          tar -xzf "$ARCHIVE" -C "$STAGE"
+          test -f "$STAGE/vendor/autoload.php"
+
+          if [ -d vendor ]; then
+            mv vendor "$BACKUP"
+          fi
+          if ! mv "$STAGE/vendor" vendor; then
+            if [ -d "$BACKUP" ]; then mv "$BACKUP" vendor; fi
+            exit 1
+          fi
+
+          rm -rf "$STAGE" "$BACKUP"
+          rm -f "$ARCHIVE"
+          test -f vendor/autoload.php
+          echo "PCCT: vendor sincronizado com sucesso."
+          REMOTE_SCRIPT
+
+      - name: Aviso de conclusão
+        if: steps.ssh_config.outputs.ready == 'true'
+        run: echo "A pasta vendor foi sincronizada na Hostinger. O Git da Hostinger continua responsável pelo código."
