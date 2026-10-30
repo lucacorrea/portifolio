@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [CatalogoController::class, 'index'])->name('catalogo');
 Route::get('/materiais/{material}', [CatalogoController::class, 'show'])->name('materiais.show');
+Route::get('/materiais/{material}/midia/{tipo}', [CatalogoController::class, 'media'])->where('tipo', 'arquivo|capa')->name('materiais.midia');
 
 Route::middleware('guest')->group(function () {
     Route::get('/entrar', [AuthController::class, 'loginForm'])->name('login');

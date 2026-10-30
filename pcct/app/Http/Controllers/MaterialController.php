@@ -117,10 +117,10 @@ class MaterialController extends Controller
         }
 
         if ($request->hasFile('imagem')) {
-            $attrs['imagem'] = $request->file('imagem')->store('pcct/imagens', 'public');
+            $attrs['imagem'] = $request->file('imagem')->store('pcct/imagens', 'local');
         }
         if ($request->hasFile('arquivo')) {
-            $attrs['arquivo'] = $request->file('arquivo')->store('pcct/arquivos', 'public');
+            $attrs['arquivo'] = $request->file('arquivo')->store('pcct/arquivos', 'local');
         }
 
         try {
@@ -131,7 +131,7 @@ class MaterialController extends Controller
         } catch (\Throwable $e) {
             foreach (['imagem', 'arquivo'] as $field) {
                 if (isset($attrs[$field])) {
-                    Storage::disk('public')->delete($attrs[$field]);
+                    Storage::disk('local')->delete($attrs[$field]);
                 }
             }
             throw $e;
@@ -139,7 +139,7 @@ class MaterialController extends Controller
 
         foreach (['imagem', 'arquivo'] as $index => $field) {
             if (isset($attrs[$field]) && $oldFiles[$index]) {
-                Storage::disk('public')->delete($oldFiles[$index]);
+                Storage::disk('local')->delete($oldFiles[$index]);
             }
         }
     }
@@ -167,7 +167,7 @@ class MaterialController extends Controller
         $material->delete();
         foreach ($files as $file) {
             if ($file) {
-                Storage::disk('public')->delete($file);
+                Storage::disk('local')->delete($file);
             }
         }
         return back()->with('success', 'Material excluído.');

@@ -6,6 +6,7 @@ use App\Models\Disciplina;
 use App\Models\ObjetoAprendizagem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class CatalogoController extends Controller
 {
@@ -52,17 +53,35 @@ class CatalogoController extends Controller
         ]);
     }
 
-    public function show(ObjetoAprendizagem $material)
+    private function guardVisibility(ObjetoAprendizagem $material): void
     {
-        if ($material->status !== 'publicado') {
-            $user = Auth::user();
-            $canPreview = $user && ($user->role === 'admin'
-                || ($user->role === 'professor' && $material->professor()
-                    ->where('user_id', $user->id)->exists()));
-            abort_unless($canPreview, 404);
+        if ($material->status === 'publicado') {
+            return;
         }
 
+        $user = Auth::user();
+        $canPreview = $user && ($user->role === 'admin'
+            || ($user->role === 'professor' && $material->professor()
+                ->where('user_id', $user->id)->exists()));
+        abort_unless($canPreview, 404);
+    }
+
+    public function show(ObjetoAprendizagem $material)
+    {
+        $this->guardVisibility($material);
         $material->load(['disciplina', 'habilidades', 'professor.user']);
         return view('catalogo.show', compact('material'));
+    }
+
+    public function media(ObjetoAprendizagem $material, string $tipo)
+    {
+        $this->guardVisibility($material);
+        abort_unless(in_array($tipo, ['arquivo', 'capa'], true), 404);
+        $path = $tipo === 'capa' ? $material->imagem : $material->arquivo;
+        abort_unless($path && Storage::disk('local')->exists($path), 404);
+        $response = Storage::disk('local')->response($path);
+        $response->headers->set('X-Content-Type-Options', 'nosniff');
+        $response->headers->set('Cache-Control', 'private, max-age=300');
+        return $response;
     }
 }

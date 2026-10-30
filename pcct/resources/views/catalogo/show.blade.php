@@ -8,7 +8,7 @@
         <h1>{{ $material->titulo }}</h1>
         <p class="lead">{{ $material->tematica }}</p>
         @if($material->imagem)
-            <img class="detail-image" src="{{ asset('storage/'.$material->imagem) }}" alt="Imagem de {{ $material->titulo }}">
+            <img class="detail-image" src="{{ route('materiais.midia', [$material, 'capa']) }}" alt="Imagem de {{ $material->titulo }}">
         @endif
         <h2>Sobre este conteúdo</h2>
         <div class="preline">{{ $material->descricao }}</div>
@@ -19,7 +19,7 @@
     <aside class="panel detail-aside">
         <h2>Acessar material</h2>
         @if($material->arquivo)
-            <a class="button primary wide" target="_blank" rel="noopener noreferrer" href="{{ asset('storage/'.$material->arquivo) }}">Abrir arquivo</a>
+            <a class="button primary wide" target="_blank" rel="noopener noreferrer" href="{{ route('materiais.midia', [$material, 'arquivo']) }}">Abrir arquivo</a>
         @endif
         @if($material->link && in_array(parse_url($material->link, PHP_URL_SCHEME), ['http', 'https'], true))
             <a class="button outline wide" target="_blank" rel="noopener noreferrer" href="{{ $material->link }}">Abrir link externo</a>

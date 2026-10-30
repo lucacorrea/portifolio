@@ -68,7 +68,7 @@
                 <article class="material-card panel">
                     <a class="material-cover" href="{{ route('materiais.show', $material) }}">
                         @if($material->imagem)
-                            <img src="{{ asset('storage/'.$material->imagem) }}" alt="Capa de {{ $material->titulo }}" loading="lazy">
+                            <img src="{{ route('materiais.midia', [$material, 'capa']) }}" alt="Capa de {{ $material->titulo }}" loading="lazy">
                         @else
                             <span class="cover-placeholder">PCCT</span>
                         @endif

@@ -61,7 +61,7 @@
             @if($material->imagem)<small>Uma nova imagem substitui a capa atual.</small>@endif
         </div>
     </div>
-    <p class="muted text-small">Forneça ao menos um link ou um arquivo. Os arquivos serão acessíveis na biblioteca quando o material estiver publicado; para conteúdo privado, não anexe dados sensíveis.</p>
+    <p class="muted text-small">Forneça ao menos um link ou um arquivo. Anexos enviados ficam protegidos: somente materiais publicados são acessíveis publicamente.</p>
     <div class="form-actions"><a class="button outline" href="{{ route('professor.materiais.index') }}">Cancelar</a><button class="button primary" type="submit">{{ $editing ? 'Salvar alterações' : 'Salvar material' }}</button></div>
 </form>
 @endsection
