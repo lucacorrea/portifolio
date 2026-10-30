@@ -87,11 +87,11 @@ O processo pressupõe que o código PCCT já esteja implantado no caminho acima 
 
 ## Conexão PDO independente (opcional)
 
-O arquivo `config/conexao.php` permite acessar o MySQL em scripts PHP independentes do Laravel, usando as mesmas variáveis `DB_*` do `.env`, sem duplicar usuário ou senha:
+O arquivo `conexao.php` permite acessar o MySQL em scripts PHP independentes do Laravel, usando as mesmas variáveis `DB_*` do `.env`, sem duplicar usuário ou senha:
 
 ```php
 <?php
-$pdo = require __DIR__ . '/config/conexao.php';
+$pdo = require __DIR__ . '/conexao.php';
 $disciplinas = $pdo->query('SELECT id, nome FROM disciplinas ORDER BY nome')->fetchAll();
 ```
 

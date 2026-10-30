@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 /**
  * Conexão PDO opcional para scripts PHP independentes do Laravel.
- * Uso: $pdo = require __DIR__ . '/config/conexao.php';
+ * Uso: $pdo = require __DIR__ . '/conexao.php';
  * O Laravel continua usando config/database.php e suas dependências.
  */
 
-$envPath = dirname(__DIR__) . '/.env';
+$envPath = __DIR__ . '/.env';
 $dotenv = [];
 
 if (is_readable($envPath)) {
@@ -56,7 +56,7 @@ $env = static function (string $name, string $default = '') use ($dotenv): strin
 };
 
 if ($env('DB_CONNECTION', 'mysql') !== 'mysql') {
-    throw new RuntimeException('config/conexao.php aceita apenas DB_CONNECTION=mysql.');
+    throw new RuntimeException('conexao.php aceita apenas DB_CONNECTION=mysql.');
 }
 
 $host = $env('DB_HOST', '127.0.0.1');
