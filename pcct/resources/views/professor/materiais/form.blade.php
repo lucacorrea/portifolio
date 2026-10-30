@@ -3,7 +3,7 @@
 @section('content')
 @php
     $editing = $material->exists;
-    $selecionadas = array_map('intval', old('habilidades', $material->habilidades->pluck('id')->all()));
+    $selecionadas = array_map('intval', (array) old('habilidades', $material->habilidades->pluck('id')->all()));
 @endphp
 <div class="page-top">
     <a class="back-link" href="{{ route('professor.materiais.index') }}">← Voltar aos meus materiais</a>

@@ -77,7 +77,7 @@ class MaterialController extends Controller
         ]);
 
         if (! $request->filled('link') && ! $request->hasFile('arquivo')
-            && (! $material || (! $material->link && ! $material->arquivo))) {
+            && (! $material || ! $material->arquivo)) {
             throw ValidationException::withMessages(['link' => 'Informe um link ou envie um arquivo.']);
         }
 
@@ -107,7 +107,7 @@ class MaterialController extends Controller
             'ano_escolar' => $data['ano_escolar'],
             'status' => $data['status'],
             'tags' => $data['tags'] ?? null,
-            'link' => $data['link'] ?? ($material->link ?: ''),
+            'link' => $data['link'] ?? '',
             'bncc' => ! empty($data['habilidades'])
                 ? HabilidadeBncc::whereIn('id', $data['habilidades'])->orderBy('id')->value('codigo')
                 : null,
