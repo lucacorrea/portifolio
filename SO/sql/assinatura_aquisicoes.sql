@@ -1,6 +1,8 @@
+-- Execute uma vez no banco do SO antes de habilitar a assinatura na visualização.
+-- IMPORTANTE: aquisicoes.id é INT(11) SIGNED neste sistema.
 CREATE TABLE IF NOT EXISTS assinaturas_aquisicoes (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    aquisicao_id INT UNSIGNED NOT NULL,
+    aquisicao_id INT(11) NOT NULL,
     assinatura_id INT UNSIGNED NOT NULL,
     assinado_por VARCHAR(150) DEFAULT NULL,
     assinado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

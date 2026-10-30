@@ -4,7 +4,8 @@ require_once 'config/functions.php';
 login_check();
 
 $page_title = 'Imprimir Aquisições em Lote';
-$is_support = strtoupper((string)($_SESSION['nivel'] ?? '')) === 'SUPORTE';
+// A seleção de assinatura na impressão em lote é exclusiva dos logins autorizados.
+$is_support = usuario_pode_assinar_aquisicao($pdo);
 
 $busca = trim((string)($_GET['busca'] ?? ''));
 $status = trim((string)($_GET['status'] ?? ''));
@@ -14,10 +15,13 @@ $data_inicio = trim((string)($_GET['data_inicio'] ?? ''));
 $data_fim = trim((string)($_GET['data_fim'] ?? ''));
 $via = trim((string)($_GET['via'] ?? 'administrativa'));
 
-$vias_permitidas = ['administrativa', 'fornecedor'];
+$vias_permitidas = ['administrativa', 'fornecedor', 'ambas'];
 if (!in_array($via, $vias_permitidas, true)) {
     $via = 'administrativa';
 }
+
+// Na opção "ambas", imprimimos primeiro todo o lote administrativo e depois todo o lote do fornecedor.
+$vias_impressao = $via === 'ambas' ? ['administrativa', 'fornecedor'] : [$via];
 
 $data_inicio_valida = $data_inicio !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_inicio);
 $data_fim_valida = $data_fim !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_fim);
@@ -139,6 +143,24 @@ if (!empty($aquisicoes)) {
     }
 }
 
+// Aquisições assinadas aparecem assinadas em qualquer via, para qualquer leitor autorizado.
+$assinaturas_registradas = [];
+if (!empty($aquisicoes)) {
+    $ids_assinaturas = array_map(static function (array $aq): int {
+        return (int)$aq['id'];
+    }, $aquisicoes);
+    $marcadores = implode(',', array_fill(0, count($ids_assinaturas), '?'));
+    try {
+        $stmt_assinadas = $pdo->prepare("SELECT aquisicao_id FROM assinaturas_aquisicoes WHERE aquisicao_id IN ($marcadores)");
+        $stmt_assinadas->execute($ids_assinaturas);
+        foreach ($stmt_assinadas->fetchAll(PDO::FETCH_COLUMN) as $aqIdAssinada) {
+            $assinaturas_registradas[(int)$aqIdAssinada] = true;
+        }
+    } catch (PDOException $e) {
+        // Antes da instalação da tabela, mantém a impressão sem assinatura registrada.
+    }
+}
+
 $assinatura_disponivel = false;
 if ($is_support) {
     try {
@@ -208,27 +230,29 @@ function render_aquisicao_lote_header(array $aq, string $titulo, string $viaLabe
 <?php
 }
 
-function render_aquisicao_lote_signature_footer(string $assinaturaLabel, bool $isSupport, bool $assinaturaDisponivel): void
+function render_aquisicao_lote_signature_footer(string $assinaturaLabel, bool $isSupport, bool $assinaturaDisponivel, int $aquisicaoId, bool $jaAssinada): void
 {
 ?>
     <div class="rodape-documento print-signature-footer">
         <div class="assinaturas-grid">
-            <div class="assinatura-fornecedor-col" style="margin-top:8px !important;">
+            <div class="assinatura-col assinatura-fornecedor-col">
                 <div class="assinatura-linha assinatura-fornecedor-linha">
                     <div class="assinatura-campo assinatura-campo-fornecedor">
-                        <?php if ($isSupport && $assinaturaDisponivel): ?>
-                            <img
-                                src="assinatura_suporte.php"
-                                alt="Assinatura autorizada"
-                                class="support-signature-image"
-                                loading="eager">
+                        <?php if ($jaAssinada || ($isSupport && $assinaturaDisponivel)): ?>
+                            <span class="assinatura-imagem-wrap">
+                                <img
+                                    src="<?= $jaAssinada ? 'assinatura_suporte.php?aquisicao=' . $aquisicaoId : 'assinatura_suporte.php' ?>"
+                                    alt="Assinatura autorizada"
+                                    class="support-signature-image"
+                                    loading="eager">
+                            </span>
                         <?php endif; ?>
                     </div>
                     <div class="assinatura-titulo">AUTORIZAÇÃO DE FORNECEDOR</div>
                     <div class="assinatura-subtitulo"><?= h_lote($assinaturaLabel) ?></div>
                 </div>
             </div>
-            <div>
+            <div class="assinatura-col assinatura-recebimento-col">
                 <div class="assinatura-linha">
                     <div class="assinatura-campo"></div>
                     <div class="assinatura-titulo">CONFIRMAÇÃO DE RECEBIMENTO</div>
@@ -236,6 +260,7 @@ function render_aquisicao_lote_signature_footer(string $assinaturaLabel, bool $i
                 </div>
             </div>
         </div>
+        <div class="credito-aquisicao">Desenvolvido por Lucas Correa</div>
     </div>
 <?php
 }
@@ -293,7 +318,8 @@ function render_aquisicao_lote_page(
     string $via,
     bool $isSupport,
     bool $assinaturaDisponivel,
-    int $pagina
+    int $pagina,
+    bool $jaAssinada
 ): void {
     $is_fornecedor = $via === 'fornecedor';
     $titulo = $is_fornecedor ? 'Ordem de Fornecimento' : 'Ordem de Aquisição e Suprimentos';
@@ -301,11 +327,11 @@ function render_aquisicao_lote_page(
     $assinatura_label = $is_fornecedor ? 'Autorização de Saída' : 'Autorização de Recebimento';
     $data_emissao = strtotime((string)($aq['criado_em'] ?? '')) ?: time();
 ?>
-    <div class="card printable-page" data-page="<?= $pagina ?>" data-aquisicao="<?= (int)$aq['id'] ?>">
-        <?php if ($isSupport && $assinaturaDisponivel): ?>
-            <label class="signature-page-control no-print" title="Assinar somente esta aquisição">
+    <div class="card printable-page <?= $jaAssinada ? 'signature-enabled' : '' ?>" data-assinada="<?= $jaAssinada ? '1' : '0' ?>" data-page="<?= $pagina ?>" data-aquisicao="<?= (int)$aq['id'] ?>" data-via="<?= h_lote($via) ?>">
+        <?php if ($isSupport && $assinaturaDisponivel && !$jaAssinada): ?>
+            <label class="signature-page-control no-print" title="Assinar somente esta via da aquisição">
                 <input type="checkbox" class="signature-page-checkbox">
-                <span>Página <?= $pagina ?> • <?= h_lote($aq['numero_aq']) ?></span>
+                <span>Página <?= $pagina ?> • <?= h_lote($aq['numero_aq']) ?> • <?= h_lote($label_via) ?></span>
             </label>
         <?php endif; ?>
 
@@ -350,7 +376,7 @@ function render_aquisicao_lote_page(
                     </tr>
                 </tbody>
                 <tfoot>
-                    <tr><td><?php render_aquisicao_lote_signature_footer($assinatura_label, $isSupport, $assinaturaDisponivel); ?></td></tr>
+                    <tr><td><?php render_aquisicao_lote_signature_footer($assinatura_label, $isSupport, $assinaturaDisponivel, (int)$aq['id'], $jaAssinada); ?></td></tr>
                 </tfoot>
             </table>
         </div>
@@ -380,10 +406,22 @@ include 'views/layout/header.php';
 .info-col-label-a{width:14%}.info-col-value-a{width:40%}.info-col-label-b{width:23%}.info-col-value-b{width:23%}
 .ordem-info-table td,.ordem-items-table th,.ordem-items-table td{border:1px solid #000;padding:8px 9px;vertical-align:middle;line-height:1.3}.ordem-items-table thead tr,.ordem-total-row,.ordem-info-label{background:#f1f1f1}.ordem-items-table th{text-align:center;font-size:.73rem;font-weight:800;text-transform:uppercase}.ordem-items-table td{font-size:.82rem}.ordem-info-label{font-weight:800;font-size:.69rem;text-transform:uppercase;white-space:normal}.data-emissao{white-space:nowrap}.referencia{font-family:Arial,Helvetica,sans-serif;font-size:.78rem;font-weight:800;letter-spacing:0;word-break:normal;overflow-wrap:break-word;line-height:1.25}.c-item{width:7%}.c-unid{width:8%}.c-qtd{width:9%}.c-preco{width:15%}.c-total{width:16%}.valor-monetario{white-space:nowrap;font-variant-numeric:tabular-nums}.ordem-total-row td{border-bottom:1px solid #000!important}.total-label{font-size:.86rem;text-transform:uppercase;padding-right:10px!important}.total-value{font-size:.94rem;white-space:nowrap;font-variant-numeric:tabular-nums}.ordem-section-title{font-size:.78rem;font-weight:800;color:#222;text-transform:uppercase;margin:1.05rem 0 .45rem}
 
-.rodape-documento{margin-top:1.8rem}.assinaturas-grid{display:grid;grid-template-columns:1fr 1fr;gap:3.5rem;text-align:center;margin-top:2.2rem}.assinatura-linha{min-height:100px;box-sizing:border-box}.assinatura-campo{height:62px;border-bottom:1.5px solid #000;display:flex;align-items:flex-end;justify-content:center;overflow:hidden;box-sizing:border-box}.assinatura-titulo{font-weight:800;color:#000;font-size:.84rem;line-height:1.2;margin-top:8px}.assinatura-subtitulo{font-size:.63rem;color:#555;font-weight:700;text-transform:uppercase;margin-top:3px}
-.support-signature-image{display:none;width:100%;height:100%;object-fit:contain;object-position:center bottom}.printable-page.signature-enabled .assinatura-campo-fornecedor{border-bottom-color:transparent}.printable-page.signature-enabled .support-signature-image{display:block}
+.rodape-documento{margin-top:1.8rem}.assinaturas-grid{display:grid;grid-template-columns:1fr 1fr;gap:3.5rem;text-align:center;margin-top:2.2rem}.assinaturas-grid>.assinatura-col{min-width:0;margin:0!important;padding:0!important;align-self:start}.assinatura-linha{min-height:100px;box-sizing:border-box}.assinatura-campo{position:relative;height:62px;border-bottom:1.5px solid #000;display:flex;align-items:flex-end;justify-content:center;overflow:visible;box-sizing:border-box;padding:0 8px}.assinatura-imagem-wrap{position:absolute;left:0;right:0;bottom:2px;height:52px;display:flex;align-items:flex-end;justify-content:center;pointer-events:none}.assinatura-titulo{font-weight:800;color:#000;font-size:.84rem;line-height:1.2;margin-top:8px}.assinatura-subtitulo{font-size:.63rem;color:#555;font-weight:700;text-transform:uppercase;margin-top:3px}
+.support-signature-image{display:none;width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain;object-position:center bottom}.printable-page.signature-enabled .support-signature-image{display:block}
+/* A assinatura cadastrada já possui linha própria; ocultar a borda duplicada apenas quando selecionada. */
+.printable-page.signature-enabled .assinatura-campo-fornecedor{border-bottom:none!important}
 
 @media(max-width:768px){.print-topbar{flex-direction:column;align-items:stretch}.print-topbar .btn,.print-options .btn,.print-options .form-group,.support-signature-panel,.support-signature-panel .form-group,.signature-warning{width:100%;justify-content:center;text-align:center}.print-options{width:100%}.printable-page .card-body{padding:1rem}.ordem-header{grid-template-columns:1fr;text-align:center}.ordem-right,.ordem-logo{justify-self:center;text-align:center;align-items:center;justify-content:center;width:100%;max-width:260px;margin:0 auto}.ordem-center h1{white-space:normal}.assinaturas-grid{grid-template-columns:1fr;gap:2rem}.ordem-info-table,.ordem-items-table{min-width:760px}.signature-page-control{position:static;margin:10px}}
+
+/* Crédito discreto no rodapé de cada via da aquisição. */
+.credito-aquisicao{margin-top:12px;text-align:right;color:#64748b;font-size:10px;font-weight:500;break-inside:avoid;page-break-inside:avoid}
+@media print{
+  .credito-aquisicao{margin-top:3mm!important;text-align:right!important;color:#555!important;font-size:7.5px!important}
+  .ordem-items-table thead{display:table-header-group!important}
+  .ordem-items-table tr{break-inside:avoid!important;page-break-inside:avoid!important}
+  .ordem-section-title{break-after:avoid!important;page-break-after:avoid!important}
+  
+}
 
 @media print{
     @page{size:A4 portrait;margin:8mm 8mm 8mm 8mm}
@@ -396,13 +434,13 @@ include 'views/layout/header.php';
     .ordem-info-wrap,.ordem-items-wrap{overflow:visible!important;width:100%!important}.ordem-info-wrap{margin:0 0 3mm!important}.ordem-info-table,.ordem-items-table,.print-repeat-table{width:100%!important;min-width:0!important;border-collapse:collapse!important;table-layout:fixed!important}.print-repeat-table>thead{display:table-header-group!important}.print-repeat-table>tbody{display:table-row-group!important}.print-repeat-table>tfoot{display:table-footer-group!important}.info-col-label-a{width:14%!important}.info-col-value-a{width:40%!important}.info-col-label-b{width:23%!important}.info-col-value-b{width:23%!important}
     .ordem-info-table{font-size:10px!important}.ordem-items-table{font-size:9.5px!important;border:1px solid #000!important}.ordem-items-table thead{display:table-header-group!important}.ordem-info-table td,.ordem-items-table th,.ordem-items-table td{padding:2.4mm 1.9mm!important;border:1px solid #000!important;vertical-align:middle!important;line-height:1.22!important}.ordem-info-label{font-size:7.8px!important;line-height:1.15!important}.ordem-items-table th{font-size:7.8px!important;line-height:1.15!important}.ordem-items-table td{font-size:9.5px!important}.data-emissao{white-space:nowrap!important}.referencia{font-size:8.6px!important;line-height:1.2!important;word-break:normal!important;overflow-wrap:break-word!important}.c-item{width:7%!important}.c-unid{width:8%!important}.c-qtd{width:9%!important}.c-preco{width:15%!important}.c-total{width:16%!important}.valor-monetario,.total-value{white-space:nowrap!important;font-variant-numeric:tabular-nums!important}.ordem-section-title{margin:3.8mm 0 1.6mm!important;font-size:9px!important;line-height:1.2!important}.ordem-total-row,.ordem-total-row td,.rodape-documento{page-break-inside:avoid!important;break-inside:avoid!important}.total-label{font-size:9.3px!important}.total-value{font-size:10.3px!important}
 
-    .rodape-documento{margin-top:10mm!important}.assinaturas-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:18mm!important;text-align:center!important;margin-top:2mm!important;page-break-inside:avoid!important;break-inside:avoid!important}.assinatura-linha{min-height:29mm!important;box-sizing:border-box!important}.assinatura-campo{height:18mm!important;border-bottom:1px solid #000!important;display:flex!important;align-items:flex-end!important;justify-content:center!important;overflow:hidden!important;box-sizing:border-box!important}.assinatura-titulo{font-size:9.3px!important;line-height:1.15!important;margin-top:1.5mm!important}.assinatura-subtitulo{font-size:7px!important;line-height:1.15!important;margin-top:.8mm!important}.support-signature-image{display:none!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;margin:0!important;object-fit:contain!important;object-position:center bottom!important}.printable-page.signature-enabled .assinatura-campo-fornecedor{border-bottom-color:transparent!important}.printable-page.signature-enabled .support-signature-image{display:block!important}
+    .rodape-documento{margin-top:10mm!important}.assinaturas-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:18mm!important;text-align:center!important;margin-top:2mm!important;page-break-inside:avoid!important;break-inside:avoid!important}.assinaturas-grid>.assinatura-col{align-self:start!important;margin:0!important;padding:0!important}.assinatura-linha{min-height:29mm!important;box-sizing:border-box!important}.assinatura-campo{position:relative!important;height:18mm!important;border-bottom:1px solid #000!important;display:flex!important;align-items:flex-end!important;justify-content:center!important;overflow:visible!important;box-sizing:border-box!important;padding:0 1mm!important}.assinatura-imagem-wrap{position:absolute!important;left:0!important;right:0!important;bottom:.6mm!important;height:14.5mm!important;display:flex!important;align-items:flex-end!important;justify-content:center!important;pointer-events:none!important}.assinatura-titulo{font-size:9.3px!important;line-height:1.15!important;margin-top:1.5mm!important}.assinatura-subtitulo{font-size:7px!important;line-height:1.15!important;margin-top:.8mm!important}.support-signature-image{display:none!important;width:auto!important;height:auto!important;max-width:100%!important;max-height:100%!important;margin:0!important;object-fit:contain!important;object-position:center bottom!important}.printable-page.signature-enabled .support-signature-image{display:block!important}.printable-page.signature-enabled .assinatura-campo-fornecedor{border-bottom:none!important}
 }
 </style>
 
 <div class="no-print print-topbar">
     <a href="<?= h_lote($voltar_url) ?>" class="btn btn-outline btn-sm"><i class="fas fa-arrow-left"></i> Voltar</a>
-    <span class="print-count"><?= count($aquisicoes) ?> aquisição(ões) encontrada(s)</span>
+    <span class="print-count"><?= count($aquisicoes) ?> aquisição(ões) encontrada(s) • <?= count($aquisicoes) * count($vias_impressao) ?> via(s) para impressão</span>
     <div class="spacer"></div>
 
     <?php if ($is_support && !empty($aquisicoes)): ?>
@@ -412,8 +450,12 @@ include 'views/layout/header.php';
                     <label class="form-label" for="signature-mode"><i class="fas fa-signature"></i> Assinatura</label>
                     <select id="signature-mode" class="form-control">
                         <option value="none" selected>Sem assinatura</option>
-                        <option value="all">Assinar todas</option>
-                        <option value="select">Selecionar páginas</option>
+                        <option value="all">Assinar todas as vias</option>
+                        <?php if ($via === 'ambas'): ?>
+                            <option value="administrativa">Assinar apenas vias administrativas</option>
+                            <option value="fornecedor">Assinar apenas vias do fornecedor</option>
+                        <?php endif; ?>
+                        <option value="select">Selecionar páginas / vias</option>
                     </select>
                 </div>
                 <div class="signature-status" id="signature-status">Nenhuma página será assinada.</div>
@@ -439,6 +481,7 @@ include 'views/layout/header.php';
             <select name="via" class="form-control" onchange="this.form.submit()">
                 <option value="administrativa" <?= $via === 'administrativa' ? 'selected' : '' ?>>Via Administrativa</option>
                 <option value="fornecedor" <?= $via === 'fornecedor' ? 'selected' : '' ?>>Via Fornecedor</option>
+                <option value="ambas" <?= $via === 'ambas' ? 'selected' : '' ?>>As duas vias (Administrativa + Fornecedor)</option>
             </select>
         </div>
         <button type="submit" class="btn btn-outline btn-sm"><i class="fas fa-sync-alt"></i> Aplicar</button>
@@ -453,18 +496,20 @@ include 'views/layout/header.php';
 <?php else: ?>
     <div class="print-doc" id="print-doc">
         <?php $pagina = 1; ?>
-        <?php foreach ($aquisicoes as $aq): ?>
-            <?php
-            $aq_id = (int)$aq['id'];
-            render_aquisicao_lote_page(
-                $aq,
-                $itens_por_aquisicao[$aq_id] ?? [],
-                $via,
-                $is_support,
-                $assinatura_disponivel,
-                $pagina++
-            );
-            ?>
+        <?php foreach ($vias_impressao as $via_documento): ?>
+            <?php foreach ($aquisicoes as $aq): ?>
+                <?php
+                render_aquisicao_lote_page(
+                    $aq,
+                    $itens_por_aquisicao[(int)$aq['id']] ?? [],
+                    $via_documento,
+                    $is_support,
+                    $assinatura_disponivel,
+                    $pagina++,
+                    !empty($assinaturas_registradas[(int)$aq['id']])
+                );
+                ?>
+            <?php endforeach; ?>
         <?php endforeach; ?>
     </div>
 <?php endif; ?>
@@ -485,7 +530,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function syncPage(page) {
         var checkbox = checkboxFor(page);
-        page.classList.toggle('signature-enabled', !!checkbox && checkbox.checked);
+        var assinaturaSelecionada = page.dataset.assinada === '1' || (!!checkbox && checkbox.checked);
+        var colunaFornecedor = page.querySelector('.assinatura-fornecedor-col');
+
+        page.classList.toggle('signature-enabled', assinaturaSelecionada);
+
+        // Ajuste exclusivo de páginas assinadas, também na impressão.
+        if (colunaFornecedor) {
+            if (assinaturaSelecionada) {
+                colunaFornecedor.style.setProperty('margin-top', '8px', 'important');
+            } else {
+                colunaFornecedor.style.removeProperty('margin-top');
+            }
+        }
     }
 
     function updateStatus() {
@@ -510,14 +567,12 @@ document.addEventListener('DOMContentLoaded', function () {
             var checkbox = checkboxFor(page);
             if (!checkbox) return;
 
-            if (value === 'all') {
-                checkbox.checked = true;
-                checkbox.disabled = true;
-            } else if (value === 'none') {
-                checkbox.checked = false;
-                checkbox.disabled = true;
-            } else {
+            if (value === 'select') {
                 checkbox.disabled = false;
+            } else {
+                // Cada via é uma página independente e pode ter assinatura própria.
+                checkbox.checked = value === 'all' || value === page.dataset.via;
+                checkbox.disabled = true;
             }
             syncPage(page);
         });

@@ -28,6 +28,22 @@ if (!$aq) {
     die('Aquisição não encontrada.');
 }
 
+$pode_assinar_aquisicao = usuario_pode_assinar_aquisicao($pdo);
+// Token criado na visualização: apenas POST pode efetivar a assinatura.
+if ($pode_assinar_aquisicao && empty($_SESSION['csrf_assinatura_aquisicao'])) {
+    $_SESSION['csrf_assinatura_aquisicao'] = bin2hex(random_bytes(32));
+}
+$assinatura_registrada = null;
+$assinatura_tabela_instalada = true;
+try {
+    $stmt_assinatura_aq = $pdo->prepare('SELECT assinado_por, assinado_em, assinatura_id FROM assinaturas_aquisicoes WHERE aquisicao_id = ? LIMIT 1');
+    $stmt_assinatura_aq->execute([$id]);
+    $assinatura_registrada = $stmt_assinatura_aq->fetch(PDO::FETCH_ASSOC) ?: null;
+} catch (PDOException $e) {
+    // A página de visualização permanece funcionando antes da instalação do módulo.
+    $assinatura_tabela_instalada = false;
+}
+
 /*
 |--------------------------------------------------------------------------
 | ITENS DA AQUISIÇÃO COM UNIDADE VINDO DE itens_oficio
@@ -120,28 +136,38 @@ function render_aquisicao_print_header(array $aq, string $titulo, string $viaLab
 <?php
 }
 
-function render_aquisicao_signature_footer(string $assinaturaLabel): void
+function render_aquisicao_signature_footer(string $assinaturaLabel, ?array $assinaturaRegistrada = null, int $aquisicaoId = 0): void
 {
+    $estaAssinada = $assinaturaRegistrada !== null && $aquisicaoId > 0;
 ?>
-    <div class="rodape-documento print-signature-footer">
+    <div class="rodape-documento print-signature-footer aq-document-signatures <?= $estaAssinada ? 'aq-signed' : '' ?>">
         <div class="assinaturas-grid">
-            <div>
-                <div class="assinatura-linha">
-                    <div style="font-weight: 800; color: #000; font-size: 0.875rem;">AUTORIZAÇÃO DE FORNECEDOR</div>
-                    <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
-                        <?= h($assinaturaLabel) ?>
+            <div class="assinatura-col assinatura-fornecedor-col">
+                <div class="assinatura-linha assinatura-fornecedor-linha">
+                    <div class="assinatura-campo assinatura-campo-fornecedor">
+                        <?php if ($estaAssinada): ?>
+                            <span class="assinatura-imagem-wrap">
+                                <img
+                                    src="assinatura_suporte.php?aquisicao=<?= (int)$aquisicaoId ?>"
+                                    class="support-signature-image"
+                                    alt="Assinatura registrada da autorização"
+                                    loading="eager">
+                            </span>
+                        <?php endif; ?>
                     </div>
+                    <div class="assinatura-titulo">AUTORIZAÇÃO DE FORNECEDOR</div>
+                    <div class="assinatura-subtitulo"><?= h($assinaturaLabel) ?></div>
                 </div>
             </div>
-            <div>
+            <div class="assinatura-col assinatura-recebimento-col">
                 <div class="assinatura-linha">
-                    <div style="font-weight: 800; color: #000; font-size: 0.875rem;">CONFIRMAÇÃO DE RECEBIMENTO</div>
-                    <div style="font-size: 0.65rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 3px;">
-                        Assinatura e Carimbo
-                    </div>
+                    <div class="assinatura-campo"></div>
+                    <div class="assinatura-titulo">CONFIRMAÇÃO DE RECEBIMENTO</div>
+                    <div class="assinatura-subtitulo">Assinatura e Carimbo</div>
                 </div>
             </div>
         </div>
+        <div class="credito-aquisicao">Desenvolvido por Lucas Correa</div>
     </div>
 <?php
 }
@@ -223,6 +249,7 @@ function render_itens_aquisicao_table(array $items, float $valorTotal): void
 
 include 'views/layout/header.php';
 ?>
+
 <style>
     .print-topbar {
         margin-bottom: 2rem;
@@ -352,28 +379,11 @@ include 'views/layout/header.php';
         margin: 1.85rem 0 0.5rem;
     }
 
-    .rodape-documento {
-        margin-top: 1.25rem;
-    }
-
     .texto-entrega {
         font-size: 0.75rem;
         color: #555;
         margin: 0 0 1.25rem 0;
         line-height: 1.5;
-    }
-
-    .assinaturas-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 3rem;
-        text-align: center;
-        margin-top: 1.5rem;
-    }
-
-    .assinatura-linha {
-        border-top: 1.5px solid #000;
-        padding-top: 0.75rem;
     }
 
     @media (max-width: 768px) {
@@ -407,12 +417,6 @@ include 'views/layout/header.php';
 
         .ordem-right-box {
             display: inline-block;
-        }
-
-        .assinaturas-grid {
-            grid-template-columns: 1fr;
-            gap: 2rem;
-            margin-top: 1.25rem;
         }
 
         .ordem-info-table,
@@ -581,12 +585,6 @@ include 'views/layout/header.php';
             break-inside: avoid !important;
         }
 
-        .rodape-documento {
-            margin-top: 8px !important;
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-        }
-
         .texto-entrega {
             margin: 8px 0 10px !important;
             font-size: 10px !important;
@@ -597,21 +595,19 @@ include 'views/layout/header.php';
             widows: 3;
         }
 
-        .assinaturas-grid {
-            display: grid !important;
-            grid-template-columns: 1fr 1fr !important;
-            gap: 2rem !important;
-            text-align: center !important;
-            margin-top: 24mm !important;
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-        }
-
-        .assinatura-linha {
-            border-top: 1.5px solid #000 !important;
-            padding-top: 6px !important;
-        }
     }
+</style>
+<link rel="stylesheet" href="assets/css/assinatura_aquisicao.css?v=20261016-3">
+<style>
+/* Crédito discreto no rodapé de cada via da aquisição. */
+.credito-aquisicao{margin-top:12px;text-align:right;color:#64748b;font-size:10px;font-weight:500;break-inside:avoid;page-break-inside:avoid}
+@media print{
+  .credito-aquisicao{margin-top:3mm!important;text-align:right!important;color:#555!important;font-size:7.5px!important}
+  .ordem-items-table thead{display:table-header-group!important}
+  .ordem-items-table tr{break-inside:avoid!important;page-break-inside:avoid!important}
+  .ordem-section-title{break-after:avoid!important;page-break-after:avoid!important}
+  
+}
 </style>
 
 <div class="no-print print-topbar">
@@ -619,12 +615,35 @@ include 'views/layout/header.php';
         <i class="fas fa-arrow-left"></i> Voltar
     </a>
     <div class="spacer"></div>
+    <?php if ($assinatura_registrada): ?>
+        <span class="aq-signature-status">
+            <i class="fas fa-check-circle"></i>
+            Assinada por <?= h($assinatura_registrada['assinado_por']) ?> em
+            <?= h(date('d/m/Y H:i', strtotime((string)$assinatura_registrada['assinado_em']))) ?>
+        </span>
+    <?php elseif ($pode_assinar_aquisicao && !$assinatura_tabela_instalada): ?>
+        <span class="aq-signature-warning">Instale sql/assinatura_aquisicoes.sql para habilitar a assinatura.</span>
+    <?php endif; ?>
+    <?php if ($pode_assinar_aquisicao && $assinatura_tabela_instalada && !$assinatura_registrada): ?>
+        <form method="post" action="assinatura_aquisicao_v2.php" class="aq-signature-direct-form no-print">
+            <input type="hidden" name="id" value="<?= (int)$id ?>">
+            <input type="hidden" name="csrf_token" value="<?= h($_SESSION['csrf_assinatura_aquisicao']) ?>">
+            <button type="submit" class="btn btn-primary btn-sm">
+                <i class="fas fa-signature"></i> Assinar aquisição
+            </button>
+        </form>
+    <?php endif; ?>
     <button onclick="window.print()" class="btn btn-primary btn-sm">
         <i class="fas fa-print"></i> Imprimir Ordem (2 Vias)
     </button>
 </div>
 
 <?php display_flash(); ?>
+<?php if (($_GET['assinatura'] ?? '') === 'ok'): ?>
+    <div class="alert alert-success no-print">Assinatura registrada com sucesso para esta aquisição.</div>
+<?php elseif (($_GET['assinatura'] ?? '') === 'ja_assinada'): ?>
+    <div class="alert alert-info no-print">Esta aquisição já estava assinada. Nenhuma assinatura duplicada foi criada.</div>
+<?php endif; ?>
 
 <div class="print-doc">
 
@@ -673,7 +692,7 @@ include 'views/layout/header.php';
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td><?php render_aquisicao_signature_footer('Autorização de Recebimento'); ?></td>
+                        <td><?php render_aquisicao_signature_footer('Autorização de Recebimento', $assinatura_registrada, $id); ?></td>
                     </tr>
                 </tfoot>
             </table>
@@ -726,7 +745,7 @@ include 'views/layout/header.php';
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td><?php render_aquisicao_signature_footer('Autorização de Saída'); ?></td>
+                        <td><?php render_aquisicao_signature_footer('Autorização de Saída', $assinatura_registrada, $id); ?></td>
                     </tr>
                 </tfoot>
             </table>

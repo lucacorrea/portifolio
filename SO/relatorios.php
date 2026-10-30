@@ -651,8 +651,17 @@ if (in_array($export, ['excel', 'pdf', 'pdf_fornecedor', 'pdf_secretaria'], true
                 vertical-align: top;
             }
 
+            .credito-desenvolvedor {
+                color: #64748b;
+                font-size: 8px;
+                text-align: right;
+                margin: -3px 0 8px;
+            }
+
             .resumo {
                 margin-bottom: 8px;
+                page-break-inside: avoid;
+                break-inside: avoid;
             }
 
             .resumo th {
@@ -673,13 +682,11 @@ if (in_array($export, ['excel', 'pdf', 'pdf_fornecedor', 'pdf_secretaria'], true
 
             .grupo-fornecedor,
             .grupo-secretaria {
-                page-break-after: always;
                 margin-bottom: 12px;
-            }
-
-            .grupo-fornecedor:last-child,
-            .grupo-secretaria:last-child {
                 page-break-after: auto;
+                break-after: auto;
+                page-break-inside: auto;
+                break-inside: auto;
             }
 
             .cabecalho-fornecedor {
@@ -691,6 +698,7 @@ if (in_array($export, ['excel', 'pdf', 'pdf_fornecedor', 'pdf_secretaria'], true
                 color: #1f2937;
                 margin-top: 8px;
                 page-break-after: avoid;
+                break-after: avoid;
             }
 
             .cabecalho-secretaria {
@@ -702,11 +710,16 @@ if (in_array($export, ['excel', 'pdf', 'pdf_fornecedor', 'pdf_secretaria'], true
                 color: #1f2937;
                 margin-top: 6px;
                 page-break-after: avoid;
+                break-after: avoid;
             }
 
             .tabela-aquisicoes {
                 margin-top: 4px;
                 page-break-inside: auto;
+            }
+
+            .tabela-aquisicoes thead {
+                display: table-header-group;
             }
 
             .tabela-aquisicoes th {
@@ -743,9 +756,13 @@ if (in_array($export, ['excel', 'pdf', 'pdf_fornecedor', 'pdf_secretaria'], true
             .subtotal {
                 background: #e5e7eb !important;
                 font-weight: bold;
+                page-break-before: avoid;
+                break-before: avoid;
             }
 
             .total-grupo {
+                page-break-inside: avoid;
+                break-inside: avoid;
                 background: #d9e2f3;
                 border: 1px solid #7f8fa6;
                 font-weight: bold;
@@ -755,6 +772,8 @@ if (in_array($export, ['excel', 'pdf', 'pdf_fornecedor', 'pdf_secretaria'], true
             }
 
             .total-geral {
+                page-break-inside: avoid;
+                break-inside: avoid;
                 background: #1f4e78;
                 color: #ffffff;
                 font-weight: bold;
@@ -823,6 +842,8 @@ if (in_array($export, ['excel', 'pdf', 'pdf_fornecedor', 'pdf_secretaria'], true
                     </tr>
                 </table>
 
+                <div class="credito-desenvolvedor">Desenvolvido por Lucas Correa</div>
+
                 <table class="resumo">
                     <tr>
                         <th>Total de Aquisições</th>
@@ -874,13 +895,15 @@ if (in_array($export, ['excel', 'pdf', 'pdf_fornecedor', 'pdf_secretaria'], true
                                         <col class="col-data">
                                         <col class="col-valor">
                                     </colgroup>
-                                    <tr>
-                                        <th>Nº Aquisição</th>
-                                        <th>Nº Ofício</th>
-                                        <th>Descrição</th>
-                                        <th>Data</th>
-                                        <th>Valor</th>
-                                    </tr>
+                                    <thead>
+                                        <tr>
+                                            <th>Nº Aquisição</th>
+                                            <th>Nº Ofício</th>
+                                            <th>Descrição</th>
+                                            <th>Data</th>
+                                            <th>Valor</th>
+                                        </tr>
+                                    </thead>
                                     <?php foreach ($fornecedor['items'] as $aq): ?>
                                         <?php $descricao = relatorio_resumir_descricao($aq['descricao_relatorio'] ?? '', $descricao_limite_pdf); ?>
                                         <tr>
@@ -917,15 +940,17 @@ if (in_array($export, ['excel', 'pdf', 'pdf_fornecedor', 'pdf_secretaria'], true
                             <col class="col-data">
                             <col class="col-valor">
                         </colgroup>
-                        <tr>
-                            <th>Nº Aquisição</th>
-                            <th>Nº Ofício</th>
-                            <th>Fornecedor</th>
-                            <th>Secretaria</th>
-                            <th>Descrição</th>
-                            <th>Data</th>
-                            <th>Valor</th>
-                        </tr>
+                        <thead>
+                            <tr>
+                                <th>Nº Aquisição</th>
+                                <th>Nº Ofício</th>
+                                <th>Fornecedor</th>
+                                <th>Secretaria</th>
+                                <th>Descrição</th>
+                                <th>Data</th>
+                                <th>Valor</th>
+                            </tr>
+                        </thead>
                         <?php foreach ($aquisicoes_export as $aq): ?>
                             <?php $descricao = relatorio_resumir_descricao($aq['descricao_relatorio'] ?? '', $descricao_limite_pdf); ?>
                             <tr>
@@ -970,13 +995,15 @@ if (in_array($export, ['excel', 'pdf', 'pdf_fornecedor', 'pdf_secretaria'], true
                                         <col class="col-data">
                                         <col class="col-valor">
                                     </colgroup>
-                                    <tr>
-                                        <th>Nº Aquisição</th>
-                                        <th>Nº Ofício</th>
-                                        <th>Descrição</th>
-                                        <th>Data</th>
-                                        <th>Valor</th>
-                                    </tr>
+                                    <thead>
+                                        <tr>
+                                            <th>Nº Aquisição</th>
+                                            <th>Nº Ofício</th>
+                                            <th>Descrição</th>
+                                            <th>Data</th>
+                                            <th>Valor</th>
+                                        </tr>
+                                    </thead>
                                     <?php foreach ($secretaria['items'] as $aq): ?>
                                         <?php $descricao = relatorio_resumir_descricao($aq['descricao_relatorio'] ?? '', $descricao_limite_pdf); ?>
                                         <tr>

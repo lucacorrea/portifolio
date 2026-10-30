@@ -275,6 +275,11 @@ ob_start();
         </div>
 
         <button class="btn btn-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
+        <button class="btn btn-outline-danger" type="submit" name="tipo" value="beneficiarios"
+            formaction="comida-mesa/exportar-pdf.php" formmethod="get" formtarget="_blank"
+            title="Gerar lista em PDF com os filtros selecionados">
+            <i class="bi bi-file-earmark-pdf"></i> Gerar PDF
+        </button>
         <a class="btn btn-light cm-filter-clear" href="comida-mesa/beneficiarios.php" title="Limpar filtros" aria-label="Limpar filtros"><i class="bi bi-x-lg"></i></a>
     </form>
 

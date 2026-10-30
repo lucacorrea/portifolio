@@ -286,7 +286,7 @@ if ((int)($oficio_fluxo['fornecedor_indicado_id'] ?? 0) <= 0) {
                     </select>
                 </div>
                 <div class="supplier-step-actions">
-                    <a href="oficios_lista_sefaz.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Voltar</a>
+                    <a href="oficios_lista.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Voltar</a>
                     <button type="submit" class="btn btn-primary" <?php echo empty($fornecedores_fluxo) ? 'disabled' : ''; ?>><i class="fas fa-arrow-right"></i> Confirmar e adicionar itens</button>
                 </div>
             </form>

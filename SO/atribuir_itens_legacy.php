@@ -258,7 +258,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->commit();
 
         flash_message('success', "Itens atribuídos com sucesso à solicitação {$oficio['numero']}!");
-        header("Location: oficios_lista_sefaz.php");
+        header("Location: oficios_lista.php");
         exit();
     } catch (Exception $e) {
         if ($pdo->inTransaction()) {
@@ -525,7 +525,7 @@ include 'views/layout/header.php';
     <div class="card-body">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
             <h3><i class="fas fa-box-open"></i> Atribuição de Itens - <?php echo htmlspecialchars($oficio['numero']); ?></h3>
-            <a href="oficios_lista_sefaz.php" class="btn btn-outline btn-sm">Voltar</a>
+            <a href="oficios_lista.php" class="btn btn-outline btn-sm">Voltar</a>
         </div>
 
         <?php if (isset($error)): ?>

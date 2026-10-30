@@ -45,6 +45,24 @@ function sefaz_check() {
     }
 }
 
+/**
+ * Permissão específica para assinar autorizações de aquisição.
+ * Usa o LOGIN do banco (não o nome de exibição ou o perfil ADMIN/SUPORTE).
+ */
+function usuario_pode_assinar_aquisicao(PDO $pdo): bool {
+    $usuarioId = (int)($_SESSION['user_id'] ?? 0);
+    if ($usuarioId <= 0) {
+        return false;
+    }
+
+    $stmt = $pdo->prepare('SELECT usuario FROM usuarios WHERE id = ? LIMIT 1');
+    $stmt->execute([$usuarioId]);
+    $login = $stmt->fetchColumn();
+
+    return is_string($login)
+        && in_array(strtolower(trim($login)), ['suporte', 'amandha'], true);
+}
+
 function suporte_check() {
     $nivel = strtoupper($_SESSION['nivel'] ?? '');
     if ($nivel !== 'SUPORTE') {
