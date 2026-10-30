@@ -84,3 +84,15 @@ A cada atualização da pasta `pcct/` na `main`, o GitHub Actions instala as dep
 > Nunca coloque a chave privada, senha SSH ou senha do banco em arquivos versionados. Se os segredos SSH não estiverem configurados, a etapa de instalação gera o `vendor/` no GitHub Actions, mas **não consegue entregá-lo ao servidor**. O acesso SSH não é substituído pela senha do MySQL.
 
 O processo pressupõe que o código PCCT já esteja implantado no caminho acima e que a Hostinger permita SSH, SCP e TAR; não foi validado diretamente na hospedagem.
+
+## Conexão PDO independente (opcional)
+
+O arquivo `config/conexao.php` permite acessar o MySQL em scripts PHP independentes do Laravel, usando as mesmas variáveis `DB_*` do `.env`, sem duplicar usuário ou senha:
+
+```php
+<?php
+$pdo = require __DIR__ . '/config/conexao.php';
+$disciplinas = $pdo->query('SELECT id, nome FROM disciplinas ORDER BY nome')->fetchAll();
+```
+
+Esse recurso não substitui `config/database.php` e **não resolve a ausência de `vendor/autoload.php`**. As páginas Laravel continuam dependendo da pasta `vendor/` instalada na Hostinger. Não crie um endpoint público que exponha erros ou credenciais do PDO.
