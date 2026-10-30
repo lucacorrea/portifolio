@@ -59,3 +59,28 @@ A pasta `pcct/.htaccess` redireciona internamente as URLs de `/pcct/` para `pcct
 Se a hospedagem permitir alterar a raiz web, a opção mais segura e recomendada é configurar o DocumentRoot diretamente para `pcct/public/`, dispensando a regra de adaptação da raiz. Se o domínio já aponta para `pcct/public/`, use somente as regras de `public/.htaccess` e não redirecione duas vezes.
 
 Se aparecer **403 Forbidden** no endereço do PCCT, confira: a existência de `pcct/.htaccess` e de `pcct/public/index.php` na hospedagem, o módulo Apache mod_rewrite, a publicação de arquivos ocultos e as permissões de leitura. Se mudar para erro **500**, examine os logs do Laravel/servidor e confirme as dependências `vendor/` e o `.env` com `APP_KEY`. Nunca ative `APP_DEBUG=true` em ambiente público.
+
+## Dependências Laravel com publicação pela main
+
+O envio automático da branch `main` para a Hostinger **não instala a pasta `vendor/`** (ela é ignorada pelo Git). Para evitar o erro `vendor/autoload.php not found`, foi criado o workflow [`.github/workflows/pcct-vendor.yml`](../../.github/workflows/pcct-vendor.yml).
+
+A cada atualização da pasta `pcct/` na `main`, o GitHub Actions instala as dependências do `composer.lock` com PHP 8.2, monta o `vendor/` e, **somente após configurar SSH**, transfere essa pasta para a instalação em `/home/u784961086/domains/lucascorrea.pro/public_html/pcct`. O Git da Hostinger continua enviando o restante do código. O workflow **não sobrescreve o `.env`** e **não modifica o banco**.
+
+### Configuração inicial (uma vez)
+
+1. No hPanel da Hostinger, ative o acesso SSH e autorize a **chave pública** de uma conta de implantação.
+2. Em **GitHub → repositório portifolio → Settings → Secrets and variables → Actions**, adicione os segredos abaixo:
+
+   | Secret | Conteúdo |
+   |---|---|
+   | `PCCT_SSH_HOST` | Endereço/IP do SSH mostrado no hPanel |
+   | `PCCT_SSH_USER` | Usuário SSH mostrado no hPanel |
+   | `PCCT_SSH_PORT` | Porta SSH do hPanel |
+   | `PCCT_SSH_PRIVATE_KEY` | Chave privada correspondente à chave pública cadastrada no hPanel |
+   | `PCCT_SSH_KNOWN_HOSTS` | Linha do `known_hosts` verificada com a impressão digital SSH do hPanel |
+
+3. Abra **Actions → PCCT - Dependências Laravel na Hostinger → Run workflow** na branch `main`. Acompanhe o resultado. A configuração só precisa ser refeita quando as chaves ou o destino mudarem.
+
+> Nunca coloque a chave privada, senha SSH ou senha do banco em arquivos versionados. Se os segredos SSH não estiverem configurados, a etapa de instalação gera o `vendor/` no GitHub Actions, mas **não consegue entregá-lo ao servidor**. O acesso SSH não é substituído pela senha do MySQL.
+
+O processo pressupõe que o código PCCT já esteja implantado no caminho acima e que a Hostinger permita SSH, SCP e TAR; não foi validado diretamente na hospedagem.
