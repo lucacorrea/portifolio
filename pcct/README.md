@@ -96,3 +96,13 @@ $disciplinas = $pdo->query('SELECT id, nome FROM disciplinas ORDER BY nome')->fe
 ```
 
 Esse recurso não substitui `config/database.php` e **não resolve a ausência de `vendor/autoload.php`**. As páginas Laravel continuam dependendo da pasta `vendor/` instalada na Hostinger. Não crie um endpoint público que exponha erros ou credenciais do PDO.
+
+### Quando aparecer erro de vendor/autoload.php ausente
+
+O Laravel **não funciona apenas com a conexão PDO**, porque todas as rotas precisam do autoload das dependências. No [workflow PCCT](../../.github/workflows/pcct-vendor.yml), o GitHub instala e empacota o `vendor`. O pacote está disponível como artefato `pcct-vendor` na execução do GitHub Actions por 7 dias, útil como alternativa manual se o SSH ainda não estiver configurado.
+
+- **Publicação automática real:** configure os cinco segredos SSH no GitHub Actions. Sem eles o workflow agora **falha explicitamente**, mesmo que tenha conseguido gerar o pacote, para não indicar que o site foi atualizado.
+- **Alternativa manual para desbloquear:** baixe o artefato `pcct-vendor` na execução do Actions, extraia `pcct-vendor.tar.gz` mantendo a estrutura `vendor/` e coloque essa pasta ao lado de `artisan` e `composer.json` na Hostinger. Não coloque dentro de `public/`.
+- No servidor, `pcct/vendor/autoload.php` deve existir. Se faltar, a entrada web retorna HTTP 503 sem mostrar o caminho absoluto da hospedagem.
+
+**Observação:** o download manual pode resolver o erro de dependências da primeira publicação, mas, sem SSH configurado, não transforma o envio da pasta `vendor/` em automático.

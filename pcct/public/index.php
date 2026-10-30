@@ -31,7 +31,20 @@ if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php'))
 |
 */
 
-require __DIR__.'/../vendor/autoload.php';
+$autoload = __DIR__.'/../vendor/autoload.php';
+if (!is_file($autoload)) {
+    error_log('[PCCT] Dependencias Laravel ausentes: vendor/autoload.php (verifique deploy da main)');
+    http_response_code(503);
+    header('Content-Type: text/html; charset=utf-8');
+    header('Cache-Control: no-store');
+    echo '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+        . '<title>PCCT em manutenção</title><style>body{font:16px/1.6 system-ui,sans-serif;min-height:90vh;display:grid;place-items:center;background:#f2f7f4;color:#174434;margin:0;padding:22px}'
+        . 'main{max-width:520px;background:white;padding:32px;border-radius:15px;box-shadow:0 8px 26px #0001}h1{margin-top:0;font-size:1.65rem}</style></head>'
+        . '<body><main><h1>PCCT temporariamente indisponível</h1><p>O sistema está passando por uma atualização. Tente novamente após a conclusão da implantação.</p></main></body></html>';
+    exit;
+}
+
+require $autoload;
 
 /*
 |--------------------------------------------------------------------------
