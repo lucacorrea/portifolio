@@ -1,48 +1,53 @@
 # PCCT — Ensino Médio
 
-Plataforma em **Laravel 9, PHP e MySQL/MariaDB**, com biblioteca de materiais didáticos, área de professores, estudantes e administradores.
+Sistema em **Laravel 9 + PHP + MySQL/MariaDB**, com biblioteca de objetos de aprendizagem e áreas de administrador, professor e estudante.
 
-## Produção na Hostinger
+## Configuração única por ambiente: `.env`
 
-- URL pública: https://lucascorrea.pro/pcct/
-- Banco e usuário MySQL: `u784961086_pcct`
-- Exemplo de variáveis de produção: `.env.hostinger.example`
+O PCCT utiliza **somente o arquivo `.env` da instalação** para configurar banco de dados e aplicação. O arquivo `.env.example` é apenas um modelo neutro para ser copiado; **não é carregado pelo Laravel enquanto existe `.env`**.
 
-**A senha do MySQL deve ser preenchida somente no arquivo `.env` da hospedagem. Nunca no GitHub.**
+### Para quem for instalar localmente
 
-1. Na Hostinger, abra a raiz da aplicação Laravel PCCT, onde ficam `artisan`, `config/`, `app/` e `bootstrap/`.
-2. No arquivo `.env` **existente** na hospedagem, confira `DB_DATABASE=u784961086_pcct`, `DB_USERNAME=u784961086_pcct`, `DB_HOST` conforme o hPanel e informe a senha real no `DB_PASSWORD`.
-3. Confira `APP_URL=https://lucascorrea.pro/pcct`, `APP_ENV=production` e `APP_DEBUG=false`. **Preserve o `APP_KEY` atual**; não substitua todo o `.env` sem verificar.
-4. Garanta que o servidor exponha apenas `pcct/public/` e que as rotas e arquivos funcionem em `/pcct/`.
-5. Se houver configuração em cache, execute `php artisan config:clear` após alterar o `.env` (não precisa rodar Composer para isso).
-6. Na implantação automática, preserve `.env`, `storage/` e `vendor/`. As dependências do Laravel devem estar instaladas no servidor por seu processo de deploy.
+1. Entre na pasta `pcct/`.
+2. Copie `.env.example` para `.env`: no Windows PowerShell, `Copy-Item .env.example .env`.
+3. Edite apenas o seu próprio `.env` e informe a conexão com o MySQL local:
+   ```ini
+   APP_ENV=local
+   APP_DEBUG=true
+   APP_URL=http://127.0.0.1:8000
 
-**Banco existente:** o SQL inicial já foi importado. Antes de usar as funções novas, confira se os campos complementares da migration `2026_10_30_000000_pcct_ensino_medio.php` estão presentes (por exemplo, `ano_escolar`, `status`, `arquivo` e `area_conhecimento`). Faça backup antes de mudanças estruturais. Não rode `migrate:fresh` em produção.
+   DB_CONNECTION=mysql
+   DB_HOST=127.0.0.1
+   DB_PORT=3306
+   DB_DATABASE=pcct
+   DB_USERNAME=root
+   DB_PASSWORD=
+   ```
+4. Prepare um banco MySQL vazio com o nome usado em `DB_DATABASE`.
+5. Se ainda não existir `vendor/`, será preciso instalar as dependências do Laravel (normalmente uma vez, com `composer install`). Se `vendor/` já estiver pronto, não precisa reinstalar a cada execução.
+6. Execute `php artisan key:generate` **somente na primeira configuração**, quando `APP_KEY` estiver vazio.
+7. Execute `php artisan migrate`, depois `php artisan db:seed`.
+8. Crie o primeiro administrador com `php artisan pcct:admin`.
+9. Inicie com `php artisan serve` e abra `http://127.0.0.1:8000`.
 
-O arquivo `.env.hostinger.example` é somente um **modelo de configuração**, não muda automaticamente a senha nem a configuração efetiva da Hostinger. O Laravel já lê as credenciais do `.env` em `config/database.php`.
+### Hospedagem
 
-## Desenvolvimento local (opcional)
+No servidor, use **esse mesmo arquivo `.env`**, com os valores próprios daquele ambiente: `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL` público, host, usuário, banco e senha do MySQL da hospedagem. **Não substitua o `APP_KEY` de uma instalação já existente.**
 
-Use `.env.example` para o ambiente local. Com PHP, MySQL e as dependências do Laravel já instaladas, os comandos de uso são:
+O Laravel já lê as variáveis via `config/database.php`, sem valores fixos de banco no código. Se estiver usando cache de configurações, execute `php artisan config:clear` após atualizar o `.env`. O deploy automático precisa preservar `.env` e `storage/` entre publicações e ter as dependências em `vendor/`.
 
-```bash
-php artisan key:generate
-php artisan migrate
-php artisan db:seed
-php artisan pcct:admin
-php artisan serve
-```
+**Segurança:** nunca publique o `.env`, senhas ou credenciais no GitHub. Se uma senha aparecer no histórico do repositório, troque-a imediatamente no provedor e atualize o `.env` da instalação afetada.
 
-O Composer serve para instalar as dependências em `vendor/` quando ainda não estão disponíveis; não é necessário executá-lo toda vez que o sistema inicia.
+**Banco já importado:** confira as colunas complementares previstas na migration `2026_10_30_000000_pcct_ensino_medio.php` antes de usar o cadastro de materiais. Faça backup antes de aplicar alterações estruturais em produção e não rode `migrate:fresh` no banco da hospedagem.
 
-## Funções implementadas
+## Funcionalidades
 
-- Cadastro de estudantes, login por perfil e painel de usuário.
-- Administração de professores, estudantes, instituições, disciplinas e habilidades da BNCC.
-- Cadastro, edição, publicação e exclusão de materiais por professor.
-- Biblioteca com filtros por texto, série, disciplina, BNCC e tipo de objeto.
-- Rascunhos e seus anexos protegidos por autorização.
+- Biblioteca com filtros de texto, disciplina, série, formato e habilidades BNCC.
+- Cadastro de estudantes e autenticação com perfis.
+- Administração de instituições, usuários, disciplinas e habilidades.
+- Professor cadastra, edita, publica e exclui materiais.
+- Anexos e rascunhos protegidos por verificações de permissão.
 
-## Testes automatizados
+## Testes
 
-Com as dependências instaladas e `pdo_sqlite` habilitado, execute `php artisan test --filter=PcctWorkflowTest`. Os testes usam SQLite em memória e não alteram o MySQL da Hostinger.
+Com `pdo_sqlite` habilitado, rode `php artisan test --filter=PcctWorkflowTest`. Os testes utilizam SQLite em memória, sem modificar o banco hospedado.
