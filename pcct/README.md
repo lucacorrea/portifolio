@@ -1,48 +1,48 @@
 # PCCT — Ensino Médio
 
-Repositório de objetos de aprendizagem desenvolvido em Laravel 9 / PHP 8.x.
-Perfis: administrador, professor e estudante.
+Plataforma em **Laravel 9, PHP e MySQL/MariaDB**, com biblioteca de materiais didáticos, área de professores, estudantes e administradores.
 
-## Executar localmente
+## Produção na Hostinger
 
-1. Instale PHP 8.x, Composer e MariaDB/MySQL (Laragon ou XAMPP).
-2. Entre na pasta `portifolio/pcct`.
-3. Execute `composer install`.
-4. Copie `.env.example` para `.env` (PowerShell: `Copy-Item .env.example .env`).
-5. Crie um banco vazio `pcct`, configure `DB_HOST`, `DB_DATABASE`, `DB_USERNAME` e `DB_PASSWORD` no `.env`.
-6. Execute `php artisan key:generate`.
-7. Execute `php artisan migrate`. Alternativamente, se já importou `database/PCCT_estrutura_banco.sql`, **execute também** `php artisan migrate` para aplicar os campos complementares.
-8. Execute `php artisan db:seed` para cadastrar disciplinas básicas.
-9. Execute `php artisan pcct:admin` para criar um administrador: o comando pedirá e-mail, nome e senha (mínimo 12 caracteres). Nenhuma senha padrão está no repositório.
-10. Inicie com `php artisan serve` e acesse `http://127.0.0.1:8000`.
+- URL pública: https://lucascorrea.pro/pcct/
+- Banco e usuário MySQL: `u784961086_pcct`
+- Exemplo de variáveis de produção: `.env.hostinger.example`
 
-O estilo é servido localmente de `public/css/pcct.css`, sem necessidade de instalar Node/npm.
-Anexos são guardados no armazenamento privado do Laravel e servidos por rotas verificadas; não é necessário rodar `storage:link`.
+**A senha do MySQL deve ser preenchida somente no arquivo `.env` da hospedagem. Nunca no GitHub.**
 
-## Funcionalidades disponíveis
+1. Na Hostinger, abra a raiz da aplicação Laravel PCCT, onde ficam `artisan`, `config/`, `app/` e `bootstrap/`.
+2. No arquivo `.env` **existente** na hospedagem, confira `DB_DATABASE=u784961086_pcct`, `DB_USERNAME=u784961086_pcct`, `DB_HOST` conforme o hPanel e informe a senha real no `DB_PASSWORD`.
+3. Confira `APP_URL=https://lucascorrea.pro/pcct`, `APP_ENV=production` e `APP_DEBUG=false`. **Preserve o `APP_KEY` atual**; não substitua todo o `.env` sem verificar.
+4. Garanta que o servidor exponha apenas `pcct/public/` e que as rotas e arquivos funcionem em `/pcct/`.
+5. Se houver configuração em cache, execute `php artisan config:clear` após alterar o `.env` (não precisa rodar Composer para isso).
+6. Na implantação automática, preserve `.env`, `storage/` e `vendor/`. As dependências do Laravel devem estar instaladas no servidor por seu processo de deploy.
 
-- Catálogo público com filtros de texto, disciplina, série do Ensino Médio, formato e BNCC.
-- Cadastro público de estudantes, com senha criptografada.
-- Login e logout com controle de perfis.
-- Admin cadastra instituição, professor, estudante, disciplina e habilidade BNCC.
-- Professor cria, edita, exclui e publica materiais, incluindo rascunhos.
-- Associação com habilidades BNCC por disciplina.
-- Arquivos locais (até 10 MB), capas (até 2 MB), links HTTP/HTTPS.
-- Rascunhos só podem ser visualizados pelo autor ou administrador.
+**Banco existente:** o SQL inicial já foi importado. Antes de usar as funções novas, confira se os campos complementares da migration `2026_10_30_000000_pcct_ensino_medio.php` estão presentes (por exemplo, `ano_escolar`, `status`, `arquivo` e `area_conhecimento`). Faça backup antes de mudanças estruturais. Não rode `migrate:fresh` em produção.
+
+O arquivo `.env.hostinger.example` é somente um **modelo de configuração**, não muda automaticamente a senha nem a configuração efetiva da Hostinger. O Laravel já lê as credenciais do `.env` em `config/database.php`.
+
+## Desenvolvimento local (opcional)
+
+Use `.env.example` para o ambiente local. Com PHP, MySQL e as dependências do Laravel já instaladas, os comandos de uso são:
+
+```bash
+php artisan key:generate
+php artisan migrate
+php artisan db:seed
+php artisan pcct:admin
+php artisan serve
+```
+
+O Composer serve para instalar as dependências em `vendor/` quando ainda não estão disponíveis; não é necessário executá-lo toda vez que o sistema inicia.
+
+## Funções implementadas
+
+- Cadastro de estudantes, login por perfil e painel de usuário.
+- Administração de professores, estudantes, instituições, disciplinas e habilidades da BNCC.
+- Cadastro, edição, publicação e exclusão de materiais por professor.
+- Biblioteca com filtros por texto, série, disciplina, BNCC e tipo de objeto.
+- Rascunhos e seus anexos protegidos por autorização.
 
 ## Testes automatizados
 
-Os testes estão configurados para usar **SQLite em memória**; isso evita modificar o MySQL da sua máquina. Habilite a extensão `pdo_sqlite` do PHP e execute:
-
-```bash
-php artisan test --filter=PcctWorkflowTest
-```
-
-Os testes cobrem o cadastro do estudante, as restrições de professor, a publicação e a privacidade de rascunhos.
-
-## Cuidados
-
-- Cadastre somente habilidades oficiais da BNCC; os códigos e descrições precisam ser conferidos antes de entrar no acervo.
-- Em produção, desative `APP_DEBUG`, use HTTPS e revise a política de acesso a contas de estudantes.
-- O comando `pcct:admin` deve ser usado apenas por quem administra o servidor local.
-- A migration complementar não remove tabelas na reversão para proteger bancos importados manualmente.
+Com as dependências instaladas e `pdo_sqlite` habilitado, execute `php artisan test --filter=PcctWorkflowTest`. Os testes usam SQLite em memória e não alteram o MySQL da Hostinger.
