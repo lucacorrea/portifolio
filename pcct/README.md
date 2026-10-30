@@ -51,3 +51,11 @@ O Laravel já lê as variáveis via `config/database.php`, sem valores fixos de 
 ## Testes
 
 Com `pdo_sqlite` habilitado, rode `php artisan test --filter=PcctWorkflowTest`. Os testes utilizam SQLite em memória, sem modificar o banco hospedado.
+
+## Publicação em subpasta /pcct/
+
+A pasta `pcct/.htaccess` redireciona internamente as URLs de `/pcct/` para `pcct/public/` e bloqueia o acesso HTTP às pastas privadas do Laravel. A `public/.htaccess` continua responsável pelas rotas da aplicação. **O arquivo oculto `.htaccess` também precisa ser enviado na implantação automática.**
+
+Se a hospedagem permitir alterar a raiz web, a opção mais segura e recomendada é configurar o DocumentRoot diretamente para `pcct/public/`, dispensando a regra de adaptação da raiz. Se o domínio já aponta para `pcct/public/`, use somente as regras de `public/.htaccess` e não redirecione duas vezes.
+
+Se aparecer **403 Forbidden** no endereço do PCCT, confira: a existência de `pcct/.htaccess` e de `pcct/public/index.php` na hospedagem, o módulo Apache mod_rewrite, a publicação de arquivos ocultos e as permissões de leitura. Se mudar para erro **500**, examine os logs do Laravel/servidor e confirme as dependências `vendor/` e o `.env` com `APP_KEY`. Nunca ative `APP_DEBUG=true` em ambiente público.
