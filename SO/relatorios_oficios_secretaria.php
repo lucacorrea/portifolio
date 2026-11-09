@@ -316,6 +316,19 @@ include 'views/layout/header.php';
         .modern-table td {
             white-space: normal !important;
         }
+
+        .modern-table thead {
+            display: table-header-group !important;
+        }
+
+        .modern-table tr {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+        }
+
+        .page-card, .card-body {
+            overflow: visible !important;
+        }
     }
 </style>
 

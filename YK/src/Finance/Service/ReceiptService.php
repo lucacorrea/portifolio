@@ -252,7 +252,7 @@ final class ReceiptService
         $installmentSelect = $this->paymentInstallmentSelect();
         $statement = $this->connection->prepare(
             "SELECT payment.id, payment.valor, payment.forma_pagamento, $installmentSelect,
-                    payment.recebido_em,
+                    payment.recebido_em, payment.observacao,
                     receipt.id AS recibo_id, receipt.numero AS recibo_numero, receipt.status AS recibo_status
                FROM ordem_servico_pagamentos payment
           LEFT JOIN recibos receipt ON receipt.pagamento_id = payment.id
@@ -285,7 +285,7 @@ final class ReceiptService
         $installmentSelect = $this->paymentInstallmentSelect();
         $statement = $this->connection->prepare(
             "SELECT payment.id, payment.ordem_servico_id, payment.valor, payment.forma_pagamento,
-                    $installmentSelect, payment.recebido_em,
+                    $installmentSelect, payment.recebido_em, payment.observacao,
                     receipt.id AS recibo_id, receipt.numero AS recibo_numero,
                     receipt.status AS recibo_status
                FROM ordem_servico_pagamentos payment

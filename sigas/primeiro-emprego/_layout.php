@@ -7,7 +7,16 @@ use App\Core\PageContext;
 
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/frontend/modules/primeiro-emprego/data/demo-data.php';
+require_once dirname(__DIR__) . '/frontend/modules/primeiro-emprego/lib/access.php';
+
 $frontendContext = PageContext::requireAuthenticatedFrontendContext();
+if (!isset($frontendContext['navigation']['primeiro-emprego'])) {
+    http_response_code(403);
+    $errorTitle = 'Acesso não autorizado';
+    $errorMessage = 'Seu setor ou perfil não possui acesso a este módulo.';
+    require dirname(__DIR__) . '/frontend/layouts/error-layout.php';
+    return;
+}
 
 if (!isset($pageKey) || !is_string($pageKey)) {
     throw new RuntimeException('A página do módulo não foi informada.');
@@ -26,6 +35,45 @@ if ($environment === null || $page === null) {
     return;
 }
 
+if (!pe_can_page($pageKey)) {
+    http_response_code(403);
+    $errorTitle = 'Acesso não autorizado';
+    $errorMessage = 'Seu nível de acesso não possui permissão para esta área do Primeiro Emprego.';
+    require dirname(__DIR__) . '/frontend/layouts/error-layout.php';
+    return;
+}
+
+if ($pageKey === 'candidatos' && !pe_can('primeiro_emprego.editar')) {
+    $restrictedCandidateAction = false;
+    foreach (['revisar', 'visita', 'ficha'] as $candidateActionKey) {
+        if ((int) ($_GET[$candidateActionKey] ?? 0) > 0) {
+            $restrictedCandidateAction = true;
+            break;
+        }
+    }
+
+    if ($restrictedCandidateAction) {
+        http_response_code(403);
+        $errorTitle = 'Operação não autorizada';
+        $errorMessage = 'Seu nível permite consultar candidatos, mas não abrir formulários de revisão ou acompanhamento.';
+        require dirname(__DIR__) . '/frontend/layouts/error-layout.php';
+        return;
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = trim((string) ($_POST['pe_action'] ?? ''));
+    $postPermission = pe_post_permission($pageKey, $action);
+
+    if ($postPermission === null || !pe_can($postPermission)) {
+        http_response_code(403);
+        $errorTitle = 'Operação não autorizada';
+        $errorMessage = 'Seu nível de acesso permite consultar esta área, mas não executar esta alteração.';
+        require dirname(__DIR__) . '/frontend/layouts/error-layout.php';
+        return;
+    }
+}
+
 $pageDefinition = [];
 $pageCustomContent = '';
 $view = dirname(__DIR__) . '/frontend/modules/primeiro-emprego/pages/' . $pageKey . '.php';
@@ -39,6 +87,15 @@ if (!is_file($view)) {
 }
 
 require $view;
-$extraStyles = [];
-$extraScripts = [];
+
+// Ações de cabeçalho que apontam para áreas sem permissão nem chegam a ser
+// renderizadas. O JavaScript permanece apenas como uma segunda camada visual.
+$pageDefinition = pe_filter_page_definition($pageDefinition);
+
+$frontendContext['primeiroEmpregoAccess'] = pe_access_snapshot($pageKey);
+$extraStyles = isset($extraStyles) && is_array($extraStyles) ? $extraStyles : [];
+$extraScripts = isset($extraScripts) && is_array($extraScripts) ? $extraScripts : [];
+$extraScripts[] = 'assets/js/modules/primeiro-emprego-access.js';
+$extraScripts = array_values(array_unique($extraScripts));
+
 require dirname(__DIR__) . '/frontend/layouts/module-layout.php';

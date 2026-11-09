@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/lib/repository.php';
+require_once dirname(__DIR__) . '/lib/person-journey.php';
 
 $pageDefinition = [
     'title' => 'Triagem social',
@@ -20,6 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pe_action']) && $_POS
     try {
         pe_verify_csrf();
         $id = pe_save_triage(pe_db(), $_POST);
+        pe_link_person_and_start_journey(pe_db(), $id);
         $message = ['type' => 'success', 'text' => 'Triagem cadastrada com sucesso. Registro #' . $id . '.'];
         $_POST = [];
     } catch (Throwable $e) {

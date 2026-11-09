@@ -1,0 +1,7 @@
+@import url("../sigas-program-system.css");
+.module-shell--aluguel_social{}
+body[data-module="aluguel-social"]{--program-accent:#0369a1;--program-soft:#eff6ff;}
+body[data-module="aluguel-social"] .module-brand>i,body[data-module="aluguel-social"] .frontend-stat-card>i{color:#0369a1;background:#eff6ff;}
+body[data-module="aluguel-social"] .module-nav-link.active{color:#0369a1;background:#eff6ff;}
+body[data-module="aluguel-social"] .btn-primary{background:#0369a1;border-color:#0369a1;}
+body[data-module="aluguel-social"] .eyebrow{color:#0369a1;}

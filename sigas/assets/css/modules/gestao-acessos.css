@@ -1,0 +1,7 @@
+@import url("../sigas-program-system.css");
+.module-shell--gestao_acessos{}
+body[data-module="gestao-acessos"]{--program-accent:#334155;--program-soft:#f8fafc;}
+body[data-module="gestao-acessos"] .module-brand>i,body[data-module="gestao-acessos"] .frontend-stat-card>i{color:#334155;background:#f8fafc;}
+body[data-module="gestao-acessos"] .module-nav-link.active{color:#334155;background:#f8fafc;}
+body[data-module="gestao-acessos"] .btn-primary{background:#334155;border-color:#334155;}
+body[data-module="gestao-acessos"] .eyebrow{color:#334155;}

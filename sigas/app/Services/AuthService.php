@@ -9,6 +9,7 @@ use App\Core\Environment;
 use App\Core\Logger;
 use App\Core\Session;
 use App\Core\Validator;
+use App\Domain\AccessLevelSlug;
 use App\Domain\UserStatus;
 use App\Exceptions\AuthenticationException;
 use App\Models\User;
@@ -80,6 +81,7 @@ final class AuthService
 
         $this->assertAllowedAfterPassword($user);
         $this->assertActiveLevel($user);
+        $this->assertActiveSector($user);
 
         Session::regenerate();
         $sessionIdentifier = session_id();
@@ -127,7 +129,8 @@ final class AuthService
             || $user->excluidoEm !== null
             || $user->status !== UserStatus::ACTIVE
             || $user->versaoAutorizacao !== $version
-            || !$this->hasActiveLevel($user)) {
+            || !$this->hasActiveLevel($user)
+            || !$this->hasActiveSector($user)) {
             $this->invalidateSession($user?->id, 'sessao_invalida');
             return null;
         }
@@ -152,7 +155,17 @@ final class AuthService
             return $user;
         }
 
-        header('Location: index.php');
+        /*
+         * Nunca usar "index.php" relativo aqui.
+         *
+         * Em rotas aninhadas, por exemplo /sigas/comida-mesa/index.php,
+         * o navegador resolveria esse Location para a própria página e criaria
+         * um loop infinito (ERR_TOO_MANY_REDIRECTS) quando a sessão expirasse.
+         *
+         * O destino é sempre o login na raiz pública configurada do SIGAS.
+         */
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Location: ' . $this->loginUrl(), true, 302);
         exit;
     }
 
@@ -201,6 +214,49 @@ final class AuthService
         return $level !== null && $level->ativo;
     }
 
+    private function assertActiveSector(User $user): void
+    {
+        if (!$this->hasActiveSector($user)) {
+            throw new AuthenticationException('Sua conta está vinculada a um setor inativo ou inválido. Procure a administração do SIGAS.');
+        }
+    }
+
+    private function hasActiveSector(User $user): bool
+    {
+        if ($user->nivelId === null) {
+            return false;
+        }
+
+        $level = $this->accessLevels->findById($user->nivelId);
+        if ($level === null || !$level->ativo) {
+            return false;
+        }
+
+        if (in_array($level->slug, [AccessLevelSlug::ADMINISTRATOR->value, AccessLevelSlug::SUPPORT->value], true)) {
+            return true;
+        }
+
+        if ($user->setorId === null || $user->setorId <= 0) {
+            return false;
+        }
+
+        try {
+            $stmt = Database::connection()->prepare(
+                'SELECT 1 FROM setores WHERE id = :id AND ativo = 1 AND excluido_em IS NULL LIMIT 1'
+            );
+            $stmt->execute(['id' => $user->setorId]);
+            return (bool) $stmt->fetchColumn();
+        } catch (Throwable $exception) {
+            Logger::application('Sector validation during authentication failed.', [
+                'user_id' => $user->id,
+                'sector_id' => $user->setorId,
+                'type' => $exception::class,
+                'code' => $exception->getCode(),
+            ]);
+            return false;
+        }
+    }
+
     private function invalidateSession(?int $userId, string $action): void
     {
         try {
@@ -241,6 +297,39 @@ final class AuthService
         $value = Environment::int('SESSION_LIFETIME', 7200);
 
         return $value > 0 ? $value : 7200;
+    }
+
+    private function loginUrl(): string
+    {
+        /*
+         * APP_URL é a fonte principal porque representa a raiz pública real do
+         * SIGAS. Usamos apenas o PATH para manter o redirecionamento no mesmo
+         * host da requisição e evitar dependência de domínio em homologação.
+         */
+        $appUrl = trim((string) Environment::get('APP_URL', ''));
+
+        if ($appUrl !== '') {
+            $path = parse_url($appUrl, PHP_URL_PATH);
+
+            if (is_string($path)) {
+                $basePath = '/' . trim($path, '/');
+                $basePath = $basePath === '/' ? '' : rtrim($basePath, '/');
+
+                return $basePath . '/index.php';
+            }
+        }
+
+        /*
+         * Fallback coerente com a configuração do cookie de sessão.
+         * No ambiente atual, por exemplo, SESSION_COOKIE_PATH=/sigas.
+         */
+        $cookiePath = trim((string) Environment::get('SESSION_COOKIE_PATH', '/'));
+
+        if ($cookiePath !== '' && $cookiePath !== '/') {
+            return '/' . trim($cookiePath, '/') . '/index.php';
+        }
+
+        return '/index.php';
     }
 
     private function clientIp(): ?string

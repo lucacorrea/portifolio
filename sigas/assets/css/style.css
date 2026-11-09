@@ -1,3 +1,5 @@
+@import url("./sigas-table-system.css?v=20260821-1");
+
 :root {
     --primary: #14532d;
     --primary-hover: #0f4425;
@@ -312,7 +314,7 @@ button, a, input, select, textarea { outline: none; }
 .table-toolbar { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 14px; }
 .table-toolbar-info { color: var(--text-muted); font-size: 11px; }
 .table-responsive { overflow-x: auto; }
-.data-table { width: 100%; border-collapse: collapse; min-width: 980px; }
+.data-table { width: 100%; border-collapse: collapse; min-width: 0; }
 .data-table th { background: var(--surface-soft); color: #66736b; font-size: 9.5px; letter-spacing: .035em; text-transform: uppercase; font-weight: 800; padding: 12px 13px; border-bottom: 1px solid var(--border); white-space: nowrap; }
 .data-table td { padding: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; font-size: 11px; color: #415048; }
 .data-table tbody tr:hover { background: #fbfcfb; }

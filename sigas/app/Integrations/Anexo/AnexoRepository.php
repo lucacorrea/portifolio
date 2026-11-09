@@ -17,18 +17,65 @@ final class AnexoRepository
     /** @return array<string,mixed>|null */
     public function findSolicitanteByCpf(string $cpf): ?array
     {
-        $sql = "SELECT s.id, s.nome, s.cpf, s.nis, s.telefone, s.bairro_id, b.nome AS bairro_nome,
-                    s.genero, s.estado_civil, s.data_nascimento, s.nacionalidade, s.naturalidade,
-                    s.rg, s.rg_emissao, s.rg_uf, s.endereco, s.numero, s.complemento, s.referencia,
-                    s.renda_familiar, s.total_moradores, s.total_familias, s.resumo_caso,
-                    s.conj_nome, s.conj_cpf, s.conj_nis, s.conj_rg, s.conj_nasc,
-                    s.created_at, s.updated_at, s.responsavel
+        /*
+         * O cadastro socioassistencial histórico do SEMAS cresceu ao longo do
+         * tempo e a tabela solicitantes possui mais campos do que o primeiro
+         * contrato de integração do SIGAS previa. A própria ficha detalhada do
+         * SEMAS trabalha com s.*. Fazemos o mesmo aqui e filtramos/normalizamos
+         * o que pode sair da integração em AnexoIntegrationService.
+         *
+         * Isso evita perder dados existentes (habitação, renda, benefícios,
+         * PCD, grupo tradicional, cônjuge etc.) sem acoplar esta consulta a
+         * uma versão específica do schema do ANEXO.
+         */
+        $sql = "SELECT s.*, COALESCE(b.nome, '') AS bairro_nome
                 FROM solicitantes s
                 LEFT JOIN bairros b ON b.id = s.bairro_id
                 WHERE s.cpf = :cpf
                 LIMIT 1";
 
         return $this->fetchOne($sql, ['cpf' => Validator::onlyDigits($cpf)]);
+    }
+
+    /** @param list<string> $cpfs @return list<array<string,mixed>> */
+    public function findSolicitantesSummaryByCpfs(array $cpfs): array
+    {
+        $normalized = [];
+        foreach ($cpfs as $cpf) {
+            $digits = Validator::onlyDigits((string) $cpf);
+            if (strlen($digits) === 11) {
+                $normalized[$digits] = $digits;
+            }
+        }
+        if ($normalized === []) {
+            return [];
+        }
+
+        $results = [];
+        foreach (array_chunk(array_values($normalized), 350) as $chunkIndex => $chunk) {
+            $placeholders = [];
+            $params = [];
+            foreach ($chunk as $index => $cpf) {
+                $key = 'cpf_' . $chunkIndex . '_' . $index;
+                $placeholders[] = ':' . $key;
+                $params[$key] = $cpf;
+            }
+
+            $sql = "SELECT s.id, s.nome, s.cpf,
+                        COUNT(DISTINCT sol.id) AS solicitacoes_count,
+                        GROUP_CONCAT(DISTINCT NULLIF(at.nome, '') ORDER BY at.nome SEPARATOR '||') AS beneficios
+                    FROM solicitantes s
+                    LEFT JOIN solicitacoes sol ON sol.solicitante_id = s.id
+                    LEFT JOIN ajudas_tipos at ON at.id = sol.ajuda_tipo_id
+                    WHERE s.cpf IN (" . implode(',', $placeholders) . ")
+                    GROUP BY s.id, s.nome, s.cpf";
+
+            foreach ($this->fetchAll($sql, $params) as $row) {
+                $results[] = $row;
+            }
+        }
+
+        return $results;
     }
 
     /** @return list<array<string,mixed>> */

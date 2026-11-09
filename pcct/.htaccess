@@ -1,0 +1,26 @@
+# PCCT em subpasta (/pcct) - Laravel 9
+# Direciona as requisicoes para public/ sem expor a raiz do projeto.
+# O ideal em hospedagens configuraveis e apontar o DocumentRoot direto para pcct/public.
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Nunca permita acesso HTTP aos diretorios internos do Laravel.
+    RewriteRule ^(?:app|bootstrap|config|database|lang|resources|routes|storage|tests|vendor)(?:/|$) - [F,L,NC]
+
+    # Bloqueie arquivos internos e ocultos na raiz, incluindo .env e backups.
+    RewriteRule ^(?:\.|artisan(?:$|/)|composer(?:\.json|\.lock)$|package(?:-lock)?\.json$|phpunit\.xml$|webpack\.mix\.js$|README\.md$|server\.php$) - [F,L,NC]
+
+    # Protecao adicional contra acesso a nomes de arquivos sensiveis.
+    RewriteRule (^|/)(?:\.env(?:\..*)?|\.git(?:/|$)|\.htaccess$|\.htpasswd$) - [F,L,NC]
+
+    # Impede um segundo rewrite quando a URL interna ja aponta para public/.
+    RewriteRule ^public(?:/|$) - [L]
+
+    # Mantem a URL externa /pcct/ e usa o front controller do Laravel.
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+<IfModule mod_autoindex.c>
+    Options -Indexes
+</IfModule>

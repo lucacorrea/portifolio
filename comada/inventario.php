@@ -1,0 +1,4 @@
+<?php $pageTitle='Inventário'; $currentPage='inventario'; include 'includes/header.php'; ?>
+<div class="page-head"><div><h1>Inventário</h1><p>Conferência física e ajuste controlado de estoque.</p></div><button class="btn btn-primary" data-demo-action="Inventário iniciado">Iniciar inventário</button></div>
+<div class="card table-wrap"><table class="table"><thead><tr><th>Produto</th><th>Sistema</th><th>Contagem física</th><th>Diferença</th><th>Status</th></tr></thead><tbody><tr><td>Heineken 600ml</td><td>32</td><td><input class="input" value="32" style="width:95px"></td><td>0</td><td><span class="pill success">Conferido</span></td></tr><tr><td>Coca-Cola 350ml</td><td>14</td><td><input class="input" value="13" style="width:95px"></td><td>-1</td><td><span class="pill warning">Divergência</span></td></tr></tbody></table></div>
+<?php include 'includes/footer.php'; ?>

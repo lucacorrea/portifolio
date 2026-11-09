@@ -503,11 +503,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 UPDATE aquisicoes
                 SET criado_em = ?, fornecedor_id = ?, valor_total = ?, status = ?,
                     data_finalizacao = CASE
-                        WHEN ? = 'FINALIZADO' THEN COALESCE(data_finalizacao, CURRENT_TIMESTAMP)
+                        WHEN CAST(? AS UNSIGNED) = 1 THEN COALESCE(data_finalizacao, CURRENT_TIMESTAMP)
                         ELSE NULL
                     END,
                     usuario_id_finalizou = CASE
-                        WHEN ? = 'FINALIZADO' THEN COALESCE(usuario_id_finalizou, ?)
+                        WHEN CAST(? AS UNSIGNED) = 1 THEN COALESCE(usuario_id_finalizou, ?)
                         ELSE NULL
                     END
                 WHERE id = ? AND oficio_id = ?
@@ -528,8 +528,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             foreach ($empresas_sanitizadas as $empresa) {
                 $aquisicao_id = (int)$empresa['aquisicao_id'];
                 $status_aquisicao = $empresa['status'];
-                $usuario_finalizou = $status_aquisicao === 'FINALIZADO' ? oficio_edit_current_user_id() : null;
-                $data_finalizacao = $status_aquisicao === 'FINALIZADO' ? date('Y-m-d H:i:s') : null;
+                // Evita comparar parâmetros de texto com literais SQL de collations diferentes.
+                $finalizar_aquisicao = $status_aquisicao === 'FINALIZADO' ? 1 : 0;
+                $usuario_finalizou = $finalizar_aquisicao === 1 ? oficio_edit_current_user_id() : null;
+                $data_finalizacao = $finalizar_aquisicao === 1 ? date('Y-m-d H:i:s') : null;
 
                 if ($aquisicao_id > 0) {
                     $stmt_update_aquisicao->execute([
@@ -537,8 +539,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $empresa['fornecedor_id'],
                         $empresa['valor_total'],
                         $status_aquisicao,
-                        $status_aquisicao,
-                        $status_aquisicao,
+                        $finalizar_aquisicao,
+                        $finalizar_aquisicao,
                         oficio_edit_current_user_id(),
                         $aquisicao_id,
                         $id,

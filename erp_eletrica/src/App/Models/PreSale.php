@@ -48,6 +48,12 @@ class PreSale extends BaseModel {
 
     public function findByCode($code) {
         $nameField = $this->columnExists('nome_cliente_avulso') ? 'pv.nome_cliente_avulso' : "''";
+        $productColumns = [];
+        try {
+            $productColumns = $this->db->query("DESCRIBE produtos")->fetchAll(\PDO::FETCH_COLUMN);
+        } catch (\Throwable $e) {}
+        $precoVariavelSelect = in_array('preco_variavel', $productColumns, true) ? 'p.preco_variavel' : '0';
+
         $sql = "SELECT pv.*, 
                        COALESCE(c.nome, $nameField, 'Consumidor') as cliente_nome,
                        COALESCE(c.cpf_cnpj, pv.cpf_cliente) as cliente_doc
@@ -59,7 +65,7 @@ class PreSale extends BaseModel {
         if ($pv) {
             $pv['itens'] = $this->query("
                 SELECT i.*, p.nome as produto_nome, p.unidade, p.imagens, p.codigo,
-                       p.preco_venda, p.preco_venda_2, p.preco_venda_3
+                       p.preco_venda, p.preco_venda_2, p.preco_venda_3, {$precoVariavelSelect} as preco_variavel
                 FROM pre_venda_itens i 
                 JOIN produtos p ON i.produto_id = p.id 
                 WHERE i.pre_venda_id = ?

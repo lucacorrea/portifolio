@@ -547,11 +547,10 @@ if ($export === 'pdf_fornecedores') {
                 margin: 0 auto 10px;
                 padding: 0;
                 background: #ffffff;
-                page-break-after: always;
-            }
-
-            .folha-fornecedor:last-child {
                 page-break-after: auto;
+                break-after: auto;
+                page-break-inside: auto;
+                break-inside: auto;
             }
 
             .titulo-relatorio {
@@ -672,6 +671,20 @@ if ($export === 'pdf_fornecedores') {
                     background: #ffffff !important;
                 }
 
+                .dados thead {
+                    display: table-header-group !important;
+                }
+
+                .dados tr, .dados td, .resumo {
+                    page-break-inside: avoid;
+                    break-inside: avoid;
+                }
+
+                .cabecalho-fornecedor {
+                    page-break-after: avoid;
+                    break-after: avoid;
+                }
+
                 .no-print {
                     display: none !important;
                 }
@@ -759,14 +772,16 @@ if ($export === 'pdf_fornecedores') {
                                 <col class="col-status">
                                 <col class="col-usuario">
                             </colgroup>
-                            <tr>
-                                <th>Número</th>
-                                <th>Secretaria</th>
-                                <th>Data</th>
-                                <th>Valor</th>
-                                <th>Status</th>
-                                <th>Cadastrado por</th>
-                            </tr>
+                            <thead>
+                                <tr>
+                                    <th>Número</th>
+                                    <th>Secretaria</th>
+                                    <th>Data</th>
+                                    <th>Valor</th>
+                                    <th>Status</th>
+                                    <th>Cadastrado por</th>
+                                </tr>
+                            </thead>
                             <?php foreach ($fornecedor['items'] as $oficio_export): ?>
                                 <tr>
                                     <td class="text-center"><?php echo h($oficio_export['numero']); ?></td>
@@ -825,6 +840,8 @@ $stmt = $pdo->prepare("
         u.nome as usuario,
         COALESCE(fornecedores_oficio.fornecedores, f_indicado.nome) AS fornecedores,
         COALESCE(fornecedores_oficio.total_aquisicoes, 0) AS total_aquisicoes,
+        (SELECT COUNT(*) FROM itens_oficio io_count WHERE io_count.oficio_id = o.id) AS total_itens,
+        CASE WHEN f_indicado.id IS NOT NULL THEN 1 ELSE 0 END AS fornecedor_indicado_valido,
         CASE
             WHEN fornecedores_oficio.fornecedores IS NULL AND f_indicado.id IS NOT NULL THEN 1
             ELSE 0
@@ -849,6 +866,24 @@ $stmt = $pdo->prepare("
 $stmt->execute($params);
 $oficios = $stmt->fetchAll();
 
+// Consulta única das aquisições dos ofícios exibidos nesta página.
+// Evita consultas por linha e permite abrir diretamente a impressão correta.
+$aquisicoes_por_oficio = [];
+if (!empty($oficios)) {
+    $ids_oficios = array_map('intval', array_column($oficios, 'id'));
+    $marcadores_oficios = implode(',', array_fill(0, count($ids_oficios), '?'));
+    $stmt_aquisicoes_oficios = $pdo->prepare("
+        SELECT id, oficio_id, numero_aq
+        FROM aquisicoes
+        WHERE oficio_id IN ($marcadores_oficios)
+        ORDER BY oficio_id ASC, id ASC
+    ");
+    $stmt_aquisicoes_oficios->execute($ids_oficios);
+    foreach ($stmt_aquisicoes_oficios->fetchAll(PDO::FETCH_ASSOC) as $aquisicao_oficio) {
+        $aquisicoes_por_oficio[(int)$aquisicao_oficio['oficio_id']][] = $aquisicao_oficio;
+    }
+}
+
 // Função auxiliar para manter parâmetros na URL da paginação
 function get_pagination_url($page)
 {
@@ -859,6 +894,7 @@ function get_pagination_url($page)
 
 include 'views/layout/header.php';
 ?>
+<link rel="stylesheet" href="assets/css/lista-acoes-modal.css">
 
 <style>
     .filtros-grid {
@@ -1275,102 +1311,139 @@ include 'views/layout/header.php';
     }
 </style>
 
-<div class="card no-print">
+<div class="card no-print lista-filtros-card">
     <div class="card-body">
-        <h3 class="card-title" style="margin-bottom: 1rem; font-weight: 700; font-size: 1rem;">
-            <i class="fas fa-filter" style="margin-right: 5px; color: var(--primary);"></i> Filtros de Busca
-        </h3>
+        <div class="lista-filtros-header">
+            <div class="lista-filtros-titulo-wrap">
+                <span class="lista-filtros-icone">
+                    <i class="fas fa-filter"></i>
+                </span>
+                <div>
+                    <h3 class="lista-filtros-titulo">Filtros de Busca</h3>
+                    <p class="lista-filtros-subtitulo">Localize solicitações por dados, período ou situação.</p>
+                </div>
+            </div>
+            <span class="lista-filtros-resumo">
+                <i class="fas fa-sliders-h"></i>
+                Refine a listagem
+            </span>
+        </div>
 
-        <form action="" method="GET" class="filtros-grid">
-            <div class="form-group filtro-limite" style="margin-bottom: 0;">
-                <label class="form-label">Linhas por página</label>
-                <select name="por_pagina" class="form-control">
-                    <?php foreach ($por_pagina_options as $por_pagina_option): ?>
-                        <option value="<?php echo $por_pagina_option; ?>" <?php echo $itens_por_pagina === $por_pagina_option ? 'selected' : ''; ?>>
-                            <?php echo $por_pagina_option; ?> linhas
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+        <form action="" method="GET" class="lista-filtros-form lista-filtros-form--oficios">
+            <div class="lista-filtros-principais">
+                <div class="lista-filtro lista-filtro-busca">
+                    <label for="filtro-oficio-busca">Termo de busca</label>
+                    <div class="lista-filtro-input-icon">
+                        <i class="fas fa-search"></i>
+                        <input
+                            id="filtro-oficio-busca"
+                            type="text"
+                            name="busca"
+                            class="form-control"
+                            placeholder="Número, secretaria, fornecedor ou valor..."
+                            value="<?php echo htmlspecialchars($busca_texto, ENT_QUOTES, 'UTF-8'); ?>">
+                    </div>
+                </div>
+
+                <div class="lista-filtro">
+                    <label for="filtro-oficio-status">Status</label>
+                    <select id="filtro-oficio-status" name="status" class="form-control">
+                        <option value="">Todos Status</option>
+                        <option value="PENDENTE_ITENS" <?php echo $status_filtro === 'PENDENTE_ITENS' ? 'selected' : ''; ?>>PENDENTE_ITENS</option>
+                        <option value="ENVIADO" <?php echo $status_filtro === 'ENVIADO' ? 'selected' : ''; ?>>ENVIADO</option>
+                        <option value="EM_ANALISE" <?php echo $status_filtro === 'EM_ANALISE' ? 'selected' : ''; ?>>EM_ANALISE</option>
+                        <option value="APROVADO" <?php echo $status_filtro === 'APROVADO' ? 'selected' : ''; ?>>APROVADO</option>
+                        <option value="REPROVADO" <?php echo $status_filtro === 'REPROVADO' ? 'selected' : ''; ?>>REPROVADO</option>
+                        <option value="ARQUIVADO" <?php echo $status_filtro === 'ARQUIVADO' ? 'selected' : ''; ?>>ARQUIVADO</option>
+                    </select>
+                </div>
+
+                <div class="lista-filtro">
+                    <label for="filtro-oficio-secretaria">Secretaria</label>
+                    <select id="filtro-oficio-secretaria" name="secretaria_id" class="form-control">
+                        <option value="">Todas as Secretarias</option>
+                        <?php foreach ($secretarias_list as $sec): ?>
+                            <option value="<?php echo $sec['id']; ?>" <?php echo $secretaria_id_filtro == $sec['id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($sec['nome'], ENT_QUOTES, 'UTF-8'); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="lista-filtro lista-filtro-fornecedor">
+                    <label for="filtro-oficio-fornecedor">Fornecedor</label>
+                    <select id="filtro-oficio-fornecedor" name="fornecedor_id" class="form-control">
+                        <option value="">Todos os Fornecedores</option>
+                        <?php foreach ($fornecedores_list as $fornecedor): ?>
+                            <option value="<?php echo (int)$fornecedor['id']; ?>" <?php echo $fornecedor_id_filtro == $fornecedor['id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($fornecedor['nome'], ENT_QUOTES, 'UTF-8'); ?>
+                                <?php if (!empty($fornecedor['cnpj'])): ?>
+                                    (<?php echo htmlspecialchars($fornecedor['cnpj'], ENT_QUOTES, 'UTF-8'); ?>)
+                                <?php endif; ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
             </div>
 
-            <div class="form-group filtro-busca" style="margin-bottom: 0;">
-                <label class="form-label">Termo de busca</label>
-                <input type="text" name="busca" class="form-control" placeholder="Número, secretaria, fornecedor ou valor..." value="<?php echo htmlspecialchars($busca_texto, ENT_QUOTES, 'UTF-8'); ?>">
-            </div>
+            <div class="lista-filtros-secundarios">
+                <div class="lista-filtros-secundarios-campos">
+                    <div class="lista-filtro">
+                        <label for="filtro-oficio-data-inicio">Data inicial</label>
+                        <input
+                            id="filtro-oficio-data-inicio"
+                            type="date"
+                            name="data_inicio"
+                            class="form-control"
+                            value="<?php echo htmlspecialchars($data_inicio_valida ? $data_inicio_filtro : '', ENT_QUOTES, 'UTF-8'); ?>">
+                    </div>
 
-            <div class="form-group filtro-status" style="margin-bottom: 0;">
-                <label class="form-label">Status</label>
-                <select name="status" class="form-control">
-                    <option value="">Todos Status</option>
-                    <option value="PENDENTE_ITENS" <?php echo $status_filtro === 'PENDENTE_ITENS' ? 'selected' : ''; ?>>PENDENTE_ITENS</option>
-                    <option value="ENVIADO" <?php echo $status_filtro === 'ENVIADO' ? 'selected' : ''; ?>>ENVIADO</option>
-                    <option value="EM_ANALISE" <?php echo $status_filtro === 'EM_ANALISE' ? 'selected' : ''; ?>>EM_ANALISE</option>
-                    <option value="APROVADO" <?php echo $status_filtro === 'APROVADO' ? 'selected' : ''; ?>>APROVADO</option>
-                    <option value="REPROVADO" <?php echo $status_filtro === 'REPROVADO' ? 'selected' : ''; ?>>REPROVADO</option>
-                    <option value="ARQUIVADO" <?php echo $status_filtro === 'ARQUIVADO' ? 'selected' : ''; ?>>ARQUIVADO</option>
-                </select>
-            </div>
+                    <div class="lista-filtro">
+                        <label for="filtro-oficio-data-fim">Data final</label>
+                        <input
+                            id="filtro-oficio-data-fim"
+                            type="date"
+                            name="data_fim"
+                            class="form-control"
+                            value="<?php echo htmlspecialchars($data_fim_valida ? $data_fim_filtro : '', ENT_QUOTES, 'UTF-8'); ?>">
+                    </div>
 
-            <div class="form-group filtro-secretaria" style="margin-bottom: 0;">
-                <label class="form-label">Secretaria</label>
-                <select name="secretaria_id" class="form-control">
-                    <option value="">Todas as Secretarias</option>
-                    <?php foreach ($secretarias_list as $sec): ?>
-                        <option value="<?php echo $sec['id']; ?>" <?php echo $secretaria_id_filtro == $sec['id'] ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($sec['nome'], ENT_QUOTES, 'UTF-8'); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+                    <div class="lista-filtro">
+                        <label for="filtro-oficio-por-pagina">Linhas por página</label>
+                        <select id="filtro-oficio-por-pagina" name="por_pagina" class="form-control">
+                            <?php foreach ($por_pagina_options as $por_pagina_option): ?>
+                                <option value="<?php echo $por_pagina_option; ?>" <?php echo $itens_por_pagina === $por_pagina_option ? 'selected' : ''; ?>>
+                                    <?php echo $por_pagina_option; ?> linhas
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
 
-            <div class="form-group filtro-fornecedor" style="margin-bottom: 0;">
-                <label class="form-label">Fornecedor</label>
-                <select name="fornecedor_id" class="form-control">
-                    <option value="">Todos os Fornecedores</option>
-                    <?php foreach ($fornecedores_list as $fornecedor): ?>
-                        <option value="<?php echo (int)$fornecedor['id']; ?>" <?php echo $fornecedor_id_filtro == $fornecedor['id'] ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($fornecedor['nome'], ENT_QUOTES, 'UTF-8'); ?>
-                            <?php if (!empty($fornecedor['cnpj'])): ?>
-                                (<?php echo htmlspecialchars($fornecedor['cnpj'], ENT_QUOTES, 'UTF-8'); ?>)
-                            <?php endif; ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+                <div class="lista-filtros-acoes">
+                    <button type="submit" class="filtro-btn filtro-btn-primary" title="Aplicar filtros">
+                        <i class="fas fa-search"></i>
+                        Filtrar
+                    </button>
 
-            <div class="form-group filtro-data" style="margin-bottom: 0;">
-                <label class="form-label">Data inicial</label>
-                <input
-                    type="date"
-                    name="data_inicio"
-                    class="form-control"
-                    value="<?php echo htmlspecialchars($data_inicio_valida ? $data_inicio_filtro : '', ENT_QUOTES, 'UTF-8'); ?>">
-            </div>
+                    <?php
+                    $pdf_query = $_GET;
+                    unset($pdf_query['page']);
+                    $pdf_query['export'] = 'pdf_fornecedores';
+                    ?>
+                    <a
+                        href="oficios_lista.php?<?php echo h(http_build_query($pdf_query)); ?>"
+                        class="filtro-btn filtro-btn-pdf"
+                        title="PDF por fornecedor">
+                        <i class="fas fa-file-pdf"></i>
+                        PDF Fornecedores
+                    </a>
 
-            <div class="form-group filtro-data" style="margin-bottom: 0;">
-                <label class="form-label">Data final</label>
-                <input
-                    type="date"
-                    name="data_fim"
-                    class="form-control"
-                    value="<?php echo htmlspecialchars($data_fim_valida ? $data_fim_filtro : '', ENT_QUOTES, 'UTF-8'); ?>">
-            </div>
-
-            <div class="form-group filtros-acoes" style="margin-bottom: 0;">
-                <button type="submit" class="btn btn-outline btn-sm" title="Filtrar">
-                    <i class="fas fa-search"></i> Filtrar
-                </button>
-                <?php
-                $pdf_query = $_GET;
-                unset($pdf_query['page']);
-                $pdf_query['export'] = 'pdf_fornecedores';
-                ?>
-                <a href="oficios_lista.php?<?php echo h(http_build_query($pdf_query)); ?>" class="btn btn-outline btn-sm" title="PDF por fornecedor">
-                    <i class="fas fa-file-pdf"></i> PDF Fornecedores
-                </a>
-                <a href="oficios_lista.php" class="btn btn-outline btn-sm" title="Limpar Filtros">
-                    <i class="fas fa-eraser"></i> Limpar
-                </a>
+                    <a href="oficios_lista.php" class="filtro-btn filtro-btn-clear" title="Limpar filtros">
+                        <i class="fas fa-eraser"></i>
+                        Limpar
+                    </a>
+                </div>
             </div>
         </form>
     </div>
@@ -1382,7 +1455,7 @@ include 'views/layout/header.php';
             <h3 style="color: var(--text-dark); font-weight: 700; font-size: 1rem; margin: 0;">
                 <i class="fas fa-list-ul" style="margin-right: 10px; color: var(--primary);"></i> Solicitações Recebidas
             </h3>
-            <?php if (strtoupper($_SESSION['nivel'] ?? '') !== 'SECRETARIO'): ?>
+            <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE', 'FUNCIONARIO', 'CASA_CIVIL'], true)): ?>
                 <a href="oficios_novo.php" class="btn btn-primary btn-sm">
                     <i class="fas fa-plus"></i> Novo Cadastro
                 </a>
@@ -1390,6 +1463,7 @@ include 'views/layout/header.php';
         </div>
 
         <?php display_flash(); ?>
+        <p class="so-list-tip"><i class="fas fa-mouse-pointer" aria-hidden="true"></i> Clique em uma linha para visualizar as ações disponíveis. Use as caixas de seleção para operações em lote.</p>
         <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'])): ?>
             <?php if ($auto_gerar_aquisicoes_indicadas): ?>
                 <div class="alert alert-info" id="auto-geracao-indicadas-aviso">
@@ -1431,7 +1505,7 @@ include 'views/layout/header.php';
 
                             <i class="fas fa-check-circle"></i>
 
-                            Aprovar / informar fornecedor
+                            Aprovar e gerar aquisições
 
                         </button>
 
@@ -1479,12 +1553,15 @@ include 'views/layout/header.php';
                             <th style="text-align: right;">Valor</th>
                             <th>Status</th>
                             <th>Cadastrado por</th>
-                            <th class="w-1">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($oficios as $o): ?>
-                            <tr>
+                            <tr class="so-list-row" data-so-list-row tabindex="0" aria-haspopup="dialog"
+                                data-so-actions-template="acoes-oficio-<?php echo (int)$o['id']; ?>"
+                                data-so-actions-title="Ofício <?php echo h($o['numero']); ?>"
+                                data-so-actions-subtitle="<?php echo h($o['secretaria']); ?>"
+                                title="Clique para ver as ações deste ofício">
                                 <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'])): ?>
 
                                     <td>
@@ -1494,6 +1571,8 @@ include 'views/layout/header.php';
                                             value="<?php echo (int)$o['id']; ?>"
                                             data-status="<?php echo h($o['status']); ?>"
                                             data-has-aquisicao="<?php echo (int)$o['total_aquisicoes'] > 0 ? '1' : '0'; ?>"
+                                            data-has-fornecedor="<?php echo (int)($o['fornecedor_indicado_valido'] ?? 0) === 1 ? '1' : '0'; ?>"
+                                            data-has-itens="<?php echo (int)($o['total_itens'] ?? 0) > 0 ? '1' : '0'; ?>"
                                             aria-label="Selecionar ofício <?php echo h($o['numero']); ?>">
                                     </td>
 
@@ -1537,55 +1616,12 @@ include 'views/layout/header.php';
                                 <td>
                                     <span class="text-muted"><?php echo htmlspecialchars($o['usuario'], ENT_QUOTES, 'UTF-8'); ?></span>
                                 </td>
-                                <td>
-                                    <div class="acoes-wrap">
-                                        <a href="oficios_visualizar.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Visualizar/Imprimir">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-
-                                        <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'], true)): ?>
-                                            <a href="oficios_editar.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Editar Ofício e Itens">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                        <?php endif; ?>
-
-                                        <?php
-                                        if ($o['status'] == 'ENVIADO' && ($nivel_user == 'ADMIN' || $nivel_user == 'SUPORTE')):
-                                        ?>
-                                            <a href="analisar_oficio.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Analisar">
-                                                <i class="fas fa-gavel"></i> Analisar
-                                            </a>
-                                        <?php endif; ?>
-
-                                        <a href="oficios_anexar.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Anexar Ofício de Solicitação" style="color: var(--secondary); border-color: var(--secondary);">
-                                            <i class="fas fa-paperclip"></i>
-                                        </a>
-
-                                        <?php if ($o['status'] == 'APROVADO' && (int)($o['total_aquisicoes'] ?? 0) === 0 && ($nivel_user == 'ADMIN' || $nivel_user == 'SUPORTE')): ?>
-                                            <a href="gerar_aquisicao.php?id=<?php echo (int)$o['id']; ?>" class="btn btn-outline btn-sm" title="Gerar Aquisição">
-                                                <i class="fas fa-shopping-cart"></i> Gerar
-                                            </a>
-                                        <?php endif; ?>
-
-                                        <?php if ($nivel_user === 'SUPORTE'): ?>
-                                            <button
-                                                type="button"
-                                                class="btn btn-outline btn-sm btn-delete-oficio"
-                                                title="Excluir ofício e aquisições vinculadas"
-                                                data-delete-oficio
-                                                data-oficio-id="<?php echo (int)$o['id']; ?>"
-                                                data-oficio-numero="<?php echo htmlspecialchars($o['numero'], ENT_QUOTES, 'UTF-8'); ?>">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        <?php endif; ?>
-                                    </div>
-                                </td>
                             </tr>
                         <?php endforeach; ?>
 
                         <?php if (empty($oficios)): ?>
                             <tr>
-                                <td colspan="<?php echo in_array($nivel_user, ['ADMIN', 'SUPORTE']) ? 9 : 8; ?>">
+                                <td colspan="<?php echo in_array($nivel_user, ['ADMIN', 'SUPORTE']) ? 8 : 7; ?>">
                                     Nenhuma solicitação encontrada.
                                 </td>
                             </tr>
@@ -1621,7 +1657,7 @@ include 'views/layout/header.php';
                                     <i class="fas fa-check-circle text-success"></i>
                                     Aprovar e gerar aquisição
                                 </h3>
-                                <small>Uma aquisição será gerada automaticamente para cada ofício elegível selecionado.</small>
+                                <small>O sistema usa o fornecedor já registrado em cada solicitação.</small>
                             </div>
                             <button type="button" class="btn-fechar-modal" onclick="fecharModalAprovacao()" aria-label="Fechar">
                                 <i class="fas fa-times"></i>
@@ -1634,36 +1670,21 @@ include 'views/layout/header.php';
                                 <strong id="totalSelecionados">0 solicitações selecionadas</strong>
                             </div>
 
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label for="fornecedor-aprovacao-lote" class="form-label">Fornecedor</label>
-                                <select
-                                    name="fornecedor_id"
-                                    id="fornecedor-aprovacao-lote"
-                                    class="form-control form-control-lg">
-                                    <option value="">Selecione o fornecedor...</option>
-                                    <?php foreach ($fornecedores_list as $fornecedor): ?>
-                                        <option value="<?php echo (int)$fornecedor['id']; ?>">
-                                            <?php echo h($fornecedor['nome']); ?><?php echo !empty($fornecedor['cnpj']) ? ' (' . h($fornecedor['cnpj']) . ')' : ''; ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <small class="text-muted">
-                                    ENVIADO: aprova e gera a aquisição. APROVADO sem aquisição: gera a aquisição com o fornecedor selecionado.
-                                </small>
-                            </div>
-
-                            <?php if (empty($fornecedores_list)): ?>
-                                <div class="alert alert-warning" style="margin-top: 1rem; margin-bottom: 0;">
-                                    Cadastre um fornecedor antes de usar esta operação.
+                            <div class="so-approval-batch-info">
+                                <i class="fas fa-truck" aria-hidden="true"></i>
+                                <div>
+                                    <strong>Fornecedores preservados</strong>
+                                    <p>As aquisições serão geradas para os fornecedores já vinculados aos ofícios, sem pedir uma nova seleção.</p>
                                 </div>
-                            <?php endif; ?>
+                            </div>
+                            <p class="so-approval-batch-alert" id="aprovacao-ignorados" hidden></p>
                         </div>
 
                         <div class="modal-footer-custom">
                             <button type="button" class="btn btn-secondary" onclick="fecharModalAprovacao()">Cancelar</button>
-                            <button type="submit" class="btn btn-success">
+                            <button type="submit" class="btn btn-success" id="confirmar-aprovacao-lote">
                                 <i class="fas fa-check-circle"></i>
-                                Confirmar operação
+                                Confirmar aprovação
                             </button>
                         </div>
                     </div>
@@ -1713,6 +1734,112 @@ include 'views/layout/header.php';
                 </div>
             </form>
             <?php endif; ?>
+    </div>
+</div>
+
+
+<?php foreach ($oficios as $o): ?>
+    <template id="acoes-oficio-<?php echo (int)$o['id']; ?>">
+        <?php $aquisicoes_do_oficio = $aquisicoes_por_oficio[(int)$o['id']] ?? []; ?>
+        <?php if (!empty($aquisicoes_do_oficio)): ?>
+            <?php foreach ($aquisicoes_do_oficio as $aquisicao_do_oficio): ?>
+                <a class="so-action-link" href="aquisicoes_visualizar.php?id=<?php echo (int)$aquisicao_do_oficio['id']; ?>">
+                    <i class="fas fa-print" aria-hidden="true"></i>
+                    <?php if (count($aquisicoes_do_oficio) === 1): ?>
+                        Visualizar / Imprimir aquisição
+                    <?php else: ?>
+                        Visualizar / Imprimir <?php echo h($aquisicao_do_oficio['numero_aq']); ?>
+                    <?php endif; ?>
+                </a>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <a class="so-action-link" href="oficios_visualizar.php?id=<?php echo (int)$o['id']; ?>">
+                <i class="fas fa-eye" aria-hidden="true"></i> Visualizar solicitação (sem aquisição)
+            </a>
+        <?php endif; ?>
+        <?php // Mantém o fluxo da antiga lista da SEFAZ na lista unificada. ?>
+        <?php if ($nivel_user === 'SEFAZ'
+            && in_array((string)$o['status'], ['PENDENTE_ITENS', 'ENVIADO'], true)
+            && (int)($o['total_aquisicoes'] ?? 0) === 0): ?>
+            <a class="so-action-link" href="atribuir_itens.php?id=<?= (int)$o['id'] ?>">
+                <i class="fas fa-boxes" aria-hidden="true"></i>
+                <?= $o['status'] === 'PENDENTE_ITENS' ? 'Atribuir itens' : 'Editar itens' ?>
+            </a>
+        <?php endif; ?>
+        <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'], true)
+            && in_array((string)$o['status'], ['ENVIADO', 'APROVADO'], true)
+            && empty($aquisicoes_do_oficio)): ?>
+            <?php if ((int)($o['fornecedor_indicado_valido'] ?? 0) === 1 && (int)($o['total_itens'] ?? 0) > 0): ?>
+                <div class="so-quick-approval-info">
+                    <i class="fas fa-check-circle" aria-hidden="true"></i>
+                    <div>
+                        <strong><?= $o['status'] === 'ENVIADO' ? 'Pronta para aprovação' : 'Pronta para gerar aquisição' ?></strong>
+                        <span>Fornecedor: <?= h($o['fornecedores'] ?? 'Indicado') ?> · <?= (int)$o['total_itens'] ?> item(ns)</span>
+                    </div>
+                </div>
+                <form method="post" action="aprovar_multiplos.php" class="so-quick-approval-form">
+                    <input type="hidden" name="csrf_token" value="<?= h($csrf_aprovacao_multipla) ?>">
+                    <input type="hidden" name="return_query" value="<?= h($_SERVER['QUERY_STRING'] ?? '') ?>">
+                    <input type="hidden" name="oficios[]" value="<?= (int)$o['id'] ?>">
+                    <input type="hidden" name="abrir_aquisicao" value="1">
+                    <button type="submit" class="so-action-link so-action-link--success">
+                        <i class="fas fa-check-circle" aria-hidden="true"></i>
+                        <?= $o['status'] === 'ENVIADO' ? 'Aprovar e gerar aquisição' : 'Gerar aquisição agora' ?>
+                    </button>
+                </form>
+            <?php elseif ($o['status'] === 'ENVIADO'): ?>
+                <div class="so-quick-approval-info so-quick-approval-info--warning">
+                    <i class="fas fa-info-circle" aria-hidden="true"></i>
+                    <div>
+                        <strong>Faltam informações para aprovar</strong>
+                        <span><?= (int)($o['fornecedor_indicado_valido'] ?? 0) !== 1 ? 'Defina um fornecedor válido. ' : '' ?><?= (int)($o['total_itens'] ?? 0) === 0 ? 'Cadastre os itens antes da aprovação.' : '' ?></span>
+                    </div>
+                </div>
+            <?php endif; ?>
+        <?php endif; ?>
+        <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'], true)): ?>
+            <a class="so-action-link" href="oficios_editar.php?id=<?php echo (int)$o['id']; ?>">
+                <i class="fas fa-edit" aria-hidden="true"></i> Editar ofício e itens
+            </a>
+        <?php endif; ?>
+        <?php if ($o['status'] === 'ENVIADO' && in_array($nivel_user, ['ADMIN', 'SUPORTE'], true)): ?>
+            <a class="so-action-link" href="analisar_oficio.php?id=<?php echo (int)$o['id']; ?>">
+                <i class="fas fa-gavel" aria-hidden="true"></i> Analisar solicitação
+            </a>
+        <?php endif; ?>
+        <a class="so-action-link" href="oficios_anexar.php?id=<?php echo (int)$o['id']; ?>">
+            <i class="fas fa-paperclip" aria-hidden="true"></i> Anexar documento
+        </a>
+        <?php if ($o['status'] === 'APROVADO' && (int)($o['total_aquisicoes'] ?? 0) === 0 && in_array($nivel_user, ['ADMIN', 'SUPORTE'], true)): ?>
+            <a class="so-action-link" href="gerar_aquisicao.php?id=<?php echo (int)$o['id']; ?>">
+                <i class="fas fa-shopping-cart" aria-hidden="true"></i> Gerar aquisição
+            </a>
+        <?php endif; ?>
+        <?php if ($nivel_user === 'SUPORTE'): ?>
+            <button type="button" class="so-action-link so-action-link--danger" data-delete-oficio
+                    data-oficio-id="<?php echo (int)$o['id']; ?>" data-oficio-numero="<?php echo h($o['numero']); ?>">
+                <i class="fas fa-trash" aria-hidden="true"></i> Excluir ofício
+            </button>
+        <?php endif; ?>
+    </template>
+<?php endforeach; ?>
+
+<div class="so-action-modal" id="so-list-actions-modal" hidden aria-hidden="true">
+    <div class="so-action-modal__panel" role="dialog" aria-modal="true"
+         aria-labelledby="so-list-actions-title" aria-describedby="so-list-actions-subtitle">
+        <div class="so-action-modal__header">
+            <div>
+                <p class="so-action-modal__eyebrow">Ações da solicitação</p>
+                <h3 class="so-action-modal__title" id="so-list-actions-title">Ações disponíveis</h3>
+            </div>
+            <button type="button" class="so-action-modal__close" data-so-action-close aria-label="Fechar ações">
+                <i class="fas fa-times" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="so-action-modal__body">
+            <p class="so-action-modal__subtitle" id="so-list-actions-subtitle"></p>
+            <div class="so-action-modal__links" data-so-actions-container></div>
+        </div>
     </div>
 </div>
 
@@ -1773,16 +1900,16 @@ include 'views/layout/header.php';
                 oficioNumero.textContent = '';
             }
 
-            document.querySelectorAll('[data-delete-oficio]').forEach(function(button) {
-                button.addEventListener('click', function() {
-                    oficioId.value = button.getAttribute('data-oficio-id') || '';
-                    oficioNumero.textContent = button.getAttribute('data-oficio-numero') || '';
-                    modal.classList.add('is-open');
-                    modal.setAttribute('aria-hidden', 'false');
-                    setTimeout(function() {
-                        senhaInput.focus();
-                    }, 50);
-                });
+            document.addEventListener('click', function(event) {
+                const button = event.target.closest('[data-delete-oficio]');
+                if (!button) return;
+                oficioId.value = button.getAttribute('data-oficio-id') || '';
+                oficioNumero.textContent = button.getAttribute('data-oficio-numero') || '';
+                modal.classList.add('is-open');
+                modal.setAttribute('aria-hidden', 'false');
+                setTimeout(function() {
+                    senhaInput.focus();
+                }, 50);
             });
 
             document.querySelectorAll('[data-close-delete-modal]').forEach(function(button) {
@@ -1805,7 +1932,6 @@ include 'views/layout/header.php';
 <?php endif; ?>
 <script>
     const selecionarTodos = document.getElementById('selecionarTodos');
-    const temFornecedoresAprovacao = <?php echo !empty($fornecedores_list) ? 'true' : 'false'; ?>;
 
     if (selecionarTodos) {
 
@@ -1829,95 +1955,69 @@ include 'views/layout/header.php';
 
     });
 
+    function elegivelParaAprovacao(checkbox) {
+        return checkbox.dataset.hasAquisicao === '0'
+            && checkbox.dataset.hasFornecedor === '1'
+            && checkbox.dataset.hasItens === '1'
+            && ['ENVIADO', 'APROVADO'].includes(checkbox.dataset.status);
+    }
+
     function atualizarContador() {
-
-        let total = document.querySelectorAll('.checkOficio:checked').length;
-        let totalEnviados = document.querySelectorAll('.checkOficio:checked[data-status="ENVIADO"]').length;
-        let totalAprovados = document.querySelectorAll('.checkOficio:checked[data-status="APROVADO"][data-has-aquisicao="0"]').length;
-        let totalElegiveis = totalEnviados + totalAprovados;
-
+        const selecionados = Array.from(document.querySelectorAll('.checkOficio:checked'));
+        const total = selecionados.length;
+        const totalAptos = selecionados.filter(elegivelParaAprovacao).length;
         const contador = document.getElementById('contadorSelecionados');
         const botaoAprovar = document.getElementById('btn-aprovar-selecionados');
         const botaoEditarDatas = document.getElementById('btn-editar-datas');
-        const elegiveis = document.querySelectorAll('.checkOficio');
+        const itensPagina = document.querySelectorAll('.checkOficio');
 
         if (contador) {
-            contador.textContent = total + ' selecionado(s)';
+            contador.textContent = total + ' selecionado(s) · ' + totalAptos + ' apto(s) para aprovar';
         }
-
         if (botaoAprovar) {
-            botaoAprovar.disabled = totalElegiveis === 0 || !temFornecedoresAprovacao;
+            botaoAprovar.disabled = totalAptos === 0;
         }
-
         if (botaoEditarDatas) {
             botaoEditarDatas.disabled = total === 0;
         }
-
         if (selecionarTodos) {
-            selecionarTodos.checked = elegiveis.length > 0 && total === elegiveis.length;
-            selecionarTodos.indeterminate = total > 0 && total < elegiveis.length;
-            selecionarTodos.disabled = elegiveis.length === 0;
+            selecionarTodos.checked = itensPagina.length > 0 && total === itensPagina.length;
+            selecionarTodos.indeterminate = total > 0 && total < itensPagina.length;
+            selecionarTodos.disabled = itensPagina.length === 0;
         }
-
     }
 </script>
 <script>
     function abrirModalAprovacao() {
-
-        const totalSelecionados = document.querySelectorAll('.checkOficio:checked').length;
-        const totalEnviados = document.querySelectorAll('.checkOficio:checked[data-status="ENVIADO"]').length;
-        const totalAprovados = document.querySelectorAll('.checkOficio:checked[data-status="APROVADO"][data-has-aquisicao="0"]').length;
-        const totalElegiveis = totalEnviados + totalAprovados;
-        const totalIgnorados = totalSelecionados - totalElegiveis;
-
-        if (totalElegiveis === 0) {
-
-            alert('Selecione pelo menos uma solicitação com status ENVIADO ou APROVADO.');
-
+        const selecionados = Array.from(document.querySelectorAll('.checkOficio:checked'));
+        const aptos = selecionados.filter(elegivelParaAprovacao);
+        const totalIgnorados = selecionados.length - aptos.length;
+        if (aptos.length === 0) {
+            alert('Selecione pelo menos uma solicitação apta: ENVIADO ou APROVADO, com fornecedor, itens e sem aquisição existente.');
             return;
-
         }
 
-        if (!temFornecedoresAprovacao) {
+        document.getElementById('form-aprovacao-lote').setAttribute('action', 'aprovar_multiplos.php');
+        document.getElementById('nova-data-lote').required = false;
+        const enviados = aptos.filter(item => item.dataset.status === 'ENVIADO').length;
+        document.getElementById('totalSelecionados').textContent =
+            aptos.length + ' aquisição(ões) serão geradas e ' + enviados + ' solicitação(ões) serão aprovadas.';
 
-            alert('Cadastre um fornecedor antes de usar esta operação.');
-
-            return;
-
+        const aviso = document.getElementById('aprovacao-ignorados');
+        if (aviso) {
+            aviso.hidden = totalIgnorados === 0;
+            aviso.textContent = totalIgnorados + ' selecionada(s) sem requisitos completos ou já processada(s) serão ignoradas.';
         }
-
-        const formLote = document.getElementById('form-aprovacao-lote');
-        const campoNovaData = document.getElementById('nova-data-lote');
-        const campoFornecedor = document.getElementById('fornecedor-aprovacao-lote');
-        formLote.setAttribute('action', 'aprovar_multiplos.php');
-        campoNovaData.required = false;
-        campoFornecedor.required = true;
-
-        let resumo = totalEnviados + ' será(ão) aprovado(s) e ' + totalElegiveis
-            + ' aquisição(ões) será(ão) gerada(s) automaticamente.';
-        if (totalIgnorados > 0) {
-            resumo += ' ' + totalIgnorados + ' não é(são) elegível(is) para esta operação.';
-        }
-        document.getElementById('totalSelecionados').textContent = resumo;
-
-        document
-            .getElementById("modalAprovacao")
-            .classList.add("show");
-
-        document.getElementById("modalAprovacao").setAttribute("aria-hidden", "false");
-        campoFornecedor.focus();
-
+        const modal = document.getElementById('modalAprovacao');
+        modal.classList.add('show');
+        modal.setAttribute('aria-hidden', 'false');
+        document.getElementById('confirmar-aprovacao-lote').focus();
     }
 
     function fecharModalAprovacao() {
-
-        document
-            .getElementById("modalAprovacao")
-            .classList.remove("show");
-
-        document.getElementById("modalAprovacao").setAttribute("aria-hidden", "true");
-        document.getElementById('fornecedor-aprovacao-lote').required = false;
-
+        const modal = document.getElementById('modalAprovacao');
+        modal.classList.remove('show');
+        modal.setAttribute('aria-hidden', 'true');
     }
 
     const modalAprovacao = document.getElementById('modalAprovacao');
@@ -1948,10 +2048,8 @@ include 'views/layout/header.php';
 
         const formLote = document.getElementById('form-aprovacao-lote');
         const campoNovaData = document.getElementById('nova-data-lote');
-        const campoFornecedor = document.getElementById('fornecedor-aprovacao-lote');
         formLote.setAttribute('action', 'atualizar_datas_multiplas.php');
         campoNovaData.required = true;
-        campoFornecedor.required = false;
 
         const modal = document.getElementById('modalDatas');
         modal.classList.add('show');
@@ -1984,4 +2082,5 @@ include 'views/layout/header.php';
     atualizarContador();
 </script>
 
+<script src="assets/js/lista-acoes-modal.js" defer></script>
 <?php include 'views/layout/footer.php'; ?>

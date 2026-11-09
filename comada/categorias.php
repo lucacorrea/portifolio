@@ -1,0 +1,4 @@
+<?php $pageTitle='Categorias'; $currentPage='categorias'; include 'includes/header.php'; ?>
+<div class="page-head"><div><h1>Categorias</h1><p>Organize a exibição do catálogo e do PDV.</p></div><button class="btn btn-primary" data-open-modal data-modal-title="Nova categoria" data-modal-text="Cadastre nome, ícone, ordem e status.">+ Categoria</button></div>
+<div class="card card-body"><div class="grid grid-3"><?php foreach(['Cervejas','Drinks','Refrigerantes','Sucos','Porções','Lanches','Pizzas','Sobremesas','Serviços'] as $i=>$cat): ?><div class="card card-body" style="box-shadow:none"><div style="display:flex;justify-content:space-between"><strong><?= $cat ?></strong><span class="pill success">Ativa</span></div><p style="color:#6b7280">Ordem <?= $i+1 ?></p><button class="btn btn-secondary btn-sm" data-demo-action="Categoria pronta para edição">Editar</button></div><?php endforeach; ?></div></div>
+<?php include 'includes/footer.php'; ?>

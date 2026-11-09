@@ -1,2 +1,2 @@
 <?php declare(strict_types=1); ?>
-<footer class="app-footer"><span>Recurso visual — integração futura.</span><span>SIGAS Coari — SEMAS Coari/AM</span></footer>
+<footer class="app-footer"><span>SIGAS Coari — Sistema Integrado de Gestão.</span><span>SEMAS Coari/AM</span></footer>

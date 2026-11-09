@@ -42,10 +42,10 @@ final class AccountsPayableManagementService
     /** @return array<int,array<string,mixed>> */
     public function listAccounts(array $filters = []): array
     {
-        $where = [];
+        $where = ["cp.status <> 'cancelada'"];
         $params = [];
         $search = $this->filterText($filters['search'] ?? '', 150);
-        $status = $this->filterChoice($filters['status'] ?? '', ['', 'pendente', 'vencida', 'parcial', 'paga', 'cancelada']);
+        $status = $this->filterChoice($filters['status'] ?? '', ['', 'pendente', 'vencida', 'parcial', 'paga']);
         $bucket = $this->filterChoice($filters['bucket'] ?? '', ['', 'vencidos', 'hoje', 'semana', '15dias']);
         $supplierId = $this->optionalPositiveInt($filters['supplier_id'] ?? null);
 
@@ -63,7 +63,7 @@ final class AccountsPayableManagementService
         }
         if ($status === 'pendente') $where[] = "cp.status = 'pendente' AND parcelas.vencidas = 0";
         if ($status === 'vencida') $where[] = "cp.status IN ('pendente', 'parcial') AND parcelas.vencidas > 0";
-        if (in_array($status, ['parcial', 'paga', 'cancelada'], true)) {
+        if (in_array($status, ['parcial', 'paga'], true)) {
             $where[] = 'cp.status = :status';
             $params['status'] = $status;
         }
@@ -118,18 +118,30 @@ final class AccountsPayableManagementService
     {
         if ($accountId !== null && $accountId <= 0) throw new InvalidArgumentException('Conta a pagar inválida.');
         if ($userId <= 0) throw new InvalidArgumentException('Usuário inválido.');
-        $payload = $this->payload($data);
         $ownsTransaction = !$this->connection->inTransaction();
         if ($ownsTransaction) $this->connection->beginTransaction();
 
         try {
             $existing = $accountId === null ? null : $this->lockAccount($accountId);
-            if ($existing !== null && (string) $existing['status'] !== 'pendente') {
-                throw new InvalidArgumentException('Somente contas pendentes podem ser editadas.');
+            if ($existing !== null && (string) $existing['status'] === 'cancelada') {
+                throw new InvalidArgumentException('Conta cancelada não pode ser editada.');
             }
-            if ($existing !== null && $this->accountHasPaymentHistory($accountId)) {
-                throw new InvalidArgumentException('Conta com quitação ou estorno registrado não pode ter o parcelamento alterado.');
+
+            $financialStructureLocked = $existing !== null
+                && ((string) $existing['status'] !== 'pendente' || $this->accountHasPaymentHistory($accountId));
+
+            // Depois que existe quitação/estorno, valor, vencimento e parcelamento viram histórico financeiro.
+            // O formulário continua permitindo corrigir fornecedor, descrição, documento, emissão,
+            // forma prevista e observações, sem reescrever parcelas já movimentadas.
+            $effectiveData = $data;
+            if ($financialStructureLocked && $existing !== null) {
+                $effectiveData['vencimento_em'] = (string) $existing['vencimento_em'];
+                $effectiveData['valor'] = (string) $existing['valor'];
+                $effectiveData['tipo_pagamento'] = (string) $existing['tipo_pagamento'];
+                $effectiveData['quantidade_parcelas'] = (string) $existing['quantidade_parcelas'];
             }
+
+            $payload = $this->payload($effectiveData);
             $sameSupplier = $existing !== null && (int) $existing['fornecedor_id'] === (int) $payload['fornecedor_id'];
             $this->assertSupplierAllowed((int) $payload['fornecedor_id'], $sameSupplier);
             $this->assertDocumentAvailable((int) $payload['fornecedor_id'], $payload['documento'], $accountId);
@@ -161,7 +173,10 @@ final class AccountsPayableManagementService
                 );
                 $statement->execute($payload + ['id' => $accountId]);
                 $code = (string) $existing['codigo'];
-                $this->replaceInstallments($accountId, $payload);
+
+                if (!$financialStructureLocked) {
+                    $this->replaceInstallments($accountId, $payload);
+                }
             }
 
             if ($ownsTransaction) $this->connection->commit();
@@ -191,6 +206,76 @@ final class AccountsPayableManagementService
                 'UPDATE contas_pagar_parcelas SET status = "cancelada"
                   WHERE conta_pagar_id = :id AND status = "pendente"'
             )->execute(['id' => $accountId]);
+            if ($ownsTransaction) $this->connection->commit();
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $this->connection->inTransaction()) $this->connection->rollBack();
+            throw $exception;
+        }
+    }
+
+    public function deleteAccount(int $accountId, string $reason, int $userId, bool $allowPaymentReversal): void
+    {
+        if ($userId <= 0) throw new InvalidArgumentException('Usuário inválido.');
+        $reason = $this->requiredText($reason, 255, 'Informe o motivo da exclusão.');
+        $ownsTransaction = !$this->connection->inTransaction();
+        if ($ownsTransaction) $this->connection->beginTransaction();
+
+        try {
+            $account = $this->lockAccount($accountId);
+            if ((string) $account['status'] === 'cancelada') {
+                throw new InvalidArgumentException('Esta conta já está cancelada/excluída.');
+            }
+
+            $installments = $this->lockAccountInstallments($accountId);
+            $paidInstallments = array_values(array_filter(
+                $installments,
+                static fn(array $installment): bool => (string) ($installment['status'] ?? '') === 'paga'
+            ));
+
+            if ($paidInstallments !== [] && !$allowPaymentReversal) {
+                throw new InvalidArgumentException('Esta conta possui parcelas pagas. É necessária permissão para estornar pagamentos antes da exclusão.');
+            }
+
+            $shortReason = function_exists('mb_substr')
+                ? mb_substr($reason, 0, 140, 'UTF-8')
+                : substr($reason, 0, 140);
+
+            foreach ($paidInstallments as $installment) {
+                $method = $installment['forma_pagamento_quitacao'] === null
+                    ? null
+                    : (string) $installment['forma_pagamento_quitacao'];
+                $cashId = $this->reverseInstallmentCashOutflow(
+                    $installment,
+                    'Exclusão da conta ' . (string) $account['codigo'] . ': ' . $shortReason,
+                    $userId
+                );
+                $this->recordInstallmentEvent(
+                    (int) $installment['id'],
+                    'estorno',
+                    $method,
+                    'Exclusão da conta: ' . $shortReason,
+                    $userId,
+                    $cashId
+                );
+            }
+
+            $this->connection->prepare(
+                'UPDATE contas_pagar_parcelas
+                    SET status = "cancelada"
+                  WHERE conta_pagar_id = :id'
+            )->execute(['id' => $accountId]);
+
+            $this->connection->prepare(
+                'UPDATE contas_pagar
+                    SET status = "cancelada", cancelada_em = NOW(), cancelada_por = :user_id,
+                        motivo_cancelamento = :reason
+                  WHERE id = :id'
+            )->execute([
+                'id' => $accountId,
+                'user_id' => $userId,
+                'reason' => $reason,
+            ]);
+
             if ($ownsTransaction) $this->connection->commit();
         } catch (Throwable $exception) {
             if ($ownsTransaction && $this->connection->inTransaction()) $this->connection->rollBack();
@@ -319,6 +404,24 @@ final class AccountsPayableManagementService
             $grouped[(int) $installment['conta_pagar_id']][] = $installment;
         }
         return $grouped;
+    }
+
+
+    /** @return array<int,array<string,mixed>> */
+    private function lockAccountInstallments(int $accountId): array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT parcela.*, conta.status AS account_status, conta.codigo AS account_code,
+                    conta.descricao AS account_description, fornecedor.nome AS supplier_name
+               FROM contas_pagar_parcelas parcela
+               JOIN contas_pagar conta ON conta.id = parcela.conta_pagar_id
+               JOIN fornecedores fornecedor ON fornecedor.id = conta.fornecedor_id
+              WHERE parcela.conta_pagar_id = :id
+              ORDER BY parcela.numero
+              FOR UPDATE'
+        );
+        $statement->execute(['id' => $accountId]);
+        return $statement->fetchAll();
     }
 
     /** @return array<string,mixed> */

@@ -1,0 +1,3 @@
+<?php $pageTitle='Selecionar unidade'; $hideChrome=true; include 'includes/header.php'; ?>
+<div class="auth-panel" style="min-height:100vh"><div class="auth-card" style="width:min(720px,100%)"><h2>Selecione onde deseja trabalhar</h2><p>Você possui acesso a mais de uma unidade.</p><div class="grid grid-2"><a class="card card-body" href="dashboard.php"><strong>Bar Central</strong><p style="color:#6b7280">📍 Unidade Centro</p><span class="btn btn-primary">Entrar</span></a><a class="card card-body" href="dashboard.php"><strong>Bar Central</strong><p style="color:#6b7280">📍 Unidade Shopping</p><span class="btn btn-secondary">Entrar</span></a></div></div></div>
+<?php include 'includes/footer.php'; ?>

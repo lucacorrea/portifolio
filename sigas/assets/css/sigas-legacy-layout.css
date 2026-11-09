@@ -1,0 +1,373 @@
+/* ============================================================================
+   SIGAS — Ponte Visual para Páginas Legadas
+   ---------------------------------------------------------------------------
+   Aplica o mesmo ritmo visual do Design System Operacional Global às telas que
+   ainda montam HTML próprio. Não altera fluxo, dados, IDs ou JavaScript.
+   ============================================================================ */
+
+body.sigas-legacy-module-page[data-module] {
+    --sigas-ui-accent: var(--module-accent, var(--frontend-accent, var(--program-accent, var(--primary, #176b3a))));
+    --sigas-ui-accent-strong: color-mix(in srgb, var(--sigas-ui-accent) 78%, #10261d);
+    --sigas-ui-accent-soft: color-mix(in srgb, var(--sigas-ui-accent) 8%, #fff);
+    --sigas-ui-border: #dfe7e3;
+    --sigas-ui-border-strong: #cfdad5;
+    --sigas-ui-ink: #18382e;
+    --sigas-ui-text: #344b43;
+    --sigas-ui-muted: #74867f;
+    --sigas-ui-table-head: #f3f6f4;
+    background: #f5f7f6;
+}
+
+body.sigas-legacy-module-page .app-content,
+body.sigas-legacy-module-page .module-content {
+    width: 100%;
+    max-width: 1600px;
+    margin-inline: auto;
+    padding-bottom: 34px;
+}
+
+/* Cabeçalho de página */
+body.sigas-legacy-module-page .page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 22px;
+    margin-bottom: 16px;
+}
+
+body.sigas-legacy-module-page .page-header > div:first-child { min-width: 0; }
+body.sigas-legacy-module-page .page-header .eyebrow {
+    margin-bottom: 5px;
+    color: var(--sigas-ui-accent);
+    font-size: .68rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+body.sigas-legacy-module-page .page-header h1 {
+    margin: 0;
+    color: var(--sigas-ui-accent-strong);
+    font-size: clamp(1.65rem, 2.5vw, 2.15rem);
+    font-weight: 800;
+    letter-spacing: -.045em;
+    line-height: 1.08;
+}
+body.sigas-legacy-module-page .page-header p {
+    max-width: 760px;
+    margin: 7px 0 0;
+    color: var(--sigas-ui-muted);
+    font-size: .9rem;
+    line-height: 1.5;
+}
+body.sigas-legacy-module-page .page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+body.sigas-legacy-module-page .page-actions .btn {
+    min-height: 42px;
+    border-radius: 10px;
+    font-size: .78rem;
+    font-weight: 750;
+}
+
+/* Banners de orientação */
+body.sigas-legacy-module-page .list-guidance-banner,
+body.sigas-legacy-module-page .info-banner,
+body.sigas-legacy-module-page .guidance-banner {
+    margin-bottom: 14px;
+    padding: 12px 14px;
+    border: 1px solid color-mix(in srgb, var(--sigas-ui-accent) 18%, var(--sigas-ui-border));
+    border-radius: 12px;
+    background: var(--sigas-ui-accent-soft);
+    color: var(--sigas-ui-text);
+    box-shadow: none;
+}
+
+/* KPIs legados */
+body.sigas-legacy-module-page .compact-stats,
+body.sigas-legacy-module-page .stats-grid,
+body.sigas-legacy-module-page .metric-grid,
+body.sigas-legacy-module-page .summary-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0 0 18px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+body.sigas-legacy-module-page .compact-stat,
+body.sigas-legacy-module-page .stat-card,
+body.sigas-legacy-module-page .metric-card {
+    position: relative;
+    min-width: 0;
+    min-height: 92px;
+    padding: 13px 14px 12px;
+    overflow: hidden;
+    border: 1px solid var(--sigas-ui-border);
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: none;
+}
+body.sigas-legacy-module-page .compact-stat::before,
+body.sigas-legacy-module-page .stat-card::before,
+body.sigas-legacy-module-page .metric-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 3px;
+    background: var(--sigas-ui-accent);
+}
+body.sigas-legacy-module-page .compact-stat span,
+body.sigas-legacy-module-page .compact-stat small,
+body.sigas-legacy-module-page .stat-card span,
+body.sigas-legacy-module-page .stat-card small {
+    display: block;
+    color: var(--sigas-ui-muted);
+}
+body.sigas-legacy-module-page .compact-stat span,
+body.sigas-legacy-module-page .stat-card span { font-size: .68rem; font-weight: 700; }
+body.sigas-legacy-module-page .compact-stat strong,
+body.sigas-legacy-module-page .stat-card strong {
+    display: block;
+    margin: 5px 0 3px;
+    color: var(--sigas-ui-accent-strong);
+    font-size: 1.36rem;
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -.04em;
+}
+body.sigas-legacy-module-page .compact-stat small,
+body.sigas-legacy-module-page .stat-card small { font-size: .62rem; }
+
+/* Filtros legados */
+body.sigas-legacy-module-page .filter-bar,
+body.sigas-legacy-module-page form.filter-bar {
+    margin: 0 0 18px;
+    padding: 13px;
+    border: 1px solid var(--sigas-ui-border);
+    border-radius: 13px;
+    background: #fff;
+    box-shadow: 0 3px 13px rgba(20,55,41,.035);
+}
+body.sigas-legacy-module-page .filter-bar .filter-row {
+    display: grid;
+    grid-template-columns: minmax(270px, 1.55fr) repeat(3, minmax(150px, .8fr));
+    gap: 9px;
+    align-items: end;
+}
+body.sigas-legacy-module-page .filter-bar .form-label {
+    display: block;
+    margin-bottom: 4px;
+    color: #536860;
+    font-size: .66rem;
+    font-weight: 750;
+}
+body.sigas-legacy-module-page .filter-bar .form-control,
+body.sigas-legacy-module-page .filter-bar .form-select {
+    min-height: 42px;
+    border: 1px solid var(--sigas-ui-border-strong);
+    border-radius: 9px;
+    background: #fff;
+    color: #334b42;
+    font-size: .75rem;
+    box-shadow: none;
+}
+body.sigas-legacy-module-page .filter-bar .form-control:focus,
+body.sigas-legacy-module-page .filter-bar .form-select:focus {
+    border-color: var(--sigas-ui-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb,var(--sigas-ui-accent) 10%,transparent);
+}
+body.sigas-legacy-module-page .filter-actions {
+    display: flex;
+    align-items: end;
+    gap: 7px;
+}
+body.sigas-legacy-module-page .filter-bar .btn {
+    min-height: 42px;
+    border-radius: 9px;
+    font-size: .75rem;
+    font-weight: 750;
+}
+body.sigas-legacy-module-page .filter-bar .btn-primary {
+    border-color: var(--sigas-ui-accent);
+    background: var(--sigas-ui-accent);
+}
+
+/* Cards e tabelas */
+body.sigas-legacy-module-page .content-card,
+body.sigas-legacy-module-page .table-card {
+    overflow: hidden;
+    border: 1px solid var(--sigas-ui-border);
+    border-radius: 13px;
+    background: #fff;
+    box-shadow: none;
+}
+body.sigas-legacy-module-page .table-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 54px;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--sigas-ui-border);
+    background: #fff;
+}
+body.sigas-legacy-module-page .table-toolbar h2,
+body.sigas-legacy-module-page .table-toolbar h3 {
+    margin: 0;
+    color: var(--sigas-ui-ink);
+    font-size: .88rem !important;
+    font-weight: 800;
+}
+body.sigas-legacy-module-page .table-toolbar-info,
+body.sigas-legacy-module-page .table-toolbar small {
+    color: var(--sigas-ui-muted);
+    font-size: .66rem;
+}
+body.sigas-legacy-module-page .table-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+body.sigas-legacy-module-page .data-table,
+body.sigas-legacy-module-page .table-card table {
+    width: 100%;
+    margin: 0;
+    border-collapse: collapse;
+    background: #fff;
+    color: var(--sigas-ui-text);
+    font-size: .76rem;
+}
+body.sigas-legacy-module-page .data-table thead th,
+body.sigas-legacy-module-page .table-card table thead th {
+    padding: 10px 11px;
+    border: 0;
+    border-bottom: 1px solid var(--sigas-ui-border-strong);
+    background: var(--sigas-ui-table-head);
+    color: #61736c;
+    font-size: .61rem;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+body.sigas-legacy-module-page .data-table tbody td,
+body.sigas-legacy-module-page .table-card table tbody td {
+    padding: 10px 11px;
+    border: 0;
+    border-bottom: 1px solid #edf1ef;
+    vertical-align: middle;
+    font-size: .73rem;
+}
+body.sigas-legacy-module-page .data-table tbody tr:hover > td,
+body.sigas-legacy-module-page .table-card table tbody tr:hover > td {
+    background: color-mix(in srgb,var(--sigas-ui-accent-soft) 55%,#fff);
+}
+
+/* Identidade de registros */
+body.sigas-legacy-module-page .mini-avatar,
+body.sigas-legacy-module-page .record-avatar {
+    border-color: color-mix(in srgb,var(--sigas-ui-accent) 20%,var(--sigas-ui-border));
+    background: var(--sigas-ui-accent-soft);
+    color: var(--sigas-ui-accent);
+}
+
+/* Status mantém cor semântica, mas padroniza tamanho */
+body.sigas-legacy-module-page .status-badge,
+body.sigas-legacy-module-page .source-badge,
+body.sigas-legacy-module-page .badge {
+    min-height: 23px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: .62rem;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+/* Paginação */
+body.sigas-legacy-module-page .pagination,
+body.sigas-legacy-module-page .table-pagination,
+body.sigas-legacy-module-page .pagination-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 12px;
+    border-top: 1px solid var(--sigas-ui-border);
+    color: var(--sigas-ui-muted);
+    font-size: .66rem;
+}
+body.sigas-legacy-module-page .pagination .btn,
+body.sigas-legacy-module-page .table-pagination .btn,
+body.sigas-legacy-module-page .pagination a {
+    min-width: 30px;
+    min-height: 30px;
+    border-radius: 8px;
+    font-size: .67rem;
+    font-weight: 750;
+}
+
+/* Formulários e botões */
+body.sigas-legacy-module-page .form-control,
+body.sigas-legacy-module-page .form-select {
+    border-color: var(--sigas-ui-border-strong);
+}
+body.sigas-legacy-module-page .form-control:focus,
+body.sigas-legacy-module-page .form-select:focus {
+    border-color: var(--sigas-ui-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb,var(--sigas-ui-accent) 10%,transparent);
+}
+body.sigas-legacy-module-page .btn-primary {
+    --bs-btn-bg: var(--sigas-ui-accent);
+    --bs-btn-border-color: var(--sigas-ui-accent);
+    --bs-btn-hover-bg: var(--sigas-ui-accent-strong);
+    --bs-btn-hover-border-color: var(--sigas-ui-accent-strong);
+}
+
+/* Modais */
+body.sigas-legacy-module-page .modal-content {
+    overflow: hidden;
+    border: 1px solid var(--sigas-ui-border);
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 26px 72px rgba(15,40,29,.19);
+}
+body.sigas-legacy-module-page .modal-header {
+    padding: 17px 19px 14px;
+    border-bottom: 1px solid var(--sigas-ui-border);
+}
+body.sigas-legacy-module-page .modal-body { padding: 18px 19px; }
+body.sigas-legacy-module-page .modal-footer {
+    padding: 11px 19px 15px;
+    border-top: 1px solid var(--sigas-ui-border);
+    background: #fbfcfb;
+}
+
+@media (max-width: 1199.98px) {
+    body.sigas-legacy-module-page .compact-stats,
+    body.sigas-legacy-module-page .stats-grid,
+    body.sigas-legacy-module-page .metric-grid,
+    body.sigas-legacy-module-page .summary-stats,
+    body.sigas-legacy-module-page .filter-bar .filter-row {
+        grid-template-columns: repeat(2,minmax(0,1fr));
+    }
+}
+
+@media (max-width: 767.98px) {
+    body.sigas-legacy-module-page .app-content,
+    body.sigas-legacy-module-page .module-content { padding: 14px 12px 92px; }
+    body.sigas-legacy-module-page .page-header,
+    body.sigas-legacy-module-page .table-toolbar { flex-direction: column; align-items: stretch; }
+    body.sigas-legacy-module-page .page-actions { display: grid; grid-template-columns: 1fr; }
+    body.sigas-legacy-module-page .compact-stats,
+    body.sigas-legacy-module-page .stats-grid,
+    body.sigas-legacy-module-page .metric-grid,
+    body.sigas-legacy-module-page .summary-stats,
+    body.sigas-legacy-module-page .filter-bar .filter-row { grid-template-columns: 1fr; }
+    body.sigas-legacy-module-page .filter-actions { flex-wrap: wrap; }
+}

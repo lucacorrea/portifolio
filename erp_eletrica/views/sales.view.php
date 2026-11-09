@@ -182,7 +182,7 @@
                             <label class="form-label extra-small fw-bold text-uppercase opacity-75">Taxa da Maquininha (%)</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-white border-end-0 text-info"><i class="fas fa-percent"></i></span>
-                                <input type="number" id="taxa_cartao" class="form-control border-start-0 ps-0" placeholder="0,00" step="0.01" min="0" oninput="renderCart()">
+                                <input type="number" id="taxa_cartao" class="form-control border-start-0 ps-0" placeholder="0,00" step="0.01" min="0" oninput="resetPdvOrcamentoManualTotalOnItemChange(); renderCart()">
                             </div>
                         </div>
 
@@ -287,7 +287,7 @@
                             </div>
                             <div class="input-group input-group-lg" style="width: 160px;">
                                 <span class="input-group-text bg-success bg-opacity-10 border-success text-success fw-bold" id="discountSymbol">R$</span>
-                                <input type="number" id="discountPercent" class="form-control text-end fw-bold text-success border-success bg-success bg-opacity-10" value="0" min="0" step="0.01" onfocus="this.select()" oninput="renderCart()">
+                                <input type="number" id="discountPercent" class="form-control text-end fw-bold text-success border-success bg-success bg-opacity-10" value="0" min="0" step="0.01" onfocus="this.select()" oninput="resetPdvOrcamentoManualTotalOnItemChange(); renderCart()">
                             </div>
                         </div>
                     </div>
@@ -298,6 +298,41 @@
                     <div class="d-flex justify-content-between mb-2 d-none" id="taxRow">
                         <span class="text-muted text-info">Taxa Maquininha</span>
                         <span class="fw-bold text-info" id="totalTax">+ R$ 0,00</span>
+                    </div>
+                    <div class="mb-3 p-3 bg-white border rounded shadow-sm" style="border-left: 5px solid #16a34a !important;">
+                        <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+                            <div>
+                                <span class="d-block fw-bold text-success">Total final do orçamento</span>
+                                <small class="text-muted extra-small">Opcional. Só altera o orçamento, não a venda.</small>
+                            </div>
+                            <div class="input-group" style="width: 170px;">
+                                <span class="input-group-text bg-success bg-opacity-10 border-success text-success fw-bold">R$</span>
+                                <input type="number" id="orcamentoTotalManual" class="form-control text-end fw-bold border-success" min="0" step="0.01" placeholder="Auto" onfocus="this.select()">
+                            </div>
+                        </div>
+                        <div class="border-top mt-3 pt-3">
+                            <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2">
+                                <span class="fw-bold text-primary">Aplicar preço nos itens</span>
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Aplicar tabela de preço">
+                                    <button type="button" class="btn btn-outline-primary fw-bold" onclick="applyPriceTierToCart(1)">
+                                        <i class="fas fa-tag me-1"></i>Preço 1
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary fw-bold" onclick="applyPriceTierToCart(2)">
+                                        <i class="fas fa-tags me-1"></i>Preço 2
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary fw-bold" onclick="applyPriceTierToCart(3)">
+                                        <i class="fas fa-layer-group me-1"></i>Preço 3
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-primary bg-opacity-10 border-primary text-primary fw-bold">R$</span>
+                                <input type="number" id="orcamentoBulkUnitPrice" class="form-control text-end fw-bold border-primary" min="0" step="0.01" placeholder="Valor unitário" onfocus="this.select()">
+                                <button type="button" class="btn btn-primary fw-bold" onclick="applyManualUnitPriceToCart()">
+                                    <i class="fas fa-check me-1"></i>Aplicar
+                                </button>
+                            </div>
+                        </div>
                     </div>
                     <hr>
                     <div class="d-flex justify-content-between align-items-center">
@@ -920,7 +955,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadRecentSales();
     
     // Initialize Discount UI
-    updateDiscountUI();
+    updateDiscountUI(false);
     
     // Check initial payment method
     const initialPayment = document.querySelector('input[name="payment"]:checked');
@@ -976,6 +1011,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
+            resetPdvOrcamentoManualTotalOnItemChange();
             renderCart();
         });
     });
@@ -1553,6 +1589,7 @@ function addToCart(product) {
         });
     }
     
+    resetPdvOrcamentoManualTotalOnItemChange();
     pdvSearch.value = '';
     qtyInput.value = 1; 
     searchResults.classList.add('d-none');
@@ -1595,6 +1632,7 @@ function renderCart() {
     if (cart.length === 0) {
         cartEmptyState.classList.remove('d-none');
         btnCheckout.disabled = true;
+        clearPdvManualOrcamentoTotal();
     } else {
         cartEmptyState.classList.add('d-none');
         btnCheckout.disabled = false;
@@ -1624,13 +1662,10 @@ function renderCart() {
                 <input type="number" class="form-control form-control-sm text-center mx-auto" style="width: 70px" value="${item.qty}" min="1" step="any" onchange="updateQty(${index}, this.value)">
             </td>
             <td class="text-end">
-                ${item.preco_variavel ? 
-                    `<div class="input-group input-group-sm justify-content-end">
-                        <span class="input-group-text bg-white border-0 extra-small px-1">R$</span>
-                        <input type="number" class="form-control form-control-sm text-end border-primary fw-bold price-variable-input" style="width: 90px" value="${item.price.toFixed(2)}" step="0.01" onchange="updateItemPrice(${index}, this.value)">
-                    </div>` : 
-                    `R$ ${item.price.toFixed(2).replace('.', ',')}`
-                }
+                <div class="input-group input-group-sm justify-content-end">
+                    <span class="input-group-text bg-white border-0 extra-small px-1">R$</span>
+                    <input type="number" class="form-control form-control-sm text-end border-primary fw-bold price-variable-input" style="width: 90px" value="${item.price.toFixed(2)}" step="0.01" onchange="updateItemPrice(${index}, this.value)">
+                </div>
             </td>
             <td class="text-end fw-bold">R$ ${subtotal.toFixed(2).replace('.', ',')}</td>
 
@@ -1697,22 +1732,105 @@ function updatePriceTier(index, tier) {
     if (tier == 1) item.price = item.price1;
     else if (tier == 2) item.price = item.price2;
     else if (tier == 3) item.price = item.price3;
+    resetPdvOrcamentoManualTotalOnItemChange();
     renderCart();
 }
 
+function getCartPriceByTier(item, tier) {
+    if (tier == 1) return parseFloat(item.price1) || 0;
+    if (tier == 2) return parseFloat(item.price2) || 0;
+    if (tier == 3) return parseFloat(item.price3) || 0;
+    return 0;
+}
+
+function getCartItemsTotal() {
+    return cart.reduce((acc, i) => {
+        const qty = parseFloat(i.qty) || 0;
+        const price = parseFloat(i.price) || 0;
+        return acc + (price * qty);
+    }, 0);
+}
+
+function shouldPreservePdvManualOrcamentoTotal(savedTotal, itemsTotal) {
+    return Math.abs((parseFloat(savedTotal) || 0) - (parseFloat(itemsTotal) || 0)) >= 0.01;
+}
+
+function applyPriceTierToCart(tier) {
+    if (cart.length === 0) {
+        alert('Adicione produtos ao orçamento antes de aplicar o preço.');
+        return;
+    }
+
+    let updated = 0;
+    let skipped = 0;
+    cart.forEach(item => {
+        if (item.preco_variavel) {
+            skipped++;
+            return;
+        }
+
+        const price = getCartPriceByTier(item, tier);
+        if (price <= 0) {
+            skipped++;
+            return;
+        }
+
+        item.price = price;
+        item.price_tier = parseInt(tier);
+        updated++;
+    });
+
+    resetPdvOrcamentoManualTotalOnItemChange();
+    renderCart();
+
+    let message = `Preço ${tier} aplicado em ${updated} item(ns).`;
+    if (skipped > 0) {
+        message += `\n${skipped} item(ns) foram mantidos porque não têm esse preço cadastrado ou são de preço manual.`;
+    }
+    alert(message);
+}
+
+function applyManualUnitPriceToCart() {
+    if (cart.length === 0) {
+        alert('Adicione produtos ao orçamento antes de aplicar o valor.');
+        return;
+    }
+
+    const input = document.getElementById('orcamentoBulkUnitPrice');
+    const price = input ? parseCurrencyToFloat(input.value) : 0;
+    if (price <= 0) {
+        alert('Informe um valor unitário maior que zero.');
+        if (input) input.focus();
+        return;
+    }
+
+    cart.forEach(item => {
+        item.price = price;
+    });
+
+    if (input) input.value = price.toFixed(2);
+    resetPdvOrcamentoManualTotalOnItemChange();
+    renderCart();
+    alert(`Valor unitário de R$ ${price.toFixed(2).replace('.', ',')} aplicado em ${cart.length} item(ns).`);
+}
+
 function updateQty(index, val) {
-    cart[index].qty = Math.max(0.001, parseFloat(val));
+    const qty = parseCurrencyToFloat(val) || 0.001;
+    cart[index].qty = Math.max(0.001, qty);
+    resetPdvOrcamentoManualTotalOnItemChange();
     renderCart();
 }
 
 function updateItemPrice(index, val) {
-    cart[index].price = Math.max(0, parseFloat(val));
+    cart[index].price = Math.max(0, parseCurrencyToFloat(val));
+    resetPdvOrcamentoManualTotalOnItemChange();
     renderCart();
 }
 
 
 function removeFromCart(index) {
     cart.splice(index, 1);
+    resetPdvOrcamentoManualTotalOnItemChange();
     renderCart();
 }
 
@@ -1995,6 +2113,7 @@ async function importPreSale(code) {
             price1: parseFloat(i.preco_venda || 0),
             price2: parseFloat(i.preco_venda_2 || 0),
             price3: parseFloat(i.preco_venda_3 || 0),
+            preco_variavel: parseInt(i.preco_variavel || 0) === 1,
             price_tier: parseInt(i.preco_tier || 1),
             qty: parseFloat(i.quantidade),
             imagens: i.imagens
@@ -2002,6 +2121,16 @@ async function importPreSale(code) {
         
         currentPvId = pv.id;
         currentPvCode = pv.codigo;
+        const manualTotalInput = document.getElementById('orcamentoTotalManual');
+        if (manualTotalInput) {
+            const savedTotal = parseFloat(pv.valor_total || 0) || 0;
+            const itemsTotal = getCartItemsTotal();
+            manualTotalInput.value = (
+                pv.codigo
+                && pv.codigo.startsWith('ORC-')
+                && shouldPreservePdvManualOrcamentoTotal(savedTotal, itemsTotal)
+            ) ? savedTotal.toFixed(2) : '';
+        }
         
         // Auto-select customer if present in pre-sale
         if (pv.cliente_id) {
@@ -2047,9 +2176,7 @@ async function saveCurrentSaleAsPreSale() {
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
 
-    const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
-    const discountPercent = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
-    const total = subtotal * (1 - (discountPercent / 100));
+    const total = parseFloat(getPdvCalculatedOrcamentoTotal().toFixed(2));
 
     let clientAvulso = selectedCustomerName;
     let clientCpf = selectedCustomerCPF;
@@ -2091,6 +2218,7 @@ async function saveCurrentSaleAsPreSale() {
             currentPvId = null;
             currentPvCode = null;
             clearCustomer();
+            clearPdvManualOrcamentoTotal();
             document.getElementById('discountPercent').value = 0;
             renderCart();
             pdvSearch.focus();
@@ -2106,6 +2234,57 @@ async function saveCurrentSaleAsPreSale() {
     }
 }
 
+function formatOrcamentoStockWarnings(warnings) {
+    if (!Array.isArray(warnings) || warnings.length === 0) return '';
+
+    const lines = warnings.map(w => {
+        const nome = w.produto_nome || `Produto #${w.produto_id}`;
+        const solicitada = Number(w.quantidade_solicitada || 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+        const disponivel = Number(w.estoque_disponivel || 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+        return `- ${nome}: solicitado ${solicitada}, em estoque ${disponivel}`;
+    });
+
+    return `\n\nAtenção: este orçamento foi salvo mesmo com quantidade acima do estoque:\n${lines.join('\n')}`;
+}
+
+function getPdvManualOrcamentoTotal() {
+    const input = document.getElementById('orcamentoTotalManual');
+    if (!input || input.value.trim() === '') return null;
+    return Math.max(0, parseCurrencyToFloat(input.value));
+}
+
+function getPdvFinalTotalFromControls() {
+    const subtotal = getCartItemsTotal();
+    const isMoneyMode = document.getElementById('discountModeToggle').checked;
+    const discountInput = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
+    const discountValue = isMoneyMode ? discountInput : (subtotal * (discountInput / 100));
+    const baseValue = Math.max(0, subtotal - discountValue);
+    const payment = document.querySelector('input[name="payment"]:checked')?.value || 'dinheiro';
+    const taxPercent = payment.includes('cartao') ? (parseCurrencyToFloat(document.getElementById('taxa_cartao').value) || 0) : 0;
+    return Math.max(0, baseValue + (baseValue * (taxPercent / 100)));
+}
+
+function getPdvCalculatedOrcamentoTotal() {
+    const displayedTotal = parseCurrencyToFloat(finalTotal.innerText || '0');
+    if (displayedTotal > 0 || cart.length === 0) return displayedTotal;
+    return getPdvFinalTotalFromControls();
+}
+
+function clearPdvFinalOrcamentoTotalOnly() {
+    const input = document.getElementById('orcamentoTotalManual');
+    if (input) input.value = '';
+}
+
+function clearPdvManualOrcamentoTotal() {
+    clearPdvFinalOrcamentoTotalOnly();
+    const bulkInput = document.getElementById('orcamentoBulkUnitPrice');
+    if (bulkInput) bulkInput.value = '';
+}
+
+function resetPdvOrcamentoManualTotalOnItemChange() {
+    clearPdvFinalOrcamentoTotalOnly();
+}
+
 async function saveCurrentSaleAsOrcamento() {
     if (cart.length === 0) {
         alert("O carrinho está vazio.");
@@ -2117,9 +2296,8 @@ async function saveCurrentSaleAsOrcamento() {
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
 
-    const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
-    const discountPercent = parseCurrencyToFloat(document.getElementById('discountPercent').value) || 0;
-    const total = subtotal * (1 - (discountPercent / 100));
+    const manualTotal = getPdvManualOrcamentoTotal();
+    const total = parseFloat((manualTotal !== null ? manualTotal : getPdvCalculatedOrcamentoTotal()).toFixed(2));
 
     let clientAvulso = selectedCustomerName;
     let clientCpf = selectedCustomerCPF;
@@ -2155,7 +2333,7 @@ async function saveCurrentSaleAsOrcamento() {
 
         const result = await res.json();
         if (result.success) {
-            alert(`Orçamento gerado com sucesso!\nCódigo: ${result.codigo}`);
+            alert(`Orçamento gerado com sucesso!\nCódigo: ${result.codigo}${formatOrcamentoStockWarnings(result.stock_warnings)}`);
             
             // Open print format choice modal
             chooseOrcamentoPrintFormat(result.codigo);
@@ -2165,6 +2343,7 @@ async function saveCurrentSaleAsOrcamento() {
             currentPvId = null;
             currentPvCode = null;
             clearCustomer();
+            clearPdvManualOrcamentoTotal();
             document.getElementById('discountPercent').value = 0;
             renderCart();
             pdvSearch.focus();
@@ -3423,7 +3602,7 @@ function toggleDiscountModeClick() {
     updateDiscountUI();
 }
 
-function updateDiscountUI() {
+function updateDiscountUI(resetManualTotal = true) {
     const isMoney = document.getElementById('discountModeToggle').checked;
     const slider = document.getElementById('discountSlider');
     const optMoney = document.getElementById('optMoney');
@@ -3448,6 +3627,9 @@ function updateDiscountUI() {
         inputLabel.style.color = '#3b82f6';
         symbol.innerText = '%';
         input.step = '0.1';
+    }
+    if (resetManualTotal) {
+        resetPdvOrcamentoManualTotalOnItemChange();
     }
     renderCart();
 }
@@ -3514,6 +3696,7 @@ async function validateAuthorization() {
 function resetDiscount() {
     if (!isAuthorized) {
         document.getElementById('discountPercent').value = 0;
+        resetPdvOrcamentoManualTotalOnItemChange();
         renderCart();
     }
 }
@@ -3766,6 +3949,7 @@ async function processarCheckout() {
             showSuccessModal(result.sale_id, data.total, result.tipo_nota || data.tipo_nota, troco, valorRecebido);
             cart = [];
             currentPvId = null;
+            clearPdvManualOrcamentoTotal();
             isAuthorized = false;
             authSupervisorId = null;
             authSupervisorCredential = null;

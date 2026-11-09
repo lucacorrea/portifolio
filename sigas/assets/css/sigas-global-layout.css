@@ -1,0 +1,890 @@
+/* ============================================================================
+   SIGAS — Design System Operacional Global v1
+   Referência visual: Coari Meu Primeiro Emprego
+   ---------------------------------------------------------------------------
+   Objetivo
+   - Unificar geometria, espaçamento, densidade e hierarquia visual do SIGAS.
+   - Preservar a identidade de cor de cada módulo.
+   - Não alterar regras de negócio, permissões, filtros ou operações.
+   - Suportar três famílias de markup já existentes:
+       1) componentes globais .frontend-*
+       2) Primeiro Emprego .pe-*
+       3) Comida na Mesa .cm-*
+   ============================================================================ */
+
+.frontend-module-page .module-shell {
+    --sigas-ui-accent: var(--module-accent, var(--frontend-accent, var(--program-accent, #176b3a)));
+    --sigas-ui-accent-strong: color-mix(in srgb, var(--sigas-ui-accent) 78%, #10261d);
+    --sigas-ui-accent-soft: color-mix(in srgb, var(--sigas-ui-accent) 8%, #ffffff);
+    --sigas-ui-accent-border: color-mix(in srgb, var(--sigas-ui-accent) 22%, #dfe7e3);
+    --sigas-ui-ink: #18382e;
+    --sigas-ui-text: #344b43;
+    --sigas-ui-muted: #74867f;
+    --sigas-ui-border: #dfe7e3;
+    --sigas-ui-border-strong: #cfdad5;
+    --sigas-ui-surface: #ffffff;
+    --sigas-ui-surface-soft: #f8faf9;
+    --sigas-ui-table-head: #f3f6f4;
+    --sigas-ui-shadow: 0 8px 28px rgba(21, 54, 42, .055);
+    --sigas-ui-radius: 18px;
+    --sigas-ui-radius-md: 14px;
+    --sigas-ui-radius-sm: 10px;
+}
+
+/* --------------------------------------------------------------------------
+   ESTRUTURA GERAL
+   -------------------------------------------------------------------------- */
+.frontend-module-page {
+    background: #f5f7f6;
+}
+
+.frontend-module-page .frontend-module-content {
+    width: 100%;
+    max-width: 1600px;
+    gap: 16px;
+    margin-inline: auto;
+    padding-bottom: 34px;
+}
+
+.frontend-module-page .content-card,
+.frontend-module-page .sigas-workspace-card,
+body[data-module="primeiro-emprego"] .pe-page,
+body[data-module="primeiro-emprego"] .pe-list-page,
+body[data-module="primeiro-emprego"] .pe-report-page,
+body[data-module="comida-mesa"] .cm-list-card {
+    border: 1px solid var(--sigas-ui-border) !important;
+    border-radius: var(--sigas-ui-radius) !important;
+    background: var(--sigas-ui-surface) !important;
+    box-shadow: var(--sigas-ui-shadow) !important;
+}
+
+.frontend-module-page .sigas-workspace-card,
+body[data-module="primeiro-emprego"] .pe-page,
+body[data-module="primeiro-emprego"] .pe-list-page,
+body[data-module="primeiro-emprego"] .pe-report-page,
+body[data-module="comida-mesa"] .cm-list-card {
+    padding: 22px 24px 26px !important;
+}
+
+body[data-module="comida-mesa"] .cm-list-card {
+    overflow: visible !important;
+}
+
+/* --------------------------------------------------------------------------
+   CABEÇALHO EXTERNO DA PÁGINA
+   -------------------------------------------------------------------------- */
+.frontend-module-page .frontend-breadcrumb {
+    min-height: 18px;
+    gap: 7px;
+    color: var(--sigas-ui-muted);
+    font-size: .67rem;
+}
+
+.frontend-module-page .frontend-page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 22px;
+    margin: 0;
+}
+
+.frontend-module-page .frontend-page-header > div:first-child {
+    min-width: 0;
+}
+
+.frontend-module-page .frontend-page-header .eyebrow {
+    margin-bottom: 5px;
+    color: var(--sigas-ui-accent);
+    font-size: .68rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.frontend-module-page .frontend-page-header h1 {
+    margin: 0;
+    color: var(--sigas-ui-accent-strong);
+    font-size: clamp(1.65rem, 2.5vw, 2.15rem);
+    font-weight: 800;
+    letter-spacing: -.045em;
+    line-height: 1.08;
+}
+
+.frontend-module-page .frontend-page-header p {
+    max-width: 760px;
+    margin: 7px 0 0;
+    color: var(--sigas-ui-muted);
+    font-size: .9rem;
+    line-height: 1.5;
+}
+
+.frontend-module-page .frontend-page-header .page-actions,
+body[data-module="primeiro-emprego"] .pe-page-actions,
+body[data-module="comida-mesa"] .cm-page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.frontend-module-page .frontend-page-header .btn,
+body[data-module="primeiro-emprego"] .pe-page-actions .btn,
+body[data-module="comida-mesa"] .cm-page-actions .btn {
+    min-height: 42px;
+    border-radius: 10px;
+    font-size: .78rem;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   HERO INTERNO / ÁREA DE TRABALHO
+   -------------------------------------------------------------------------- */
+.frontend-module-page .sigas-workspace-hero,
+body[data-module="primeiro-emprego"] .pe-page-hero,
+body[data-module="primeiro-emprego"] .pe-candidates-hero,
+body[data-module="primeiro-emprego"] .pe-list-hero,
+body[data-module="comida-mesa"] .cm-list-hero {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    overflow: hidden;
+    margin: 0 0 18px !important;
+    padding: 18px 20px !important;
+    border: 1px solid var(--sigas-ui-accent-border) !important;
+    border-radius: 16px !important;
+    background:
+        linear-gradient(135deg, #ffffff 0%, var(--sigas-ui-accent-soft) 100%) !important;
+    box-shadow: none !important;
+}
+
+.frontend-module-page .sigas-workspace-hero::after,
+body[data-module="primeiro-emprego"] .pe-page-hero::after,
+body[data-module="primeiro-emprego"] .pe-candidates-hero::after,
+body[data-module="primeiro-emprego"] .pe-list-hero::after,
+body[data-module="comida-mesa"] .cm-list-hero::after {
+    content: "";
+    position: absolute;
+    top: -78px;
+    right: -58px;
+    width: 190px;
+    height: 190px;
+    border: 28px solid color-mix(in srgb, var(--sigas-ui-accent) 5%, transparent);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.frontend-module-page .sigas-workspace-hero > *,
+body[data-module="primeiro-emprego"] .pe-page-hero > *,
+body[data-module="primeiro-emprego"] .pe-candidates-hero > *,
+body[data-module="primeiro-emprego"] .pe-list-hero > *,
+body[data-module="comida-mesa"] .cm-list-hero > * {
+    position: relative;
+    z-index: 1;
+}
+
+.frontend-module-page .sigas-workspace-hero .card-kicker,
+body[data-module="primeiro-emprego"] .pe-page-hero .card-kicker,
+body[data-module="primeiro-emprego"] .pe-candidates-hero .card-kicker,
+body[data-module="comida-mesa"] .cm-list-hero .card-kicker {
+    margin-bottom: 5px;
+    color: var(--sigas-ui-accent);
+    font-size: .67rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.frontend-module-page .sigas-workspace-hero h2,
+body[data-module="primeiro-emprego"] .pe-page-hero h2,
+body[data-module="primeiro-emprego"] .pe-candidates-hero h2,
+body[data-module="primeiro-emprego"] .pe-list-hero h2,
+body[data-module="comida-mesa"] .cm-list-hero h2 {
+    margin: 0 !important;
+    color: var(--sigas-ui-accent-strong) !important;
+    font-size: clamp(1.35rem, 2.2vw, 1.75rem) !important;
+    font-weight: 800 !important;
+    letter-spacing: -.04em;
+    line-height: 1.12;
+}
+
+.frontend-module-page .sigas-workspace-hero p,
+body[data-module="primeiro-emprego"] .pe-page-hero p,
+body[data-module="primeiro-emprego"] .pe-candidates-hero p,
+body[data-module="primeiro-emprego"] .pe-list-hero p,
+body[data-module="comida-mesa"] .cm-list-hero p {
+    max-width: 780px;
+    margin: 6px 0 0 !important;
+    color: var(--sigas-ui-muted) !important;
+    font-size: .82rem;
+    line-height: 1.48;
+}
+
+/* --------------------------------------------------------------------------
+   KPIs / INDICADORES
+   -------------------------------------------------------------------------- */
+.frontend-module-page .sigas-kpi-grid,
+.frontend-module-page .frontend-stat-grid,
+body[data-module="primeiro-emprego"] .pe-kpi-grid,
+body[data-module="primeiro-emprego"] .pe-operational-kpis,
+body[data-module="primeiro-emprego"] .pe-report-kpi-grid,
+body[data-module="comida-mesa"] .cm-kpi-grid,
+body[data-module="comida-mesa"] .cm-review-kpi-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    margin: 0 0 18px !important;
+    padding: 0 !important;
+}
+
+.frontend-module-page .sigas-kpi,
+.frontend-module-page .frontend-stat-card,
+body[data-module="primeiro-emprego"] .pe-kpi,
+body[data-module="primeiro-emprego"] .pe-report-kpi,
+body[data-module="comida-mesa"] .cm-kpi,
+body[data-module="comida-mesa"] .cm-review-kpi {
+    position: relative;
+    display: block !important;
+    min-width: 0;
+    min-height: 92px !important;
+    padding: 13px 14px 12px !important;
+    overflow: hidden;
+    border: 1px solid var(--sigas-ui-border) !important;
+    border-radius: 12px !important;
+    background: #fff !important;
+    color: var(--sigas-ui-text) !important;
+    box-shadow: none !important;
+    text-decoration: none !important;
+}
+
+.frontend-module-page .sigas-kpi::before,
+.frontend-module-page .frontend-stat-card::before,
+body[data-module="primeiro-emprego"] .pe-kpi::before,
+body[data-module="primeiro-emprego"] .pe-report-kpi::before,
+body[data-module="comida-mesa"] .cm-kpi::before,
+body[data-module="comida-mesa"] .cm-review-kpi::before {
+    content: "";
+    position: absolute;
+    top: 0 !important;
+    right: 0 !important;
+    left: 0 !important;
+    width: auto !important;
+    height: 3px !important;
+    border-radius: 0 !important;
+    background: var(--sigas-ui-accent) !important;
+}
+
+.frontend-module-page .frontend-stat-card > i {
+    display: none !important;
+}
+
+.frontend-module-page .frontend-stat-card span,
+.frontend-module-page .frontend-stat-card small,
+body[data-module="primeiro-emprego"] .pe-kpi span,
+body[data-module="primeiro-emprego"] .pe-kpi small,
+body[data-module="comida-mesa"] .cm-kpi span,
+body[data-module="comida-mesa"] .cm-kpi small,
+body[data-module="comida-mesa"] .cm-review-kpi span,
+body[data-module="comida-mesa"] .cm-review-kpi small {
+    display: block;
+    color: var(--sigas-ui-muted) !important;
+}
+
+.frontend-module-page .frontend-stat-card span,
+body[data-module="primeiro-emprego"] .pe-kpi span,
+body[data-module="comida-mesa"] .cm-kpi span,
+body[data-module="comida-mesa"] .cm-review-kpi span {
+    font-size: .68rem !important;
+    font-weight: 700 !important;
+}
+
+.frontend-module-page .frontend-stat-card strong,
+body[data-module="primeiro-emprego"] .pe-kpi strong,
+body[data-module="comida-mesa"] .cm-kpi strong,
+body[data-module="comida-mesa"] .cm-review-kpi strong {
+    display: block;
+    margin: 5px 0 3px !important;
+    color: var(--sigas-ui-accent-strong) !important;
+    font-size: 1.36rem !important;
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -.04em;
+}
+
+.frontend-module-page .frontend-stat-card small,
+body[data-module="primeiro-emprego"] .pe-kpi small,
+body[data-module="comida-mesa"] .cm-kpi small,
+body[data-module="comida-mesa"] .cm-review-kpi small {
+    font-size: .62rem !important;
+    line-height: 1.3;
+}
+
+body[data-module="primeiro-emprego"] .pe-kpi--warning::before,
+body[data-module="primeiro-emprego"] .pe-kpi--orange::before,
+body[data-module="comida-mesa"] .cm-kpi--warning::before,
+body[data-module="comida-mesa"] .cm-review-kpi--warning::before {
+    background: #d89316 !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-kpi--danger::before,
+body[data-module="comida-mesa"] .cm-kpi--danger::before,
+body[data-module="comida-mesa"] .cm-review-kpi--danger::before {
+    background: #d43a48 !important;
+}
+
+body[data-module="primeiro-emprego"] .pe-kpi--success::before,
+body[data-module="comida-mesa"] .cm-kpi--success::before,
+body[data-module="comida-mesa"] .cm-review-kpi--success::before {
+    background: #198754 !important;
+}
+
+body[data-module="comida-mesa"] .cm-kpi--info::before,
+body[data-module="comida-mesa"] .cm-review-kpi--info::before {
+    background: #25778e !important;
+}
+
+/* --------------------------------------------------------------------------
+   TÍTULOS DE SUBSEÇÃO / QUALIDADE CADASTRAL
+   -------------------------------------------------------------------------- */
+body[data-module="comida-mesa"] .cm-review-quality {
+    margin: 4px 0 16px !important;
+}
+
+body[data-module="comida-mesa"] .cm-review-quality__header {
+    margin-bottom: 9px !important;
+}
+
+body[data-module="comida-mesa"] .cm-review-quality__header h3 {
+    color: var(--sigas-ui-ink) !important;
+    font-size: .9rem !important;
+    font-weight: 800 !important;
+}
+
+body[data-module="comida-mesa"] .cm-review-quality__header p {
+    margin-top: 2px !important;
+    color: var(--sigas-ui-muted) !important;
+    font-size: .7rem !important;
+}
+
+/* --------------------------------------------------------------------------
+   LEGENDA
+   -------------------------------------------------------------------------- */
+.frontend-module-page .sigas-legend,
+body[data-module="primeiro-emprego"] .pe-legend,
+body[data-module="primeiro-emprego"] .pe-review-legend,
+body[data-module="comida-mesa"] .cm-review-legend {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 7px 13px !important;
+    margin: 0 0 10px !important;
+    padding: 5px 2px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    color: var(--sigas-ui-muted) !important;
+    box-shadow: none !important;
+    font-size: .65rem !important;
+}
+
+/* --------------------------------------------------------------------------
+   FILTROS — PADRÃO PRIMEIRO EMPREGO
+   -------------------------------------------------------------------------- */
+.frontend-module-page .sigas-filter-panel,
+.frontend-module-page .frontend-filter-bar,
+body[data-module="primeiro-emprego"] .pe-filter-panel,
+body[data-module="primeiro-emprego"] .pe-operational-filters,
+body[data-module="primeiro-emprego"] .pe-report-filter-panel,
+body[data-module="comida-mesa"] .cm-filter-panel {
+    display: grid !important;
+    grid-template-columns: minmax(270px, 1.55fr) repeat(3, minmax(150px, .8fr)) !important;
+    gap: 9px !important;
+    align-items: center !important;
+    margin: 0 0 18px !important;
+    padding: 13px !important;
+    border: 1px solid var(--sigas-ui-border) !important;
+    border-radius: 13px !important;
+    background: #fff !important;
+    box-shadow: 0 3px 13px rgba(20, 55, 41, .035) !important;
+}
+
+body[data-module="comida-mesa"] .cm-filter-panel--review .cm-advanced-filters,
+body[data-module="comida-mesa"] .cm-filter-panel--review .cm-advanced-filters.show {
+    display: contents !important;
+}
+
+body[data-module="comida-mesa"] .cm-filter-panel--review [data-toggle-advanced] {
+    display: none !important;
+}
+
+body[data-module="comida-mesa"] .cm-filter-panel > label > span,
+body[data-module="comida-mesa"] .cm-filter-panel .cm-advanced-filters label > span,
+body[data-module="primeiro-emprego"] .pe-filter-panel label:not(.visually-hidden) > span {
+    display: none !important;
+}
+
+.frontend-module-page .frontend-filter-bar .form-control,
+.frontend-module-page .frontend-filter-bar .form-select,
+body[data-module="primeiro-emprego"] .pe-filter-panel .form-control,
+body[data-module="primeiro-emprego"] .pe-filter-panel .form-select,
+body[data-module="primeiro-emprego"] .pe-operational-filters .form-control,
+body[data-module="primeiro-emprego"] .pe-operational-filters .form-select,
+body[data-module="comida-mesa"] .cm-filter-panel .form-control,
+body[data-module="comida-mesa"] .cm-filter-panel .form-select,
+body[data-module="comida-mesa"] .cm-advanced-filters .form-control,
+body[data-module="comida-mesa"] .cm-advanced-filters .form-select {
+    width: 100%;
+    min-height: 42px !important;
+    border: 1px solid var(--sigas-ui-border-strong) !important;
+    border-radius: 9px !important;
+    background-color: #fff !important;
+    color: #334b42 !important;
+    font-size: .75rem !important;
+    box-shadow: none !important;
+}
+
+.frontend-module-page .frontend-filter-bar .form-control:focus,
+.frontend-module-page .frontend-filter-bar .form-select:focus,
+body[data-module="primeiro-emprego"] .pe-filter-panel .form-control:focus,
+body[data-module="primeiro-emprego"] .pe-filter-panel .form-select:focus,
+body[data-module="comida-mesa"] .cm-filter-panel .form-control:focus,
+body[data-module="comida-mesa"] .cm-filter-panel .form-select:focus {
+    border-color: var(--sigas-ui-accent) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--sigas-ui-accent) 10%, transparent) !important;
+}
+
+.frontend-module-page .frontend-filter-bar .btn,
+body[data-module="primeiro-emprego"] .pe-filter-panel .btn,
+body[data-module="comida-mesa"] .cm-filter-panel .btn {
+    min-height: 42px !important;
+    border-radius: 9px !important;
+    font-size: .75rem !important;
+    font-weight: 750 !important;
+    white-space: nowrap;
+}
+
+.frontend-module-page .frontend-filter-bar .btn-primary,
+body[data-module="primeiro-emprego"] .pe-filter-submit,
+body[data-module="comida-mesa"] .cm-filter-panel .btn-primary {
+    border-color: var(--sigas-ui-accent) !important;
+    background: var(--sigas-ui-accent) !important;
+    color: #fff !important;
+}
+
+body[data-module="comida-mesa"] .cm-filter-clear,
+body[data-module="primeiro-emprego"] .pe-filter-clear {
+    width: 42px !important;
+    padding-inline: 0 !important;
+}
+
+body[data-module="comida-mesa"] .cm-filter-panel--review > button[type="submit"] {
+    justify-self: start;
+    min-width: 150px;
+}
+
+/* --------------------------------------------------------------------------
+   TABELAS / TOOLBAR
+   -------------------------------------------------------------------------- */
+.frontend-module-page .sigas-table-card,
+.frontend-module-page .frontend-data-card,
+body[data-module="primeiro-emprego"] .pe-table-wrap,
+body[data-module="primeiro-emprego"] .pe-list-section,
+body[data-module="primeiro-emprego"] .pe-report-detail-section,
+body[data-module="comida-mesa"] .cm-table-shell {
+    overflow: hidden !important;
+    margin: 0 !important;
+    border: 1px solid var(--sigas-ui-border) !important;
+    border-radius: 13px !important;
+    background: #fff !important;
+    box-shadow: none !important;
+}
+
+.frontend-module-page .sigas-table-toolbar,
+.frontend-module-page .frontend-data-card > .card-heading,
+body[data-module="primeiro-emprego"] .pe-table-toolbar,
+body[data-module="primeiro-emprego"] .pe-list-section__head,
+body[data-module="primeiro-emprego"] .pe-report-detail-head,
+body[data-module="comida-mesa"] .cm-table-toolbar {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 14px !important;
+    min-height: 54px !important;
+    margin: 0 !important;
+    padding: 11px 14px !important;
+    border-bottom: 1px solid var(--sigas-ui-border) !important;
+    background: #fff !important;
+}
+
+.frontend-module-page .frontend-data-card > .card-heading h2,
+body[data-module="primeiro-emprego"] .pe-table-toolbar strong,
+body[data-module="primeiro-emprego"] .pe-list-section__head h3,
+body[data-module="comida-mesa"] .cm-table-toolbar h3 {
+    margin: 0 !important;
+    color: var(--sigas-ui-ink) !important;
+    font-size: .88rem !important;
+    font-weight: 800 !important;
+}
+
+.frontend-module-page .frontend-data-card > .card-heading p,
+body[data-module="comida-mesa"] .cm-table-toolbar p,
+body[data-module="primeiro-emprego"] .pe-table-toolbar small {
+    margin: 2px 0 0 !important;
+    color: var(--sigas-ui-muted) !important;
+    font-size: .66rem !important;
+}
+
+.frontend-module-page .frontend-desktop-table {
+    margin: 0 !important;
+}
+
+.frontend-module-page .frontend-data-card table,
+body[data-module="primeiro-emprego"] .pe-data-table,
+body[data-module="primeiro-emprego"] .pe-table,
+body[data-module="primeiro-emprego"] .pe-list-table,
+body[data-module="primeiro-emprego"] .pe-report-table,
+body[data-module="comida-mesa"] .cm-data-table {
+    width: 100% !important;
+    margin: 0 !important;
+    border-collapse: collapse !important;
+    background: #fff !important;
+    color: var(--sigas-ui-text) !important;
+    font-size: .76rem !important;
+}
+
+.frontend-module-page .frontend-data-card table thead th,
+body[data-module="primeiro-emprego"] .pe-data-table thead th,
+body[data-module="primeiro-emprego"] .pe-table thead th,
+body[data-module="primeiro-emprego"] .pe-list-table thead th,
+body[data-module="primeiro-emprego"] .pe-report-table thead th,
+body[data-module="comida-mesa"] .cm-data-table thead th {
+    padding: 10px 11px !important;
+    border: 0 !important;
+    border-bottom: 1px solid var(--sigas-ui-border-strong) !important;
+    background: var(--sigas-ui-table-head) !important;
+    color: #61736c !important;
+    font-size: .61rem !important;
+    font-weight: 800 !important;
+    letter-spacing: .04em !important;
+    line-height: 1.25;
+    text-transform: uppercase !important;
+    vertical-align: middle !important;
+    white-space: nowrap;
+}
+
+.frontend-module-page .frontend-data-card table tbody td,
+body[data-module="primeiro-emprego"] .pe-data-table tbody td,
+body[data-module="primeiro-emprego"] .pe-table tbody td,
+body[data-module="primeiro-emprego"] .pe-list-table tbody td,
+body[data-module="comida-mesa"] .cm-data-table tbody td {
+    padding: 10px 11px !important;
+    border: 0 !important;
+    border-bottom: 1px solid #edf1ef !important;
+    background: #fff;
+    vertical-align: middle !important;
+    font-size: .73rem !important;
+}
+
+.frontend-module-page .frontend-action-row,
+body[data-module="primeiro-emprego"] .pe-candidate-table tbody tr,
+body[data-module="comida-mesa"] .cm-data-table tbody tr[tabindex] {
+    cursor: pointer;
+    outline: 0;
+}
+
+.frontend-module-page .frontend-action-row:hover > td,
+.frontend-module-page .frontend-action-row:focus > td,
+body[data-module="primeiro-emprego"] .pe-candidate-table tbody tr:hover > td,
+body[data-module="comida-mesa"] .cm-data-table tbody tr[tabindex]:hover > td,
+body[data-module="comida-mesa"] .cm-data-table tbody tr[tabindex]:focus > td {
+    background: color-mix(in srgb, var(--sigas-ui-accent-soft) 55%, #fff) !important;
+}
+
+/* mantém cores semânticas de revisão sem perder o hover */
+body[data-module="comida-mesa"] .cm-data-table tbody tr.table-warning > td {
+    background: #fffaf0;
+}
+
+body[data-module="comida-mesa"] .cm-data-table tbody tr.table-danger > td {
+    background: #fff3f4;
+}
+
+/* --------------------------------------------------------------------------
+   PAGINAÇÃO
+   -------------------------------------------------------------------------- */
+.frontend-module-page .sigas-pagination,
+.frontend-module-page .frontend-pagination,
+body[data-module="primeiro-emprego"] .pe-pagination,
+body[data-module="comida-mesa"] .cm-pagination {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+    min-height: 52px !important;
+    margin: 0 !important;
+    padding: 9px 12px !important;
+    border-top: 1px solid var(--sigas-ui-border) !important;
+    background: #fff !important;
+    color: var(--sigas-ui-muted) !important;
+    font-size: .66rem !important;
+}
+
+body[data-module="comida-mesa"] .cm-pagination nav,
+.frontend-module-page .frontend-pagination nav {
+    display: flex;
+    gap: 5px;
+}
+
+body[data-module="comida-mesa"] .cm-pagination a,
+body[data-module="comida-mesa"] .cm-pagination nav a,
+.frontend-module-page .frontend-pagination .btn,
+body[data-module="primeiro-emprego"] .pe-pagination a,
+body[data-module="primeiro-emprego"] .pe-pagination button {
+    display: inline-grid;
+    min-width: 30px !important;
+    height: 30px !important;
+    place-items: center;
+    padding: 0 8px !important;
+    border: 1px solid var(--sigas-ui-border-strong) !important;
+    border-radius: 8px !important;
+    background: #fff !important;
+    color: #51675e !important;
+    font-size: .67rem !important;
+    font-weight: 750 !important;
+    text-decoration: none !important;
+}
+
+body[data-module="comida-mesa"] .cm-pagination a.active,
+body[data-module="comida-mesa"] .cm-pagination .active,
+.frontend-module-page .frontend-pagination .btn-primary,
+body[data-module="primeiro-emprego"] .pe-pagination .active {
+    border-color: var(--sigas-ui-accent) !important;
+    background: var(--sigas-ui-accent) !important;
+    color: #fff !important;
+}
+
+/* --------------------------------------------------------------------------
+   STATUS / BADGES — TAMANHO GLOBAL, CORES SEMÂNTICAS PRESERVADAS
+   -------------------------------------------------------------------------- */
+.frontend-module-page .badge,
+body[data-module="primeiro-emprego"] .pe-status,
+body[data-module="comida-mesa"] .cm-status {
+    min-height: 23px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: .62rem !important;
+    font-weight: 800 !important;
+    line-height: 1.1;
+}
+
+/* --------------------------------------------------------------------------
+   MODAIS / CENTRAL DE AÇÕES
+   -------------------------------------------------------------------------- */
+.frontend-module-page .modal-content {
+    overflow: hidden;
+    border: 1px solid var(--sigas-ui-border) !important;
+    border-radius: 18px !important;
+    background: #fff;
+    box-shadow: 0 26px 72px rgba(15, 40, 29, .19) !important;
+}
+
+.frontend-module-page .modal-header {
+    align-items: flex-start;
+    gap: 12px;
+    padding: 17px 19px 14px !important;
+    border-bottom: 1px solid var(--sigas-ui-border) !important;
+    background: #fff !important;
+}
+
+.frontend-module-page .modal-header .eyebrow,
+.frontend-module-page .modal-header .card-kicker {
+    color: var(--sigas-ui-accent) !important;
+}
+
+.frontend-module-page .modal-title {
+    color: var(--sigas-ui-accent-strong) !important;
+    font-weight: 800 !important;
+    letter-spacing: -.025em;
+}
+
+.frontend-module-page .modal-body {
+    padding: 18px 19px !important;
+}
+
+.frontend-module-page .modal-footer {
+    gap: 8px;
+    padding: 11px 19px 15px !important;
+    border-top: 1px solid var(--sigas-ui-border) !important;
+    background: #fbfcfb !important;
+}
+
+.frontend-module-page .modal-footer .btn,
+.frontend-module-page .modal-body .btn {
+    border-radius: 9px;
+    font-size: .76rem;
+    font-weight: 750;
+}
+
+/* --------------------------------------------------------------------------
+   FORMULÁRIOS GERAIS
+   -------------------------------------------------------------------------- */
+.frontend-module-page .form-control,
+.frontend-module-page .form-select {
+    border-color: var(--sigas-ui-border-strong);
+}
+
+.frontend-module-page .form-control:focus,
+.frontend-module-page .form-select:focus {
+    border-color: var(--sigas-ui-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--sigas-ui-accent) 10%, transparent);
+}
+
+.frontend-module-page .btn-primary {
+    --bs-btn-bg: var(--sigas-ui-accent);
+    --bs-btn-border-color: var(--sigas-ui-accent);
+    --bs-btn-hover-bg: var(--sigas-ui-accent-strong);
+    --bs-btn-hover-border-color: var(--sigas-ui-accent-strong);
+    --bs-btn-active-bg: var(--sigas-ui-accent-strong);
+    --bs-btn-active-border-color: var(--sigas-ui-accent-strong);
+}
+
+/* --------------------------------------------------------------------------
+   COMPONENTES GENÉRICOS DOS DEMAIS MÓDULOS
+   -------------------------------------------------------------------------- */
+.frontend-module-page .sigas-workspace-card > .frontend-stat-grid,
+.frontend-module-page .sigas-workspace-card > .frontend-filter-bar {
+    margin-bottom: 18px !important;
+}
+
+.frontend-module-page .sigas-workspace-card .frontend-block-grid {
+    gap: 14px;
+}
+
+.frontend-module-page .sigas-workspace-card .frontend-data-card {
+    box-shadow: none !important;
+}
+
+.frontend-module-page .frontend-info-grid article,
+.frontend-module-page .frontend-chart-card,
+.frontend-module-page .frontend-settings > *,
+.frontend-module-page .program-flow-step,
+.frontend-module-page .program-person-card,
+.frontend-module-page .program-history-card,
+.frontend-module-page .program-queue-item {
+    border-color: var(--sigas-ui-border) !important;
+    border-radius: 12px !important;
+    box-shadow: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   RESPONSIVIDADE
+   -------------------------------------------------------------------------- */
+@media (max-width: 1199.98px) {
+    .frontend-module-page .sigas-kpi-grid,
+    .frontend-module-page .frontend-stat-grid,
+    body[data-module="primeiro-emprego"] .pe-kpi-grid,
+    body[data-module="primeiro-emprego"] .pe-operational-kpis,
+    body[data-module="comida-mesa"] .cm-kpi-grid,
+    body[data-module="comida-mesa"] .cm-review-kpi-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .frontend-module-page .sigas-filter-panel,
+    .frontend-module-page .frontend-filter-bar,
+    body[data-module="primeiro-emprego"] .pe-filter-panel,
+    body[data-module="comida-mesa"] .cm-filter-panel {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .frontend-module-page .frontend-search-field,
+    body[data-module="primeiro-emprego"] .pe-filter-search,
+    body[data-module="comida-mesa"] .cm-filter-search {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .frontend-module-page .frontend-module-content {
+        padding: 14px 12px 92px;
+    }
+
+    .frontend-module-page .frontend-page-header,
+    .frontend-module-page .sigas-workspace-hero,
+    body[data-module="primeiro-emprego"] .pe-page-hero,
+    body[data-module="primeiro-emprego"] .pe-candidates-hero,
+    body[data-module="comida-mesa"] .cm-list-hero {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .frontend-module-page .frontend-page-header .page-actions,
+    body[data-module="primeiro-emprego"] .pe-page-actions,
+    body[data-module="comida-mesa"] .cm-page-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        width: 100%;
+    }
+
+    .frontend-module-page .sigas-workspace-card,
+    body[data-module="primeiro-emprego"] .pe-page,
+    body[data-module="primeiro-emprego"] .pe-list-page,
+    body[data-module="comida-mesa"] .cm-list-card {
+        padding: 15px !important;
+        border-radius: 14px !important;
+    }
+
+    .frontend-module-page .sigas-kpi-grid,
+    .frontend-module-page .frontend-stat-grid,
+    body[data-module="primeiro-emprego"] .pe-kpi-grid,
+    body[data-module="comida-mesa"] .cm-kpi-grid,
+    body[data-module="comida-mesa"] .cm-review-kpi-grid,
+    .frontend-module-page .sigas-filter-panel,
+    .frontend-module-page .frontend-filter-bar,
+    body[data-module="primeiro-emprego"] .pe-filter-panel,
+    body[data-module="comida-mesa"] .cm-filter-panel {
+        grid-template-columns: 1fr !important;
+    }
+
+    .frontend-module-page .frontend-search-field,
+    body[data-module="primeiro-emprego"] .pe-filter-search,
+    body[data-module="comida-mesa"] .cm-filter-search {
+        grid-column: auto;
+    }
+
+    .frontend-module-page .sigas-table-toolbar,
+    .frontend-module-page .frontend-data-card > .card-heading,
+    body[data-module="primeiro-emprego"] .pe-table-toolbar,
+    body[data-module="comida-mesa"] .cm-table-toolbar,
+    .frontend-module-page .sigas-pagination,
+    .frontend-module-page .frontend-pagination,
+    body[data-module="comida-mesa"] .cm-pagination {
+        align-items: flex-start !important;
+        flex-direction: column;
+    }
+
+    .frontend-module-page .modal-dialog {
+        margin: 8px;
+    }
+}
+
+@media (max-width: 420px) {
+    .frontend-module-page .sigas-kpi-grid,
+    .frontend-module-page .frontend-stat-grid,
+    body[data-module="primeiro-emprego"] .pe-kpi-grid,
+    body[data-module="comida-mesa"] .cm-kpi-grid,
+    body[data-module="comida-mesa"] .cm-review-kpi-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .frontend-module-page *,
+    .frontend-module-page *::before,
+    .frontend-module-page *::after {
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+        animation-duration: .01ms !important;
+    }
+}

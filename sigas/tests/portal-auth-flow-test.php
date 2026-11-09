@@ -25,21 +25,26 @@ function assert_portal_flow(bool $condition, string $message): void
 }
 
 $expected = [
-    'planejamento-gestao' => 'Planejamento e Gestão',
-    'vigilancia-socioassistencial' => 'Vigilância Socioassistencial',
-    'protecao-social-basica' => 'Proteção Social Básica',
-    'protecao-social-especial' => 'Proteção Social Especial',
+    'kit-maternidade' => 'Kit Maternidade',
+    'aluguel-social' => 'Aluguel Social',
+    'beneficios-eventuais' => 'Benefícios Eventuais',
+    'gestao-acessos' => 'Governança e Acessos',
     'comida-mesa' => 'Coari Comida na Mesa',
     'primeiro-emprego' => 'Coari Meu Primeiro Emprego',
 ];
 
-assert_portal_flow(count($registry) === 6, 'registro central deve possuir exatamente seis ambientes');
-assert_portal_flow(array_keys($registry) === array_keys($expected), 'ordem e chaves dos seis ambientes devem permanecer estáveis');
+assert_portal_flow(count($registry) === 6, 'registro central deve possuir exatamente seis módulos independentes');
+assert_portal_flow(array_keys($registry) === array_keys($expected), 'ordem e chaves dos módulos independentes devem permanecer estáveis');
 
 foreach ($expected as $key => $name) {
     assert_portal_flow(($registry[$key]['name'] ?? null) === $name, "nome incorreto para {$key}");
+    assert_portal_flow(($registry[$key]['kind'] ?? null) === 'module', "{$key} deve ser módulo independente");
     assert_portal_flow(!empty($registry[$key]['home']), "página inicial ausente para {$key}");
     assert_portal_flow(!empty($registry[$key]['items']), "menu ausente para {$key}");
+}
+
+foreach (['planejamento-gestao', 'vigilancia-socioassistencial', 'protecao-social-basica', 'protecao-social-especial'] as $legacySectorEnvironment) {
+    assert_portal_flow(!isset($registry[$legacySectorEnvironment]), "ambiente setorial legado não deve permanecer no catálogo: {$legacySectorEnvironment}");
 }
 
 assert_portal_flow(

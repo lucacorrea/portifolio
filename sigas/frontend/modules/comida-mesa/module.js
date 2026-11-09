@@ -186,6 +186,39 @@
         });
     });
 
+    // Beneficiários com CPF oficial ainda não regularizado permanecem ativos,
+    // mas nunca devem aparecer visualmente como cadastro "Regular".
+    // O CPF duplicado/original continua preservado na importação para conferência;
+    // pessoas.cpf fica NULL até a correção do documento real.
+    if (window.location.pathname.endsWith("/comida-mesa/beneficiarios.php")) {
+        const table = qs(".cm-data-table");
+        if (table) {
+            const headers = qsa("thead th", table).map((th) => (th.textContent || "").trim().toLowerCase());
+            const cadastroIndex = headers.findIndex((label) => label === "cadastro");
+
+            qsa("tbody tr[data-cm-action-row]", table).forEach((row) => {
+                const documentLine = qs(".cm-person-cell small", row);
+                if (!documentLine) return;
+
+                const original = (documentLine.textContent || "").trim();
+                const match = original.match(/^CPF\s*([0-9.\-]*)/i);
+                const cpfDigits = (match?.[1] || "").replace(/\D+/g, "");
+                if (cpfDigits.length === 11) return;
+
+                row.classList.add("table-warning");
+                const nisPart = original.includes("·") ? original.slice(original.indexOf("·")).trim() : "";
+                documentLine.textContent = `CPF pendente${nisPart ? ` ${nisPart}` : ""}`;
+
+                if (cadastroIndex >= 0 && row.children[cadastroIndex]) {
+                    row.children[cadastroIndex].innerHTML = `
+                        <span class="cm-status cm-status--warning">CPF pendente · corrigir</span>
+                        <small class="d-block mt-1 text-muted">Documento oficial ainda não regularizado. O benefício permanece ativo.</small>
+                    `;
+                }
+            });
+        }
+    }
+
     // Gráficos declarativos do módulo.
     const chartPayload = qs("#cmChartPayload");
     if (chartPayload && window.Chart) {

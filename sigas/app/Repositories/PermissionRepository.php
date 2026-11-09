@@ -69,6 +69,144 @@ final class PermissionRepository
         }
     }
 
+    /**
+     * Retorna a decisão individual para uma permissão.
+     * null = herda do nível; true = libera; false = bloqueia.
+     *
+     * Bases ainda sem a migration nova preservam o comportamento por nível.
+     */
+    public function userPermissionOverride(int $userId, string $permissionSlug): ?bool
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                'SELECT upe.permitido
+                 FROM usuario_permissao_excecoes upe
+                 INNER JOIN permissoes p ON p.id = upe.permissao_id
+                 WHERE upe.usuario_id = :usuario_id
+                   AND p.slug = :slug
+                   AND p.ativo = 1
+                 LIMIT 1'
+            );
+            $stmt->execute([
+                'usuario_id' => $userId,
+                'slug' => $permissionSlug,
+            ]);
+            $value = $stmt->fetchColumn();
+
+            return $value === false ? null : (bool) $value;
+        } catch (PDOException $exception) {
+            Logger::application('Individual permission override unavailable.', [
+                'repository' => self::class,
+                'code' => $exception->getCode(),
+            ]);
+            return null;
+        }
+    }
+
+    public function permissionModule(string $permissionSlug): ?string
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                'SELECT modulo
+                 FROM permissoes
+                 WHERE slug = :slug AND ativo = 1
+                 LIMIT 1'
+            );
+            $stmt->execute(['slug' => $permissionSlug]);
+            $value = $stmt->fetchColumn();
+            if ($value === false) {
+                return null;
+            }
+            $module = trim((string) $value);
+            return $module === '' ? null : $module;
+        } catch (PDOException $exception) {
+            throw $this->fail('permissionModule', 'Falha ao identificar o módulo da permissão.', $exception);
+        }
+    }
+
+    /**
+     * Exceção de módulo é consultada também durante uma autorização de API.
+     * Um bloqueio explícito do módulo sempre vence qualquer permissão interna.
+     */
+    public function userModuleOverride(int $userId, string $publicModuleKey): ?bool
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                'SELECT permitido
+                 FROM usuario_modulo_excecoes
+                 WHERE usuario_id = :usuario_id
+                   AND modulo = :modulo
+                 LIMIT 1'
+            );
+            $stmt->execute([
+                'usuario_id' => $userId,
+                'modulo' => $publicModuleKey,
+            ]);
+            $value = $stmt->fetchColumn();
+            return $value === false ? null : (bool) $value;
+        } catch (PDOException $exception) {
+            Logger::application('Individual module override unavailable during permission check.', [
+                'repository' => self::class,
+                'code' => $exception->getCode(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Informa se o setor possui uma matriz explícita de módulos.
+     * Ausência da tabela/migration mantém o fallback histórico para não causar
+     * bloqueio generalizado durante uma publicação parcialmente atualizada.
+     */
+    public function sectorHasModuleConfiguration(?int $sectorId): bool
+    {
+        if ($sectorId === null || $sectorId <= 0) {
+            return false;
+        }
+
+        try {
+            $stmt = $this->pdo->prepare(
+                'SELECT 1
+                 FROM setor_modulos
+                 WHERE setor_id = :setor_id
+                 LIMIT 1'
+            );
+            $stmt->execute(['setor_id' => $sectorId]);
+            return (bool) $stmt->fetchColumn();
+        } catch (PDOException $exception) {
+            Logger::application('Sector module configuration unavailable during permission check.', [
+                'repository' => self::class,
+                'code' => $exception->getCode(),
+            ]);
+            return false;
+        }
+    }
+
+    public function sectorAllowsModule(int $sectorId, string $publicModuleKey): bool
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                'SELECT permitido
+                 FROM setor_modulos
+                 WHERE setor_id = :setor_id
+                   AND modulo = :modulo
+                 LIMIT 1'
+            );
+            $stmt->execute([
+                'setor_id' => $sectorId,
+                'modulo' => $publicModuleKey,
+            ]);
+            $value = $stmt->fetchColumn();
+            return $value !== false && (bool) $value;
+        } catch (PDOException $exception) {
+            Logger::application('Sector module rule unavailable during permission check.', [
+                'repository' => self::class,
+                'code' => $exception->getCode(),
+            ]);
+            return false;
+        }
+    }
+
     /** @param array<string, mixed> $params */
     private function findOne(string $where, array $params): ?Permission
     {

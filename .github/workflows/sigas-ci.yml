@@ -1,0 +1,99 @@
+name: SIGAS CI
+
+on:
+  pull_request:
+    paths:
+      - 'sigas/**'
+      - '.github/workflows/sigas-ci.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'sigas/**'
+      - '.github/workflows/sigas-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sigas-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  php-quality:
+    name: PHP syntax and security regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: none
+
+      - name: PHP syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          find sigas \
+            -type f \
+            -name '*.php' \
+            -not -path '*/vendor/*' \
+            -print0 \
+            | xargs -0 -n1 php -l
+
+      - name: Operational JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check sigas/assets/js/modules/operational-programs.js
+          node --check sigas/assets/js/modules/kit-maternidade-flow.js
+          node --check sigas/assets/js/prontuario-socioeconomico.js
+          node --check sigas/assets/js/modules/gestao-acessos-matrix.js
+          node --check sigas/assets/js/modules/gestao-acessos-levels.js
+          node --check sigas/assets/js/modules/gestao-acessos-permissions.js
+          node --check sigas/assets/js/modules/gestao-acessos-sectors.js
+
+      - name: Authorization level regression
+        run: php sigas/tests/authorization-level-test.php
+
+      - name: Authorization policy regression
+        run: php sigas/tests/authorization-policy-test.php
+
+      - name: Portal authentication and catalog regression
+        run: php sigas/tests/portal-auth-flow-test.php
+
+      - name: Navigation links regression
+        run: php sigas/tests/navigation-links-test.php
+
+      - name: Module menu regression
+        run: php sigas/tests/module-menu-test.php
+
+      - name: Individual access and journey regression
+        run: php sigas/tests/individual-access-journey-test.php
+
+      - name: Operational program front regression
+        run: php sigas/tests/operational-program-front-test.php
+
+      - name: Socioeconomic and Kit Maternity regression
+        run: php sigas/tests/socioeconomic-kit-flow-test.php
+
+      - name: Governance access matrix regression
+        run: php sigas/tests/governance-access-matrix-test.php
+
+      - name: Governance access levels regression
+        run: php sigas/tests/governance-access-levels-test.php
+
+      - name: Governance permissions regression
+        run: php sigas/tests/governance-permissions-test.php
+
+      - name: Governance sectors regression
+        run: php sigas/tests/governance-sectors-test.php
+
+      - name: Root structure regression
+        run: php sigas/tests/root-structure-test.php

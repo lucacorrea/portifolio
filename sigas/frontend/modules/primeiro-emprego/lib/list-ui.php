@@ -21,6 +21,7 @@ function pe_list_header(
     string $createTarget = '',
     string $icon = 'plus-lg'
 ): void {
+    $canMutate = !function_exists('pe_can_current_mutation') || pe_can_current_mutation();
     ?>
     <div class="pe-page-hero pe-list-hero">
         <div>
@@ -28,7 +29,7 @@ function pe_list_header(
             <h2><?= pe_h($title) ?></h2>
             <p><?= pe_h($description) ?></p>
         </div>
-        <?php if ($createLabel !== '' && $createTarget !== ''): ?>
+        <?php if ($canMutate && $createLabel !== '' && $createTarget !== ''): ?>
             <div class="pe-page-actions pe-no-print">
                 <button
                     class="btn btn-primary"
@@ -249,6 +250,7 @@ function pe_status_label(?string $status, string $context = 'generic'): string
 
 function pe_crud_actions_dialog(string $dialogId, string $entityLabel, string $viewTarget, string $editTarget, string $deleteTarget): void
 {
+    $canMutate = !function_exists('pe_can_current_mutation') || pe_can_current_mutation();
     ?>
     <dialog class="pe-modal pe-modal--actions" id="<?= pe_h($dialogId) ?>">
         <div class="pe-modal__shell">
@@ -268,16 +270,18 @@ function pe_crud_actions_dialog(string $dialogId, string $entityLabel, string $v
                         <span><strong>Visualizar</strong><small>Consultar todos os dados deste registro</small></span>
                         <i class="bi bi-chevron-right"></i>
                     </button>
-                    <button class="pe-modal-action pe-modal-action--primary" type="button" data-pe-open="<?= pe_h($editTarget) ?>" data-pe-mode="edit">
-                        <span class="pe-modal-action__icon"><i class="bi bi-pencil-square"></i></span>
-                        <span><strong>Editar</strong><small>Atualizar os dados cadastrados</small></span>
-                        <i class="bi bi-chevron-right"></i>
-                    </button>
-                    <button class="pe-modal-action pe-modal-action--danger" type="button" data-pe-open="<?= pe_h($deleteTarget) ?>" data-pe-mode="delete">
-                        <span class="pe-modal-action__icon"><i class="bi bi-trash3"></i></span>
-                        <span><strong>Excluir</strong><small>Remover o registro após confirmação</small></span>
-                        <i class="bi bi-chevron-right"></i>
-                    </button>
+                    <?php if ($canMutate): ?>
+                        <button class="pe-modal-action pe-modal-action--primary" type="button" data-pe-open="<?= pe_h($editTarget) ?>" data-pe-mode="edit">
+                            <span class="pe-modal-action__icon"><i class="bi bi-pencil-square"></i></span>
+                            <span><strong>Editar</strong><small>Atualizar os dados cadastrados</small></span>
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                        <button class="pe-modal-action pe-modal-action--danger" type="button" data-pe-open="<?= pe_h($deleteTarget) ?>" data-pe-mode="delete">
+                            <span class="pe-modal-action__icon"><i class="bi bi-trash3"></i></span>
+                            <span><strong>Excluir</strong><small>Remover o registro após confirmação</small></span>
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -287,6 +291,9 @@ function pe_crud_actions_dialog(string $dialogId, string $entityLabel, string $v
 
 function pe_delete_dialog(string $dialogId, string $entityLabel, string $action): void
 {
+    if (function_exists('pe_can_current_mutation') && !pe_can_current_mutation()) {
+        return;
+    }
     ?>
     <dialog class="pe-modal pe-modal--confirm" id="<?= pe_h($dialogId) ?>">
         <div class="pe-modal__shell">

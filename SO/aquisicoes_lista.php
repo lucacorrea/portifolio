@@ -4,6 +4,7 @@ require_once 'config/functions.php';
 login_check();
 
 $page_title = "Lista de Aquisições";
+$pode_assinar_aquisicao = usuario_pode_assinar_aquisicao($pdo);
 
 if (!function_exists('h')) {
     function h($value)
@@ -160,7 +161,7 @@ function secretariaSiglaRelatorio($nome): string
         'SECRETARIA MUNICIPAL DE MEIO AMBIENTE' => 'SEMMA',
         'SECRETARIA MUNICIPAL EXTRAORDINÁRIA' => 'SME',
         'PROCURADORIA GERAL DO MUNICÍPIO' => 'PGM',
-        'CONTROLADORIA GERAL DO MUNICICÍPIO' => 'CGM',
+        'CONTROLADORIA GERAL DO MUNICÍPIO' => 'CGM',
         'SECRETARIA MUNICIPAL DE CIÊNCIA, TECNOLOGIA E INOVAÇÃO' => 'SMCTI',
         'SECRETARIA MUNICIPAL DE DESENVOLVIMENTO RURAL E ECONÔMICO' => 'SMDRE',
         'SECRETARIA MUNICIPAL DE SEGURANÇA PÚBLICA E DEFESA SOCIAL' => 'SMSPDS',
@@ -362,6 +363,8 @@ $data_inicio = trim((string)($_GET['data_inicio'] ?? ''));
 $data_fim = trim((string)($_GET['data_fim'] ?? ''));
 $export = trim((string)($_GET['export'] ?? ''));
 $tipo_relatorio = trim((string)($_GET['tipo_relatorio'] ?? 'sintetico'));
+$modo_relatorio = trim((string)($_GET['modo'] ?? 'cor'));
+$modo_pb = $modo_relatorio === 'pb';
 if (!in_array($tipo_relatorio, ['sintetico', 'analitico'], true)) {
     $tipo_relatorio = 'sintetico';
 }
@@ -553,13 +556,23 @@ if (in_array($export, ['excel', 'pdf'], true)) {
     }
     $descricao_limite = $tipo_relatorio === 'analitico' ? 420 : 180;
 
-    $filename = 'relatorio_aquisicoes_' . date('Ymd_His');
+    $filename = 'relatorio_aquisicoes' . ($modo_pb ? '_preto_branco' : '') . '_' . date('Ymd_His');
     $back_query = $_GET;
-    unset($back_query['export'], $back_query['page']);
+    unset($back_query['export'], $back_query['page'], $back_query['modo']);
     $back_url = 'aquisicoes_lista.php';
     if (!empty($back_query)) {
         $back_url .= '?' . http_build_query($back_query);
     }
+
+    $modo_query = $_GET;
+    $modo_query['export'] = 'pdf';
+    unset($modo_query['page']);
+    if ($modo_pb) {
+        unset($modo_query['modo']);
+    } else {
+        $modo_query['modo'] = 'pb';
+    }
+    $modo_url = 'aquisicoes_lista.php?' . http_build_query($modo_query);
 
     if ($is_pdf_export) {
         header('Content-Type: text/html; charset=UTF-8');
@@ -577,7 +590,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Relatório de Aquisições</title>
+        <title>Relatório de Aquisições<?php echo $modo_pb ? ' - Preto e Branco' : ''; ?></title>
         <?php if ($is_pdf_export): ?>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -586,7 +599,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             <?php if ($is_pdf_export): ?>
             @page {
                 size: A4 landscape;
-                margin: 0;
+                margin: 6mm;
             }
             <?php endif; ?>
 
@@ -704,6 +717,12 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                 color: #ffffff;
             }
 
+            .pdf-btn-mode {
+                background: #111827;
+                border-color: #111827;
+                color: #ffffff;
+            }
+
             body.pdf-export {
                 background: #ffffff;
                 color: #001228;
@@ -722,6 +741,15 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                 background: #ffffff;
                 margin: 0 auto;
                 padding: 5mm;
+            }
+
+            .credito-aquisicoes-lista {
+                text-align: right;
+                margin-top: 8px;
+                color: #64748b;
+                font-size: 8px;
+                page-break-inside: avoid;
+                break-inside: avoid;
             }
 
             body.pdf-export .sheet {
@@ -810,9 +838,10 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                 padding: 2px 5px;
             }
 
+            /* Fornecedores seguem na mesma folha quando houver espaço. */
             body.pdf-export .supplier-page-break {
-                break-before: page;
-                page-break-before: always;
+                break-before: auto;
+                page-break-before: auto;
             }
 
             body.pdf-export .secretaria-card-title td {
@@ -836,6 +865,77 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                 height: 5px;
             }
 
+            /* Modo preto e branco: substitui as cores por tons de cinza de alto contraste. */
+            body.pdf-export.modo-pb,
+            body.pdf-export.modo-pb .pdf-page {
+                background: #ffffff !important;
+                color: #000000 !important;
+            }
+
+            body.pdf-export.modo-pb .sheet td,
+            body.pdf-export.modo-pb .sheet th {
+                color: #000000 !important;
+                border-color: #333333 !important;
+            }
+
+            body.pdf-export.modo-pb .title-main {
+                background: #e3e3e3 !important;
+                color: #000000 !important;
+                border-color: #333333 !important;
+            }
+
+            body.pdf-export.modo-pb .sub-info,
+            body.pdf-export.modo-pb .summary-value {
+                background: #ffffff !important;
+                color: #000000 !important;
+            }
+
+            body.pdf-export.modo-pb .summary-label,
+            body.pdf-export.modo-pb .secretaria-card-head th {
+                background: #eeeeee !important;
+                color: #000000 !important;
+            }
+
+            body.pdf-export.modo-pb .section-title {
+                background: #bdbdbd !important;
+                color: #000000 !important;
+                border-color: #333333 !important;
+            }
+
+            body.pdf-export.modo-pb .supplier-section td {
+                background: #d0d0d0 !important;
+                color: #000000 !important;
+            }
+
+            body.pdf-export.modo-pb .secretaria-card-title td {
+                background: #d9d9d9 !important;
+                color: #000000 !important;
+                border-color: #333333 !important;
+            }
+
+            body.pdf-export.modo-pb .report-row td {
+                background: #ffffff !important;
+                color: #000000 !important;
+            }
+
+            body.pdf-export.modo-pb .group-total-row td {
+                background: #e4e4e4 !important;
+                color: #000000 !important;
+                border-color: #333333 !important;
+            }
+
+            body.pdf-export.modo-pb .supplier-total-row td {
+                background: #dddddd !important;
+                color: #000000 !important;
+                border-color: #333333 !important;
+            }
+
+            body.pdf-export.modo-pb .total-row td {
+                background: #d5d5d5 !important;
+                color: #000000 !important;
+                border-color: #222222 !important;
+            }
+
             .sheet tr {
                 break-inside: avoid;
                 page-break-inside: avoid;
@@ -856,20 +956,29 @@ if (in_array($export, ['excel', 'pdf'], true)) {
 
                 .pdf-page {
                     margin: 0 !important;
-                    width: 297mm !important;
-                    min-height: 210mm !important;
+                    width: 100% !important;
+                    min-height: 0 !important;
+                    padding: 0 !important;
+                }
+
+                .sheet tr, .sheet td, .sheet th {
+                    break-inside: avoid;
+                    page-break-inside: avoid;
                 }
             }
             <?php endif; ?>
         </style>
     </head>
-    <body class="<?php echo $is_pdf_export ? 'pdf-export' : ''; ?>">
+    <body class="<?php echo $is_pdf_export ? 'pdf-export' . ($modo_pb ? ' modo-pb' : '') : ''; ?>">
         <?php if ($is_pdf_export): ?>
             <div class="print-toolbar no-print">
-                <div class="toolbar-title">Relatório de Aquisições - PDF em paisagem</div>
+                <div class="toolbar-title">Relatório de Aquisições - PDF em paisagem<?php echo $modo_pb ? ' - Preto e Branco' : ''; ?></div>
                 <div class="toolbar-actions">
                     <a href="<?php echo h($back_url); ?>" class="pdf-btn">
                         <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                    <a href="<?php echo h($modo_url); ?>" class="pdf-btn <?php echo !$modo_pb ? 'pdf-btn-mode' : ''; ?>">
+                        <i class="fas fa-circle-half-stroke"></i> <?php echo $modo_pb ? 'Colorido' : 'Preto e Branco'; ?>
                     </a>
                     <button type="button" id="download-pdf-btn" class="pdf-btn pdf-btn-primary" onclick="downloadAquisicoesPdf()">
                         <i class="fas fa-file-pdf"></i> Baixar PDF
@@ -1013,6 +1122,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             <?php endif; ?>
         </table>
         <?php if ($is_pdf_export): ?>
+                <div class="credito-aquisicoes-lista">Desenvolvido por Lucas Correa</div>
                 </div>
             </div>
 
@@ -1032,7 +1142,8 @@ if (in_array($export, ['excel', 'pdf'], true)) {
 
                     try {
                         const worker = window.html2pdf().set({
-                            margin: [0, 0, 0, 0],
+                            // Reserva espaço inferior para o crédito e a paginação do PDF.
+                            margin: [0, 0, 7, 0],
                             filename: <?php echo json_encode($filename . '.pdf'); ?>,
                             image: { type: 'jpeg', quality: 0.98 },
                             html2canvas: {
@@ -1048,7 +1159,6 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                             },
                             pagebreak: {
                                 mode: ['css', 'legacy'],
-                                before: ['.supplier-page-break'],
                                 avoid: ['tr']
                             }
                         }).from(report).toPdf();
@@ -1064,7 +1174,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
 
                             for (let page = 1; page <= totalPages; page++) {
                                 pdf.setPage(page);
-                                pdf.text(`${emittedAt} | Página ${page} de ${totalPages}`, pageWidth - 6, pageHeight - 4, {
+                                pdf.text(`Desenvolvido por Lucas Correa | ${emittedAt} | Página ${page} de ${totalPages}`, pageWidth - 6, pageHeight - 4, {
                                     align: 'right'
                                 });
                             }
@@ -1133,6 +1243,7 @@ function get_pagination_url($page)
 
 include 'views/layout/header.php';
 ?>
+<link rel="stylesheet" href="assets/css/lista-acoes-modal.css">
 
 <style>
     .filtros-grid {
@@ -1417,132 +1528,161 @@ include 'views/layout/header.php';
     }
 </style>
 
-<div class="card no-print">
+<div class="card no-print lista-filtros-card">
     <div class="card-body">
-        <h3 class="card-title" style="margin-bottom: 1rem; font-weight: 700; font-size: 1rem;">
-            <i class="fas fa-filter" style="margin-right: 5px; color: var(--primary);"></i> Filtros de Busca
-        </h3>
+        <div class="lista-filtros-header">
+            <div class="lista-filtros-titulo-wrap">
+                <span class="lista-filtros-icone">
+                    <i class="fas fa-filter"></i>
+                </span>
+                <div>
+                    <h3 class="lista-filtros-titulo">Filtros de Busca</h3>
+                    <p class="lista-filtros-subtitulo">Encontre aquisições e gere relatórios sem misturar os controles.</p>
+                </div>
+            </div>
+            <span class="lista-filtros-resumo">
+                <i class="fas fa-sliders-h"></i>
+                Busca e relatórios
+            </span>
+        </div>
 
-        <form action="" method="GET" class="filtros-grid">
-            <div class="form-group filtro-limite" style="margin-bottom: 0;">
-                <label class="form-label">Linhas por página</label>
-                <select name="por_pagina" class="form-control">
-                    <?php foreach ($por_pagina_options as $por_pagina_option): ?>
-                        <option value="<?php echo $por_pagina_option; ?>" <?php echo $itens_por_pagina === $por_pagina_option ? 'selected' : ''; ?>>
-                            <?php echo $por_pagina_option; ?> linhas
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+        <form action="" method="GET" class="lista-filtros-form lista-filtros-form--aquisicoes">
+            <div class="lista-filtros-principais">
+                <div class="lista-filtro lista-filtro-busca">
+                    <label for="filtro-aquisicao-busca">Termo de busca</label>
+                    <div class="lista-filtro-input-icon">
+                        <i class="fas fa-search"></i>
+                        <input
+                            id="filtro-aquisicao-busca"
+                            type="text"
+                            name="busca"
+                            class="form-control"
+                            placeholder="Nº aquisição, ofício, secretaria, fornecedor ou valor..."
+                            value="<?php echo htmlspecialchars($_GET['busca'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                    </div>
+                </div>
+
+                <div class="lista-filtro">
+                    <label for="filtro-aquisicao-status">Status</label>
+                    <select id="filtro-aquisicao-status" name="status" class="form-control">
+                        <option value="">Todos Status</option>
+                        <option value="AGUARDANDO ENTREGA" <?php echo $status === 'AGUARDANDO ENTREGA' ? 'selected' : ''; ?>>AGUARDANDO ENTREGA</option>
+                        <option value="FINALIZADO" <?php echo $status === 'FINALIZADO' ? 'selected' : ''; ?>>FINALIZADO</option>
+                    </select>
+                </div>
+
+                <div class="lista-filtro">
+                    <label for="filtro-aquisicao-secretaria">Secretaria</label>
+                    <select id="filtro-aquisicao-secretaria" name="secretaria_id" class="form-control">
+                        <option value="">Todas as Secretarias</option>
+                        <?php foreach ($secretarias_list as $sec): ?>
+                            <option value="<?php echo (int)$sec['id']; ?>" <?php echo $secretaria_id == $sec['id'] ? 'selected' : ''; ?>>
+                                <?php echo h($sec['nome']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="lista-filtro lista-filtro-fornecedor">
+                    <label for="filtro-aquisicao-fornecedor">Fornecedor</label>
+                    <select id="filtro-aquisicao-fornecedor" name="fornecedor_id" class="form-control">
+                        <option value="">Todos os Fornecedores</option>
+                        <?php foreach ($fornecedores_list as $fornecedor): ?>
+                            <option value="<?php echo (int)$fornecedor['id']; ?>" <?php echo $fornecedor_id == $fornecedor['id'] ? 'selected' : ''; ?>>
+                                <?php echo h($fornecedor['nome']); ?>
+                                <?php if (!empty($fornecedor['cnpj'])): ?>
+                                    (<?php echo h($fornecedor['cnpj']); ?>)
+                                <?php endif; ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
             </div>
 
-            <div class="form-group filtro-busca" style="margin-bottom: 0;">
-                <label class="form-label">Termo de busca</label>
-                <input
-                    type="text"
-                    name="busca"
-                    class="form-control"
-                    placeholder="Nº aquisição, ofício, secretaria, fornecedor ou valor..."
-                    value="<?php echo htmlspecialchars($_GET['busca'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
-            </div>
+            <div class="lista-filtros-secundarios">
+                <div class="lista-filtros-secundarios-campos">
+                    <div class="lista-filtro">
+                        <label for="filtro-aquisicao-data-inicio">Data inicial</label>
+                        <input
+                            id="filtro-aquisicao-data-inicio"
+                            type="date"
+                            name="data_inicio"
+                            class="form-control"
+                            value="<?php echo h($data_inicio); ?>">
+                    </div>
 
-            <div class="form-group filtro-status" style="margin-bottom: 0;">
-                <label class="form-label">Status</label>
-                <select name="status" class="form-control">
-                    <option value="">Todos Status</option>
-                    <option value="AGUARDANDO ENTREGA" <?php echo $status === 'AGUARDANDO ENTREGA' ? 'selected' : ''; ?>>AGUARDANDO ENTREGA</option>
-                    <option value="FINALIZADO" <?php echo $status === 'FINALIZADO' ? 'selected' : ''; ?>>FINALIZADO</option>
-                </select>
-            </div>
+                    <div class="lista-filtro">
+                        <label for="filtro-aquisicao-data-fim">Data final</label>
+                        <input
+                            id="filtro-aquisicao-data-fim"
+                            type="date"
+                            name="data_fim"
+                            class="form-control"
+                            value="<?php echo h($data_fim); ?>">
+                    </div>
 
-            <div class="form-group filtro-secretaria" style="margin-bottom: 0;">
-                <label class="form-label">Secretaria</label>
-                <select name="secretaria_id" class="form-control">
-                    <option value="">Todas as Secretarias</option>
-                    <?php foreach ($secretarias_list as $sec): ?>
-                        <option value="<?php echo (int)$sec['id']; ?>" <?php echo $secretaria_id == $sec['id'] ? 'selected' : ''; ?>>
-                            <?php echo h($sec['nome']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+                    <div class="lista-filtro">
+                        <label for="filtro-aquisicao-por-pagina">Linhas por página</label>
+                        <select id="filtro-aquisicao-por-pagina" name="por_pagina" class="form-control">
+                            <?php foreach ($por_pagina_options as $por_pagina_option): ?>
+                                <option value="<?php echo $por_pagina_option; ?>" <?php echo $itens_por_pagina === $por_pagina_option ? 'selected' : ''; ?>>
+                                    <?php echo $por_pagina_option; ?> linhas
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
 
-            <div class="form-group filtro-fornecedor" style="margin-bottom: 0;">
-                <label class="form-label">Fornecedor</label>
-                <select name="fornecedor_id" class="form-control">
-                    <option value="">Todos os Fornecedores</option>
-                    <?php foreach ($fornecedores_list as $fornecedor): ?>
-                        <option value="<?php echo (int)$fornecedor['id']; ?>" <?php echo $fornecedor_id == $fornecedor['id'] ? 'selected' : ''; ?>>
-                            <?php echo h($fornecedor['nome']); ?>
-                            <?php if (!empty($fornecedor['cnpj'])): ?>
-                                (<?php echo h($fornecedor['cnpj']); ?>)
-                            <?php endif; ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+                    <div class="lista-filtro">
+                        <label for="filtro-aquisicao-tipo">Tipo relatório</label>
+                        <select id="filtro-aquisicao-tipo" name="tipo_relatorio" class="form-control">
+                            <option value="sintetico" <?php echo $tipo_relatorio === 'sintetico' ? 'selected' : ''; ?>>Sintético</option>
+                            <option value="analitico" <?php echo $tipo_relatorio === 'analitico' ? 'selected' : ''; ?>>Analítico</option>
+                        </select>
+                    </div>
+                </div>
 
-            <div class="form-group filtro-data" style="margin-bottom: 0;">
-                <label class="form-label">Data inicial</label>
-                <input
-                    type="date"
-                    name="data_inicio"
-                    class="form-control"
-                    value="<?php echo h($data_inicio); ?>">
-            </div>
+                <div class="lista-filtros-acoes">
+                    <button type="submit" class="filtro-btn filtro-btn-primary" title="Aplicar filtros">
+                        <i class="fas fa-search"></i>
+                        Filtrar
+                    </button>
 
-            <div class="form-group filtro-data" style="margin-bottom: 0;">
-                <label class="form-label">Data final</label>
-                <input
-                    type="date"
-                    name="data_fim"
-                    class="form-control"
-                    value="<?php echo h($data_fim); ?>">
-            </div>
+                    <button
+                        type="submit"
+                        name="export"
+                        value="excel"
+                        class="filtro-btn filtro-btn-excel"
+                        title="Exportar Excel">
+                        <i class="fas fa-file-excel"></i>
+                        Excel
+                    </button>
 
-            <div class="form-group filtro-tipo" style="margin-bottom: 0;">
-                <label class="form-label">Tipo relatório</label>
-                <select name="tipo_relatorio" class="form-control">
-                    <option value="sintetico" <?php echo $tipo_relatorio === 'sintetico' ? 'selected' : ''; ?>>Sintético</option>
-                    <option value="analitico" <?php echo $tipo_relatorio === 'analitico' ? 'selected' : ''; ?>>Analítico</option>
-                </select>
-            </div>
+                    <button
+                        type="submit"
+                        name="export"
+                        value="pdf"
+                        formtarget="_blank"
+                        class="filtro-btn filtro-btn-pdf"
+                        title="Baixar PDF">
+                        <i class="fas fa-file-pdf"></i>
+                        PDF
+                    </button>
 
-            <div class="form-group filtros-acoes" style="margin-bottom: 0;">
-                <button type="submit" class="btn btn-outline btn-sm" title="Filtrar">
-                    <i class="fas fa-search"></i> Filtrar
-                </button>
+                    <button
+                        type="submit"
+                        formaction="aquisicoes_imprimir_lote.php"
+                        formtarget="_blank"
+                        class="filtro-btn filtro-btn-print"
+                        title="Imprimir aquisições filtradas">
+                        <i class="fas fa-print"></i>
+                        Imprimir
+                    </button>
 
-                <button
-                    type="submit"
-                    name="export"
-                    value="excel"
-                    class="btn btn-primary btn-sm"
-                    title="Exportar Excel">
-                    <i class="fas fa-file-excel"></i> Excel
-                </button>
-
-                <button
-                    type="submit"
-                    name="export"
-                    value="pdf"
-                    formtarget="_blank"
-                    class="btn btn-outline btn-sm"
-                    title="Baixar PDF">
-                    <i class="fas fa-file-pdf"></i> PDF
-                </button>
-
-                <button
-                    type="submit"
-                    formaction="aquisicoes_imprimir_lote.php"
-                    formtarget="_blank"
-                    class="btn btn-outline btn-sm"
-                    title="Imprimir aquisições filtradas">
-                    <i class="fas fa-print"></i> Imprimir
-                </button>
-
-                <a href="aquisicoes_lista.php" class="btn btn-outline btn-sm" title="Limpar Filtros">
-                    <i class="fas fa-eraser"></i> Limpar
-                </a>
+                    <a href="aquisicoes_lista.php" class="filtro-btn filtro-btn-clear" title="Limpar filtros">
+                        <i class="fas fa-eraser"></i>
+                        Limpar
+                    </a>
+                </div>
             </div>
         </form>
     </div>
@@ -1557,6 +1697,7 @@ include 'views/layout/header.php';
         </div>
 
         <?php display_flash(); ?>
+        <p class="so-list-tip"><i class="fas fa-mouse-pointer" aria-hidden="true"></i> Clique em uma linha para visualizar as ações da aquisição.</p>
 
         <div class="table-responsive lista-table-wrap">
             <table class="table-vcenter text-nowrap lista-table">
@@ -1569,12 +1710,15 @@ include 'views/layout/header.php';
                         <th>Data</th>
                         <th style="text-align: right;">Valor Total</th>
                         <th style="text-align: center;">Status</th>
-                        <th style="text-align: right;">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($aquisicoes as $aq): ?>
-                        <tr>
+                        <tr class="so-list-row" data-so-list-row tabindex="0" aria-haspopup="dialog"
+                            data-so-actions-template="acoes-aquisicao-<?php echo (int)$aq['id']; ?>"
+                            data-so-actions-title="Aquisição <?php echo h($aq['numero_aq']); ?>"
+                            data-so-actions-subtitle="<?php echo h($aq['fornecedor']); ?> • <?php echo h($aq['secretaria']); ?>"
+                            title="Clique para ver as ações desta aquisição">
                             <td>
                                 <strong style="color: var(--text-dark);">
                                     <?php echo htmlspecialchars($aq['numero_aq'], ENT_QUOTES, 'UTF-8'); ?>
@@ -1600,43 +1744,12 @@ include 'views/layout/header.php';
                                     <?php echo htmlspecialchars($aq['status'], ENT_QUOTES, 'UTF-8'); ?>
                                 </span>
                             </td>
-                            <td style="text-align: right;">
-                                <div class="acoes-wrap">
-                                    <div class="dropdown">
-                                        <button class="btn-three-dots" data-dropdown-toggle title="Ações">
-                                            <i class="fas fa-ellipsis-v"></i>
-                                        </button>
-                                        <div class="dropdown-menu">
-                                            <a class="dropdown-item" href="aquisicoes_visualizar.php?id=<?php echo (int)$aq['id']; ?>">
-                                                <i class="fas fa-eye"></i> Visualizar
-                                            </a>
-
-                                            <?php
-                                                $nivel_user = strtoupper($_SESSION['nivel'] ?? '');
-                                                if ($aq['status'] !== 'FINALIZADO' && ($nivel_user === 'ADMIN' || $nivel_user === 'SUPORTE')):
-                                            ?>
-                                                <a class="dropdown-item" href="editar_aquisicoes.php?id=<?php echo (int)$aq['id']; ?>">
-                                                    <i class="fas fa-edit"></i> Editar
-                                                </a>
-                                            <?php endif; ?>
-
-                                            <?php
-                                                if ($aq['status'] === 'AGUARDANDO ENTREGA' && ($nivel_user === 'ADMIN' || $nivel_user === 'SUPORTE')):
-                                            ?>
-                                                <a class="dropdown-item" href="aquisicao_finalizar.php?id=<?php echo (int)$aq['id']; ?>" style="color: var(--status-finalized) !important;" onclick="return confirm('Confirmar o recebimento desta aquisição?')">
-                                                    <i class="fas fa-check-circle"></i> Marcar como Recebido
-                                                </a>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            </td>
                         </tr>
                     <?php endforeach; ?>
 
                     <?php if (empty($aquisicoes)): ?>
                         <tr>
-                            <td colspan="8" style="text-align:center; padding: 3rem; color: var(--text-muted);">
+                            <td colspan="7" style="text-align:center; padding: 3rem; color: var(--text-muted);">
                                 Nenhuma aquisição gerada até o momento.
                             </td>
                         </tr>
@@ -1664,5 +1777,51 @@ include 'views/layout/header.php';
         <?php endif; ?>
     </div>
 </div>
+
+
+<?php foreach ($aquisicoes as $aq): ?>
+    <template id="acoes-aquisicao-<?php echo (int)$aq['id']; ?>">
+        <a class="so-action-link" href="aquisicoes_visualizar.php?id=<?php echo (int)$aq['id']; ?>">
+            <i class="fas fa-eye" aria-hidden="true"></i> Visualizar aquisição
+        </a>
+        <?php if ($pode_assinar_aquisicao): ?>
+            <a class="so-action-link" href="aquisicoes_visualizar.php?id=<?php echo (int)$aq['id']; ?>">
+                <i class="fas fa-signature" aria-hidden="true"></i> Visualizar e assinar
+            </a>
+        <?php endif; ?>
+        <?php if ($aq['status'] !== 'FINALIZADO' && in_array(strtoupper((string)($_SESSION['nivel'] ?? '')), ['ADMIN', 'SUPORTE'], true)): ?>
+            <a class="so-action-link" href="editar_aquisicoes.php?id=<?php echo (int)$aq['id']; ?>">
+                <i class="fas fa-edit" aria-hidden="true"></i> Editar aquisição
+            </a>
+        <?php endif; ?>
+        <?php if ($aq['status'] === 'AGUARDANDO ENTREGA' && in_array(strtoupper((string)($_SESSION['nivel'] ?? '')), ['ADMIN', 'SUPORTE'], true)): ?>
+            <a class="so-action-link" href="aquisicao_finalizar.php?id=<?php echo (int)$aq['id']; ?>"
+               onclick="return confirm('Confirmar o recebimento desta aquisição?')">
+                <i class="fas fa-check-circle" aria-hidden="true"></i> Marcar como recebido
+            </a>
+        <?php endif; ?>
+    </template>
+<?php endforeach; ?>
+
+<div class="so-action-modal" id="so-list-actions-modal" hidden aria-hidden="true">
+    <div class="so-action-modal__panel" role="dialog" aria-modal="true"
+         aria-labelledby="so-list-actions-title" aria-describedby="so-list-actions-subtitle">
+        <div class="so-action-modal__header">
+            <div>
+                <p class="so-action-modal__eyebrow">Ações da aquisição</p>
+                <h3 class="so-action-modal__title" id="so-list-actions-title">Ações disponíveis</h3>
+            </div>
+            <button type="button" class="so-action-modal__close" data-so-action-close aria-label="Fechar ações">
+                <i class="fas fa-times" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="so-action-modal__body">
+            <p class="so-action-modal__subtitle" id="so-list-actions-subtitle"></p>
+            <div class="so-action-modal__links" data-so-actions-container></div>
+        </div>
+    </div>
+</div>
+
+<script src="assets/js/lista-acoes-modal.js" defer></script>
 
 <?php include 'views/layout/footer.php'; ?>

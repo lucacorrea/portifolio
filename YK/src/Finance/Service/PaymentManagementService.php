@@ -28,6 +28,34 @@ final class PaymentManagementService
         return $this->accounts->registerPayment($accountId, $value, $form, $paymentDate, $notes, $userId);
     }
 
+    /** @return array{payment_id:int,financial_correction:bool,receipt_cancelled:bool} */
+    public function editAccountsReceivablePayment(
+        int $paymentId,
+        string $value,
+        string $form,
+        string $paymentDate,
+        ?string $notes,
+        int $userId
+    ): array {
+        return $this->accounts->editPayment(
+            $paymentId,
+            $value,
+            $form,
+            $paymentDate,
+            $notes,
+            $userId
+        );
+    }
+
+    /** @return array{receipt_cancelled:bool,account_status:string} */
+    public function reverseAccountsReceivablePayment(
+        int $paymentId,
+        string $reason,
+        int $userId
+    ): array {
+        return $this->accounts->reversePayment($paymentId, $reason, $userId);
+    }
+
     /** @return array{payment_id:int,receipt_id:int,receipt_created:bool,account_status:string,idempotent:bool} */
     public function registerFinalizedOrderPayment(
         int $orderId,

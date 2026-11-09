@@ -92,6 +92,10 @@ function pe_rel_filter_parts(PDO $pdo, array $filters): array
     $params = [];
     $lotacaoCase = pe_rel_lotacao_case();
 
+    if (pe_final_list_schema_ready($pdo)) {
+        $where[] = 'c.lista_final_ativa = 1';
+    }
+
     $q = trim((string) ($filters['q'] ?? ''));
     if ($q !== '') {
         $like = '%' . $q . '%';
@@ -533,10 +537,11 @@ function pe_rel_operational(PDO $pdo, array $filters): array
 
 function pe_rel_filter_options(PDO $pdo): array
 {
-    $bairros = $pdo->query('SELECT DISTINCT bairro FROM pe_candidatos WHERE bairro IS NOT NULL AND TRIM(bairro) <> "" ORDER BY bairro')->fetchAll(PDO::FETCH_COLUMN) ?: [];
-    $status = $pdo->query('SELECT DISTINCT status FROM pe_candidatos WHERE status IS NOT NULL AND TRIM(status) <> "" ORDER BY status')->fetchAll(PDO::FETCH_COLUMN) ?: [];
-    $origens = $pdo->query('SELECT DISTINCT origem FROM pe_candidatos WHERE origem IS NOT NULL AND TRIM(origem) <> "" ORDER BY origem')->fetchAll(PDO::FETCH_COLUMN) ?: [];
-    $sexos = $pdo->query('SELECT DISTINCT sexo FROM pe_candidatos WHERE sexo IS NOT NULL AND TRIM(sexo) <> "" ORDER BY sexo')->fetchAll(PDO::FETCH_COLUMN) ?: [];
+    $active = pe_final_list_schema_ready($pdo) ? ' AND lista_final_ativa = 1' : '';
+    $bairros = $pdo->query('SELECT DISTINCT bairro FROM pe_candidatos WHERE bairro IS NOT NULL AND TRIM(bairro) <> ""' . $active . ' ORDER BY bairro')->fetchAll(PDO::FETCH_COLUMN) ?: [];
+    $status = $pdo->query('SELECT DISTINCT status FROM pe_candidatos WHERE status IS NOT NULL AND TRIM(status) <> ""' . $active . ' ORDER BY status')->fetchAll(PDO::FETCH_COLUMN) ?: [];
+    $origens = $pdo->query('SELECT DISTINCT origem FROM pe_candidatos WHERE origem IS NOT NULL AND TRIM(origem) <> ""' . $active . ' ORDER BY origem')->fetchAll(PDO::FETCH_COLUMN) ?: [];
+    $sexos = $pdo->query('SELECT DISTINCT sexo FROM pe_candidatos WHERE sexo IS NOT NULL AND TRIM(sexo) <> ""' . $active . ' ORDER BY sexo')->fetchAll(PDO::FETCH_COLUMN) ?: [];
 
     $setores = $pdo->query('SELECT local FROM (
         SELECT DISTINCT local_atuacao AS local FROM pe_lotacoes WHERE status="Ativa" AND local_atuacao IS NOT NULL AND TRIM(local_atuacao)<>""

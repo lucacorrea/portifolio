@@ -78,6 +78,12 @@ $itens = $stmtI->fetchAll(PDO::FETCH_ASSOC);
 $dataOrcamento = date('d/m/Y H:i', strtotime($pv['created_at']));
 $validadeOrcamento = date('d/m/Y H:i', strtotime($pv['created_at'] . ' + 24 hours'));
 $valorTotal = (float)($pv['valor_total'] ?? 0);
+$subtotalItens = 0.0;
+foreach ($itens as $itemTotal) {
+    $subtotalItens += ((float)$itemTotal['quantidade'] * (float)$itemTotal['preco_unitario']);
+}
+$ajusteOrcamento = round($valorTotal - $subtotalItens, 2);
+$temAjusteOrcamento = abs($ajusteOrcamento) >= 0.01;
 
 // Check if expired
 $createdAt = strtotime($pv['created_at']);
@@ -399,6 +405,16 @@ if ($type === 'A4') {
                     <td class="left"><b>QTDE DE ITENS</b></td>
                     <td class="right"><?= count($itens) ?></td>
                 </tr>
+                <?php if ($temAjusteOrcamento): ?>
+                    <tr>
+                        <td class="left"><b>SUBTOTAL ITENS</b></td>
+                        <td class="right"><?= number_format($subtotalItens,2,',','.') ?></td>
+                    </tr>
+                    <tr>
+                        <td class="left"><b>AJUSTE ORÇAMENTO</b></td>
+                        <td class="right"><?= ($ajusteOrcamento >= 0 ? '+' : '-') ?> <?= number_format(abs($ajusteOrcamento),2,',','.') ?></td>
+                    </tr>
+                <?php endif; ?>
                 <tr style="border-top:1px dashed #000">
                     <td class="left" style="font-size:14px;padding-top:4px"><b>TOTAL R$</b></td>
                     <td class="right" style="font-size:14px;padding-top:4px"><b><?= number_format($valorTotal,2,',','.') ?></b></td>

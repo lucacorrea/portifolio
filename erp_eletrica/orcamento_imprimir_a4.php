@@ -259,6 +259,16 @@ $currentDate = date('d') . ' de ' . $meses[(int)date('m')] . ' de ' . date('Y');
                 <td class="table-center"><?= number_format($subtotal, 2, ',', '.') ?></td>
             </tr>
             <?php endforeach; ?>
+            <?php if (!empty($temAjusteOrcamento)): ?>
+            <tr>
+                <td colspan="5" class="table-right">SUBTOTAL ITENS</td>
+                <td class="table-center"><?= number_format($subtotalItens, 2, ',', '.') ?></td>
+            </tr>
+            <tr>
+                <td colspan="5" class="table-right">AJUSTE ORÇAMENTO</td>
+                <td class="table-center"><?= ($ajusteOrcamento >= 0 ? '+' : '-') ?> <?= number_format(abs($ajusteOrcamento), 2, ',', '.') ?></td>
+            </tr>
+            <?php endif; ?>
             <tr class="total-row">
                 <td colspan="5" class="table-right">TOTAL</td>
                 <td class="table-center"><?= number_format($valorTotal, 2, ',', '.') ?></td>
