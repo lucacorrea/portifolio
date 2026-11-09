@@ -1,0 +1,25 @@
+# OBRAS360 — Interface visual
+
+Interface demonstrativa para a Secretaria Municipal de Obras e Planejamento da Prefeitura Municipal de Coari/AM.
+
+## Conteúdo
+- `index.html`: estrutura da página e componentes visuais.
+- `assets/styles.css`: identidade visual, layout e responsividade.
+- `assets/app.js`: interações demonstrativas do menu, navegação e avisos.
+
+## Publicar na hospedagem
+1. Extraia o arquivo ZIP.
+2. Acesse o gerenciador de arquivos da hospedagem.
+3. Abra a pasta pública do site (`public_html`, `www` ou equivalente).
+4. Envie `index.html` e a pasta `assets` para essa pasta.
+5. Acesse o domínio para visualizar.
+
+Não envie a pasta `obras360-visual` inteira para dentro de `public_html` se quiser que o sistema abra diretamente no domínio. Envie o conteúdo dela.
+
+## Importante
+Esta entrega é somente a camada visual (front-end estático). Não possui PHP, banco de dados, login real, gravação de dados, permissões, upload ou relatórios reais. Os indicadores, nomes e atividades exibidos são dados fictícios para demonstração. Os botões e menus possuem apenas interações de apresentação.
+
+Na próxima etapa, o HTML poderá ser integrado ao PHP mantendo a estrutura visual. Recomenda-se preservar os arquivos originais antes de substituir qualquer conteúdo já existente na hospedagem.
+
+## Observação sobre identidade institucional
+O nome textual da Prefeitura foi incluído como identificação de projeto. Não foi reproduzido brasão ou logotipo oficial. Insira a identidade visual oficial somente após obter o arquivo autorizado da Prefeitura.
