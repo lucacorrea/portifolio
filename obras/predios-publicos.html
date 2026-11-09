@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#102b46">
+  <title>Prédios públicos | OBRAS360</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body data-initial-page="patrimonio">
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark"><span>O</span><i></i></div>
+        <div class="brand-copy"><strong>OBRAS<span>360</span></strong><small>GESTÃO MUNICIPAL</small></div>
+        <button class="icon-btn close-sidebar" id="closeSidebar" aria-label="Fechar menu">×</button>
+      </div>
+      <div class="municipality">
+        <div class="municipality-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18M5 20V8l7-4 7 4v12M9 20v-6h6v6M8 9h.01M12 9h.01M16 9h.01"/></svg></div>
+        <div><b>Prefeitura de Coari</b><small>Amazonas · Brasil</small></div>
+      </div>
+      <div class="nav-label">MENU PRINCIPAL</div>
+      <nav class="nav-menu" aria-label="Menu principal">
+        <button class="nav-link active" data-page="dashboard"><span class="nav-icon">▦</span><span>Painel geral</span></button>
+        <div class="nav-label nav-label-spaced">GESTÃO OPERACIONAL</div>
+        <button class="nav-link" data-page="obras"><span class="nav-icon">⌂</span><span>Obras</span><em>12</em></button>
+        <button class="nav-link" data-page="ordens"><span class="nav-icon">☷</span><span>Ordens de serviço</span><em>08</em></button>
+        <button class="nav-link" data-page="cronogramas"><span class="nav-icon">▤</span><span>Planejamento</span></button>
+        <button class="nav-link" data-page="fiscalizacao"><span class="nav-icon">✓</span><span>Fiscalização</span></button>
+        <div class="nav-label nav-label-spaced">ENGENHARIA E RECURSOS</div>
+        <button class="nav-link" data-page="projetos"><span class="nav-icon">▧</span><span>Projetos e documentos</span></button>
+        <button class="nav-link" data-page="orcamentos"><span class="nav-icon">＄</span><span>Orçamentos e medições</span></button>
+        <button class="nav-link" data-page="materiais"><span class="nav-icon">▣</span><span>Materiais e estoque</span></button>
+        <button class="nav-link" data-page="patrimonio"><span class="nav-icon">⌂</span><span>Prédios públicos</span></button>
+        <div class="nav-label nav-label-spaced">ADMINISTRAÇÃO</div>
+        <button class="nav-link" data-page="protocolos"><span class="nav-icon">▤</span><span>Protocolos</span></button>
+        <button class="nav-link" data-page="relatorios"><span class="nav-icon">▥</span><span>Relatórios</span></button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="help-card"><div class="help-icon">?</div><div><b>Precisa de ajuda?</b><small>Consulte o suporte do sistema.</small></div><span>›</span></div>
+        <div class="user-mini"><div class="avatar">AD</div><div class="user-mini-copy"><b>Administrador</b><small>Gestão do sistema</small></div><button class="more-btn" aria-label="Mais opções">•••</button></div>
+      </div>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="icon-btn menu-toggle" id="menuToggle" aria-label="Abrir menu">☰</button>
+          <div class="breadcrumb">Secretaria <span>/</span> <b id="breadcrumbCurrent">Painel geral</b></div>
+        </div>
+        <div class="topbar-actions">
+          <div class="today"><span class="today-dot"></span><span id="currentDate">Coari, AM</span></div>
+          <button class="icon-btn notification-btn" aria-label="Notificações">♧<i></i></button>
+          <div class="top-user"><div class="avatar">AD</div><div><b>Administrador</b><small>Secretaria de Obras</small></div><span class="chevron">⌄</span></div>
+        </div>
+      </header>
+
+      <section class="content" id="pageContent">
+        <div class="page-heading">
+          <div><div class="eyebrow">VISÃO ESTRATÉGICA</div><h1 id="pageTitle">Painel geral</h1><p id="pageDescription">Acompanhe os principais indicadores e atividades da Secretaria.</p></div>
+          <div class="heading-actions"><button class="btn btn-light" id="exportBtn"><span>↓</span> Exportar resumo</button><button class="btn btn-primary" id="newAction"><span>＋</span> Nova obra</button></div>
+        </div>
+
+        <div class="welcome-strip">
+          <div class="welcome-text"><span class="welcome-tag">GESTÃO MUNICIPAL</span><h2>Bom trabalho, equipe.</h2><p>Uma visão integrada das obras, serviços e ações de infraestrutura de Coari.</p></div>
+          <div class="welcome-art" aria-hidden="true"><div class="sun"></div><div class="hill hill-one"></div><div class="hill hill-two"></div><div class="building b-one"></div><div class="building b-two"></div><div class="building b-three"></div><div class="road"></div></div>
+        </div>
+
+        <div class="section-head"><div><h2>Indicadores da Secretaria</h2><p>Resumo demonstrativo da situação atual</p></div><button class="period-select">Últimos 30 dias <span>⌄</span></button></div>
+        <div class="stats-grid">
+          <article class="stat-card"><div class="stat-top"><span class="stat-icon blue">⌂</span><span class="stat-trend positive">↗ 8,2%</span></div><div class="stat-number">24</div><div class="stat-label">Obras cadastradas</div><div class="stat-foot"><span class="mini-line blue-line"></span><small>em toda a gestão municipal</small></div></article>
+          <article class="stat-card"><div class="stat-top"><span class="stat-icon green">✓</span><span class="stat-trend positive">↗ 12,5%</span></div><div class="stat-number">12</div><div class="stat-label">Em andamento</div><div class="stat-foot"><span class="mini-line green-line"></span><small>50% do total de obras</small></div></article>
+          <article class="stat-card"><div class="stat-top"><span class="stat-icon amber">◷</span><span class="stat-trend warning">Atenção</span></div><div class="stat-number">03</div><div class="stat-label">Com prazo em alerta</div><div class="stat-foot"><span class="mini-line amber-line"></span><small>requerem acompanhamento</small></div></article>
+          <article class="stat-card"><div class="stat-top"><span class="stat-icon violet">☷</span><span class="stat-trend neutral">Este mês</span></div><div class="stat-number">38</div><div class="stat-label">Ordens de serviço</div><div class="stat-foot"><span class="mini-line violet-line"></span><small>21 concluídas no período</small></div></article>
+        </div>
+
+        <div class="dashboard-grid">
+          <article class="panel chart-panel">
+            <div class="panel-heading"><div><h3>Execução das obras</h3><p>Distribuição por situação</p></div><button class="dots-btn" aria-label="Mais opções">•••</button></div>
+            <div class="chart-content">
+              <div class="donut-wrap"><div class="donut"><div class="donut-center"><strong>24</strong><small>OBRAS</small></div></div></div>
+              <div class="legend">
+                <div><i class="legend-dot dot-green"></i><span>Em andamento</span><b>12 <small>50%</small></b></div>
+                <div><i class="legend-dot dot-blue"></i><span>Concluídas</span><b>07 <small>29%</small></b></div>
+                <div><i class="legend-dot dot-amber"></i><span>Planejadas</span><b>03 <small>13%</small></b></div>
+                <div><i class="legend-dot dot-red"></i><span>Paralisadas</span><b>02 <small>8%</small></b></div>
+              </div>
+            </div>
+            <div class="panel-foot">Dados ilustrativos para demonstração da interface.</div>
+          </article>
+
+          <article class="panel progress-panel">
+            <div class="panel-heading"><div><h3>Progresso físico</h3><p>Acompanhamento de execução</p></div><button class="dots-btn" aria-label="Mais opções">•••</button></div>
+            <div class="progress-summary"><strong>68,4%</strong><span class="positive">+5,6% <small>no período</small></span></div>
+            <div class="bar-track large"><span style="width:68.4%"></span></div>
+            <div class="progress-scale"><span>0%</span><span>Meta geral: 100%</span></div>
+            <div class="progress-items">
+              <div><span><i class="legend-dot dot-green"></i> Infraestrutura urbana</span><b>82%</b></div><div class="bar-track"><span style="width:82%"></span></div>
+              <div><span><i class="legend-dot dot-blue"></i> Prédios públicos</span><b>64%</b></div><div class="bar-track blue-track"><span style="width:64%"></span></div>
+              <div><span><i class="legend-dot dot-amber"></i> Vias e drenagem</span><b>46%</b></div><div class="bar-track amber-track"><span style="width:46%"></span></div>
+            </div>
+          </article>
+        </div>
+
+        <div class="lower-grid">
+          <article class="panel table-panel">
+            <div class="panel-heading"><div><h3>Obras em destaque</h3><p>Acompanhamento das principais frentes de trabalho</p></div><button class="text-link" data-page="obras">Ver todas <span>→</span></button></div>
+            <div class="table-wrap"><table><thead><tr><th>OBRA / SERVIÇO</th><th>RESPONSÁVEL</th><th>PROGRESSO</th><th>SITUAÇÃO</th></tr></thead><tbody>
+              <tr><td><b>Reforma de unidade pública</b><small>Centro · Coari</small></td><td>Eng. responsável</td><td><div class="table-progress"><span>78%</span><div class="bar-track"><i style="width:78%"></i></div></div></td><td><span class="status status-green">Em andamento</span></td></tr>
+              <tr><td><b>Manutenção de via urbana</b><small>Bairro Santa Efigênia</small></td><td>Equipe de obras</td><td><div class="table-progress"><span>45%</span><div class="bar-track"><i style="width:45%"></i></div></div></td><td><span class="status status-amber">Em atenção</span></td></tr>
+              <tr><td><b>Revitalização de praça</b><small>Área urbana · Coari</small></td><td>Eng. responsável</td><td><div class="table-progress"><span>100%</span><div class="bar-track"><i style="width:100%"></i></div></div></td><td><span class="status status-blue">Concluída</span></td></tr>
+            </tbody></table></div>
+            <div class="table-note">* Nomes, quantitativos e percentuais são fictícios e devem ser substituídos por dados oficiais.</div>
+          </article>
+          <article class="panel activity-panel">
+            <div class="panel-heading"><div><h3>Atividades recentes</h3><p>Últimos registros no sistema</p></div><button class="dots-btn" aria-label="Mais opções">•••</button></div>
+            <div class="activity-list">
+              <div class="activity-item"><div class="activity-symbol green">✓</div><div><b>Ordem de serviço concluída</b><p>Manutenção predial · Equipe 02</p><small>Hoje, 10:42</small></div></div>
+              <div class="activity-item"><div class="activity-symbol blue">▧</div><div><b>Documento anexado</b><p>Projeto técnico · Obra 0024</p><small>Hoje, 09:18</small></div></div>
+              <div class="activity-item"><div class="activity-symbol amber">◷</div><div><b>Prazo atualizado</b><p>Cronograma · Obra 0018</p><small>Ontem, 16:35</small></div></div>
+            </div>
+          </article>
+        </div>
+        <footer class="footer"><span>OBRAS360 <b>·</b> Gestão Municipal</span><span>Prefeitura Municipal de Coari · Amazonas</span><span>Interface demonstrativa</span></footer>
+      </section>
+    </main>
+  </div>
+  <div class="overlay" id="overlay"></div>
+  <div class="toast" id="toast" role="status"></div>
+  <script src="../assets/app.js"></script>
+</body>
+</html>

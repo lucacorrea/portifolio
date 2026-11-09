@@ -170,3 +170,9 @@ document.getElementById('newAction')?.addEventListener('click', () => showToast(
 document.getElementById('exportBtn')?.addEventListener('click', () => showToast('Exportação PDF/Excel será conectada aos dados reais na próxima etapa.'));
 const date = new Intl.DateTimeFormat('pt-BR', {weekday:'short',day:'2-digit',month:'long',year:'numeric'}).format(new Date());
 document.getElementById('currentDate').textContent = `Coari, ${date}`;
+
+// Abre o módulo indicado pelo HTML individual, mantendo a navegação integrada.
+const initialPage = document.body.dataset.initialPage;
+if (initialPage && initialPage !== 'dashboard') {
+  openPage(initialPage);
+}
