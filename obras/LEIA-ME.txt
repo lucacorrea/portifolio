@@ -23,3 +23,7 @@ Na próxima etapa, o HTML poderá ser integrado ao PHP mantendo a estrutura visu
 
 ## Observação sobre identidade institucional
 O nome textual da Prefeitura foi incluído como identificação de projeto. Não foi reproduzido brasão ou logotipo oficial. Insira a identidade visual oficial somente após obter o arquivo autorizado da Prefeitura.
+
+
+## Páginas visuais incluídas nesta versão
+Painel geral, Obras, Ordens de serviço, Planejamento, Fiscalização, Projetos e documentos, Orçamentos e medições, Materiais e estoque, Prédios públicos, Protocolos e Relatórios. A navegação entre as páginas é demonstrativa; formulários, filtros e botões ainda não gravam dados.
