@@ -11,6 +11,7 @@ if (!in_array($nivelFavoritas, ['ADMIN', 'SUPORTE', 'SECRETARIO'], true)) {
 $podeGerenciarFavoritas = in_array($nivelFavoritas, ['ADMIN', 'SUPORTE'], true);
 $page_title = 'Aquisições Favoritas';
 $tabelaFavoritasExiste = so_schema_table_exists($pdo, 'aquisicoes_favoritas');
+$tabelaOficiosFavoritosExiste = so_schema_table_exists($pdo, 'oficios_favoritos');
 
 if (empty($_SESSION['csrf_aquisicoes_favoritas'])) {
     $_SESSION['csrf_aquisicoes_favoritas'] = bin2hex(random_bytes(32));
@@ -26,8 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         http_response_code(403);
         exit('Sem permissão para alterar modelos.');
     }
-    if (!$tabelaFavoritasExiste) {
-        flash_message('danger', 'Instale primeiro a tabela pelo arquivo sql/aquisicoes_favoritas.sql.');
+    if (!$tabelaFavoritasExiste && !$tabelaOficiosFavoritosExiste) {
+        flash_message('danger', 'Instale as tabelas pelo arquivo sql/aquisicoes_favoritas.sql.');
         header('Location: aquisicoes_favoritas.php', true, 303);
         exit;
     }
@@ -43,6 +44,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new DomainException('Identificador inválido.');
         }
         if ($acao === 'salvar') {
+            if (!$tabelaFavoritasExiste) {
+                throw new DomainException('Instale a tabela de aquisições favoritas pelo SQL.');
+            }
             $stmt = $pdo->prepare("
                 SELECT a.id, a.numero_aq, a.fornecedor_id, o.secretaria_id,
                        o.local, o.justificativa, o.resumo_itens,
@@ -87,7 +91,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmtSalvar->execute([$id, $titulo, $dados, $itensJson, (int)($_SESSION['user_id'] ?? 0) ?: null]);
             log_action($pdo, 'FAVORITAR_AQUISICAO', 'Modelo salvo/atualizado a partir da aquisição ' . $origem['numero_aq']);
             flash_message('success', 'Aquisição adicionada aos favoritos. Itens e dados foram salvos como modelo.');
+        } elseif ($acao === 'salvar_oficio') {
+            if (!$tabelaOficiosFavoritosExiste) {
+                throw new DomainException('Instale a tabela de ofícios favoritos no arquivo sql/aquisicoes_favoritas.sql.');
+            }
+            $stmt = $pdo->prepare("
+                SELECT o.id, o.numero AS numero_oficio, o.secretaria_id, o.local,
+                       o.justificativa, o.resumo_itens, s.nome AS secretaria_nome,
+                       COALESCE(f_ind.id, f_aq.id) AS fornecedor_id,
+                       COALESCE(f_ind.nome, f_aq.nome, 'Não definido') AS fornecedor_nome
+                FROM oficios o
+                INNER JOIN secretarias s ON s.id = o.secretaria_id
+                LEFT JOIN fornecedores f_ind ON f_ind.id = o.fornecedor_indicado_id
+                LEFT JOIN aquisicoes a ON a.id = (
+                    SELECT a2.id FROM aquisicoes a2
+                    WHERE a2.oficio_id = o.id ORDER BY a2.id DESC LIMIT 1
+                )
+                LEFT JOIN fornecedores f_aq ON f_aq.id = a.fornecedor_id
+                WHERE o.id = ?
+            ");
+            $stmt->execute([$id]);
+            $origem = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$origem) {
+                throw new DomainException('Ofício de origem não encontrado.');
+            }
+            $stmtItens = $pdo->prepare("
+                SELECT produto, quantidade, valor_unitario, COALESCE(NULLIF(unidade, ''), 'UN') AS unidade
+                FROM itens_oficio WHERE oficio_id = ? ORDER BY id ASC
+            ");
+            $stmtItens->execute([$id]);
+            $itens = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
+            if (!$itens) {
+                throw new DomainException('Este ofício ainda não possui itens cadastrados para reutilizar.');
+            }
+            $titulo = 'Ofício ' . (string)$origem['numero_oficio'];
+            $dados = json_encode($origem, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+            $itensJson = json_encode($itens, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+            $stmtSalvar = $pdo->prepare("
+                INSERT INTO oficios_favoritos
+                    (oficio_origem_id, titulo, dados_json, itens_json, criado_por)
+                VALUES (?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE titulo = VALUES(titulo),
+                    dados_json = VALUES(dados_json), itens_json = VALUES(itens_json),
+                    atualizado_em = CURRENT_TIMESTAMP
+            ");
+            $stmtSalvar->execute([$id, $titulo, $dados, $itensJson, (int)($_SESSION['user_id'] ?? 0) ?: null]);
+            log_action($pdo, 'FAVORITAR_OFICIO', 'Modelo de itens salvo/atualizado a partir do ofício ' . $origem['numero_oficio']);
+            flash_message('success', 'Ofício adicionado aos favoritos com os itens para reutilização.');
+        } elseif ($acao === 'remover_oficio') {
+            if (!$tabelaOficiosFavoritosExiste) {
+                throw new DomainException('Tabela de ofícios favoritos não instalada.');
+            }
+            $stmtRemover = $pdo->prepare('DELETE FROM oficios_favoritos WHERE id = ?');
+            $stmtRemover->execute([$id]);
+            log_action($pdo, 'REMOVER_OFICIO_FAVORITO', 'Modelo de ofício favorito nº ' . $id . ' removido');
+            flash_message('success', 'Modelo removido dos favoritos. O ofício original foi preservado.');
         } elseif ($acao === 'remover') {
+            if (!$tabelaFavoritasExiste) {
+                throw new DomainException('Tabela de aquisições favoritas não instalada.');
+            }
             $stmtRemover = $pdo->prepare('DELETE FROM aquisicoes_favoritas WHERE id = ?');
             $stmtRemover->execute([$id]);
             log_action($pdo, 'REMOVER_FAVORITA', 'Modelo de aquisição favorito nº ' . $id . ' removido');
@@ -107,9 +169,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $favoritas = [];
 if ($tabelaFavoritasExiste) {
-    $favoritas = $pdo->query('SELECT id, titulo, dados_json, itens_json, atualizado_em FROM aquisicoes_favoritas ORDER BY atualizado_em DESC, id DESC')
-        ->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($pdo->query('SELECT id, titulo, dados_json, itens_json, atualizado_em FROM aquisicoes_favoritas')->fetchAll(PDO::FETCH_ASSOC) as $modelo) {
+        $modelo['tipo'] = 'aquisicao';
+        $favoritas[] = $modelo;
+    }
 }
+if ($tabelaOficiosFavoritosExiste) {
+    foreach ($pdo->query('SELECT id, titulo, dados_json, itens_json, atualizado_em FROM oficios_favoritos')->fetchAll(PDO::FETCH_ASSOC) as $modelo) {
+        $modelo['tipo'] = 'oficio';
+        $favoritas[] = $modelo;
+    }
+}
+usort($favoritas, static function (array $a, array $b): int {
+    return strcmp((string)$b['atualizado_em'], (string)$a['atualizado_em']);
+});
 include 'views/layout/header.php';
 ?>
 <style>
@@ -133,18 +206,18 @@ include 'views/layout/header.php';
     <div class="fav-head">
         <div>
             <h1><i class="fas fa-star" style="color:#eab308"></i> Aquisições Favoritas</h1>
-            <p>Reutilize itens, fornecedor e secretaria sem copiar número, assinatura ou aprovação.</p>
+            <p>Reutilize modelos de aquisições e ofícios. Confira os preços sem copiar números, assinaturas ou aprovações.</p>
         </div>
         <a class="fav-btn" href="aquisicoes_lista.php"><i class="fas fa-arrow-left"></i> Voltar às aquisições</a>
     </div>
     <?php display_flash(); ?>
-    <?php if (!$tabelaFavoritasExiste): ?>
+    <?php if (!$tabelaFavoritasExiste && !$tabelaOficiosFavoritosExiste): ?>
         <div class="alert alert-warning">O módulo ainda não foi instalado no banco. Execute manualmente
             <strong>SO/sql/aquisicoes_favoritas.sql</strong> no phpMyAdmin da hospedagem.</div>
     <?php elseif (!$favoritas): ?>
         <div class="fav-empty"><i class="fas fa-star" style="font-size:2rem"></i>
             <h2>Nenhum modelo salvo</h2>
-            <p>Abra a lista de aquisições, clique em uma linha e selecione “Adicionar aos favoritos”.</p>
+            <p>Abra a lista de aquisições ou de ofícios, clique em uma linha e selecione “Adicionar aos favoritos”.</p>
         </div>
     <?php else: ?>
         <div class="fav-grid">
@@ -158,7 +231,7 @@ include 'views/layout/header.php';
                 }
             ?>
                 <article class="fav-card">
-                    <div class="fav-tag"><i class="fas fa-bookmark"></i> Modelo reutilizável</div>
+                    <div class="fav-tag"><i class="fas fa-bookmark"></i> <?= ($fav['tipo'] ?? '') === 'oficio' ? 'Ofício favorito' : 'Aquisição favorita' ?></div>
                     <h2 style="margin-top:13px"><?= favoritas_h($fav['titulo']) ?></h2>
                     <p class="fav-meta"><strong>Secretaria:</strong> <?= favoritas_h($dados['secretaria_nome'] ?? '-') ?></p>
                     <p class="fav-meta"><strong>Fornecedor:</strong> <?= favoritas_h($dados['fornecedor_nome'] ?? '-') ?></p>
@@ -168,12 +241,12 @@ include 'views/layout/header.php';
                     <small class="fav-meta">Salvo em <?= favoritas_h(date('d/m/Y H:i', strtotime((string)$fav['atualizado_em']))) ?></small>
                     <div class="fav-actions">
                         <?php if ($podeGerenciarFavoritas): ?>
-                            <a class="fav-btn fav-btn-primary" href="aquisicoes_favoritas_reutilizar.php?id=<?= (int)$fav['id'] ?>">
+                            <a class="fav-btn fav-btn-primary" href="aquisicoes_favoritas_reutilizar.php?tipo=<?= favoritas_h($fav['tipo']) ?>&amp;id=<?= (int)$fav['id'] ?>">
                                 <i class="fas fa-redo"></i> Reutilizar
                             </a>
                             <form method="post" action="aquisicoes_favoritas.php" onsubmit="return confirm('Remover este modelo dos favoritos? A aquisição original será preservada.')">
                                 <input type="hidden" name="csrf_token" value="<?= favoritas_h($csrfFavoritas) ?>">
-                                <input type="hidden" name="acao" value="remover">
+                                <input type="hidden" name="acao" value="<?= ($fav['tipo'] ?? '') === 'oficio' ? 'remover_oficio' : 'remover' ?>">
                                 <input type="hidden" name="id" value="<?= (int)$fav['id'] ?>">
                                 <button class="fav-btn fav-btn-danger" type="submit"><i class="fas fa-trash-alt"></i> Remover</button>
                             </form>
