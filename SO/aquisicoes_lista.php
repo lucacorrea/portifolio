@@ -1741,6 +1741,9 @@ include 'views/layout/header.php';
                             <td>
                                 <strong style="color: var(--text-dark);">
                                     <?php echo htmlspecialchars($aq['numero_aq'], ENT_QUOTES, 'UTF-8'); ?>
+                                    <?php if (isset($jaFavoritas[(int)$aq['id']])): ?>
+                                        <i class="fas fa-star" style="color:#eab308" title="Aquisição favorita" aria-label="Favorita"></i>
+                                    <?php endif; ?>
                                 </strong>
                             </td>
                             <td>
