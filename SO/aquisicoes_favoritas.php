@@ -286,49 +286,6 @@ function favoritas_pagina_url(int $pagina): string {
 include 'views/layout/header.php';
 ?>
 <link rel="stylesheet" href="assets/css/lista-acoes-modal.css">
-<style>
-/* Mantém o mesmo formato das listagens de ofícios e aquisições. */
-.favoritas-filtros .lista-filtros-principais {
-    grid-template-columns: minmax(260px,1.45fr) minmax(150px,.7fr) minmax(215px,1fr) minmax(215px,1fr);
-}
-.favoritas-filtros .lista-filtros-secundarios-campos {
-    grid-template-columns: repeat(3,minmax(145px,175px));
-}
-.favoritas-filtros .lista-filtros-acoes {margin-left:auto}
-.favoritas-lista-header {display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:1.4rem}
-.favoritas-lista-header h3{margin:0;color:var(--text-dark);font-size:1rem;font-weight:700}
-.favoritas-lista-header__acoes{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.favoritas-lista-header__acoes .btn{white-space:nowrap}
-.favoritas-lista-table{min-width:1090px}
-.favoritas-lista-table th,.favoritas-lista-table td {white-space:nowrap}
-.favoritas-lista-table .favoritas-numero{display:inline-block;max-width:270px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
-.favoritas-lista-table .favoritas-fornecedor{display:inline-block;max-width:220px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
-.favoritas-lista-table .favoritas-secretaria{display:inline-block;max-width:130px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
-.favoritas-lista-table .favoritas-valor{color:var(--primary);font-weight:700;text-align:right}
-.favoritas-lista-table .favoritas-data{color:var(--text-muted)}
-.favoritas-tipo{display:inline-flex;padding:5px 9px;border:1px solid #dbeafe;background:#eff6ff;border-radius:7px;color:#1d4ed8;font-size:.75rem;font-weight:700}
-.favoritas-tipo--oficio{border-color:#ffedd5;background:#fff7ed;color:#9a3412}
-.favoritas-lista-vazia{text-align:center;padding:2.5rem;color:var(--text-muted)}
-.favoritas-detalhes-modal{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:6px;color:#475569;font-size:.84rem;line-height:1.55;overflow-wrap:anywhere}
-.favoritas-detalhes-modal strong{color:#173453}
-.favoritas-modal-form{margin:0}
-.favoritas-modal-nota{font-size:.77rem;color:#64748b;margin:4px 0 0}
-.favoritas-paginacao{display:flex;justify-content:center;align-items:center;gap:12px;margin-top:2rem;border-top:1px solid var(--border-color);padding-top:1.5rem;flex-wrap:wrap}
-.favoritas-paginacao .btn.disabled{pointer-events:none;opacity:.45}
-.favoritas-paginacao-info{font-weight:600;color:var(--text-dark)}
-@media(max-width:1180px){
-    .favoritas-filtros .lista-filtros-principais{grid-template-columns:repeat(2,minmax(0,1fr))}
-    .favoritas-filtros .lista-filtros-secundarios-campos{grid-template-columns:repeat(3,minmax(0,1fr))}
-}
-@media(max-width:640px){
-    .favoritas-filtros .lista-filtros-principais{grid-template-columns:1fr}
-    .favoritas-filtros .lista-filtros-secundarios-campos{grid-template-columns:1fr}
-    .favoritas-lista-header{align-items:stretch;flex-direction:column}
-    .favoritas-lista-header__acoes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
-    .favoritas-lista-header__acoes .btn{justify-content:center}
-    .favoritas-paginacao{flex-direction:column}
-}
-</style>
 
 <div class="card no-print lista-filtros-card favoritas-filtros">
     <div class="card-body">
