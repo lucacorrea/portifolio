@@ -210,8 +210,55 @@ $tipoFavoritas = is_scalar($_GET['tipo'] ?? null) ? (string)$_GET['tipo'] : '';
 if (!in_array($tipoFavoritas, ['', 'oficio', 'aquisicao'], true)) {
     $tipoFavoritas = '';
 }
-$encontradasFavoritas = array_values(array_filter($linhasFavoritas, static function (array $fav) use ($buscaFavoritas, $tipoFavoritas): bool {
+$secretariaFavoritas = is_scalar($_GET['secretaria'] ?? null) ? trim((string)$_GET['secretaria']) : '';
+$fornecedorFavoritas = is_scalar($_GET['fornecedor'] ?? null) ? trim((string)$_GET['fornecedor']) : '';
+$dataInicioFavoritas = is_scalar($_GET['data_inicio'] ?? null) ? (string)$_GET['data_inicio'] : '';
+$dataFimFavoritas = is_scalar($_GET['data_fim'] ?? null) ? (string)$_GET['data_fim'] : '';
+foreach (['dataInicioFavoritas', 'dataFimFavoritas'] as $campoData) {
+    $valor = $$campoData;
+    $data = preg_match('/^\d{4}-\d{2}-\d{2}$/', $valor) ? DateTime::createFromFormat('!Y-m-d', $valor) : false;
+    if (!$data || $data->format('Y-m-d') !== $valor) {
+        $$campoData = '';
+    }
+}
+$porPaginaOptionsFavoritas = [6, 10, 25, 50, 100];
+$porPaginaRequestFavoritas = is_scalar($_GET['por_pagina'] ?? null) ? (string)$_GET['por_pagina'] : '';
+$porPaginaFavoritas = ctype_digit($porPaginaRequestFavoritas) && in_array((int)$porPaginaRequestFavoritas, $porPaginaOptionsFavoritas, true)
+    ? (int)$porPaginaRequestFavoritas : 6;
+
+// As opções dos filtros são extraídas dos modelos já existentes.
+$secretariasFavoritas = [];
+$fornecedoresFavoritas = [];
+foreach ($linhasFavoritas as $fav) {
+    $secretaria = trim((string)$fav['secretaria_nome']);
+    $fornecedor = trim((string)$fav['fornecedor_nome']);
+    if ($secretaria !== '' && $secretaria !== '-') {
+        $secretariasFavoritas[$secretaria] = $secretaria;
+    }
+    if ($fornecedor !== '' && $fornecedor !== '-') {
+        $fornecedoresFavoritas[$fornecedor] = $fornecedor;
+    }
+}
+natcasesort($secretariasFavoritas);
+natcasesort($fornecedoresFavoritas);
+
+$encontradasFavoritas = array_values(array_filter($linhasFavoritas, static function (array $fav) use (
+    $buscaFavoritas, $tipoFavoritas, $secretariaFavoritas, $fornecedorFavoritas, $dataInicioFavoritas, $dataFimFavoritas
+): bool {
     if ($tipoFavoritas !== '' && $fav['tipo'] !== $tipoFavoritas) {
+        return false;
+    }
+    if ($secretariaFavoritas !== '' && $fav['secretaria_nome'] !== $secretariaFavoritas) {
+        return false;
+    }
+    if ($fornecedorFavoritas !== '' && $fav['fornecedor_nome'] !== $fornecedorFavoritas) {
+        return false;
+    }
+    $dia = substr((string)$fav['atualizado_em'], 0, 10);
+    if ($dataInicioFavoritas !== '' && $dia < $dataInicioFavoritas) {
+        return false;
+    }
+    if ($dataFimFavoritas !== '' && $dia > $dataFimFavoritas) {
         return false;
     }
     if ($buscaFavoritas === '') {
@@ -219,130 +266,185 @@ $encontradasFavoritas = array_values(array_filter($linhasFavoritas, static funct
     }
     $texto = implode(' ', [
         $fav['titulo'], $fav['numero_origem'], $fav['secretaria_nome'],
-        $fav['fornecedor_nome'], $fav['local_nome']
+        $fav['fornecedor_nome'], $fav['local_nome'], (string)$fav['valor_total']
     ]);
     return function_exists('mb_stripos')
         ? mb_stripos($texto, $buscaFavoritas, 0, 'UTF-8') !== false
         : stripos($texto, $buscaFavoritas) !== false;
 }));
-$porPaginaFavoritas = 10;
 $totalFavoritas = count($encontradasFavoritas);
 $totalPaginasFavoritas = max(1, (int)ceil($totalFavoritas / $porPaginaFavoritas));
 $paginaFavoritas = filter_var($_GET['page'] ?? 1, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 1;
 $paginaFavoritas = min($paginaFavoritas, $totalPaginasFavoritas);
 $exibidasFavoritas = array_slice($encontradasFavoritas, ($paginaFavoritas - 1) * $porPaginaFavoritas, $porPaginaFavoritas);
-function favoritas_pagina_url(int $pagina, string $busca, string $tipo): string {
-    return 'aquisicoes_favoritas.php?' . http_build_query([
-        'busca' => $busca, 'tipo' => $tipo, 'page' => $pagina
-    ]);
+function favoritas_pagina_url(int $pagina): string {
+    $filtros = $_GET;
+    unset($filtros['page']);
+    $filtros['page'] = $pagina;
+    return 'aquisicoes_favoritas.php?' . http_build_query($filtros);
 }
 include 'views/layout/header.php';
 ?>
 <link rel="stylesheet" href="assets/css/lista-acoes-modal.css">
 <style>
-.fav-page{max-width:1260px;margin:0 auto;padding:22px 16px 48px}
-.fav-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px}
-.fav-head h1{font-size:1.65rem;line-height:1.25;margin:0;color:#17233b;font-weight:800}
-.fav-head p{margin:7px 0 0;color:#64748b;font-size:.91rem}
-.fav-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.fav-btn{display:inline-flex;gap:8px;align-items:center;justify-content:center;text-decoration:none;border:1px solid #cbd5e1;border-radius:9px;padding:10px 14px;background:#fff;color:#173453;font:inherit;font-size:.9rem;font-weight:700;cursor:pointer}
-.fav-btn:hover,.fav-btn:focus-visible{border-color:#93c5fd;background:#eff6ff;color:#1d4ed8}
-.fav-table-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 4px 18px rgba(15,23,42,.045)}
-.fav-filters{display:flex;align-items:flex-end;flex-wrap:wrap;gap:12px;padding:18px 18px 16px;border-bottom:1px solid #e2e8f0}
-.fav-field{display:flex;flex-direction:column;gap:6px;min-width:180px;flex:1}
-.fav-field--search{flex:2;min-width:230px}
-.fav-field label{font-size:.78rem;font-weight:800;color:#334155}
-.fav-input{width:100%;border:1px solid #cbd5e1;border-radius:9px;background:#fff;color:#17233b;padding:10px 12px;min-height:42px;font:inherit;box-sizing:border-box}
-.fav-input:focus-visible{outline:2px solid #93c5fd;outline-offset:1px}
-.fav-table-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:13px 18px}
-.fav-table-bar h2{font-size:1.02rem;color:#17233b;margin:0;font-weight:800}
-.fav-count{font-size:.79rem;font-weight:750;background:#eef2ff;border-radius:999px;padding:5px 10px;color:#334da7}
-.fav-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
-.fav-table{width:100%;min-width:900px;border-collapse:collapse;color:#334155}
-.fav-table thead{background:#f8fafc}
-.fav-table th{font-size:.76rem;text-transform:uppercase;letter-spacing:.03em;color:#64748b;font-weight:800;padding:12px 16px;text-align:left;white-space:nowrap;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0}
-.fav-table td{padding:15px 16px;border-bottom:1px solid #edf2f7;font-size:.88rem;vertical-align:middle}
-.fav-table tbody tr:last-child td{border-bottom:0}
-.fav-model-title{color:#17233b;font-weight:800;display:block;max-width:275px;overflow-wrap:anywhere}
-.fav-number{color:#64748b;font-size:.78rem;margin-top:4px}
-.fav-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:7px;background:#eff6ff;color:#1d4ed8;font-size:.77rem;font-weight:750;white-space:nowrap}
-.fav-badge--oficio{background:#fff7ed;color:#9a3412}
-.fav-wrap-text{display:block;max-width:210px;overflow-wrap:anywhere}
-.fav-total{color:#1d4ed8;font-weight:850;white-space:nowrap}
-.fav-date{white-space:nowrap;font-size:.83rem;color:#475569}
-.fav-empty{text-align:center;padding:44px 20px;color:#64748b}
-.fav-empty h3{font-size:1rem;color:#334155;margin:10px 0 6px}
-.fav-empty p{margin:0}
-.fav-pagination{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:15px 18px;border-top:1px solid #e2e8f0;color:#64748b;font-size:.84rem}
-.fav-pagination nav{display:flex;align-items:center;gap:8px}
-.fav-pagination .fav-btn[aria-disabled="true"]{pointer-events:none;opacity:.45}
-.fav-modal-details{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:6px;color:#475569;font-size:.83rem;line-height:1.55;overflow-wrap:anywhere}
-.fav-modal-details strong{color:#173453}
-.fav-modal-remove{margin:0}
-.fav-modal-note{margin:2px 0 0;color:#64748b;font-size:.75rem;line-height:1.5}
+/* Mantém o mesmo formato das listagens de ofícios e aquisições. */
+.favoritas-filtros .lista-filtros-principais {
+    grid-template-columns: minmax(260px,1.45fr) minmax(150px,.7fr) minmax(215px,1fr) minmax(215px,1fr);
+}
+.favoritas-filtros .lista-filtros-secundarios-campos {
+    grid-template-columns: repeat(3,minmax(145px,175px));
+}
+.favoritas-filtros .lista-filtros-acoes {margin-left:auto}
+.favoritas-lista-header {display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:1.4rem}
+.favoritas-lista-header h3{margin:0;color:var(--text-dark);font-size:1rem;font-weight:700}
+.favoritas-lista-header__acoes{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.favoritas-lista-header__acoes .btn{white-space:nowrap}
+.favoritas-lista-table{min-width:1090px}
+.favoritas-lista-table th,.favoritas-lista-table td {white-space:nowrap}
+.favoritas-lista-table .favoritas-numero{display:inline-block;max-width:270px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+.favoritas-lista-table .favoritas-fornecedor{display:inline-block;max-width:220px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+.favoritas-lista-table .favoritas-secretaria{display:inline-block;max-width:130px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+.favoritas-lista-table .favoritas-valor{color:var(--primary);font-weight:700;text-align:right}
+.favoritas-lista-table .favoritas-data{color:var(--text-muted)}
+.favoritas-tipo{display:inline-flex;padding:5px 9px;border:1px solid #dbeafe;background:#eff6ff;border-radius:7px;color:#1d4ed8;font-size:.75rem;font-weight:700}
+.favoritas-tipo--oficio{border-color:#ffedd5;background:#fff7ed;color:#9a3412}
+.favoritas-lista-vazia{text-align:center;padding:2.5rem;color:var(--text-muted)}
+.favoritas-detalhes-modal{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:6px;color:#475569;font-size:.84rem;line-height:1.55;overflow-wrap:anywhere}
+.favoritas-detalhes-modal strong{color:#173453}
+.favoritas-modal-form{margin:0}
+.favoritas-modal-nota{font-size:.77rem;color:#64748b;margin:4px 0 0}
+.favoritas-paginacao{display:flex;justify-content:center;align-items:center;gap:12px;margin-top:2rem;border-top:1px solid var(--border-color);padding-top:1.5rem;flex-wrap:wrap}
+.favoritas-paginacao .btn.disabled{pointer-events:none;opacity:.45}
+.favoritas-paginacao-info{font-weight:600;color:var(--text-dark)}
+@media(max-width:1180px){
+    .favoritas-filtros .lista-filtros-principais{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .favoritas-filtros .lista-filtros-secundarios-campos{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
 @media(max-width:640px){
-.fav-head h1{font-size:1.35rem}
-.fav-filters{padding:14px}
-.fav-field,.fav-field--search{min-width:100%}
-.fav-filters .fav-btn{flex:1}
-.fav-table-bar{padding:14px}
-.fav-table th,.fav-table td{padding:12px}
-.fav-pagination{justify-content:center;text-align:center}
+    .favoritas-filtros .lista-filtros-principais{grid-template-columns:1fr}
+    .favoritas-filtros .lista-filtros-secundarios-campos{grid-template-columns:1fr}
+    .favoritas-lista-header{align-items:stretch;flex-direction:column}
+    .favoritas-lista-header__acoes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+    .favoritas-lista-header__acoes .btn{justify-content:center}
+    .favoritas-paginacao{flex-direction:column}
 }
 </style>
 
-<div class="fav-page">
-    <div class="fav-head">
-        <div>
-            <h1><i class="fas fa-star" style="color:#eab308" aria-hidden="true"></i> Aquisições Favoritas</h1>
-            <p>Modelos de ofícios e aquisições para reutilizar. Confira os preços antes de criar uma nova solicitação.</p>
-        </div>
-        <div class="fav-actions">
-            <a class="fav-btn" href="oficios_lista.php"><i class="fas fa-folder-open" aria-hidden="true"></i> Ofícios</a>
-            <a class="fav-btn" href="aquisicoes_lista.php"><i class="fas fa-shopping-bag" aria-hidden="true"></i> Aquisições</a>
-        </div>
-    </div>
-
-    <?php display_flash(); ?>
-    <?php if (!$tabelaFavoritasExiste && !$tabelaOficiosFavoritosExiste): ?>
-        <div class="alert alert-warning">Para habilitar os favoritos, execute <strong>SO/sql/aquisicoes_favoritas.sql</strong> no phpMyAdmin da hospedagem.</div>
-    <?php else: ?>
-        <div class="fav-table-card">
-            <form method="get" class="fav-filters" action="aquisicoes_favoritas.php" role="search">
-                <div class="fav-field fav-field--search">
-                    <label for="fav-busca">Pesquisar modelo</label>
-                    <input class="fav-input" id="fav-busca" type="search" name="busca" value="<?= favoritas_h($buscaFavoritas) ?>"
-                           placeholder="Número, secretaria, fornecedor ou local">
+<div class="card no-print lista-filtros-card favoritas-filtros">
+    <div class="card-body">
+        <div class="lista-filtros-header">
+            <div class="lista-filtros-titulo-wrap">
+                <span class="lista-filtros-icone"><i class="fas fa-filter" aria-hidden="true"></i></span>
+                <div>
+                    <h3 class="lista-filtros-titulo">Filtros de Busca</h3>
+                    <p class="lista-filtros-subtitulo">Localize modelos favoritos por dados, período ou tipo.</p>
                 </div>
-                <div class="fav-field">
-                    <label for="fav-tipo">Tipo</label>
-                    <select class="fav-input" id="fav-tipo" name="tipo">
-                        <option value="" <?= $tipoFavoritas === '' ? 'selected' : '' ?>>Todos os modelos</option>
+            </div>
+            <span class="lista-filtros-resumo"><i class="fas fa-sliders-h" aria-hidden="true"></i> Refine a listagem</span>
+        </div>
+
+        <form method="get" action="aquisicoes_favoritas.php" class="lista-filtros-form lista-filtros-form--oficios">
+            <div class="lista-filtros-principais">
+                <div class="lista-filtro lista-filtro-busca">
+                    <label for="filtro-favorita-busca">Termo de busca</label>
+                    <div class="lista-filtro-input-icon">
+                        <i class="fas fa-search" aria-hidden="true"></i>
+                        <input type="search" id="filtro-favorita-busca" name="busca" class="form-control"
+                               placeholder="Número, secretaria, fornecedor ou valor..."
+                               value="<?= favoritas_h($buscaFavoritas) ?>">
+                    </div>
+                </div>
+                <div class="lista-filtro">
+                    <label for="filtro-favorita-tipo">Tipo</label>
+                    <select id="filtro-favorita-tipo" name="tipo" class="form-control">
+                        <option value="" <?= $tipoFavoritas === '' ? 'selected' : '' ?>>Todos os tipos</option>
                         <option value="oficio" <?= $tipoFavoritas === 'oficio' ? 'selected' : '' ?>>Ofícios</option>
                         <option value="aquisicao" <?= $tipoFavoritas === 'aquisicao' ? 'selected' : '' ?>>Aquisições</option>
                     </select>
                 </div>
-                <button class="fav-btn" type="submit"><i class="fas fa-search" aria-hidden="true"></i> Filtrar</button>
-                <a class="fav-btn" href="aquisicoes_favoritas.php"><i class="fas fa-eraser" aria-hidden="true"></i> Limpar</a>
-            </form>
-            <div class="fav-table-bar">
-                <h2><i class="fas fa-list-ul" style="color:#2563eb" aria-hidden="true"></i> Modelos salvos</h2>
-                <span class="fav-count"><?= $totalFavoritas ?> <?= $totalFavoritas === 1 ? 'modelo' : 'modelos' ?></span>
+                <div class="lista-filtro">
+                    <label for="filtro-favorita-secretaria">Secretaria</label>
+                    <select id="filtro-favorita-secretaria" name="secretaria" class="form-control">
+                        <option value="">Todas as Secretarias</option>
+                        <?php foreach ($secretariasFavoritas as $nome): ?>
+                            <option value="<?= favoritas_h($nome) ?>" <?= $secretariaFavoritas === $nome ? 'selected' : '' ?>><?= favoritas_h($nome) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="lista-filtro lista-filtro-fornecedor">
+                    <label for="filtro-favorita-fornecedor">Fornecedor</label>
+                    <select id="filtro-favorita-fornecedor" name="fornecedor" class="form-control">
+                        <option value="">Todos os Fornecedores</option>
+                        <?php foreach ($fornecedoresFavoritas as $nome): ?>
+                            <option value="<?= favoritas_h($nome) ?>" <?= $fornecedorFavoritas === $nome ? 'selected' : '' ?>><?= favoritas_h($nome) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
             </div>
-            <p class="so-list-tip" style="padding:0 18px;margin:0 0 12px">
-                <i class="fas fa-mouse-pointer" aria-hidden="true"></i> Clique em uma linha para visualizar os detalhes e as ações.
+
+            <div class="lista-filtros-secundarios">
+                <div class="lista-filtros-secundarios-campos">
+                    <div class="lista-filtro">
+                        <label for="filtro-favorita-inicio">Data inicial</label>
+                        <input type="date" id="filtro-favorita-inicio" name="data_inicio" class="form-control"
+                               value="<?= favoritas_h($dataInicioFavoritas) ?>">
+                    </div>
+                    <div class="lista-filtro">
+                        <label for="filtro-favorita-fim">Data final</label>
+                        <input type="date" id="filtro-favorita-fim" name="data_fim" class="form-control"
+                               value="<?= favoritas_h($dataFimFavoritas) ?>">
+                    </div>
+                    <div class="lista-filtro">
+                        <label for="filtro-favorita-linhas">Linhas por página</label>
+                        <select id="filtro-favorita-linhas" name="por_pagina" class="form-control">
+                            <?php foreach ($porPaginaOptionsFavoritas as $qtd): ?>
+                                <option value="<?= $qtd ?>" <?= $porPaginaFavoritas === $qtd ? 'selected' : '' ?>><?= $qtd ?> linhas</option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="lista-filtros-acoes">
+                    <button class="filtro-btn filtro-btn-primary" type="submit" title="Aplicar filtros">
+                        <i class="fas fa-search" aria-hidden="true"></i> Filtrar
+                    </button>
+                    <a class="filtro-btn filtro-btn-clear" href="aquisicoes_favoritas.php" title="Limpar filtros">
+                        <i class="fas fa-eraser" aria-hidden="true"></i> Limpar
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="favoritas-lista-header">
+            <h3><i class="fas fa-star" style="color:var(--primary);margin-right:10px" aria-hidden="true"></i> Favoritos Salvos</h3>
+            <div class="favoritas-lista-header__acoes">
+                <a class="btn btn-primary btn-sm" href="oficios_lista.php"><i class="fas fa-folder-open" aria-hidden="true"></i> Solicitações</a>
+                <a class="btn btn-outline btn-sm" href="aquisicoes_lista.php"><i class="fas fa-shopping-bag" aria-hidden="true"></i> Aquisições</a>
+            </div>
+        </div>
+        <?php display_flash(); ?>
+        <?php if (!$tabelaFavoritasExiste && !$tabelaOficiosFavoritosExiste): ?>
+            <div class="alert alert-warning">As tabelas de favoritas ainda não estão instaladas. Execute o arquivo
+                <strong>SO/sql/aquisicoes_favoritas.sql</strong> no phpMyAdmin.</div>
+        <?php else: ?>
+            <p class="so-list-tip">
+                <i class="fas fa-mouse-pointer" aria-hidden="true"></i>
+                Clique em uma linha para visualizar os detalhes e as ações disponíveis.
             </p>
-            <div class="fav-scroll">
-                <table class="fav-table">
+            <div class="table-responsive lista-table-wrap">
+                <table class="table-vcenter text-nowrap lista-table favoritas-lista-table">
                     <thead>
                         <tr>
-                            <th>Modelo</th>
-                            <th>Tipo</th>
+                            <th>Número / Modelo</th>
                             <th>Secretaria</th>
                             <th>Fornecedor</th>
+                            <th>Data</th>
+                            <th style="text-align:right">Valor</th>
+                            <th>Tipo</th>
                             <th>Itens</th>
-                            <th>Último valor</th>
-                            <th>Salvo em</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -355,30 +457,28 @@ include 'views/layout/header.php';
                                 data-so-actions-template="<?= favoritas_h($templateId) ?>"
                                 data-so-actions-title="<?= favoritas_h($fav['titulo']) ?>"
                                 data-so-actions-subtitle="<?= favoritas_h($fav['secretaria_nome'] . ' • ' . $fav['fornecedor_nome']) ?>"
-                                title="Clique para visualizar ações do modelo">
+                                title="Clique para ver as ações deste favorito">
                                 <td>
-                                    <span class="fav-model-title"><i class="fas fa-star" style="color:#eab308" aria-hidden="true"></i> <?= favoritas_h($fav['titulo']) ?></span>
-                                    <div class="fav-number">Ref.: <?= favoritas_h($fav['numero_origem']) ?></div>
+                                    <strong class="favoritas-numero" title="<?= favoritas_h($fav['titulo']) ?>">
+                                        <?= favoritas_h($fav['titulo']) ?>
+                                    </strong>
                                 </td>
-                                <td>
-                                    <span class="fav-badge <?= $tipo === 'oficio' ? 'fav-badge--oficio' : '' ?>">
-                                        <i class="fas <?= $tipo === 'oficio' ? 'fa-file-alt' : 'fa-shopping-bag' ?>" aria-hidden="true"></i>
-                                        <?= $tipo === 'oficio' ? 'Ofício' : 'Aquisição' ?>
-                                    </span>
-                                </td>
-                                <td><span class="fav-wrap-text"><?= favoritas_h($fav['secretaria_nome']) ?></span></td>
-                                <td><span class="fav-wrap-text"><?= favoritas_h($fav['fornecedor_nome']) ?></span></td>
+                                <td><span class="favoritas-secretaria" title="<?= favoritas_h($fav['secretaria_nome']) ?>"><?= favoritas_h($fav['secretaria_nome']) ?></span></td>
+                                <td><span class="favoritas-fornecedor" title="<?= favoritas_h($fav['fornecedor_nome']) ?>"><?= favoritas_h($fav['fornecedor_nome']) ?></span></td>
+                                <td class="favoritas-data"><?= $dataSalva ? favoritas_h(date('d/m/Y H:i', $dataSalva)) : '-' ?></td>
+                                <td class="favoritas-valor"><?= format_money($fav['valor_total']) ?></td>
+                                <td><span class="favoritas-tipo <?= $tipo === 'oficio' ? 'favoritas-tipo--oficio' : '' ?>">
+                                    <?= $tipo === 'oficio' ? 'Ofício' : 'Aquisição' ?>
+                                </span></td>
                                 <td><strong><?= (int)$fav['quantidade_itens'] ?></strong></td>
-                                <td class="fav-total"><?= format_money($fav['valor_total']) ?></td>
-                                <td class="fav-date"><?= $dataSalva ? favoritas_h(date('d/m/Y H:i', $dataSalva)) : '-' ?></td>
                             </tr>
                         <?php endforeach; ?>
                         <?php if (!$exibidasFavoritas): ?>
                             <tr>
-                                <td colspan="7" class="fav-empty">
-                                    <i class="far fa-star" style="font-size:1.5rem" aria-hidden="true"></i>
-                                    <h3>Nenhum modelo encontrado</h3>
-                                    <p><?= $buscaFavoritas !== '' || $tipoFavoritas !== '' ? 'Tente mudar os filtros da pesquisa.' : 'Favorite um ofício ou aquisição para vê-lo nesta lista.' ?></p>
+                                <td colspan="7" class="favoritas-lista-vazia">
+                                    <?= $buscaFavoritas !== '' || $tipoFavoritas !== '' || $secretariaFavoritas !== '' || $fornecedorFavoritas !== '' || $dataInicioFavoritas !== '' || $dataFimFavoritas !== ''
+                                        ? 'Nenhum favorito encontrado com os filtros selecionados.'
+                                        : 'Ainda não há modelos favoritos. Salve um ofício ou aquisição na respectiva listagem.' ?>
                                 </td>
                             </tr>
                         <?php endif; ?>
@@ -386,18 +486,22 @@ include 'views/layout/header.php';
                 </table>
             </div>
             <?php if ($totalPaginasFavoritas > 1): ?>
-                <div class="fav-pagination">
-                    <span>Página <?= $paginaFavoritas ?> de <?= $totalPaginasFavoritas ?> — <?= $totalFavoritas ?> resultados</span>
-                    <nav aria-label="Paginação de favoritas">
-                        <a class="fav-btn" href="<?= favoritas_h(favoritas_pagina_url(max(1, $paginaFavoritas - 1), $buscaFavoritas, $tipoFavoritas)) ?>"
-                           <?= $paginaFavoritas === 1 ? 'aria-disabled="true" tabindex="-1"' : '' ?>>Anterior</a>
-                        <a class="fav-btn" href="<?= favoritas_h(favoritas_pagina_url(min($totalPaginasFavoritas, $paginaFavoritas + 1), $buscaFavoritas, $tipoFavoritas)) ?>"
-                           <?= $paginaFavoritas === $totalPaginasFavoritas ? 'aria-disabled="true" tabindex="-1"' : '' ?>>Próxima</a>
-                    </nav>
+                <div class="favoritas-paginacao">
+                    <a class="btn btn-outline btn-sm <?= $paginaFavoritas === 1 ? 'disabled' : '' ?>"
+                       href="<?= favoritas_h(favoritas_pagina_url(max(1, $paginaFavoritas - 1))) ?>"
+                       <?= $paginaFavoritas === 1 ? 'aria-disabled="true" tabindex="-1"' : '' ?>>
+                        <i class="fas fa-angle-left" aria-hidden="true"></i> Anterior
+                    </a>
+                    <span class="favoritas-paginacao-info">Página <?= $paginaFavoritas ?> de <?= $totalPaginasFavoritas ?></span>
+                    <a class="btn btn-outline btn-sm <?= $paginaFavoritas === $totalPaginasFavoritas ? 'disabled' : '' ?>"
+                       href="<?= favoritas_h(favoritas_pagina_url(min($totalPaginasFavoritas, $paginaFavoritas + 1))) ?>"
+                       <?= $paginaFavoritas === $totalPaginasFavoritas ? 'aria-disabled="true" tabindex="-1"' : '' ?>>
+                        Próxima <i class="fas fa-angle-right" aria-hidden="true"></i>
+                    </a>
                 </div>
             <?php endif; ?>
-        </div>
-    <?php endif; ?>
+        <?php endif; ?>
+    </div>
 </div>
 
 <?php foreach ($exibidasFavoritas as $fav):
