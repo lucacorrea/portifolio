@@ -208,7 +208,10 @@ include 'views/layout/header.php';
             <h1><i class="fas fa-star" style="color:#eab308"></i> Aquisições Favoritas</h1>
             <p>Reutilize modelos de aquisições e ofícios. Confira os preços sem copiar números, assinaturas ou aprovações.</p>
         </div>
-        <a class="fav-btn" href="aquisicoes_lista.php"><i class="fas fa-arrow-left"></i> Voltar às aquisições</a>
+        <div class="fav-actions">
+            <a class="fav-btn" href="oficios_lista.php"><i class="fas fa-folder-open"></i> Ofícios</a>
+            <a class="fav-btn" href="aquisicoes_lista.php"><i class="fas fa-shopping-bag"></i> Aquisições</a>
+        </div>
     </div>
     <?php display_flash(); ?>
     <?php if (!$tabelaFavoritasExiste && !$tabelaOficiosFavoritosExiste): ?>
