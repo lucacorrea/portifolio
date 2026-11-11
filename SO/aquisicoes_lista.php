@@ -1234,7 +1234,7 @@ $stmt->execute($params);
 $aquisicoes = $stmt->fetchAll();
 
 // Favoritos são opcionais até a instalação manual do SQL.
-$favoritasInstaladas = db_table_exists($pdo, 'aquisicoes_favoritas');
+$favoritasInstaladas = so_schema_table_exists($pdo, 'aquisicoes_favoritas');
 $podeFavoritarAquisicao = in_array(strtoupper((string)($_SESSION['nivel'] ?? '')), ['ADMIN', 'SUPORTE'], true);
 $jaFavoritas = [];
 if ($favoritasInstaladas && $aquisicoes) {
