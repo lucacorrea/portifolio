@@ -1233,6 +1233,22 @@ $stmt = $pdo->prepare($sql_select . $sql_order . "
 $stmt->execute($params);
 $aquisicoes = $stmt->fetchAll();
 
+// Favoritos são opcionais até a instalação manual do SQL.
+$favoritasInstaladas = db_table_exists($pdo, 'aquisicoes_favoritas');
+$podeFavoritarAquisicao = in_array(strtoupper((string)($_SESSION['nivel'] ?? '')), ['ADMIN', 'SUPORTE'], true);
+$jaFavoritas = [];
+if ($favoritasInstaladas && $aquisicoes) {
+    $idsConsulta = array_map(static function ($aq) { return (int)$aq['id']; }, $aquisicoes);
+    $marcadores = implode(',', array_fill(0, count($idsConsulta), '?'));
+    $stmtFavoritas = $pdo->prepare("SELECT aquisicao_origem_id FROM aquisicoes_favoritas WHERE aquisicao_origem_id IN ($marcadores)");
+    $stmtFavoritas->execute($idsConsulta);
+    $jaFavoritas = array_fill_keys(array_map('intval', $stmtFavoritas->fetchAll(PDO::FETCH_COLUMN)), true);
+}
+if (empty($_SESSION['csrf_aquisicoes_favoritas'])) {
+    $_SESSION['csrf_aquisicoes_favoritas'] = bin2hex(random_bytes(32));
+}
+$csrfFavoritas = (string)$_SESSION['csrf_aquisicoes_favoritas'];
+
 // Função auxiliar para manter parâmetros na URL da paginação
 function get_pagination_url($page)
 {
@@ -1694,6 +1710,9 @@ include 'views/layout/header.php';
             <h3 style="color: var(--text-dark); font-weight: 700; font-size: 1.25rem; margin: 0;">
                 <i class="fas fa-file-invoice-dollar" style="margin-right: 10px; color: var(--primary);"></i> Aquisições Geradas
             </h3>
+            <a href="aquisicoes_favoritas.php" class="btn btn-outline btn-sm">
+                <i class="fas fa-star" style="color:#eab308"></i> Aquisições favoritas
+            </a>
         </div>
 
         <?php display_flash(); ?>
@@ -1781,6 +1800,17 @@ include 'views/layout/header.php';
 
 <?php foreach ($aquisicoes as $aq): ?>
     <template id="acoes-aquisicao-<?php echo (int)$aq['id']; ?>">
+        <?php if ($podeFavoritarAquisicao && $favoritasInstaladas): ?>
+            <form method="post" action="aquisicoes_favoritas.php" style="margin:0">
+                <input type="hidden" name="csrf_token" value="<?php echo h($csrfFavoritas); ?>">
+                <input type="hidden" name="acao" value="salvar">
+                <input type="hidden" name="id" value="<?php echo (int)$aq['id']; ?>">
+                <button type="submit" class="so-action-link">
+                    <i class="<?php echo isset($jaFavoritas[(int)$aq['id']]) ? 'fas fa-sync-alt' : 'fas fa-star'; ?>" aria-hidden="true"></i>
+                    <?php echo isset($jaFavoritas[(int)$aq['id']]) ? 'Atualizar modelo favorito' : 'Adicionar aos favoritos'; ?>
+                </button>
+            </form>
+        <?php endif; ?>
         <a class="so-action-link" href="aquisicoes_visualizar.php?id=<?php echo (int)$aq['id']; ?>">
             <i class="fas fa-eye" aria-hidden="true"></i> Visualizar aquisição
         </a>
