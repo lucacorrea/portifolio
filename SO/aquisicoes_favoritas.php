@@ -2,7 +2,6 @@
 require_once 'config/database.php';
 require_once 'config/functions.php';
 login_check();
-
 $nivelFavoritas = strtoupper(trim((string)($_SESSION['nivel'] ?? '')));
 if (!in_array($nivelFavoritas, ['ADMIN', 'SUPORTE', 'SECRETARIO'], true)) {
     http_response_code(403);
@@ -12,16 +11,13 @@ $podeGerenciarFavoritas = in_array($nivelFavoritas, ['ADMIN', 'SUPORTE'], true);
 $page_title = 'Aquisições Favoritas';
 $tabelaFavoritasExiste = so_schema_table_exists($pdo, 'aquisicoes_favoritas');
 $tabelaOficiosFavoritosExiste = so_schema_table_exists($pdo, 'oficios_favoritos');
-
 if (empty($_SESSION['csrf_aquisicoes_favoritas'])) {
     $_SESSION['csrf_aquisicoes_favoritas'] = bin2hex(random_bytes(32));
 }
 $csrfFavoritas = (string)$_SESSION['csrf_aquisicoes_favoritas'];
-
 function favoritas_h($valor): string {
     return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
 }
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$podeGerenciarFavoritas) {
         http_response_code(403);
@@ -166,7 +162,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Location: aquisicoes_favoritas.php', true, 303);
     exit;
 }
-
 $favoritas = [];
 if ($tabelaFavoritasExiste) {
     foreach ($pdo->query('SELECT id, titulo, dados_json, itens_json, atualizado_em FROM aquisicoes_favoritas')->fetchAll(PDO::FETCH_ASSOC) as $modelo) {
@@ -203,7 +198,6 @@ foreach ($favoritas as $fav) {
     $fav['valor_total'] = $total;
     $linhasFavoritas[] = $fav;
 }
-
 $buscaFavoritas = is_scalar($_GET['busca'] ?? null) ? trim((string)$_GET['busca']) : '';
 $buscaFavoritas = function_exists('mb_substr') ? mb_substr($buscaFavoritas, 0, 120, 'UTF-8') : substr($buscaFavoritas, 0, 120);
 $tipoFavoritas = is_scalar($_GET['tipo'] ?? null) ? (string)$_GET['tipo'] : '';
@@ -225,7 +219,6 @@ $porPaginaOptionsFavoritas = [6, 10, 25, 50, 100];
 $porPaginaRequestFavoritas = is_scalar($_GET['por_pagina'] ?? null) ? (string)$_GET['por_pagina'] : '';
 $porPaginaFavoritas = ctype_digit($porPaginaRequestFavoritas) && in_array((int)$porPaginaRequestFavoritas, $porPaginaOptionsFavoritas, true)
     ? (int)$porPaginaRequestFavoritas : 6;
-
 // As opções dos filtros são extraídas dos modelos já existentes.
 $secretariasFavoritas = [];
 $fornecedoresFavoritas = [];
@@ -241,7 +234,6 @@ foreach ($linhasFavoritas as $fav) {
 }
 natcasesort($secretariasFavoritas);
 natcasesort($fornecedoresFavoritas);
-
 $encontradasFavoritas = array_values(array_filter($linhasFavoritas, static function (array $fav) use (
     $buscaFavoritas, $tipoFavoritas, $secretariaFavoritas, $fornecedorFavoritas, $dataInicioFavoritas, $dataFimFavoritas
 ): bool {
@@ -266,7 +258,8 @@ $encontradasFavoritas = array_values(array_filter($linhasFavoritas, static funct
     }
     $texto = implode(' ', [
         $fav['titulo'], $fav['numero_origem'], $fav['secretaria_nome'],
-        $fav['fornecedor_nome'], $fav['local_nome'], (string)$fav['valor_total']
+        $fav['fornecedor_nome'], $fav['local_nome'], (string)$fav['valor_total'],
+        number_format((float)$fav['valor_total'], 2, ',', '.')
     ]);
     return function_exists('mb_stripos')
         ? mb_stripos($texto, $buscaFavoritas, 0, 'UTF-8') !== false
@@ -286,7 +279,6 @@ function favoritas_pagina_url(int $pagina): string {
 include 'views/layout/header.php';
 ?>
 <link rel="stylesheet" href="assets/css/lista-acoes-modal.css">
-
 <div class="card no-print lista-filtros-card favoritas-filtros">
     <div class="card-body">
         <div class="lista-filtros-header">
@@ -299,7 +291,6 @@ include 'views/layout/header.php';
             </div>
             <span class="lista-filtros-resumo"><i class="fas fa-sliders-h" aria-hidden="true"></i> Refine a listagem</span>
         </div>
-
         <form method="get" action="aquisicoes_favoritas.php" class="lista-filtros-form lista-filtros-form--oficios">
             <div class="lista-filtros-principais">
                 <div class="lista-filtro lista-filtro-busca">
@@ -338,7 +329,6 @@ include 'views/layout/header.php';
                     </select>
                 </div>
             </div>
-
             <div class="lista-filtros-secundarios">
                 <div class="lista-filtros-secundarios-campos">
                     <div class="lista-filtro">
@@ -372,7 +362,6 @@ include 'views/layout/header.php';
         </form>
     </div>
 </div>
-
 <div class="card">
     <div class="card-body">
         <div class="favoritas-lista-header">
@@ -460,7 +449,6 @@ include 'views/layout/header.php';
         <?php endif; ?>
     </div>
 </div>
-
 <?php foreach ($exibidasFavoritas as $fav):
     $tipo = $fav['tipo'] === 'oficio' ? 'oficio' : 'aquisicao';
     $templateId = 'fav-acoes-' . $tipo . '-' . (int)$fav['id'];
@@ -491,7 +479,6 @@ include 'views/layout/header.php';
         <p class="fav-modal-note">A exclusão do favorito não remove o ofício ou a aquisição original.</p>
     </template>
 <?php endforeach; ?>
-
 <div class="so-action-modal" id="so-list-actions-modal" hidden aria-hidden="true">
     <div class="so-action-modal__panel" role="dialog" aria-modal="true"
          aria-labelledby="so-list-actions-title" aria-describedby="so-list-actions-subtitle">
@@ -512,4 +499,3 @@ include 'views/layout/header.php';
 </div>
 <script src="assets/js/lista-acoes-modal.js" defer></script>
 <?php include 'views/layout/footer.php'; ?>
-
