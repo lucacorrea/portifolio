@@ -884,6 +884,24 @@ if (!empty($oficios)) {
     }
 }
 
+// Verifica modelos de ofícios favoritos em lote, sem criar consultas por linha.
+$oficiosFavoritosInstalados = so_schema_table_exists($pdo, 'oficios_favoritos');
+$oficiosJaFavoritos = [];
+if ($oficiosFavoritosInstalados && !empty($oficios)) {
+    $idsFavoritos = array_map('intval', array_column($oficios, 'id'));
+    $marcadoresFavoritos = implode(',', array_fill(0, count($idsFavoritos), '?'));
+    $stmtFavoritos = $pdo->prepare("SELECT oficio_origem_id FROM oficios_favoritos WHERE oficio_origem_id IN ($marcadoresFavoritos)");
+    $stmtFavoritos->execute($idsFavoritos);
+    $oficiosJaFavoritos = array_fill_keys(
+        array_map('intval', $stmtFavoritos->fetchAll(PDO::FETCH_COLUMN)),
+        true
+    );
+}
+if (empty($_SESSION['csrf_aquisicoes_favoritas'])) {
+    $_SESSION['csrf_aquisicoes_favoritas'] = bin2hex(random_bytes(32));
+}
+$csrfFavoritasOficios = (string)$_SESSION['csrf_aquisicoes_favoritas'];
+
 // Função auxiliar para manter parâmetros na URL da paginação
 function get_pagination_url($page)
 {
@@ -1581,6 +1599,9 @@ include 'views/layout/header.php';
 
                                 <td style="font-weight: 600; color: var(--primary);">
                                     <?php echo htmlspecialchars($o['numero'], ENT_QUOTES, 'UTF-8'); ?>
+                                    <?php if (isset($oficiosJaFavoritos[(int)$o['id']])): ?>
+                                        <i class="fas fa-star" style="color:#eab308" title="Ofício favorito" aria-label="Favorito"></i>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
                                     <span class="text-muted" title="<?php echo htmlspecialchars($o['secretaria'], ENT_QUOTES, 'UTF-8'); ?>">
@@ -1741,6 +1762,17 @@ include 'views/layout/header.php';
 <?php foreach ($oficios as $o): ?>
     <template id="acoes-oficio-<?php echo (int)$o['id']; ?>">
         <?php $aquisicoes_do_oficio = $aquisicoes_por_oficio[(int)$o['id']] ?? []; ?>
+        <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'], true) && (int)($o['total_itens'] ?? 0) > 0): ?>
+            <form method="post" action="aquisicoes_favoritas.php" style="margin:0">
+                <input type="hidden" name="csrf_token" value="<?php echo h($csrfFavoritasOficios); ?>">
+                <input type="hidden" name="acao" value="salvar_oficio">
+                <input type="hidden" name="id" value="<?php echo (int)$o['id']; ?>">
+                <button type="submit" class="so-action-link">
+                    <i class="<?php echo isset($oficiosJaFavoritos[(int)$o['id']]) ? 'fas fa-sync-alt' : 'fas fa-star'; ?>" aria-hidden="true"></i>
+                    <?php echo isset($oficiosJaFavoritos[(int)$o['id']]) ? 'Atualizar modelo favorito' : 'Adicionar aos favoritos'; ?>
+                </button>
+            </form>
+        <?php endif; ?>
         <?php if (!empty($aquisicoes_do_oficio)): ?>
             <?php foreach ($aquisicoes_do_oficio as $aquisicao_do_oficio): ?>
                 <a class="so-action-link" href="aquisicoes_visualizar.php?id=<?php echo (int)$aquisicao_do_oficio['id']; ?>">
