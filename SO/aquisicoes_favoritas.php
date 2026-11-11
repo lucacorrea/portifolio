@@ -60,8 +60,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $stmtItens = $pdo->prepare("
                 SELECT ai.produto, ai.quantidade, ai.valor_unitario,
-                       COALESCE(NULLIF(io.unidade, ''), 'UN') AS unidade
+                       COALESCE(NULLIF(io.unidade, ''),
+                           (SELECT NULLIF(io2.unidade, '') FROM itens_oficio io2
+                            WHERE io2.oficio_id = a.oficio_id AND io2.produto = ai.produto
+                            ORDER BY io2.id ASC LIMIT 1), 'UN') AS unidade
                 FROM itens_aquisicao ai
+                INNER JOIN aquisicoes a ON a.id = ai.aquisicao_id
                 LEFT JOIN itens_oficio io ON io.id = ai.oficio_item_id
                 WHERE ai.aquisicao_id = ? ORDER BY ai.id ASC
             ");
