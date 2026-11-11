@@ -12,6 +12,18 @@ function login_check() {
     }
 }
 
+/**
+ * Consulta de metadados compatível com PDO nativo e MariaDB.
+ * SHOW TABLES LIKE ? não aceita marcador de parâmetro nessa versão do servidor.
+ */
+function so_schema_table_exists(PDO $pdo, string $table): bool {
+    $stmt = $pdo->prepare(
+        'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?'
+    );
+    $stmt->execute([$table]);
+    return (int)$stmt->fetchColumn() > 0;
+}
+
 function admin_check() {
     $nivel = strtoupper($_SESSION['nivel'] ?? '');
     if ($nivel !== 'ADMIN' && $nivel !== 'SUPORTE') {
