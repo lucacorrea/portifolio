@@ -192,6 +192,7 @@ foreach ($favoritas as $fav) {
     $fav['fornecedor_nome'] = (string)($dados['fornecedor_nome'] ?? '-');
     $fav['local_nome'] = (string)($dados['local'] ?? '-');
     $fav['numero_origem'] = (string)($dados['numero_aq'] ?? $dados['numero_oficio'] ?? '-');
+    $fav['secretaria_sigla'] = preg_match('/-\s*([A-Z0-9]{2,15})\s*$/u', $fav['secretaria_nome'], $siglaMatch) ? $siglaMatch[1] : $fav['secretaria_nome'];
     $fav['quantidade_itens'] = count($itens);
     $fav['valor_total'] = $total;
     $linhasFavoritas[] = $fav;
@@ -275,6 +276,7 @@ function favoritas_pagina_url(int $pagina): string {
 include 'views/layout/header.php';
 ?>
 <link rel="stylesheet" href="assets/css/lista-acoes-modal.css">
+<link rel="stylesheet" href="assets/css/listaFiltros.css?v=so-favoritas-20261111-2">
 <div class="card no-print lista-filtros-card favoritas-filtros">
     <div class="card-body">
         <div class="lista-filtros-header">
@@ -361,7 +363,7 @@ include 'views/layout/header.php';
 <div class="card">
     <div class="card-body">
         <div class="favoritas-lista-header">
-            <h3><i class="fas fa-star" style="color:var(--primary);margin-right:10px" aria-hidden="true"></i> Favoritos Salvos</h3>
+            <h3><i class="fas fa-list-ul" style="color:var(--primary);margin-right:10px" aria-hidden="true"></i> Favoritos Salvos</h3>
             <div class="favoritas-lista-header__acoes">
                 <a class="btn btn-primary btn-sm" href="oficios_lista.php"><i class="fas fa-folder-open" aria-hidden="true"></i> Solicitações</a>
                 <a class="btn btn-outline btn-sm" href="aquisicoes_lista.php"><i class="fas fa-shopping-bag" aria-hidden="true"></i> Aquisições</a>
@@ -401,11 +403,9 @@ include 'views/layout/header.php';
                                 data-so-actions-subtitle="<?= favoritas_h($fav['secretaria_nome'] . ' • ' . $fav['fornecedor_nome']) ?>"
                                 title="Clique para ver as ações deste favorito">
                                 <td>
-                                    <strong class="favoritas-numero" title="<?= favoritas_h($fav['titulo']) ?>">
-                                        <?= favoritas_h($fav['titulo']) ?>
-                                    </strong>
+                                    <strong class="favoritas-numero" title="<?= favoritas_h($fav['titulo']) ?>"><?= favoritas_h($fav['numero_origem']) ?></strong> <i class="fas fa-star" style="color:#eab308" title="Modelo favorito" aria-label="Favorito"></i>
                                 </td>
-                                <td><span class="favoritas-secretaria" title="<?= favoritas_h($fav['secretaria_nome']) ?>"><?= favoritas_h($fav['secretaria_nome']) ?></span></td>
+                                <td><span class="favoritas-secretaria text-muted" title="<?= favoritas_h($fav['secretaria_nome']) ?>"><?= favoritas_h($fav['secretaria_sigla']) ?></span></td>
                                 <td><span class="favoritas-fornecedor" title="<?= favoritas_h($fav['fornecedor_nome']) ?>"><?= favoritas_h($fav['fornecedor_nome']) ?></span></td>
                                 <td class="favoritas-data"><?= $dataSalva ? favoritas_h(date('d/m/Y H:i', $dataSalva)) : '-' ?></td>
                                 <td class="favoritas-valor"><?= format_money($fav['valor_total']) ?></td>
@@ -427,8 +427,7 @@ include 'views/layout/header.php';
                     </tbody>
                 </table>
             </div>
-            <?php if ($totalPaginasFavoritas > 1): ?>
-                <div class="favoritas-paginacao">
+            <div class="favoritas-paginacao">
                     <a class="btn btn-outline btn-sm <?= $paginaFavoritas === 1 ? 'disabled' : '' ?>"
                        href="<?= favoritas_h(favoritas_pagina_url(max(1, $paginaFavoritas - 1))) ?>"
                        <?= $paginaFavoritas === 1 ? 'aria-disabled="true" tabindex="-1"' : '' ?>>
@@ -441,7 +440,6 @@ include 'views/layout/header.php';
                         Próxima <i class="fas fa-angle-right" aria-hidden="true"></i>
                     </a>
                 </div>
-            <?php endif; ?>
         <?php endif; ?>
     </div>
 </div>
