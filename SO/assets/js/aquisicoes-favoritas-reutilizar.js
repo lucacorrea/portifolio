@@ -94,7 +94,7 @@ document.addEventListener('DOMContentLoaded', function () {
         row.innerHTML = '<div class="form-group"><label class="form-label">Nº</label><input class="form-control fav-item-index" readonly></div>'
             + '<div class="form-group"><label class="form-label">Nome do Item</label><input class="form-control fav-item-name" data-field="nome" maxlength="255" placeholder="Ex: Papel A4" required></div>'
             + '<div class="form-group"><label class="form-label">Quantidade</label><input class="form-control fav-item-qtd" data-field="qtd" type="number" min="0.01" step="0.01" value="1" required></div>'
-            + '<div class="form-group"><label class="form-label">Unidade</label><input class="form-control fav-item-unit" data-field="unidade" maxlength="30" value="UN" required></div>'
+            + '<div class="form-group"><label class="form-label">Unidade</label><input class="form-control fav-item-unit" data-field="unidade" maxlength="20" value="UN" required></div>'
             + '<div class="form-group"><label class="form-label">Valor Unitário</label><input class="form-control fav-item-price" data-field="valor" inputmode="decimal" value="0,00" required></div>'
             + '<div class="form-group"><label class="form-label">Valor Total</label><input class="form-control fav-item-total" inputmode="decimal" value="0,00" title="Informe o total para calcular o unitário"></div>'
             + '<div><button type="button" class="btn btn-outline btn-sm fav-remove-item" title="Remover item" aria-label="Remover item"><i class="fas fa-trash" aria-hidden="true"></i></button></div>';
