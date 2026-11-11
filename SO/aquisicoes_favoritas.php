@@ -10,7 +10,7 @@ if (!in_array($nivelFavoritas, ['ADMIN', 'SUPORTE', 'SECRETARIO'], true)) {
 }
 $podeGerenciarFavoritas = in_array($nivelFavoritas, ['ADMIN', 'SUPORTE'], true);
 $page_title = 'Aquisições Favoritas';
-$tabelaFavoritasExiste = db_table_exists($pdo, 'aquisicoes_favoritas');
+$tabelaFavoritasExiste = so_schema_table_exists($pdo, 'aquisicoes_favoritas');
 
 if (empty($_SESSION['csrf_aquisicoes_favoritas'])) {
     $_SESSION['csrf_aquisicoes_favoritas'] = bin2hex(random_bytes(32));
