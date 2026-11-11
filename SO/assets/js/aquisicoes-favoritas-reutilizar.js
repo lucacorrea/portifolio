@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const totalElement = document.getElementById('fav-total-itens');
     const deviceDate = document.getElementById('fav-criado-em-device');
     const devicePreview = document.getElementById('fav-datahora-dispositivo');
-    const MAX_ITEMS = 300;
+    const MAX_ITEMS = 200;
     const moneyFormatter = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     let previewCode = '';
     let manualNumber = numeroInput ? numeroInput.value : '';
@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('fav-generate-items').addEventListener('click', function () {
         const desired = Number(countInput.value);
         if (!Number.isInteger(desired) || desired < 1 || desired > MAX_ITEMS) {
-            alert('Escolha entre 1 e 300 itens.');
+            alert('Escolha entre 1 e 200 itens.');
             countInput.value = rows().length;
             return;
         }
@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.getElementById('fav-add-item').addEventListener('click', function () {
-        if (rows().length >= MAX_ITEMS) { alert('Limite de 300 itens atingido.'); return; }
+        if (rows().length >= MAX_ITEMS) { alert('Limite de 200 itens atingido.'); return; }
         const row = newRow();
         container.appendChild(row);
         refreshIndices();
@@ -144,13 +144,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
     container.addEventListener('input', function (event) {
         const target = event.target;
+        if (!target.closest('.fav-reuse-row') || target.classList.contains('fav-item-total')) return;
+        updateTotals();
+    });
+
+    container.addEventListener('change', function (event) {
+        const target = event.target;
+        if (!target.classList.contains('fav-item-total')) return;
         const row = target.closest('.fav-reuse-row');
         if (!row) return;
-        if (target.classList.contains('fav-item-total')) {
-            const qtd = Number(String(row.querySelector('.fav-item-qtd').value).replace(',', '.')) || 0;
-            const unit = qtd > 0 ? Math.round(parseMoney(target.value) / qtd * 100) / 100 : 0;
-            row.querySelector('.fav-item-price').value = formatPrice(unit);
-        }
+        const qtd = Number(String(row.querySelector('.fav-item-qtd').value).replace(',', '.')) || 0;
+        const unit = qtd > 0 ? Math.round(parseMoney(target.value) / qtd * 100) / 100 : 0;
+        row.querySelector('.fav-item-price').value = formatPrice(unit);
         updateTotals();
     });
 
