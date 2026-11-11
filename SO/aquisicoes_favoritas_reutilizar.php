@@ -5,7 +5,7 @@ login_check();
 admin_check();
 
 $page_title = 'Reutilizar Aquisição Favorita';
-if (!db_table_exists($pdo, 'aquisicoes_favoritas')) {
+if (!so_schema_table_exists($pdo, 'aquisicoes_favoritas')) {
     flash_message('danger', 'Instale primeiro a tabela sql/aquisicoes_favoritas.sql.');
     header('Location: aquisicoes_favoritas.php', true, 303);
     exit;
