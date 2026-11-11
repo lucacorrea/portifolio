@@ -140,10 +140,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && is_array($_POST['produtos'] ?? null
     foreach (array_slice(array_values($_POST['produtos']), 0, 201) as $item) {
         if (!is_array($item)) continue;
         $itemsForm[] = [
-            'produto' => (string)($item['nome'] ?? ''),
-            'quantidade' => (string)($item['qtd'] ?? ''),
-            'unidade' => (string)($item['unidade'] ?? ''),
-            'valor' => (string)($item['valor'] ?? ''),
+            'produto' => is_scalar($item['nome'] ?? null) ? (string)$item['nome'] : '',
+            'quantidade' => is_scalar($item['qtd'] ?? null) ? (string)$item['qtd'] : '',
+            'unidade' => is_scalar($item['unidade'] ?? null) ? (string)$item['unidade'] : '',
+            'valor' => is_scalar($item['valor'] ?? null) ? (string)$item['valor'] : '',
         ];
     }
 } else {
@@ -176,8 +176,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($local === '' || mb_strlen($local, 'UTF-8') > 150) {
             throw new DomainException('Informe o local da nova solicitação (até 150 caracteres).');
         }
-        if ($justificativa === '') {
-            throw new DomainException('Informe a justificativa da solicitação.');
+        if ($justificativa === '' || mb_strlen($justificativa, 'UTF-8') > 30000) {
+            throw new DomainException('Informe uma justificativa válida (até 30.000 caracteres).');
         }
         if (mb_strlen($resumo, 'UTF-8') > 10000) {
             throw new DomainException('O resumo dos itens está muito longo.');
@@ -305,7 +305,7 @@ include 'views/layout/header.php';
                         <input type="checkbox" id="fav-sem-oficio" name="sem_oficio" value="1" <?= $semOficio ? 'checked' : '' ?>>
                         Sem ofício
                     </label>
-                    <small class="fav-reuse-hint">Com Sem ofício, o sistema gera automaticamente um código único com o ano e a sigla da secretaria.</small>
+                    <small class="fav-reuse-hint">Com Sem ofício, o campo mostra uma prévia. O número definitivo, com ano e sigla da secretaria, será gerado ao salvar.</small>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Secretaria Solicitante</label>
