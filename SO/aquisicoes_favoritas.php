@@ -448,7 +448,7 @@ include 'views/layout/header.php';
     $templateId = 'fav-acoes-' . $tipo . '-' . (int)$fav['id'];
 ?>
     <template id="<?= favoritas_h($templateId) ?>">
-        <div class="fav-modal-details">
+        <div class="favoritas-detalhes-modal">
             <div><strong>Secretaria:</strong> <?= favoritas_h($fav['secretaria_nome']) ?></div>
             <div><strong>Fornecedor:</strong> <?= favoritas_h($fav['fornecedor_nome']) ?></div>
             <div><strong>Local:</strong> <?= favoritas_h($fav['local_nome']) ?></div>
@@ -458,7 +458,7 @@ include 'views/layout/header.php';
             <a class="so-action-link" href="aquisicoes_favoritas_reutilizar.php?tipo=<?= favoritas_h($tipo) ?>&amp;id=<?= (int)$fav['id'] ?>">
                 <i class="fas fa-redo" aria-hidden="true"></i> Reutilizar e conferir preços
             </a>
-            <form method="post" action="aquisicoes_favoritas.php" class="fav-modal-remove"
+            <form method="post" action="aquisicoes_favoritas.php" class="favoritas-modal-form"
                   onsubmit="return confirm('Remover este modelo dos favoritos? O registro original será preservado.')">
                 <input type="hidden" name="csrf_token" value="<?= favoritas_h($csrfFavoritas) ?>">
                 <input type="hidden" name="acao" value="<?= $tipo === 'oficio' ? 'remover_oficio' : 'remover' ?>">
@@ -468,9 +468,9 @@ include 'views/layout/header.php';
                 </button>
             </form>
         <?php else: ?>
-            <p class="fav-modal-note">Você pode consultar este modelo, mas não possui permissão para alterá-lo.</p>
+            <p class="favoritas-modal-nota">Você pode consultar este modelo, mas não possui permissão para alterá-lo.</p>
         <?php endif; ?>
-        <p class="fav-modal-note">A exclusão do favorito não remove o ofício ou a aquisição original.</p>
+        <p class="favoritas-modal-nota">A exclusão do favorito não remove o ofício ou a aquisição original.</p>
     </template>
 <?php endforeach; ?>
 <div class="so-action-modal" id="so-list-actions-modal" hidden aria-hidden="true">
