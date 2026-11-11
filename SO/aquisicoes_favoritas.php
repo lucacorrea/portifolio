@@ -269,9 +269,7 @@ $paginaFavoritas = filter_var($_GET['page'] ?? 1, FILTER_VALIDATE_INT, ['options
 $paginaFavoritas = min($paginaFavoritas, $totalPaginasFavoritas);
 $exibidasFavoritas = array_slice($encontradasFavoritas, ($paginaFavoritas - 1) * $porPaginaFavoritas, $porPaginaFavoritas);
 function favoritas_pagina_url(int $pagina): string {
-    $filtros = $_GET;
-    unset($filtros['page']);
-    $filtros['page'] = $pagina;
+    $filtros = $_GET; unset($filtros['page']); $filtros['page'] = $pagina;
     return 'aquisicoes_favoritas.php?' . http_build_query($filtros);
 }
 include 'views/layout/header.php';
