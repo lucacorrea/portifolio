@@ -4,9 +4,15 @@ require_once 'config/functions.php';
 login_check();
 admin_check();
 
-$page_title = 'Reutilizar Aquisição Favorita';
-if (!so_schema_table_exists($pdo, 'aquisicoes_favoritas')) {
-    flash_message('danger', 'Instale primeiro a tabela sql/aquisicoes_favoritas.sql.');
+$tipo = is_scalar($_GET['tipo'] ?? $_POST['tipo'] ?? null) ? (string)($_GET['tipo'] ?? $_POST['tipo']) : 'aquisicao';
+if (!in_array($tipo, ['aquisicao', 'oficio'], true)) {
+    http_response_code(400);
+    exit('Tipo de modelo inválido.');
+}
+$tabelaModelo = $tipo === 'oficio' ? 'oficios_favoritos' : 'aquisicoes_favoritas';
+$page_title = 'Reutilizar Modelo Favorito';
+if (!so_schema_table_exists($pdo, $tabelaModelo)) {
+    flash_message('danger', 'Instale as tabelas pelo arquivo sql/aquisicoes_favoritas.sql.');
     header('Location: aquisicoes_favoritas.php', true, 303);
     exit;
 }
@@ -15,7 +21,7 @@ if (!$id) {
     http_response_code(400);
     exit('Modelo inválido.');
 }
-$stmt = $pdo->prepare('SELECT * FROM aquisicoes_favoritas WHERE id = ? LIMIT 1');
+$stmt = $pdo->prepare("SELECT * FROM {$tabelaModelo} WHERE id = ? LIMIT 1");
 $stmt->execute([$id]);
 $favorita = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$favorita) {
@@ -26,7 +32,7 @@ $dados = json_decode((string)$favorita['dados_json'], true);
 $itens = json_decode((string)$favorita['itens_json'], true);
 if (!is_array($dados) || !is_array($itens) || !$itens) {
     http_response_code(422);
-    exit('Este modelo está incompleto. Atualize-o a partir da aquisição original.');
+    exit('Este modelo está incompleto. Atualize-o a partir do registro original.');
 }
 
 if (empty($_SESSION['csrf_aquisicoes_reutilizar'])) {
@@ -38,10 +44,13 @@ function reutilizar_h($v): string { return htmlspecialchars((string)$v, ENT_QUOT
 $erro = '';
 $precos = array_map(static fn($i) => (string)($i['valor_unitario'] ?? '0'), $itens);
 $numeroInformado = '';
+$fornecedoresReutilizar = $pdo->query('SELECT id, nome FROM fornecedores ORDER BY nome ASC')->fetchAll(PDO::FETCH_ASSOC);
+$fornecedorSelecionado = (int)($dados['fornecedor_id'] ?? 0);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $token = is_scalar($_POST['csrf_token'] ?? null) ? (string)$_POST['csrf_token'] : '';
     $novosPrecos = $_POST['precos'] ?? null;
     $numeroInformado = is_scalar($_POST['numero_oficio'] ?? null) ? trim((string)$_POST['numero_oficio']) : '';
+    $fornecedorSelecionado = filter_var($_POST['fornecedor_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0;
     if (is_array($novosPrecos)) { $precos = $novosPrecos; }
 
     try {
@@ -56,12 +65,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $secretariaId = (int)($dados['secretaria_id'] ?? 0);
-        $fornecedorId = (int)($dados['fornecedor_id'] ?? 0);
+        $fornecedorId = $fornecedorSelecionado;
         $stmtRef = $pdo->prepare('SELECT (SELECT COUNT(*) FROM secretarias WHERE id = ?) AS secretaria_ok, (SELECT COUNT(*) FROM fornecedores WHERE id = ?) AS fornecedor_ok');
         $stmtRef->execute([$secretariaId, $fornecedorId]);
         $ref = $stmtRef->fetch(PDO::FETCH_ASSOC);
-        if (!$ref || !$ref['secretaria_ok'] || !$ref['fornecedor_ok']) {
-            throw new DomainException('A secretaria ou o fornecedor deste modelo não está mais cadastrado.');
+        if (!$ref || !$ref['secretaria_ok']) {
+            throw new DomainException('A secretaria deste modelo não está mais cadastrada.');
+        }
+        if (!$ref['fornecedor_ok']) {
+            throw new DomainException('Selecione um fornecedor válido para esta nova solicitação.');
         }
         $itensNovos = [];
         $total = 0.0;
@@ -123,7 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $item['unidade'], $item['valor_unitario'],
             ]);
         }
-        log_action($pdo, 'REUTILIZAR_AQUISICAO_FAVORITA',
+        log_action($pdo, 'REUTILIZAR_MODELO_FAVORITO',
             'Solicitação ' . $numero . ' criada a partir do modelo ' . $favorita['titulo'] . '; aguardando aprovação.');
         $pdo->commit();
         $_SESSION['csrf_aquisicoes_reutilizar'] = bin2hex(random_bytes(32));
@@ -169,17 +181,29 @@ include 'views/layout/header.php';
     </div>
     <?php if ($erro !== ''): ?><div class="alert alert-danger"><?= reutilizar_h($erro) ?></div><?php endif; ?>
     <div class="alert alert-info">Os dados são copiados como <strong>nova solicitação</strong>. Confira os preços e confirme a criação.
-        Número, data e aprovação da aquisição anterior não serão reaproveitados.</div>
+        Número, data e aprovação do registro anterior não serão reaproveitados.</div>
     <form method="post" id="reuse-form">
         <input type="hidden" name="favorita_id" value="<?= (int)$id ?>">
+        <input type="hidden" name="tipo" value="<?= reutilizar_h($tipo) ?>">
         <input type="hidden" name="csrf_token" value="<?= reutilizar_h($csrfReutilizar) ?>">
         <section class="reuse-card">
             <h2>Dados preenchidos automaticamente</h2>
             <div class="reuse-fields">
                 <div><small>Secretaria</small><strong><?= reutilizar_h($dados['secretaria_nome'] ?? '-') ?></strong></div>
-                <div><small>Fornecedor</small><strong><?= reutilizar_h($dados['fornecedor_nome'] ?? '-') ?></strong></div>
+                <div>
+                    <label for="fornecedor-reuse" style="font-size:.82rem;color:#475569;font-weight:700">Fornecedor</label>
+                    <select id="fornecedor-reuse" name="fornecedor_id" class="reuse-number" required>
+                        <option value="">Selecione o fornecedor</option>
+                        <?php foreach ($fornecedoresReutilizar as $fornecedor): ?>
+                            <option value="<?= (int)$fornecedor['id'] ?>" <?= $fornecedorSelecionado === (int)$fornecedor['id'] ? 'selected' : '' ?>>
+                                <?= reutilizar_h($fornecedor['nome']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small>Preenchido automaticamente quando o modelo possui fornecedor.</small>
+                </div>
                 <div><small>Local</small><strong><?= reutilizar_h($dados['local'] ?? '-') ?></strong></div>
-                <div><small>Origem do modelo</small><strong><?= reutilizar_h($dados['numero_aq'] ?? '-') ?></strong></div>
+                <div><small>Origem do modelo</small><strong><?= reutilizar_h($dados['numero_aq'] ?? $dados['numero_oficio'] ?? '-') ?></strong></div>
                 <div style="grid-column:1/-1"><small>Justificativa original</small>
                     <strong><?= reutilizar_h($dados['justificativa'] ?? '-') ?></strong></div>
                 <div style="grid-column:1/-1">
