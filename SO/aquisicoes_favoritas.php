@@ -15,9 +15,7 @@ if (empty($_SESSION['csrf_aquisicoes_favoritas'])) {
     $_SESSION['csrf_aquisicoes_favoritas'] = bin2hex(random_bytes(32));
 }
 $csrfFavoritas = (string)$_SESSION['csrf_aquisicoes_favoritas'];
-function favoritas_h($valor): string {
-    return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
-}
+function favoritas_h($valor): string { return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8'); }
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$podeGerenciarFavoritas) {
         http_response_code(403);
