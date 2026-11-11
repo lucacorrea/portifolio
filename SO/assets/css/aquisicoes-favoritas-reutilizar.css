@@ -1,0 +1,38 @@
+/* SO | Reutilização de modelos: mesmos componentes do cadastro e da atribuição de itens. */
+.fav-reuse-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem}
+.fav-reuse-header h3{font-size:1.22rem;font-weight:700;color:var(--text-dark);margin:0;overflow-wrap:anywhere}
+.fav-reuse-progress{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;margin:0 0 1.2rem;color:#64748b;font-size:.82rem;font-weight:750}
+.fav-reuse-progress .active{color:var(--primary)}
+.fav-reuse-device{background:#f8fafc;border:1px solid #e2e8f0;border-radius:11px;padding:.9rem 1rem;margin-bottom:1.4rem;font-size:.88rem}
+.fav-reuse-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.2rem 1.5rem}
+.fav-reuse-fields .form-group{min-width:0;margin-bottom:0}
+.fav-reuse-fields .full{grid-column:1/-1}
+.fav-reuse-fields label.form-label{display:block;margin-bottom:.45rem;font-weight:750}
+.fav-reuse-fields small{display:block;margin-top:.3rem;color:#64748b;font-size:.78rem}
+.fav-reuse-reference{display:block;color:#64748b;font-size:.82rem;margin:.25rem 0 .1rem;overflow-wrap:anywhere}
+.fav-reuse-original{font-size:.84rem;color:#475569;margin:.25rem 0 0}
+.fav-reuse-sem-option{display:inline-flex;align-items:center;gap:.5rem;margin-top:9px;cursor:pointer;font-weight:700;font-size:.88rem}
+.fav-reuse-sem-option input{width:17px;height:17px;accent-color:var(--primary)}
+.fav-reuse-auto{background:#f1f5f9!important;color:#334155}
+.fav-reuse-budget{display:flex;justify-content:space-between;align-items:center;gap:1.2rem;flex-wrap:wrap;padding:1.25rem 1.5rem;background:#f0f4f9;border-radius:12px;margin:1.45rem 0}
+.fav-reuse-budget .total-label{font-size:.85rem;color:#334155;display:block;text-align:right}
+.fav-reuse-budget #fav-total-itens{display:block;font-size:1.45rem;color:#0f2747;font-weight:850;text-align:right}
+.fav-reuse-help{background:#eff6ff;border:1px solid #bfdbfe;border-radius:11px;padding:1rem;margin-bottom:1.3rem;color:#1e3a8a;font-size:.86rem;line-height:1.55}
+.fav-reuse-items-head{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin:1.4rem 0}
+.fav-reuse-items-head h4{margin:0;font-size:1.08rem;color:var(--text-dark)}
+.fav-reuse-items-head small{color:#64748b;display:block;margin-top:.3rem}
+.fav-reuse-count{display:flex;align-items:end;flex-wrap:wrap;gap:.8rem;background:#f8fafc;border:1px solid #dbe2ea;border-radius:12px;padding:1rem;margin-bottom:1rem}
+.fav-reuse-count .form-group{margin:0;max-width:255px;min-width:160px}
+.fav-reuse-rows{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px}
+.fav-reuse-row{display:grid;grid-template-columns:70px minmax(235px,2fr) minmax(105px,.85fr) minmax(95px,.7fr) minmax(130px,1fr) minmax(135px,1fr) 45px;gap:12px;align-items:end;min-width:1030px;background:white;border:1px solid #e2e8f0;padding:14px 16px;border-radius:12px;margin-bottom:10px}
+.fav-reuse-row .form-group{margin:0;min-width:0}
+.fav-reuse-row label{display:block;margin-bottom:5px;font-size:.81rem;font-weight:750}
+.fav-reuse-row input{width:100%;min-width:0;box-sizing:border-box}
+.fav-reuse-row .fav-item-index{text-align:center;font-weight:800;background:#f8fafc}
+.fav-reuse-row .fav-item-total{color:#16803b;text-align:right;font-weight:800}
+.fav-reuse-row .fav-remove-item{height:42px;width:42px;display:inline-flex;align-items:center;justify-content:center;color:#b91c1c;border-color:#fecaca}
+.fav-reuse-more{margin:10px 0 1rem}
+.fav-reuse-actions{display:flex;gap:.8rem;align-items:center;justify-content:flex-end;flex-wrap:wrap;border-top:1px solid #e2e8f0;padding-top:1.35rem;margin-top:1.5rem}
+.fav-reuse-actions .btn{min-height:43px}
+.fav-reuse-hint{display:block;color:#64748b;margin-top:7px;font-size:.8rem}
+@media(max-width:768px){.fav-reuse-fields{grid-template-columns:1fr}.fav-reuse-budget{align-items:flex-start}.fav-reuse-count .form-group{flex:1}.fav-reuse-actions{flex-direction:column-reverse;align-items:stretch}.fav-reuse-actions .btn{width:100%;justify-content:center}}
