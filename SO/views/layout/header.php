@@ -398,6 +398,14 @@ if (isset($pdo)) {
                                 <?php endif; ?>
 
                                 <?php if (in_array($nivel, ['ADMIN', 'SUPORTE', 'SECRETARIO'])): ?>
+                                    <li class="nav-item <?php echo isActive(['aquisicoes_favoritas.php', 'aquisicoes_favoritas_reutilizar.php']); ?>">
+                                        <a href="aquisicoes_favoritas.php" class="nav-link">
+                                            <i class="fas fa-star"></i> Aquisições Favoritas
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
+
+                                <?php if (in_array($nivel, ['ADMIN', 'SUPORTE', 'SECRETARIO'])): ?>
                                     <li class="nav-item <?php echo isActive(['relatorios.php', 'relatorios_oficios_secretaria.php', 'relatorios_oficio_detalhes.php']); ?>">
                                         <a href="relatorios.php" class="nav-link">
                                             <i class="fas fa-file-contract"></i> Relatórios
