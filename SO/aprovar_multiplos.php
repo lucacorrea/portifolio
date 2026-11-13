@@ -255,7 +255,46 @@ try {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    flash_message('danger', 'Não foi possível concluir a aprovação múltipla. Nenhuma alteração parcial foi mantida.');
+
+    // Nunca apresentar a mensagem SQL completa ao usuário. Ela fica no log
+    // do servidor, associada a uma referência que o suporte pode localizar.
+    $referencia = 'APR-' . strtoupper(bin2hex(random_bytes(4)));
+    $mysql_code = $e instanceof PDOException ? (int)($e->errorInfo[1] ?? 0) : 0;
+    $sql_state = $e instanceof PDOException ? (string)($e->errorInfo[0] ?? $e->getCode()) : '';
+    error_log(sprintf(
+        '[SO][%s][oficios=%s][mysql=%d][sqlstate=%s] %s',
+        $referencia,
+        implode(',', $ids),
+        $mysql_code,
+        $sql_state,
+        $e->getMessage()
+    ));
+
+    $mensagem = $abrir_aquisicao_individual
+        ? 'Não foi possível aprovar esta solicitação e gerar a aquisição.'
+        : 'Não foi possível concluir a aprovação múltipla.';
+    $mensagem .= ' Nenhuma alteração parcial foi mantida.';
+
+    if ($mysql_code === 1062) {
+        $mensagem .= ' Conflito de numeração ou código já cadastrado. A sequência deve ser conferida antes de repetir.';
+    } elseif (in_array($mysql_code, [1205, 1213], true)) {
+        $mensagem .= ' O banco estava ocupado por outra operação. Tente novamente após atualizar a lista.';
+    } elseif (in_array($mysql_code, [1054, 1146, 1364], true)) {
+        $mensagem .= ' Foi encontrada uma incompatibilidade na estrutura do banco. Solicite a verificação do suporte.';
+    } elseif ($mysql_code === 1452) {
+        $mensagem .= ' Um dos vínculos da aquisição com os dados cadastrados é inválido. Confira os registros relacionados.';
+    }
+
+    if ($nivel === 'SUPORTE') {
+        $mensagem .= ' Diagnóstico: ' . $referencia;
+        if ($mysql_code > 0) {
+            $mensagem .= ' (MySQL ' . $mysql_code . ').';
+        } else {
+            $mensagem .= '.';
+        }
+    }
+
+    flash_message('danger', $mensagem);
 }
 
 header("Location: {$return_url}", true, 303);
