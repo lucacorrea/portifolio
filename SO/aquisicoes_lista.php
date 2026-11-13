@@ -686,27 +686,35 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             .right { text-align: right; }
             .text-cell { mso-number-format: "\@"; }
             .desc-cell { font-weight: 600; text-transform: uppercase; overflow-wrap: anywhere; line-height: 1.3; }
-            /* Itens de aquisições extensas ficam abaixo do registro principal. */
-            .report-items-row td { background: #fff; padding: 7px 10px; }
-            .report-items-title { font-weight: 800; font-size: 10px; color: #1e293b; margin-bottom: 5px; }
-            .report-items-list {
-                display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 4px 20px;
-                margin: 0;
-                padding-left: 23px;
-                list-style: decimal;
+            /* Mais de 5 itens: uma sequência corrida em largura total, sem grade. */
+            .report-items-row td {
+                background: #fff;
+                border: 0 !important;
+                padding: 7px 10px;
             }
-            .report-items-list li {
-                padding-left: 2px;
-                overflow-wrap: anywhere;
-                line-height: 1.35;
+            .report-items-title {
+                font-weight: 800;
+                font-size: 10px;
+                color: #1e293b;
+                margin-bottom: 5px;
+            }
+            .report-items-inline {
+                margin: 0;
+                line-height: 1.5;
+                white-space: normal;
+                overflow-wrap: break-word;
                 text-transform: uppercase;
                 font-weight: 600;
             }
-            body.pdf-export .report-items-row td { padding: 4px 9px; background: #fff; }
+            body.pdf-export .report-items-row td { padding: 5px 9px; background: #fff; }
             body.pdf-export .report-items-title { font-size: 9px; }
-            body.pdf-export .report-items-list li { font-size: 8.6px; }
+            body.pdf-export .report-items-inline { font-size: 8.6px; }
+            /* Um texto extenso precisa poder continuar na página seguinte. */
+            body.pdf-export .sheet tr.report-items-row,
+            body.pdf-export .sheet tr.report-items-row td {
+                break-inside: auto !important;
+                page-break-inside: auto !important;
+            }
             .money-cell { white-space: nowrap; }
             .excel-report td,
             .excel-report th {
@@ -1169,42 +1177,32 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                             if ($descricaoRelatorio === '') {
                                 $descricaoRelatorio = 'NENHUM ITEM CADASTRADO';
                             }
-                            // Até 5 itens: descrição na linha. Acima de 5: lista numerada
-                            // ocupando toda a largura abaixo da aquisição no PDF.
-                            // Cada bloco de 10 itens facilita a quebra de página sem cortes.
+                            // Até 5 itens: descrição na tabela.
+                            // Acima de 5: texto corrido abaixo da aquisição, separado por " / ".
                             // Excel mantém um registro por aquisição, com a descrição completa.
                             $linhasDescricao = explode("\n", $descricaoRelatorio);
                             $itensEmLista = $is_pdf_export && count($linhasDescricao) > 5;
-                            $blocosDescricao = $itensEmLista
-                                ? array_chunk($linhasDescricao, 10)
-                                : [];
+                            $descricaoEmLinha = $itensEmLista ? implode(' / ', $linhasDescricao) : '';
                             ?>
                             <tr class="report-row">
                                 <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($aq['numero_aq']); ?></td>
                                 <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($aq['oficio_num']); ?></td>
                                 <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($usar_coluna_fornecedor ? nomeRelatorio($aq['fornecedor'] ?? '', 'FORNECEDOR NÃO INFORMADO') : secretariaSiglaRelatorio($aq['secretaria'] ?? '')); ?></td>
                                 <td class="left text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h(nomeRelatorio($aq['oficio_local'] ?? '', '-')); ?></td>
-                                <td class="left text-cell desc-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo $itensEmLista ? 'ITENS LISTADOS ABAIXO' : nl2br(h($descricaoRelatorio), false); ?></td>
+                                <td class="left text-cell desc-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo $itensEmLista ? 'ITENS ABAIXO' : nl2br(h($descricaoRelatorio), false); ?></td>
                                 <td class="center" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h(formatarDataBR($aq['criado_em'])); ?></td>
                                 <td class="right money-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo formatarMoedaBR($aq['valor_total']); ?></td>
                             </tr>
                             <?php if ($itensEmLista): ?>
-                                <?php foreach ($blocosDescricao as $indiceBloco => $itensBloco): ?>
-                                    <tr class="report-items-row">
-                                        <td colspan="7">
-                                            <div class="report-items-title">
-                                                ITENS DA AQUISIÇÃO <?php echo h($aq['numero_aq']); ?>
-                                                <?php if ($indiceBloco > 0): ?>— CONTINUAÇÃO<?php endif; ?>
-                                                (<?php echo count($linhasDescricao); ?> ITENS)
-                                            </div>
-                                            <ol class="report-items-list" start="<?php echo $indiceBloco * 10 + 1; ?>">
-                                                <?php foreach ($itensBloco as $itemDescricao): ?>
-                                                    <li><?php echo h($itemDescricao); ?></li>
-                                                <?php endforeach; ?>
-                                            </ol>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
+                                <tr class="report-items-row">
+                                    <td colspan="7">
+                                        <div class="report-items-title">
+                                            ITENS DA AQUISIÇÃO <?php echo h($aq['numero_aq']); ?>
+                                            (<?php echo count($linhasDescricao); ?> ITENS)
+                                        </div>
+                                        <p class="report-items-inline"><?php echo h($descricaoEmLinha); ?></p>
+                                    </td>
+                                </tr>
                             <?php endif; ?>
                         <?php endforeach; ?>
                         <tr class="group-total-row">
@@ -1268,7 +1266,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                             },
                             pagebreak: {
                                 mode: ['css', 'legacy'],
-                                avoid: ['tr']
+                                avoid: ['tr:not(.report-items-row)']
                             }
                         }).from(report).toPdf();
 
