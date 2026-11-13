@@ -93,6 +93,22 @@ function formatarDescricaoRelatorio($descricao, int $limite = 180): string
     return formatarTextoCaixaAlta(resumirItensDescricao($descricao, $limite));
 }
 
+/**
+ * Preserva as casas decimais registradas em cada item sem acrescentar zeros.
+ */
+function formatarQuantidadeItemRelatorio($valor): string
+{
+    $quantidade = trim((string)$valor);
+    if (!preg_match('/^(-?)(\d+)(?:\.(\d+))?$/', $quantidade, $partes)) {
+        return '0';
+    }
+
+    $inteiro = number_format((float)$partes[2], 0, ',', '.');
+    $decimais = rtrim($partes[3] ?? '', '0');
+
+    return $partes[1] . $inteiro . ($decimais !== '' ? ',' . $decimais : '');
+}
+
 function corRelatorioSecretaria($cor): string
 {
     $cor = strtoupper(trim((string)$cor));
@@ -486,22 +502,13 @@ $sql_select_export = "
         a.criado_em,
         o.numero as oficio_num,
         o.local as oficio_local,
-        o.resumo_itens,
         s.nome as secretaria,
         s.cor_relatorio as secretaria_cor,
-        f.nome as fornecedor,
-        COALESCE(NULLIF(TRIM(o.resumo_itens), ''), itens_relatorio.descricao, '') as descricao_relatorio
+        f.nome as fornecedor
     FROM aquisicoes a
     LEFT JOIN oficios o ON a.oficio_id = o.id
     LEFT JOIN secretarias s ON o.secretaria_id = s.id
     LEFT JOIN fornecedores f ON a.fornecedor_id = f.id
-    LEFT JOIN (
-        SELECT
-            aquisicao_id,
-            GROUP_CONCAT(produto ORDER BY id ASC SEPARATOR '; ') as descricao
-        FROM itens_aquisicao
-        GROUP BY aquisicao_id
-    ) itens_relatorio ON itens_relatorio.aquisicao_id = a.id
     WHERE $where
 ";
 
@@ -526,6 +533,62 @@ if (in_array($export, ['excel', 'pdf'], true)) {
     $stmt_export->execute($params);
     $aquisicoes_export = $stmt_export->fetchAll(PDO::FETCH_ASSOC);
     $is_pdf_export = $export === 'pdf';
+
+    // Os itens efetivamente adquiridos prevalecem sobre o resumo genérico do ofício.
+    // Consultas em lotes evitam N+1 e o corte de GROUP_CONCAT em relatórios extensos.
+    $itens_por_aquisicao = [];
+    $ids_aquisicoes = array_values(array_unique(array_map(
+        static function (array $aquisicao): int {
+            return (int)$aquisicao['id'];
+        },
+        $aquisicoes_export
+    )));
+    foreach (array_chunk($ids_aquisicoes, 250) as $lote_ids) {
+        $marcadores = implode(', ', array_fill(0, count($lote_ids), '?'));
+        $sql_itens_relatorio = "
+            SELECT ia.aquisicao_id, ia.produto, ia.quantidade,
+                   COALESCE(
+                       NULLIF(TRIM((
+                           SELECT io.unidade
+                           FROM itens_oficio io
+                           INNER JOIN aquisicoes aq_ref ON aq_ref.oficio_id = io.oficio_id
+                           WHERE aq_ref.id = ia.aquisicao_id
+                             AND (
+                                 io.id = ia.oficio_item_id
+                                 OR (
+                                     ia.oficio_item_id IS NULL
+                                     AND TRIM(UPPER(io.produto)) = TRIM(UPPER(ia.produto))
+                                 )
+                             )
+                           ORDER BY io.id ASC
+                           LIMIT 1
+                       )), ''),
+                       'UN'
+                   ) AS unidade
+            FROM itens_aquisicao ia
+            WHERE ia.aquisicao_id IN ($marcadores)
+            ORDER BY ia.aquisicao_id, ia.id
+        ";
+        $stmt_itens_relatorio = $pdo->prepare($sql_itens_relatorio);
+        $stmt_itens_relatorio->execute($lote_ids);
+        foreach ($stmt_itens_relatorio->fetchAll(PDO::FETCH_ASSOC) as $item_relatorio) {
+            $id_aquisicao = (int)$item_relatorio['aquisicao_id'];
+            $produto = formatarTextoCaixaAlta(limparDescricaoItens($item_relatorio['produto'] ?? ''));
+            $unidade = formatarTextoCaixaAlta(limparDescricaoItens($item_relatorio['unidade'] ?? 'UN'));
+            $itens_por_aquisicao[$id_aquisicao][] =
+                formatarQuantidadeItemRelatorio($item_relatorio['quantidade'] ?? 0)
+                . ' ' . ($unidade !== '' ? $unidade : 'UN')
+                . ' - ' . ($produto !== '' ? $produto : 'ITEM SEM DESCRIÇÃO');
+        }
+    }
+
+    foreach ($aquisicoes_export as &$aquisicao_export) {
+        $aquisicao_export['descricao_relatorio'] = implode(
+            "\n",
+            $itens_por_aquisicao[(int)$aquisicao_export['id']] ?? []
+        );
+    }
+    unset($aquisicao_export);
 
     $agrupamento_fornecedores = agruparAquisicoesPorFornecedor($aquisicoes_export);
     $dadosPorFornecedor = $agrupamento_fornecedores['grupos'];
@@ -554,8 +617,6 @@ if (in_array($export, ['excel', 'pdf'], true)) {
         $fim_txt = $data_fim_valida ? date('d/m/Y', strtotime($data_fim)) : '...';
         $periodo_texto = $inicio_txt . ' até ' . $fim_txt;
     }
-    $descricao_limite = $tipo_relatorio === 'analitico' ? 420 : 180;
-
     $filename = 'relatorio_aquisicoes' . ($modo_pb ? '_preto_branco' : '') . '_' . date('Ymd_His');
     $back_query = $_GET;
     unset($back_query['export'], $back_query['page'], $back_query['modo']);
@@ -624,7 +685,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             .center { text-align: center; }
             .right { text-align: right; }
             .text-cell { mso-number-format: "\@"; }
-            .desc-cell { font-weight: 600; text-transform: uppercase; }
+            .desc-cell { font-weight: 600; text-transform: uppercase; overflow-wrap: anywhere; line-height: 1.3; }
             .money-cell { white-space: nowrap; }
             .excel-report td,
             .excel-report th {
@@ -1083,17 +1144,17 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                         </tr>
                         <?php foreach ($secretaria['items'] as $aq): ?>
                             <?php
-                            $descricaoCompleta = limparDescricaoItens($aq['descricao_relatorio'] ?? '');
-                            $descricaoRelatorio = $tipo_relatorio === 'analitico'
-                                ? formatarTextoCaixaAlta($descricaoCompleta !== '' ? $descricaoCompleta : '-')
-                                : formatarDescricaoRelatorio($descricaoCompleta, $descricao_limite);
+                            $descricaoRelatorio = trim((string)($aq['descricao_relatorio'] ?? ''));
+                            if ($descricaoRelatorio === '') {
+                                $descricaoRelatorio = 'NENHUM ITEM CADASTRADO';
+                            }
                             ?>
                             <tr class="report-row">
                                 <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($aq['numero_aq']); ?></td>
                                 <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($aq['oficio_num']); ?></td>
                                 <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($usar_coluna_fornecedor ? nomeRelatorio($aq['fornecedor'] ?? '', 'FORNECEDOR NÃO INFORMADO') : secretariaSiglaRelatorio($aq['secretaria'] ?? '')); ?></td>
                                 <td class="left text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h(nomeRelatorio($aq['oficio_local'] ?? '', '-')); ?></td>
-                                <td class="left text-cell desc-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($descricaoRelatorio); ?></td>
+                                <td class="left text-cell desc-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo nl2br(h($descricaoRelatorio), false); ?></td>
                                 <td class="center" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h(formatarDataBR($aq['criado_em'])); ?></td>
                                 <td class="right money-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo formatarMoedaBR($aq['valor_total']); ?></td>
                             </tr>
