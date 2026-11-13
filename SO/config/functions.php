@@ -177,59 +177,33 @@ function generate_oficio_number($pdo) {
 function generate_aquisicao_number($pdo) {
     $year = date('Y');
 
-    /*
-     * Regras:
-     * - NÃO conta quantidade de registros
-     * - pega o último numero_aq salvo no banco
-     * - se o último for 2026-0026, o próximo será 2026-0027
-     * - aceita também formato antigo AQ-2026-0026
-     */
-
-    $stmt = $pdo->query("
-        SELECT numero_aq
+    // A ordem dos IDs não garante a sequência: aquisições podem ser
+    // importadas depois com números anteriores ou posteriores.
+    // Considera ambos os formatos de numeração já usados no SO.
+    $stmt = $pdo->prepare("
+        SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(TRIM(numero_aq), '-', -1) AS UNSIGNED)), 0)
         FROM aquisicoes
-        WHERE numero_aq IS NOT NULL
-          AND numero_aq <> ''
-        ORDER BY id DESC
-        LIMIT 1
+        WHERE TRIM(numero_aq) REGEXP ?
     ");
+    $stmt->execute(['^(AQ-)?' . $year . '-[0-9]+
 
-    $ultimoNumero = $stmt->fetchColumn();
+function generate_unique_code($pdo) {
+    $year = date('Y');
 
-    if (!$ultimoNumero) {
-        return $year . '-0001';
-    }
+    do {
+        $code = "ENT-$year-" . strtoupper(substr(md5(uniqid((string)mt_rand(), true)), 0, 5));
 
-    $ultimoNumero = trim((string)$ultimoNumero);
+        $stmt = $pdo->prepare("SELECT id FROM aquisicoes WHERE codigo_entrega = ?");
+        $stmt->execute([$code]);
 
-    // Formato novo: 2026-0026
-    if (preg_match('/^(\d{4})-(\d+)$/', $ultimoNumero, $matches)) {
-        $anoUltimo = $matches[1];
-        $sequenciaUltima = (int)$matches[2];
+    } while ($stmt->fetch());
 
-        if ($anoUltimo !== $year) {
-            return $year . '-0001';
-        }
+    return $code;
+}
+]);
 
-        $novaSequencia = $sequenciaUltima + 1;
-        return $year . '-' . str_pad((string)$novaSequencia, 4, '0', STR_PAD_LEFT);
-    }
-
-    // Formato antigo: AQ-2026-0026
-    if (preg_match('/^AQ-(\d{4})-(\d+)$/', $ultimoNumero, $matches)) {
-        $anoUltimo = $matches[1];
-        $sequenciaUltima = (int)$matches[2];
-
-        if ($anoUltimo !== $year) {
-            return $year . '-0001';
-        }
-
-        $novaSequencia = $sequenciaUltima + 1;
-        return $year . '-' . str_pad((string)$novaSequencia, 4, '0', STR_PAD_LEFT);
-    }
-
-    // Se estiver fora do padrão, reinicia com segurança
-    return $year . '-0001';
+    $proximaSequencia = (int)$stmt->fetchColumn() + 1;
+    return $year . '-' . str_pad((string)$proximaSequencia, 4, '0', STR_PAD_LEFT);
 }
 
 function generate_unique_code($pdo) {
