@@ -686,34 +686,38 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             .right { text-align: right; }
             .text-cell { mso-number-format: "\@"; }
             .desc-cell { font-weight: 600; text-transform: uppercase; overflow-wrap: anywhere; line-height: 1.3; }
-            /* Mais de 5 itens: uma sequência corrida em largura total, sem grade. */
+            /* Lista horizontal legível: até quatro itens por linha, sem colunas. */
             .report-items-row td {
                 background: #fff;
                 border: 0 !important;
-                padding: 7px 10px;
+                padding: 2px 10px;
             }
+            .report-items-row--header td { padding-top: 8px; padding-bottom: 4px; }
+            .report-items-row--line td { padding-top: 3px; padding-bottom: 3px; }
             .report-items-title {
                 font-weight: 800;
-                font-size: 10px;
+                font-size: 11px;
                 color: #1e293b;
-                margin-bottom: 5px;
             }
-            .report-items-inline {
+            .report-items-line {
                 margin: 0;
-                line-height: 1.5;
+                line-height: 1.6;
                 white-space: normal;
                 overflow-wrap: break-word;
-                text-transform: uppercase;
+                color: #111827;
+                font-size: 11px;
                 font-weight: 600;
+                text-transform: uppercase;
             }
-            body.pdf-export .report-items-row td { padding: 5px 9px; background: #fff; }
-            body.pdf-export .report-items-title { font-size: 9px; }
-            body.pdf-export .report-items-inline { font-size: 8.6px; }
-            /* Um texto extenso precisa poder continuar na página seguinte. */
+            body.pdf-export .report-items-row--header td { padding: 5px 9px 4px; }
+            body.pdf-export .report-items-row--line td { padding: 2px 9px; }
+            body.pdf-export .report-items-title { font-size: 10.5px; }
+            body.pdf-export .report-items-line { font-size: 10.3px; line-height: 1.55; }
+            /* Cada linha vira uma unidade pequena para paginação sem cortes. */
             body.pdf-export .sheet tr.report-items-row,
             body.pdf-export .sheet tr.report-items-row td {
-                break-inside: auto !important;
-                page-break-inside: auto !important;
+                break-inside: avoid;
+                page-break-inside: avoid;
             }
             .money-cell { white-space: nowrap; }
             .excel-report td,
@@ -1178,11 +1182,12 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                                 $descricaoRelatorio = 'NENHUM ITEM CADASTRADO';
                             }
                             // Até 5 itens: descrição na tabela.
-                            // Acima de 5: texto corrido abaixo da aquisição, separado por " / ".
+                            // Acima de 5: uma só lista de itens, até 4 por linha horizontal.
+                            // Cada linha pode quebrar página sem cortar um bloco de 142 itens.
                             // Excel mantém um registro por aquisição, com a descrição completa.
                             $linhasDescricao = explode("\n", $descricaoRelatorio);
                             $itensEmLista = $is_pdf_export && count($linhasDescricao) > 5;
-                            $descricaoEmLinha = $itensEmLista ? implode(' / ', $linhasDescricao) : '';
+                            $linhasItensRelatorio = $itensEmLista ? array_chunk($linhasDescricao, 4) : [];
                             ?>
                             <tr class="report-row">
                                 <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($aq['numero_aq']); ?></td>
@@ -1194,15 +1199,21 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                                 <td class="right money-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo formatarMoedaBR($aq['valor_total']); ?></td>
                             </tr>
                             <?php if ($itensEmLista): ?>
-                                <tr class="report-items-row">
+                                <tr class="report-items-row report-items-row--header">
                                     <td colspan="7">
                                         <div class="report-items-title">
                                             ITENS DA AQUISIÇÃO <?php echo h($aq['numero_aq']); ?>
                                             (<?php echo count($linhasDescricao); ?> ITENS)
                                         </div>
-                                        <p class="report-items-inline"><?php echo h($descricaoEmLinha); ?></p>
                                     </td>
                                 </tr>
+                                <?php foreach ($linhasItensRelatorio as $itensLinha): ?>
+                                    <tr class="report-items-row report-items-row--line">
+                                        <td colspan="7">
+                                            <p class="report-items-line"><?php echo h(implode(' / ', $itensLinha)); ?></p>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
                             <?php endif; ?>
                         <?php endforeach; ?>
                         <tr class="group-total-row">
@@ -1266,7 +1277,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                             },
                             pagebreak: {
                                 mode: ['css', 'legacy'],
-                                avoid: ['tr:not(.report-items-row)']
+                                avoid: ['tr']
                             }
                         }).from(report).toPdf();
 
