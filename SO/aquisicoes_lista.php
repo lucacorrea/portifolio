@@ -686,6 +686,8 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             .right { text-align: right; }
             .text-cell { mso-number-format: "\@"; }
             .desc-cell { font-weight: 600; text-transform: uppercase; overflow-wrap: anywhere; line-height: 1.3; }
+            .report-row-continuacao td { padding-top: 3px; padding-bottom: 3px; }
+            .report-row-continuacao .continuacao-item-label { font-size: 8px; font-weight: 700; color: #475569; }
             .money-cell { white-space: nowrap; }
             .excel-report td,
             .excel-report th {
@@ -1148,16 +1150,37 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                             if ($descricaoRelatorio === '') {
                                 $descricaoRelatorio = 'NENHUM ITEM CADASTRADO';
                             }
+                            // No PDF, cada linha comporta até cinco itens e pode mudar de página.
+                            // No Excel, uma aquisição continua sendo uma única linha.
+                            $linhasDescricao = explode("\n", $descricaoRelatorio);
+                            $blocosDescricao = ($is_pdf_export && count($linhasDescricao) > 5)
+                                ? array_chunk($linhasDescricao, 5)
+                                : [$linhasDescricao];
                             ?>
                             <tr class="report-row">
                                 <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($aq['numero_aq']); ?></td>
                                 <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($aq['oficio_num']); ?></td>
                                 <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($usar_coluna_fornecedor ? nomeRelatorio($aq['fornecedor'] ?? '', 'FORNECEDOR NÃO INFORMADO') : secretariaSiglaRelatorio($aq['secretaria'] ?? '')); ?></td>
                                 <td class="left text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h(nomeRelatorio($aq['oficio_local'] ?? '', '-')); ?></td>
-                                <td class="left text-cell desc-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo nl2br(h($descricaoRelatorio), false); ?></td>
+                                <td class="left text-cell desc-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo nl2br(h(implode("\n", $blocosDescricao[0])), false); ?></td>
                                 <td class="center" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h(formatarDataBR($aq['criado_em'])); ?></td>
                                 <td class="right money-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo formatarMoedaBR($aq['valor_total']); ?></td>
                             </tr>
+                            <?php if (count($blocosDescricao) > 1): ?>
+                                <?php foreach (array_slice($blocosDescricao, 1) as $indiceBloco => $itensBloco): ?>
+                                    <?php
+                                    $primeiroItemBloco = ($indiceBloco + 1) * 5 + 1;
+                                    $ultimoItemBloco = min($primeiroItemBloco + count($itensBloco) - 1, count($linhasDescricao));
+                                    ?>
+                                    <tr class="report-row report-row-continuacao">
+                                        <td colspan="4" class="left text-cell continuacao-item-label" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;">
+                                            CONTINUAÇÃO DA AQUISIÇÃO <?php echo h($aq['numero_aq']); ?> — ITENS <?php echo $primeiroItemBloco; ?> A <?php echo $ultimoItemBloco; ?> DE <?php echo count($linhasDescricao); ?>
+                                        </td>
+                                        <td class="left text-cell desc-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo nl2br(h(implode("\n", $itensBloco)), false); ?></td>
+                                        <td colspan="2" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         <?php endforeach; ?>
                         <tr class="group-total-row">
                             <td colspan="5" class="right">TOTAL DA SECRETARIA</td>
