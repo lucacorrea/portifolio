@@ -686,7 +686,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             .right { text-align: right; }
             .text-cell { mso-number-format: "\@"; }
             .desc-cell { font-weight: 600; text-transform: uppercase; overflow-wrap: anywhere; line-height: 1.3; }
-            /* Lista horizontal legível: até quatro itens por linha, sem colunas. */
+            /* A lista usa toda a largura da tabela, com quebra automática de linha. */
             .report-items-row td {
                 background: #fff;
                 border: 0 !important;
@@ -700,6 +700,8 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                 color: #1e293b;
             }
             .report-items-line {
+                display: block;
+                width: 100%;
                 margin: 0;
                 line-height: 1.6;
                 white-space: normal;
@@ -1182,12 +1184,12 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                                 $descricaoRelatorio = 'NENHUM ITEM CADASTRADO';
                             }
                             // Até 5 itens: descrição na tabela.
-                            // Acima de 5: uma só lista de itens, até 4 por linha horizontal.
-                            // Cada linha pode quebrar página sem cortar um bloco de 142 itens.
+                            // Acima de 5: a lista preenche toda a largura e quebra a linha
+                            // conforme o espaço disponível. Blocos de 24 evitam cortes no PDF.
                             // Excel mantém um registro por aquisição, com a descrição completa.
                             $linhasDescricao = explode("\n", $descricaoRelatorio);
                             $itensEmLista = $is_pdf_export && count($linhasDescricao) > 5;
-                            $linhasItensRelatorio = $itensEmLista ? array_chunk($linhasDescricao, 4) : [];
+                            $linhasItensRelatorio = $itensEmLista ? array_chunk($linhasDescricao, 24) : [];
                             ?>
                             <tr class="report-row">
                                 <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($aq['numero_aq']); ?></td>
