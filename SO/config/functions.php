@@ -185,22 +185,7 @@ function generate_aquisicao_number($pdo) {
         FROM aquisicoes
         WHERE TRIM(numero_aq) REGEXP ?
     ");
-    $stmt->execute(['^(AQ-)?' . $year . '-[0-9]+
-
-function generate_unique_code($pdo) {
-    $year = date('Y');
-
-    do {
-        $code = "ENT-$year-" . strtoupper(substr(md5(uniqid((string)mt_rand(), true)), 0, 5));
-
-        $stmt = $pdo->prepare("SELECT id FROM aquisicoes WHERE codigo_entrega = ?");
-        $stmt->execute([$code]);
-
-    } while ($stmt->fetch());
-
-    return $code;
-}
-]);
+    $stmt->execute(['^(AQ-)?' . $year . '-[0-9]+[.]?$']);
 
     $proximaSequencia = (int)$stmt->fetchColumn() + 1;
     return $year . '-' . str_pad((string)$proximaSequencia, 4, '0', STR_PAD_LEFT);
