@@ -949,7 +949,8 @@ if (($_GET['ajax'] ?? '') === 'extrair_oficio') {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $secretaria_id    = $_POST['secretaria_id'] ?? '';
     $local            = trim($_POST['local'] ?? '');
-    $resumo_itens     = trim($_POST['resumo_itens'] ?? '');
+    // O resumo é gerado a partir dos itens efetivamente cadastrados ou importados.
+    $resumo_itens     = '';
     $justificativa    = trim($_POST['justificativa'] ?? '');
     $valor_orcamento  = !empty($_POST['valor_orcamento'])
         ? str_replace(['.', ','], ['', '.'], $_POST['valor_orcamento'])
@@ -1442,17 +1443,6 @@ include 'views/layout/header.php';
                         onkeyup="this.value = this.value.replace(/[^\d,]/g, '')"
                         value="<?php echo htmlspecialchars($_POST['valor_orcamento'] ?? ''); ?>"
                     >
-                </div>
-
-                <div class="form-group solicitacao-span-2">
-                    <label class="form-label">Resumo dos Itens a Cadastrar</label>
-                    <textarea
-                        name="resumo_itens"
-                        class="form-control"
-                        placeholder="Ex: material de expediente, gêneros alimentícios, equipamentos, serviços ou observações sobre os itens que serão detalhados depois..."
-                        rows="3"
-                    ><?php echo htmlspecialchars($_POST['resumo_itens'] ?? ''); ?></textarea>
-                    <small class="text-muted">Use este campo para registrar uma prévia dos itens antes da atribuição detalhada.</small>
                 </div>
 
                 <div class="form-group">
@@ -2056,7 +2046,6 @@ include 'views/layout/header.php';
         fillIfEmpty('numero_oficio', data.numero);
         fillIfEmpty('local', data.local);
         fillIfEmpty('justificativa', buildJustificativaFromData(data));
-        fillIfEmpty('resumo_itens', data.resumo_itens);
         selectSecretariaByHint(data.secretaria_hint, `${sourceText || ''} ${data.origem || ''} ${data.assunto || ''}`);
 
         if (Array.isArray(data.items) && data.items.length) {
