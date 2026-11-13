@@ -168,15 +168,16 @@
     display: grid;
     gap: 12px;
     align-items: end;
-    flex: 0 1 auto;
+    flex: 1 1 0;
+    min-width: 0;
 }
 
 .lista-filtros-form--oficios .lista-filtros-secundarios-campos {
-    grid-template-columns: repeat(3, minmax(145px, 175px));
+    grid-template-columns: repeat(3, minmax(145px, 1fr));
 }
 
 .lista-filtros-form--aquisicoes .lista-filtros-secundarios-campos {
-    grid-template-columns: repeat(4, minmax(132px, 155px));
+    grid-template-columns: repeat(4, minmax(132px, 1fr));
 }
 
 .lista-filtros-acoes {
@@ -264,6 +265,11 @@
         flex-direction: column;
     }
 
+    .lista-filtros-secundarios-campos {
+        width: 100%;
+        flex: none;
+    }
+
     .lista-filtros-form--oficios .lista-filtros-secundarios-campos,
     .lista-filtros-form--aquisicoes .lista-filtros-secundarios-campos {
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -338,7 +344,7 @@
     grid-template-columns: minmax(260px,1.45fr) minmax(150px,.7fr) minmax(215px,1fr) minmax(215px,1fr);
 }
 .favoritas-filtros .lista-filtros-secundarios-campos {
-    grid-template-columns: repeat(3,minmax(145px,175px));
+    grid-template-columns: repeat(3,minmax(145px,1fr));
 }
 .favoritas-filtros .lista-filtros-acoes {margin-left:auto}
 .favoritas-lista-header {display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem}
