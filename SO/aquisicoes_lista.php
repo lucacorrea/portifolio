@@ -32,6 +32,24 @@ function formatarMoedaBR($valor): string
     return 'R$ ' . number_format((float)$valor, 2, ',', '.');
 }
 
+/**
+ * A exibicao em relatorio nao concede aprovacao.
+ * A situacao considera o status do processo E da aquisicao.
+ */
+function situacaoAquisicaoRelatorio($statusOficio, $statusAquisicao): string
+{
+    if ($statusOficio === 'APROVADO'
+        && in_array($statusAquisicao, ['AGUARDANDO ENTREGA', 'FINALIZADO'], true)) {
+        return 'APROVADA';
+    }
+
+    if (in_array($statusOficio, ['REPROVADO', 'ARQUIVADO'], true)) {
+        return 'NAO APROVADA';
+    }
+
+    return 'PENDENTE';
+}
+
 function formatarDataBR($data): string
 {
     return format_date_excel($data);
@@ -341,7 +359,7 @@ function renderizarCabecalhoAquisicoes(
             </tr>
             <tr>
                 <td colspan="3" class="sub-info left"><strong>Busca:</strong> <?php echo $busca !== '' ? h($busca) : 'Todos'; ?></td>
-                <td colspan="4" class="sub-info left"><strong>Status:</strong> <?php echo $status !== '' ? h($status) : 'Todos'; ?></td>
+                <td colspan="4" class="sub-info left"><strong>Status:</strong> <?php echo $status !== '' ? h($status) : 'Todos (pendentes e aprovadas)'; ?></td>
             </tr>
             <tr>
                 <td colspan="3" class="sub-info left"><strong>Período:</strong> <?php echo h($periodoTexto); ?></td>
@@ -352,6 +370,9 @@ function renderizarCabecalhoAquisicoes(
                 <td colspan="4" class="sub-info left"><strong>Registros:</strong> <?php echo $quantidade; ?></td>
             </tr>
 
+            <tr>
+                <td colspan="7" class="sub-info left"><strong>Relatorio gerencial:</strong> inclui pendentes e aprovadas. A inclusao de uma aquisicao neste relatorio nao significa autorizacao ou aprovacao.</td>
+            </tr>
             <tr class="spacer"><td colspan="7"></td></tr>
 
             <tr>
@@ -453,9 +474,9 @@ if ($data_fim_valida) {
 }
 
 $where = implode(' AND ', $where_parts);
-$where_export_parts = $where_parts;
-$where_export_parts[0] = reportable_aquisicoes_condition();
-$where_export = implode(' AND ', $where_export_parts);
+// O relatório gerencial (PDF/Excel) usa os mesmos filtros da lista,
+// incluindo registros pendentes, sem modificar seu status no banco.
+$where_export = $where;
 
 $secretarias_list = $pdo->query("SELECT id, nome FROM secretarias ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
 $fornecedores_list = $pdo->query("SELECT id, nome, cnpj FROM fornecedores ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
@@ -507,6 +528,7 @@ $sql_select_export = "
         a.criado_em,
         o.numero as oficio_num,
         o.local as oficio_local,
+        o.status as oficio_status,
         s.nome as secretaria,
         s.cor_relatorio as secretaria_cor,
         f.nome as fornecedor
@@ -691,6 +713,10 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             .right { text-align: right; }
             .text-cell { mso-number-format: "\@"; }
             .desc-cell { font-weight: 600; text-transform: uppercase; overflow-wrap: anywhere; line-height: 1.3; }
+            .report-status-label { display: block; font-size: 9px; font-weight: 700; line-height: 1.35; margin-top: 3px; white-space: normal; }
+            .report-status-pendente { color: #9a3412; }
+            .report-status-aprovada { color: #166534; }
+            .report-status-nao-aprovada { color: #991b1b; }
             /* A lista usa toda a largura da tabela, com quebra automática de linha. */
             .report-items-row td {
                 background: #fff;
@@ -1198,7 +1224,19 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                             ?>
                             <tr class="report-row">
                                 <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($aq['numero_aq']); ?></td>
-                                <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($aq['oficio_num']); ?></td>
+                                <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;">
+                                    <?php echo h($aq['oficio_num'] ?? '-'); ?>
+                                    <?php
+                                        $situacaoRelatorio = situacaoAquisicaoRelatorio(
+                                            $aq['oficio_status'] ?? '',
+                                            $aq['status'] ?? ''
+                                        );
+                                        $situacaoClasse = $situacaoRelatorio === 'APROVADA'
+                                            ? 'report-status-aprovada'
+                                            : ($situacaoRelatorio === 'PENDENTE' ? 'report-status-pendente' : 'report-status-nao-aprovada');
+                                    ?>
+                                    <span class="report-status-label <?php echo $situacaoClasse; ?>"><?php echo h($situacaoRelatorio); ?></span>
+                                </td>
                                 <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($usar_coluna_fornecedor ? nomeRelatorio($aq['fornecedor'] ?? '', 'FORNECEDOR NÃO INFORMADO') : secretariaSiglaRelatorio($aq['secretaria'] ?? '')); ?></td>
                                 <td class="left text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h(nomeRelatorio($aq['oficio_local'] ?? '', '-')); ?></td>
                                 <td class="left text-cell desc-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo $itensEmLista ? 'ITENS ABAIXO' : nl2br(h($descricaoRelatorio), false); ?></td>
@@ -1816,7 +1854,7 @@ include 'views/layout/header.php';
                         formaction="aquisicoes_imprimir_lote.php"
                         formtarget="_blank"
                         class="filtro-btn filtro-btn-print"
-                        title="Imprimir aquisições filtradas">
+                        title="Imprimir aquisições aprovadas e filtradas">
                         <i class="fas fa-print"></i>
                         Imprimir
                     </button>
