@@ -387,9 +387,11 @@ if (!in_array($tipo_relatorio, ['sintetico', 'analitico'], true)) {
 $data_inicio_valida = $data_inicio !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_inicio);
 $data_fim_valida = $data_fim !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_fim);
 
-$where_parts = [reportable_aquisicoes_condition()];
+// A listagem inclui aquisicoes pendentes; relatorios e impressoes oficiais
+// continuam restritos a processos aprovados e aquisicoes liberadas.
+$where_parts = ["a.status IN ('ESPERANDO OFICIO', 'AGUARDANDO ENTREGA', 'FINALIZADO')"];
 $params = [];
-$status_options = ['AGUARDANDO ENTREGA', 'FINALIZADO'];
+$status_options = ['ESPERANDO OFICIO', 'AGUARDANDO ENTREGA', 'FINALIZADO'];
 
 if ($status !== '' && !in_array($status, $status_options, true)) {
     $status = '';
@@ -451,6 +453,9 @@ if ($data_fim_valida) {
 }
 
 $where = implode(' AND ', $where_parts);
+$where_export_parts = $where_parts;
+$where_export_parts[0] = reportable_aquisicoes_condition();
+$where_export = implode(' AND ', $where_export_parts);
 
 $secretarias_list = $pdo->query("SELECT id, nome FROM secretarias ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
 $fornecedores_list = $pdo->query("SELECT id, nome, cnpj FROM fornecedores ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
@@ -509,7 +514,7 @@ $sql_select_export = "
     LEFT JOIN oficios o ON a.oficio_id = o.id
     LEFT JOIN secretarias s ON o.secretaria_id = s.id
     LEFT JOIN fornecedores f ON a.fornecedor_id = f.id
-    WHERE $where
+    WHERE $where_export
 ";
 
 $sql_order = "
@@ -1674,6 +1679,7 @@ include 'views/layout/header.php';
                 <div>
                     <h3 class="lista-filtros-titulo">Filtros de Busca</h3>
                     <p class="lista-filtros-subtitulo">Encontre aquisições e gere relatórios sem misturar os controles.</p>
+                    <p class="lista-filtros-subtitulo">Registros pendentes aparecem na lista; relatórios e impressão exigem aprovação do processo.</p>
                 </div>
             </div>
             <span class="lista-filtros-resumo">
@@ -1702,6 +1708,7 @@ include 'views/layout/header.php';
                     <label for="filtro-aquisicao-status">Status</label>
                     <select id="filtro-aquisicao-status" name="status" class="form-control">
                         <option value="">Todos Status</option>
+                        <option value="ESPERANDO OFICIO" <?php echo $status === 'ESPERANDO OFICIO' ? 'selected' : ''; ?>>ESPERANDO OFICIO</option>
                         <option value="AGUARDANDO ENTREGA" <?php echo $status === 'AGUARDANDO ENTREGA' ? 'selected' : ''; ?>>AGUARDANDO ENTREGA</option>
                         <option value="FINALIZADO" <?php echo $status === 'FINALIZADO' ? 'selected' : ''; ?>>FINALIZADO</option>
                     </select>
@@ -1882,7 +1889,7 @@ include 'views/layout/header.php';
                                 <?php echo format_money($aq['valor_total']); ?>
                             </td>
                             <td style="text-align: center;">
-                                <span class="badge badge-<?php echo strtolower($aq['status'] === 'AGUARDANDO ENTREGA' ? 'pending' : 'finalized'); ?>" style="padding: 0.4rem 1rem;">
+                                <span class="badge badge-<?php echo in_array($aq['status'], ['ESPERANDO OFICIO', 'AGUARDANDO ENTREGA'], true) ? 'pending' : 'finalized'; ?>" style="padding: 0.4rem 1rem;">
                                     <?php echo htmlspecialchars($aq['status'], ENT_QUOTES, 'UTF-8'); ?>
                                 </span>
                             </td>
@@ -1892,7 +1899,7 @@ include 'views/layout/header.php';
                     <?php if (empty($aquisicoes)): ?>
                         <tr>
                             <td colspan="7" style="text-align:center; padding: 3rem; color: var(--text-muted);">
-                                Nenhuma aquisição gerada até o momento.
+                                Nenhuma aquisição encontrada com os filtros informados.
                             </td>
                         </tr>
                     <?php endif; ?>
