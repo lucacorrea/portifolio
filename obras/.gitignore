@@ -1,0 +1,20 @@
+# Segredos e dados do servidor: jamais enviar ao GitHub.
+/config/database.local.php
+/config/*.secret.php
+/storage/*
+!/storage/.htaccess
+!/storage/uploads/
+!/storage/logs/
+/storage/uploads/*
+/storage/logs/*
+!/storage/uploads/.gitkeep
+!/storage/logs/.gitkeep
+*.log
+.env
+.env.*
+*.sqlite
+*.sqlite3
+.DS_Store
+.idea/
+.vscode/
+/vendor/

@@ -1,8 +1,0 @@
-.env
-/storage/*.sqlite
-/storage/*.sqlite-*
-/storage/uploads/*
-!/storage/uploads/.gitkeep
-/storage/logs/*
-!/storage/logs/.gitkeep
-/vendor/
