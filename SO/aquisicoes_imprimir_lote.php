@@ -25,11 +25,9 @@ $vias_impressao = $via === 'ambas' ? ['administrativa', 'fornecedor'] : [$via];
 
 $data_inicio_valida = $data_inicio !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_inicio);
 $data_fim_valida = $data_fim !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_fim);
-$status_options = ['ESPERANDO OFICIO', 'AGUARDANDO ENTREGA', 'FINALIZADO'];
+$status_options = ['AGUARDANDO ENTREGA', 'FINALIZADO'];
 
-// A impressao em lote deve localizar aquisicoes pendentes e aprovadas.
-// Apenas as aprovadas podem gerar uma ordem de fornecimento com assinatura.
-$where_parts = ["a.status IN ('ESPERANDO OFICIO', 'AGUARDANDO ENTREGA', 'FINALIZADO')"];
+$where_parts = [reportable_aquisicoes_condition()];
 $params = [];
 
 if ($status !== '' && !in_array($status, $status_options, true)) {
@@ -90,7 +88,6 @@ $stmt = $pdo->prepare("
         a.*,
         o.numero AS oficio_num,
         o.local AS oficio_local,
-        o.status AS oficio_status,
         s.nome AS secretaria,
         s.responsavel AS sec_responsavel,
         f.nome AS fornecedor,
@@ -105,23 +102,6 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute($params);
 $aquisicoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-/** A impressao oficial exige processo aprovado e aquisicao liberada. */
-function aquisicao_lote_autorizada(array $aq): bool
-{
-    return ($aq['oficio_status'] ?? '') === 'APROVADO'
-        && in_array(($aq['status'] ?? ''), ['AGUARDANDO ENTREGA', 'FINALIZADO'], true);
-}
-
-$ha_aprovadas = false;
-$quantidade_pendentes = 0;
-foreach ($aquisicoes as $aq) {
-    if (aquisicao_lote_autorizada($aq)) {
-        $ha_aprovadas = true;
-    } else {
-        $quantidade_pendentes++;
-    }
-}
 
 $itens_por_aquisicao = [];
 if (!empty($aquisicoes)) {
@@ -342,18 +322,12 @@ function render_aquisicao_lote_page(
     bool $jaAssinada
 ): void {
     $is_fornecedor = $via === 'fornecedor';
-    $autorizada = aquisicao_lote_autorizada($aq);
-    $titulo = $autorizada
-        ? ($is_fornecedor ? 'Ordem de Fornecimento' : 'Ordem de Aquisição e Suprimentos')
-        : 'Minuta de Aquisição - Sem Autorização';
+    $titulo = $is_fornecedor ? 'Ordem de Fornecimento' : 'Ordem de Aquisição e Suprimentos';
     $label_via = $is_fornecedor ? 'Via Fornecedor' : 'Via Administrativa';
     $assinatura_label = $is_fornecedor ? 'Autorização de Saída' : 'Autorização de Recebimento';
-    // Uma minuta nunca apresenta assinatura ou controle para assinar.
-    $jaAssinada = $autorizada && $jaAssinada;
-    $isSupport = $autorizada && $isSupport;
     $data_emissao = strtotime((string)($aq['criado_em'] ?? '')) ?: time();
 ?>
-    <div class="card printable-page <?= $jaAssinada ? 'signature-enabled' : '' ?> <?= !$autorizada ? 'documento-pendente' : '' ?>" data-assinada="<?= $jaAssinada ? '1' : '0' ?>" data-pendente="<?= $autorizada ? '0' : '1' ?>" data-page="<?= $pagina ?>" data-aquisicao="<?= (int)$aq['id'] ?>" data-via="<?= h_lote($via) ?>">
+    <div class="card printable-page <?= $jaAssinada ? 'signature-enabled' : '' ?>" data-assinada="<?= $jaAssinada ? '1' : '0' ?>" data-page="<?= $pagina ?>" data-aquisicao="<?= (int)$aq['id'] ?>" data-via="<?= h_lote($via) ?>">
         <?php if ($isSupport && $assinaturaDisponivel && !$jaAssinada): ?>
             <label class="signature-page-control no-print" title="Assinar somente esta via da aquisição">
                 <input type="checkbox" class="signature-page-checkbox">
@@ -362,12 +336,6 @@ function render_aquisicao_lote_page(
         <?php endif; ?>
 
         <div class="card-body">
-            <?php if (!$autorizada): ?>
-                <div class="documento-pendente-aviso" role="note">
-                    <strong>MINUTA — PROCESSO NÃO APROVADO</strong>
-                    <span>Documento para conferência. Não autoriza aquisição, fornecimento ou entrega.</span>
-                </div>
-            <?php endif; ?>
             <table class="print-repeat-table">
                 <thead>
                     <tr><td><?php render_aquisicao_lote_header($aq, $titulo, $label_via); ?></td></tr>
@@ -402,22 +370,13 @@ function render_aquisicao_lote_page(
                                 </table>
                             </div>
 
-                            <h3 class="ordem-section-title"><?= $autorizada ? 'AUTORIZAÇÃO DE FORNECIMENTO - AF' : 'ITENS PARA CONFERÊNCIA — SEM AUTORIZAÇÃO' ?></h3>
+                            <h3 class="ordem-section-title">AUTORIZAÇÃO DE FORNECIMENTO - AF</h3>
                             <?php render_itens_aquisicao_lote($items, (float)$aq['valor_total']); ?>
                         </td>
                     </tr>
                 </tbody>
                 <tfoot>
-                    <tr><td>
-                        <?php if ($autorizada): ?>
-                            <?php render_aquisicao_lote_signature_footer($assinatura_label, $isSupport, $assinaturaDisponivel, (int)$aq['id'], $jaAssinada); ?>
-                        <?php else: ?>
-                            <div class="rodape-documento">
-                                <div class="documento-pendente-rodape">MINUTA SEM APROVAÇÃO — NÃO É ORDEM DE FORNECIMENTO</div>
-                                <div class="credito-aquisicao">Desenvolvido por Lucas Correa</div>
-                            </div>
-                        <?php endif; ?>
-                    </td></tr>
+                    <tr><td><?php render_aquisicao_lote_signature_footer($assinatura_label, $isSupport, $assinaturaDisponivel, (int)$aq['id'], $jaAssinada); ?></td></tr>
                 </tfoot>
             </table>
         </div>
@@ -434,13 +393,6 @@ include 'views/layout/header.php';
 .print-options{display:flex;gap:.75rem;align-items:end;flex-wrap:wrap}.print-options .form-group{margin-bottom:0;min-width:220px}
 .support-signature-panel{display:flex;gap:.75rem;align-items:end;flex-wrap:wrap;padding:.75rem .9rem;border:1px solid #bfdbfe;border-radius:10px;background:#eff6ff}.support-signature-panel .form-group{min-width:220px;margin:0}.support-signature-panel .form-label{color:#1e3a8a}.signature-status{font-size:.76rem;font-weight:700;color:#1e3a8a;min-width:170px;padding-bottom:.68rem}
 .signature-warning{display:flex;align-items:center;gap:.6rem;padding:.75rem .9rem;border:1px solid #fed7aa;border-radius:10px;background:#fff7ed;color:#9a3412;font-size:.8rem;font-weight:700}
-.documento-pendente-aviso,.documento-pendente-rodape{border:2px solid #9a3412;color:#7c2d12;text-align:center;font-weight:800;padding:.65rem;margin:0 0 1rem}
-.documento-pendente-aviso strong,.documento-pendente-aviso span{display:block}
-.documento-pendente-aviso strong{font-size:1rem;letter-spacing:.04em}
-.documento-pendente-aviso span{font-size:.78rem;margin-top:.25rem}
-.documento-pendente-rodape{font-size:.77rem;margin-top:.8rem}
-.documento-pendente .ordem-header{border-bottom-color:#9a3412}
-@media print{.documento-pendente-aviso,.documento-pendente-rodape{color:#000!important;border-color:#000!important;break-inside:avoid!important;page-break-inside:avoid!important}}
 
 .print-doc{max-width:1120px;margin:0 auto}.printable-page{position:relative;margin-bottom:2rem;border-radius:12px;overflow:visible;background:#fff}.printable-page .card-body{padding:2rem}
 .signature-page-control{display:none;position:absolute;top:10px;left:10px;z-index:8;align-items:center;gap:.45rem;padding:.45rem .65rem;background:#fff7ed;border:1px solid #fdba74;border-radius:8px;color:#9a3412;font-size:.76rem;font-weight:800;box-shadow:0 4px 12px rgba(15,23,42,.08);cursor:pointer}.signature-select-mode .signature-page-control{display:flex}.signature-page-control input{width:16px;height:16px}
@@ -491,7 +443,7 @@ include 'views/layout/header.php';
     <span class="print-count"><?= count($aquisicoes) ?> aquisição(ões) encontrada(s) • <?= count($aquisicoes) * count($vias_impressao) ?> via(s) para impressão</span>
     <div class="spacer"></div>
 
-    <?php if ($is_support && $ha_aprovadas): ?>
+    <?php if ($is_support && !empty($aquisicoes)): ?>
         <?php if ($assinatura_disponivel): ?>
             <div class="support-signature-panel" id="support-signature-panel">
                 <div class="form-group">
@@ -515,13 +467,6 @@ include 'views/layout/header.php';
                 <a href="configuracoes_assinatura.php" class="btn btn-outline btn-sm">Configurar</a>
             </div>
         <?php endif; ?>
-    <?php endif; ?>
-
-    <?php if ($quantidade_pendentes > 0): ?>
-        <div class="signature-warning">
-            <i class="fas fa-exclamation-triangle"></i>
-            <span><?= (int)$quantidade_pendentes ?> aquisição(ões) pendente(s) serão exibidas somente como minuta, sem assinatura.</span>
-        </div>
     <?php endif; ?>
 
     <form action="aquisicoes_imprimir_lote.php" method="GET" class="print-options">
@@ -569,16 +514,15 @@ include 'views/layout/header.php';
     </div>
 <?php endif; ?>
 
-<?php if ($is_support && $assinatura_disponivel && $ha_aprovadas): ?>
+<?php if ($is_support && $assinatura_disponivel && !empty($aquisicoes)): ?>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     var mode = document.getElementById('signature-mode');
     var status = document.getElementById('signature-status');
     var doc = document.getElementById('print-doc');
     var pages = Array.prototype.slice.call(document.querySelectorAll('.printable-page'));
-    var assinaveis = pages.filter(function (page) { return page.dataset.pendente !== '1'; });
 
-    if (!mode || !doc || assinaveis.length === 0) return;
+    if (!mode || !doc || pages.length === 0) return;
 
     function checkboxFor(page) {
         return page.querySelector('.signature-page-checkbox');
@@ -602,16 +546,16 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateStatus() {
-        var signed = assinaveis.filter(function (page) {
+        var signed = pages.filter(function (page) {
             return page.classList.contains('signature-enabled');
         }).length;
 
         if (signed === 0) {
             status.textContent = 'Nenhuma página será assinada.';
-        } else if (signed === assinaveis.length) {
-            status.textContent = 'Todas as ' + assinaveis.length + ' página(s) autorizadas serão assinadas.';
+        } else if (signed === pages.length) {
+            status.textContent = 'Todas as ' + pages.length + ' página(s) serão assinadas.';
         } else {
-            status.textContent = signed + ' de ' + assinaveis.length + ' página(s) autorizadas selecionada(s).';
+            status.textContent = signed + ' de ' + pages.length + ' página(s) selecionada(s).';
         }
     }
 
