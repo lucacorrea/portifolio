@@ -6,5 +6,5 @@ return [
     'DB_PORT' => '3306',
     'DB_NAME' => 'u784961086_obras',
     'DB_USER' => 'u784961086_obras',
-    'DB_PASSWORD' => '', // Defina APENAS em database.local.php (ignorado pelo Git).
+    'DB_PASSWORD' => 'O!fCa^rn8', // Defina APENAS em database.local.php (ignorado pelo Git).
 ];
