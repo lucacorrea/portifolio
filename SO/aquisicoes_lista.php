@@ -1790,6 +1790,12 @@ include 'views/layout/header.php';
                             name="data_inicio"
                             class="form-control"
                             value="<?php echo h($data_inicio); ?>">
+                        <?php if ($data_fim_valida && !$data_inicio_valida): ?>
+                            <small style="display:block; margin-top:6px; color:#92400e; font-size:0.75rem; line-height:1.4;">
+                                Sem data inicial, a busca inclui todas as aquisições anteriores à data final.
+                                Informe a data inicial para delimitar o período.
+                            </small>
+                        <?php endif; ?>
                     </div>
 
                     <div class="lista-filtro">
