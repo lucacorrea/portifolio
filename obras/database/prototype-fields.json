@@ -1,0 +1,729 @@
+{
+  "obras": {
+    "title": "Gestão de obras",
+    "subtitle": "Acompanhe contratos, andamento físico e frentes de trabalho em um só lugar.",
+    "eyebrow": "INFRAESTRUTURA E ENGENHARIA",
+    "action": "Cadastrar obra",
+    "idPrefix": "OBR-2026-",
+    "icon": "hardhat",
+    "columns": [
+      [
+        "id",
+        "CÓDIGO"
+      ],
+      [
+        "title",
+        "OBRA / SERVIÇO"
+      ],
+      [
+        "local",
+        "LOCALIZAÇÃO"
+      ],
+      [
+        "responsavel",
+        "RESPONSÁVEL"
+      ],
+      [
+        "progresso",
+        "EXECUÇÃO"
+      ],
+      [
+        "status",
+        "SITUAÇÃO"
+      ]
+    ],
+    "fields": [
+      [
+        "title",
+        "Nome da obra",
+        "text",
+        true
+      ],
+      [
+        "tipo",
+        "Tipo de intervenção",
+        "select",
+        true,
+        [
+          "Reforma",
+          "Pavimentação",
+          "Drenagem",
+          "Urbanismo",
+          "Educação",
+          "Construção"
+        ]
+      ],
+      [
+        "local",
+        "Localização",
+        "text",
+        true
+      ],
+      [
+        "responsavel",
+        "Responsável",
+        "text",
+        true
+      ],
+      [
+        "status",
+        "Situação",
+        "select",
+        true,
+        [
+          "Planejada",
+          "Em andamento",
+          "Em atenção",
+          "Concluída",
+          "Paralisada"
+        ]
+      ],
+      [
+        "progresso",
+        "Execução física (%)",
+        "number",
+        true
+      ],
+      [
+        "orcamento",
+        "Orçamento estimado (R$)",
+        "number",
+        false
+      ],
+      [
+        "contrato",
+        "Contrato / referência",
+        "text"
+      ],
+      [
+        "inicio",
+        "Data de início",
+        "date"
+      ],
+      [
+        "fim",
+        "Previsão de término",
+        "date"
+      ],
+      [
+        "descricao",
+        "Descrição / observações",
+        "textarea"
+      ]
+    ]
+  },
+  "ordens": {
+    "title": "Ordens de serviço",
+    "subtitle": "Da solicitação ao atendimento, com prioridade e rastreabilidade.",
+    "eyebrow": "GESTÃO OPERACIONAL",
+    "action": "Nova ordem de serviço",
+    "idPrefix": "OS-",
+    "icon": "clipboard",
+    "columns": [
+      [
+        "id",
+        "Nº DA ORDEM"
+      ],
+      [
+        "title",
+        "SERVIÇO SOLICITADO"
+      ],
+      [
+        "local",
+        "LOCAL"
+      ],
+      [
+        "responsavel",
+        "EQUIPE"
+      ],
+      [
+        "prioridade",
+        "PRIORIDADE"
+      ],
+      [
+        "status",
+        "SITUAÇÃO"
+      ]
+    ],
+    "fields": [
+      [
+        "title",
+        "Serviço solicitado",
+        "text",
+        true
+      ],
+      [
+        "local",
+        "Local do serviço",
+        "text",
+        true
+      ],
+      [
+        "solicitante",
+        "Setor solicitante",
+        "text",
+        true
+      ],
+      [
+        "responsavel",
+        "Equipe responsável",
+        "text",
+        true
+      ],
+      [
+        "prioridade",
+        "Prioridade",
+        "select",
+        true,
+        [
+          "Baixa",
+          "Média",
+          "Alta",
+          "Urgente"
+        ]
+      ],
+      [
+        "status",
+        "Situação",
+        "select",
+        true,
+        [
+          "Aberta",
+          "Em execução",
+          "Concluída",
+          "Cancelada"
+        ]
+      ],
+      [
+        "prazo",
+        "Prazo previsto",
+        "date"
+      ],
+      [
+        "descricao",
+        "Descrição do serviço",
+        "textarea"
+      ]
+    ]
+  },
+  "fiscalizacao": {
+    "title": "Fiscalização técnica",
+    "subtitle": "Vistorias, acompanhamento de campo e registros de conformidade.",
+    "eyebrow": "CONTROLE E QUALIDADE",
+    "action": "Registrar vistoria",
+    "idPrefix": "FIS-",
+    "icon": "shield",
+    "columns": [
+      [
+        "id",
+        "REGISTRO"
+      ],
+      [
+        "title",
+        "TIPO DE VISTORIA"
+      ],
+      [
+        "obra",
+        "OBRA RELACIONADA"
+      ],
+      [
+        "responsavel",
+        "FISCAL"
+      ],
+      [
+        "data",
+        "DATA"
+      ],
+      [
+        "status",
+        "SITUAÇÃO"
+      ]
+    ],
+    "fields": [
+      [
+        "title",
+        "Título da vistoria",
+        "text",
+        true
+      ],
+      [
+        "obra",
+        "Obra relacionada",
+        "text",
+        true
+      ],
+      [
+        "responsavel",
+        "Fiscal responsável",
+        "text",
+        true
+      ],
+      [
+        "tipo",
+        "Tipo",
+        "select",
+        true,
+        [
+          "Rotina",
+          "Técnica",
+          "Recebimento",
+          "Extraordinária"
+        ]
+      ],
+      [
+        "data",
+        "Data da vistoria",
+        "date",
+        true
+      ],
+      [
+        "status",
+        "Situação",
+        "select",
+        true,
+        [
+          "Pendente",
+          "Registrada",
+          "Concluída",
+          "Com apontamentos"
+        ]
+      ],
+      [
+        "descricao",
+        "Constatações e recomendações",
+        "textarea"
+      ]
+    ]
+  },
+  "projetos": {
+    "title": "Projetos e documentos",
+    "subtitle": "Acervo técnico organizado, com vínculos a obras e histórico de versões.",
+    "eyebrow": "DOCUMENTAÇÃO TÉCNICA",
+    "action": "Novo documento",
+    "idPrefix": "DOC-",
+    "icon": "folder",
+    "columns": [
+      [
+        "id",
+        "CÓDIGO"
+      ],
+      [
+        "title",
+        "DOCUMENTO"
+      ],
+      [
+        "obra",
+        "OBRA VINCULADA"
+      ],
+      [
+        "tipo",
+        "TIPO"
+      ],
+      [
+        "data",
+        "ATUALIZADO"
+      ],
+      [
+        "status",
+        "SITUAÇÃO"
+      ]
+    ],
+    "fields": [
+      [
+        "title",
+        "Nome do documento",
+        "text",
+        true
+      ],
+      [
+        "obra",
+        "Obra vinculada",
+        "text",
+        true
+      ],
+      [
+        "tipo",
+        "Tipo do documento",
+        "select",
+        true,
+        [
+          "Projeto",
+          "Memorial",
+          "Responsabilidade",
+          "Licença",
+          "Relatório",
+          "Outro"
+        ]
+      ],
+      [
+        "formato",
+        "Arquivo (nome / formato)",
+        "text"
+      ],
+      [
+        "data",
+        "Data de registro",
+        "date"
+      ],
+      [
+        "status",
+        "Situação",
+        "select",
+        true,
+        [
+          "Em elaboração",
+          "Em revisão",
+          "Publicado",
+          "Arquivado"
+        ]
+      ],
+      [
+        "descricao",
+        "Descrição / versão",
+        "textarea"
+      ]
+    ]
+  },
+  "orcamentos": {
+    "title": "Orçamentos e medições",
+    "subtitle": "Controle demonstrativo de contratos, execução financeira e medições.",
+    "eyebrow": "GESTÃO ORÇAMENTÁRIA",
+    "action": "Nova medição",
+    "idPrefix": "MED-",
+    "icon": "wallet",
+    "columns": [
+      [
+        "id",
+        "MEDIÇÃO"
+      ],
+      [
+        "title",
+        "DESCRIÇÃO"
+      ],
+      [
+        "obra",
+        "OBRA"
+      ],
+      [
+        "periodo",
+        "PERÍODO"
+      ],
+      [
+        "valor",
+        "VALOR"
+      ],
+      [
+        "status",
+        "SITUAÇÃO"
+      ]
+    ],
+    "fields": [
+      [
+        "title",
+        "Descrição da medição",
+        "text",
+        true
+      ],
+      [
+        "obra",
+        "Obra / contrato",
+        "text",
+        true
+      ],
+      [
+        "periodo",
+        "Período de referência",
+        "text",
+        true
+      ],
+      [
+        "valor",
+        "Valor da medição (R$)",
+        "number",
+        true
+      ],
+      [
+        "responsavel",
+        "Responsável técnico",
+        "text"
+      ],
+      [
+        "status",
+        "Situação",
+        "select",
+        true,
+        [
+          "Em análise",
+          "Aprovada",
+          "Pendente",
+          "Reprovada"
+        ]
+      ],
+      [
+        "descricao",
+        "Memória de cálculo / observações",
+        "textarea"
+      ]
+    ]
+  },
+  "materiais": {
+    "title": "Materiais e estoque",
+    "subtitle": "Almoxarifado, consumo e alertas de reposição com visão centralizada.",
+    "eyebrow": "LOGÍSTICA E SUPRIMENTOS",
+    "action": "Cadastrar material",
+    "idPrefix": "MAT-",
+    "icon": "box",
+    "columns": [
+      [
+        "id",
+        "CÓDIGO"
+      ],
+      [
+        "title",
+        "MATERIAL"
+      ],
+      [
+        "unidade",
+        "UNIDADE"
+      ],
+      [
+        "local",
+        "LOCAL DE ESTOQUE"
+      ],
+      [
+        "quantidade",
+        "SALDO"
+      ],
+      [
+        "status",
+        "SITUAÇÃO"
+      ]
+    ],
+    "fields": [
+      [
+        "title",
+        "Nome do material",
+        "text",
+        true
+      ],
+      [
+        "unidade",
+        "Unidade de medida",
+        "text",
+        true
+      ],
+      [
+        "local",
+        "Local de armazenagem",
+        "text",
+        true
+      ],
+      [
+        "quantidade",
+        "Quantidade em estoque",
+        "number",
+        true
+      ],
+      [
+        "minimo",
+        "Estoque mínimo",
+        "number",
+        true
+      ],
+      [
+        "descricao",
+        "Observações",
+        "textarea"
+      ]
+    ]
+  },
+  "patrimonio": {
+    "title": "Prédios públicos",
+    "subtitle": "Inventário de imóveis, estado de conservação e manutenção predial.",
+    "eyebrow": "PATRIMÔNIO MUNICIPAL",
+    "action": "Cadastrar imóvel",
+    "idPrefix": "PAT-",
+    "icon": "building",
+    "columns": [
+      [
+        "id",
+        "PATRIMÔNIO"
+      ],
+      [
+        "title",
+        "IMÓVEL"
+      ],
+      [
+        "local",
+        "LOCALIZAÇÃO"
+      ],
+      [
+        "tipo",
+        "TIPO"
+      ],
+      [
+        "condicao",
+        "CONDIÇÃO"
+      ],
+      [
+        "status",
+        "UTILIZAÇÃO"
+      ]
+    ],
+    "fields": [
+      [
+        "title",
+        "Nome do imóvel",
+        "text",
+        true
+      ],
+      [
+        "local",
+        "Localização",
+        "text",
+        true
+      ],
+      [
+        "tipo",
+        "Tipo de imóvel",
+        "select",
+        true,
+        [
+          "Administrativo",
+          "Educação",
+          "Saúde",
+          "Operacional",
+          "Atendimento",
+          "Outro"
+        ]
+      ],
+      [
+        "area",
+        "Área aproximada (m²)",
+        "number"
+      ],
+      [
+        "responsavel",
+        "Responsável",
+        "text"
+      ],
+      [
+        "condicao",
+        "Conservação",
+        "select",
+        true,
+        [
+          "Bom estado",
+          "Regular",
+          "Manutenção necessária",
+          "Crítico"
+        ]
+      ],
+      [
+        "status",
+        "Utilização",
+        "select",
+        true,
+        [
+          "Em uso",
+          "Desocupado",
+          "Em reforma"
+        ]
+      ],
+      [
+        "descricao",
+        "Descrição / necessidade de manutenção",
+        "textarea"
+      ]
+    ]
+  },
+  "protocolos": {
+    "title": "Protocolos e processos",
+    "subtitle": "Recebimento, encaminhamento e acompanhamento entre setores.",
+    "eyebrow": "TRAMITAÇÃO ADMINISTRATIVA",
+    "action": "Novo protocolo",
+    "idPrefix": "2026.",
+    "icon": "files",
+    "columns": [
+      [
+        "id",
+        "Nº PROTOCOLO"
+      ],
+      [
+        "title",
+        "ASSUNTO"
+      ],
+      [
+        "setor",
+        "SETOR DE ORIGEM"
+      ],
+      [
+        "destino",
+        "DESTINO"
+      ],
+      [
+        "data",
+        "ABERTURA"
+      ],
+      [
+        "status",
+        "SITUAÇÃO"
+      ]
+    ],
+    "fields": [
+      [
+        "title",
+        "Assunto",
+        "text",
+        true
+      ],
+      [
+        "setor",
+        "Setor de origem",
+        "text",
+        true
+      ],
+      [
+        "destino",
+        "Setor de destino",
+        "text",
+        true
+      ],
+      [
+        "data",
+        "Data de abertura",
+        "date",
+        true
+      ],
+      [
+        "prioridade",
+        "Prioridade",
+        "select",
+        true,
+        [
+          "Normal",
+          "Alta",
+          "Urgente"
+        ]
+      ],
+      [
+        "status",
+        "Situação",
+        "select",
+        true,
+        [
+          "Em análise",
+          "Em tramitação",
+          "Aguardando",
+          "Concluído",
+          "Arquivado"
+        ]
+      ],
+      [
+        "descricao",
+        "Descrição / despacho",
+        "textarea"
+      ]
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+<?php $edit=$record!==null;$id=$edit?(int)$record['id']:0;?>
+<div class="page-header"><div><a class="back-link" href="<?= h(url($module,$edit?['action'=>'show','id'=>$id]:[])) ?>"><?= ic('arrow-left') ?> Voltar</a><span class="eyebrow">CADASTRO · <?= h(mb_case_fallback($config['name'])) ?></span><h1><?= $edit?'Editar '.$config['singular']:'Novo(a) '.$config['singular'] ?></h1><p><?= $edit?'Atualize os dados com atenção. Todas as alterações serão auditadas.':'Preencha os dados para criar um novo registro no sistema.' ?></p></div>
+<?php if($edit): ?><span class="code-label large"><?= h($record['code']) ?></span><?php endif; ?></div>
+<form method="post" enctype="multipart/form-data" action="<?= h(url($module)) ?>" class="record-form"><?= csrf_field() ?><input type="hidden" name="task" value="save"><input type="hidden" name="id" value="<?= $id ?>">
+<section class="panel form-panel"><div class="panel-heading"><div><h2>Informações do registro</h2><p>Campos com * são obrigatórios. Os dados serão armazenados no banco.</p></div></div><div class="fields-grid">
+<?php foreach($config['fields'] as $name=>$spec):
+ if ($edit&&!empty($spec['create_only']))continue;
+ $type=$spec['type'];$val=$record[$name]??'';
+ $required=!empty($spec['required']);$full=in_array($type,['textarea','file'],true);
+ ?>
+<label class="field <?= $full?'span-2':'' ?>"><span><?= h($spec['label']) ?> <?= $required?'<b class="required">*</b>':'' ?></span>
+<?php if($type==='select'): ?><select name="<?= h($name) ?>" <?= $required?'required':'' ?>><option value="">Selecione...</option><?php foreach($spec['options'] as $opt): ?><option value="<?= h($opt) ?>" <?= $val===$opt?'selected':'' ?>><?= h($opt) ?></option><?php endforeach; ?></select>
+<?php elseif($type==='work'): ?><select name="work_id" <?= $required?'required':'' ?>><option value="">Selecione a obra</option><?php foreach($works as $work): ?><option value="<?= (int)$work['id'] ?>" <?= (int)$val===(int)$work['id']?'selected':'' ?>><?= h($work['code'].' · '.$work['title']) ?></option><?php endforeach; ?></select>
+<?php elseif($type==='textarea'): ?><textarea name="<?= h($name) ?>" rows="4" maxlength="6000" placeholder="Descreva as informações relevantes"><?= h($val) ?></textarea>
+<?php elseif($type==='file'): ?><input name="upload" type="file" accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx"><small>PDF, imagem, DOCX ou XLSX. O arquivo será armazenado fora da pasta pública.</small><?php if($edit&&$record['stored_filename']): ?><small>Arquivo atual: <a href="<?= h(url('download',['id'=>$id])) ?>"><?= h($record['original_filename']) ?></a></small><?php endif; ?>
+<?php else: ?><input type="<?= h($type) ?>" name="<?= h($name) ?>" value="<?= h($val) ?>" <?= $required?'required':'' ?> <?= isset($spec['min'])?'min="'.h($spec['min']).'"':'' ?> <?= isset($spec['max'])?'max="'.h($spec['max']).'"':'' ?> <?= isset($spec['step'])?'step="'.h($spec['step']).'"':'' ?> <?= in_array($type,['text','month'],true)?'maxlength="400"':'' ?> <?= $name==='latitude'?'data-coordinate="lat"':'' ?> <?= $name==='longitude'?'data-coordinate="lng"':'' ?> placeholder="<?= h($spec['label']) ?>"><?php endif; ?>
+</label>
+<?php endforeach; ?></div>
+<?php if (in_array($module,['obras','patrimonio'],true)): ?><div class="coordinate-help"><?= ic('map') ?><div><strong>Localização geográfica</strong><p>Cadastre latitude e longitude em graus decimais para exibir o registro no mapa. Você pode usar o botão abaixo para preencher com a posição do dispositivo, mediante permissão.</p><button type="button" class="btn btn-outline btn-small" data-use-geolocation>Usar localização do dispositivo</button><small id="geolocation-feedback"></small></div></div><?php endif; ?>
+<?php if($edit&&$module==='materiais'): ?><div class="tip-panel"><?= ic('package') ?><div><strong>Saldo sob controle de movimentações</strong><p>Para alterar quantidades, abra a ficha do material e registre entrada ou saída. O saldo não pode ser editado diretamente.</p></div></div><?php endif; ?>
+</section><div class="form-footer"><a class="btn btn-subtle" href="<?= h(url($module,$edit?['action'=>'show','id'=>$id]:[])) ?>">Cancelar</a><button class="btn btn-primary btn-lg" type="submit"><?= ic('check') ?> <?= $edit?'Salvar alterações':'Cadastrar registro' ?></button></div></form>

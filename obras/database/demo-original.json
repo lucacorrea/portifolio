@@ -1,0 +1,470 @@
+{
+  "obras": [
+    {
+      "id": "OBR-2026-001",
+      "title": "Reforma de unidade pública",
+      "local": "Centro",
+      "responsavel": "Diretoria de Engenharia",
+      "status": "Em andamento",
+      "progresso": 78,
+      "orcamento": 845000,
+      "inicio": "2026-06-05",
+      "fim": "2026-12-20",
+      "tipo": "Reforma",
+      "contrato": "CT-014/2026",
+      "descricao": "Adequação de instalações, acessibilidade e melhorias prediais."
+    },
+    {
+      "id": "OBR-2026-002",
+      "title": "Manutenção de via urbana",
+      "local": "Santa Efigênia",
+      "responsavel": "Equipe de Infraestrutura",
+      "status": "Em atenção",
+      "progresso": 45,
+      "orcamento": 630000,
+      "inicio": "2026-08-12",
+      "fim": "2026-11-30",
+      "tipo": "Pavimentação",
+      "contrato": "CT-018/2026",
+      "descricao": "Reparos em pavimentação e recuperação de drenagem superficial."
+    },
+    {
+      "id": "OBR-2026-003",
+      "title": "Revitalização de praça",
+      "local": "Zona urbana",
+      "responsavel": "Diretoria de Obras",
+      "status": "Concluída",
+      "progresso": 100,
+      "orcamento": 420000,
+      "inicio": "2026-02-01",
+      "fim": "2026-10-28",
+      "tipo": "Urbanismo",
+      "contrato": "CT-003/2026",
+      "descricao": "Paisagismo, mobiliário urbano e iluminação."
+    },
+    {
+      "id": "OBR-2026-004",
+      "title": "Adequação de prédio público",
+      "local": "Área municipal",
+      "responsavel": "Diretoria de Engenharia",
+      "status": "Em andamento",
+      "progresso": 28,
+      "orcamento": 365000,
+      "inicio": "2026-10-02",
+      "fim": "2027-02-14",
+      "tipo": "Reforma",
+      "contrato": "CT-026/2026",
+      "descricao": "Reforma de ambientes internos e adequações elétricas."
+    },
+    {
+      "id": "OBR-2026-005",
+      "title": "Implantação de drenagem",
+      "local": "Bairro União",
+      "responsavel": "Equipe de Infraestrutura",
+      "status": "Em andamento",
+      "progresso": 64,
+      "orcamento": 980000,
+      "inicio": "2026-05-15",
+      "fim": "2027-01-12",
+      "tipo": "Drenagem",
+      "contrato": "CT-009/2026",
+      "descricao": "Canaletas, galerias e caixas de passagem."
+    },
+    {
+      "id": "OBR-2026-006",
+      "title": "Manutenção de escola municipal",
+      "local": "Área urbana",
+      "responsavel": "Equipe de Manutenção",
+      "status": "Planejada",
+      "progresso": 6,
+      "orcamento": 290000,
+      "inicio": "2026-12-01",
+      "fim": "2027-03-10",
+      "tipo": "Educação",
+      "contrato": "A definir",
+      "descricao": "Pintura, revestimento e revisão da cobertura."
+    },
+    {
+      "id": "OBR-2026-007",
+      "title": "Recuperação de calçadas",
+      "local": "Centro",
+      "responsavel": "Diretoria de Obras",
+      "status": "Em andamento",
+      "progresso": 53,
+      "orcamento": 315000,
+      "inicio": "2026-07-01",
+      "fim": "2027-01-30",
+      "tipo": "Urbanismo",
+      "contrato": "CT-022/2026",
+      "descricao": "Acessibilidade e recuperação de passeios."
+    },
+    {
+      "id": "OBR-2026-008",
+      "title": "Reforma de instalação administrativa",
+      "local": "Zona urbana",
+      "responsavel": "Equipe de Manutenção",
+      "status": "Paralisada",
+      "progresso": 33,
+      "orcamento": 410000,
+      "inicio": "2026-03-17",
+      "fim": "2026-12-05",
+      "tipo": "Reforma",
+      "contrato": "CT-008/2026",
+      "descricao": "Obra aguardando revisão do cronograma."
+    }
+  ],
+  "ordens": [
+    {
+      "id": "OS-00081",
+      "title": "Reparo elétrico",
+      "local": "Prédio administrativo",
+      "responsavel": "Equipe elétrica",
+      "prioridade": "Alta",
+      "status": "Aberta",
+      "solicitante": "Setor administrativo",
+      "prazo": "2026-11-20",
+      "descricao": "Verificação do circuito e troca de componentes."
+    },
+    {
+      "id": "OS-00082",
+      "title": "Manutenção hidráulica",
+      "local": "Unidade pública",
+      "responsavel": "Equipe de manutenção",
+      "prioridade": "Média",
+      "status": "Em execução",
+      "solicitante": "Diretoria de Patrimônio",
+      "prazo": "2026-11-24",
+      "descricao": "Inspeção da rede e correção de vazamento."
+    },
+    {
+      "id": "OS-00083",
+      "title": "Pintura interna",
+      "local": "Equipamento municipal",
+      "responsavel": "Equipe civil",
+      "prioridade": "Baixa",
+      "status": "Concluída",
+      "solicitante": "Setor de obras",
+      "prazo": "2026-11-10",
+      "descricao": "Pintura de salas e circulação interna."
+    },
+    {
+      "id": "OS-00084",
+      "title": "Limpeza de drenagem",
+      "local": "Bairro União",
+      "responsavel": "Equipe de infraestrutura",
+      "prioridade": "Alta",
+      "status": "Em execução",
+      "solicitante": "Central de serviços",
+      "prazo": "2026-11-22",
+      "descricao": "Desobstrução de pontos de drenagem."
+    },
+    {
+      "id": "OS-00085",
+      "title": "Substituição de luminárias",
+      "local": "Área urbana",
+      "responsavel": "Equipe elétrica",
+      "prioridade": "Média",
+      "status": "Aberta",
+      "solicitante": "Setor de manutenção",
+      "prazo": "2026-11-29",
+      "descricao": "Reposição de iluminação em unidade pública."
+    },
+    {
+      "id": "OS-00086",
+      "title": "Reparo em cobertura",
+      "local": "Unidade escolar",
+      "responsavel": "Equipe civil",
+      "prioridade": "Alta",
+      "status": "Em execução",
+      "solicitante": "Secretaria solicitante",
+      "prazo": "2026-12-03",
+      "descricao": "Manutenção preventiva e corretiva."
+    }
+  ],
+  "fiscalizacao": [
+    {
+      "id": "FIS-0018",
+      "title": "Vistoria de rotina",
+      "obra": "Reforma de unidade pública",
+      "responsavel": "Eng. responsável",
+      "data": "2026-11-18",
+      "status": "Registrada",
+      "tipo": "Rotina",
+      "descricao": "Acompanhamento de execução e evidências fotográficas."
+    },
+    {
+      "id": "FIS-0017",
+      "title": "Verificação de etapa",
+      "obra": "Manutenção de via urbana",
+      "responsavel": "Fiscal de contrato",
+      "data": "2026-11-20",
+      "status": "Pendente",
+      "tipo": "Técnica",
+      "descricao": "Checagem do andamento e apontamentos."
+    },
+    {
+      "id": "FIS-0016",
+      "title": "Vistoria final",
+      "obra": "Revitalização de praça",
+      "responsavel": "Eng. responsável",
+      "data": "2026-11-05",
+      "status": "Concluída",
+      "tipo": "Recebimento",
+      "descricao": "Verificação final dos serviços concluídos."
+    },
+    {
+      "id": "FIS-0015",
+      "title": "Inspeção de drenagem",
+      "obra": "Implantação de drenagem",
+      "responsavel": "Equipe de fiscalização",
+      "data": "2026-11-25",
+      "status": "Pendente",
+      "tipo": "Técnica",
+      "descricao": "Avaliação do trecho em implantação."
+    }
+  ],
+  "projetos": [
+    {
+      "id": "DOC-0041",
+      "title": "Projeto arquitetônico",
+      "obra": "Reforma de unidade pública",
+      "tipo": "Projeto",
+      "formato": "PDF · 8,4 MB",
+      "data": "2026-11-08",
+      "status": "Publicado",
+      "descricao": "Plantas, cortes e fachadas."
+    },
+    {
+      "id": "DOC-0040",
+      "title": "Memorial descritivo",
+      "obra": "Manutenção de escola municipal",
+      "tipo": "Memorial",
+      "formato": "PDF · 1,2 MB",
+      "data": "2026-11-07",
+      "status": "Em revisão",
+      "descricao": "Especificações e escopo técnico."
+    },
+    {
+      "id": "DOC-0039",
+      "title": "Projeto elétrico",
+      "obra": "Adequação de prédio público",
+      "tipo": "Projeto",
+      "formato": "PDF · 3,1 MB",
+      "data": "2026-11-04",
+      "status": "Publicado",
+      "descricao": "Diagramas elétricos e dimensionamento."
+    },
+    {
+      "id": "DOC-0038",
+      "title": "ART / responsabilidade técnica",
+      "obra": "Implantação de drenagem",
+      "tipo": "Responsabilidade",
+      "formato": "PDF · 720 KB",
+      "data": "2026-10-30",
+      "status": "Publicado",
+      "descricao": "Documento técnico de referência."
+    }
+  ],
+  "orcamentos": [
+    {
+      "id": "MED-0008",
+      "title": "Medição de serviços prediais",
+      "obra": "Reforma de unidade pública",
+      "periodo": "Outubro/2026",
+      "valor": 185400,
+      "responsavel": "Fiscal de contrato",
+      "status": "Em análise",
+      "descricao": "Medição física e financeira demonstrativa."
+    },
+    {
+      "id": "MED-0007",
+      "title": "Medição de pavimentação",
+      "obra": "Manutenção de via urbana",
+      "periodo": "Outubro/2026",
+      "valor": 92800,
+      "responsavel": "Fiscal de contrato",
+      "status": "Aprovada",
+      "descricao": "Serviços executados e atestados."
+    },
+    {
+      "id": "MED-0006",
+      "title": "Medição de drenagem",
+      "obra": "Implantação de drenagem",
+      "periodo": "Setembro/2026",
+      "valor": 245600,
+      "responsavel": "Diretoria de Engenharia",
+      "status": "Aprovada",
+      "descricao": "Quantitativos e serviços realizados."
+    },
+    {
+      "id": "MED-0005",
+      "title": "Medição de reforma",
+      "obra": "Adequação de prédio público",
+      "periodo": "Outubro/2026",
+      "valor": 61500,
+      "responsavel": "Diretoria de Engenharia",
+      "status": "Em análise",
+      "descricao": "Medição parcial de execução."
+    }
+  ],
+  "materiais": [
+    {
+      "id": "MAT-001",
+      "title": "Cimento CP-II",
+      "unidade": "Saco de 50 kg",
+      "local": "Almoxarifado central",
+      "quantidade": 320,
+      "minimo": 60,
+      "status": "Normal",
+      "descricao": "Material para serviços de alvenaria."
+    },
+    {
+      "id": "MAT-002",
+      "title": "Tinta acrílica branca",
+      "unidade": "Lata de 18 L",
+      "local": "Almoxarifado central",
+      "quantidade": 18,
+      "minimo": 35,
+      "status": "Estoque baixo",
+      "descricao": "Material de pintura predial."
+    },
+    {
+      "id": "MAT-003",
+      "title": "Cabo flexível 2,5 mm²",
+      "unidade": "Metro",
+      "local": "Depósito de manutenção",
+      "quantidade": 850,
+      "minimo": 200,
+      "status": "Normal",
+      "descricao": "Instalações elétricas."
+    },
+    {
+      "id": "MAT-004",
+      "title": "Tubo PVC 100 mm",
+      "unidade": "Unidade",
+      "local": "Almoxarifado central",
+      "quantidade": 26,
+      "minimo": 40,
+      "status": "Estoque baixo",
+      "descricao": "Infraestrutura hidrossanitária."
+    },
+    {
+      "id": "MAT-005",
+      "title": "Brita nº 1",
+      "unidade": "m³",
+      "local": "Pátio de materiais",
+      "quantidade": 155,
+      "minimo": 80,
+      "status": "Normal",
+      "descricao": "Agregado para concreto."
+    },
+    {
+      "id": "MAT-006",
+      "title": "Argamassa AC-II",
+      "unidade": "Saco",
+      "local": "Almoxarifado central",
+      "quantidade": 44,
+      "minimo": 30,
+      "status": "Normal",
+      "descricao": "Assentamento cerâmico."
+    }
+  ],
+  "patrimonio": [
+    {
+      "id": "PAT-001",
+      "title": "Prédio administrativo",
+      "local": "Centro",
+      "tipo": "Administrativo",
+      "condicao": "Bom estado",
+      "responsavel": "Setor de Patrimônio",
+      "area": 1250,
+      "status": "Em uso",
+      "descricao": "Edificação municipal de atendimento administrativo."
+    },
+    {
+      "id": "PAT-002",
+      "title": "Unidade de atendimento",
+      "local": "Santa Efigênia",
+      "tipo": "Atendimento",
+      "condicao": "Manutenção necessária",
+      "responsavel": "Setor de Patrimônio",
+      "area": 480,
+      "status": "Em uso",
+      "descricao": "Requer revisão hidráulica e elétrica."
+    },
+    {
+      "id": "PAT-003",
+      "title": "Galpão municipal",
+      "local": "Área urbana",
+      "tipo": "Operacional",
+      "condicao": "Bom estado",
+      "responsavel": "Setor de Patrimônio",
+      "area": 830,
+      "status": "Em uso",
+      "descricao": "Armazenagem e apoio operacional."
+    },
+    {
+      "id": "PAT-004",
+      "title": "Unidade escolar",
+      "local": "Zona urbana",
+      "tipo": "Educação",
+      "condicao": "Manutenção necessária",
+      "responsavel": "Setor de Patrimônio",
+      "area": 920,
+      "status": "Em uso",
+      "descricao": "Programar manutenção preventiva."
+    }
+  ],
+  "protocolos": [
+    {
+      "id": "2026.000184",
+      "title": "Solicitação de manutenção",
+      "setor": "Secretaria solicitante",
+      "destino": "Diretoria de Obras",
+      "data": "2026-11-18",
+      "status": "Em análise",
+      "prioridade": "Normal",
+      "descricao": "Solicitação para manutenção de unidade municipal."
+    },
+    {
+      "id": "2026.000183",
+      "title": "Encaminhamento de projeto",
+      "setor": "Engenharia",
+      "destino": "Planejamento",
+      "data": "2026-11-17",
+      "status": "Em tramitação",
+      "prioridade": "Normal",
+      "descricao": "Análise de documentação técnica."
+    },
+    {
+      "id": "2026.000182",
+      "title": "Parecer técnico",
+      "setor": "Planejamento",
+      "destino": "Gabinete",
+      "data": "2026-11-16",
+      "status": "Concluído",
+      "prioridade": "Normal",
+      "descricao": "Emissão de parecer final."
+    },
+    {
+      "id": "2026.000181",
+      "title": "Requisição de materiais",
+      "setor": "Manutenção",
+      "destino": "Almoxarifado",
+      "data": "2026-11-15",
+      "status": "Aguardando",
+      "prioridade": "Alta",
+      "descricao": "Requisição de insumos para execução de serviços."
+    },
+    {
+      "id": "2026.000180",
+      "title": "Consulta sobre cronograma",
+      "setor": "Gabinete",
+      "destino": "Engenharia",
+      "data": "2026-11-12",
+      "status": "Concluído",
+      "prioridade": "Normal",
+      "descricao": "Solicitação de informação sobre prazos."
+    }
+  ]
+}
