@@ -1,0 +1,11 @@
+OBRAS360 — COARI/AM | PHP + MySQL | VERSÃO PARA HOSTINGER
+
+1. Leia INSTALAR_NA_HOSTINGER.md
+2. Confirme o banco no hPanel e ALTERE a senha MySQL exposta na captura
+3. Envie obras360_privado FORA de public_html, e public_html/obras360 dentro dele
+4. Na hospedagem, copie .env.hostinger.example para .env e informe sua senha NOVA
+5. Instale por https://lucascorrea.pro/obras360/index.php?r=instalar com token privado
+6. Desative INSTALL_ENABLED=false e limpe INSTALL_TOKEN no .env
+7. Entre em https://lucascorrea.pro/obras360/ e troque a senha temporária
+
+Não há senhas de banco incluídas neste ZIP. A conexão à sua conta Hostinger não foi testada daqui.
