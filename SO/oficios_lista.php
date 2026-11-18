@@ -1509,6 +1509,8 @@ include 'views/layout/header.php';
             <form action="aprovar_multiplos.php" method="POST" id="form-aprovacao-lote">
                 <input type="hidden" name="csrf_token" value="<?php echo h($csrf_aprovacao_multipla); ?>">
                 <input type="hidden" name="csrf_data_token" value="<?php echo h($csrf_datas_multiplas); ?>">
+                <input type="hidden" id="acao-aprovacao-lote" name="acao" value="">
+                <input type="hidden" name="origem_selecao" value="oficios">
                 <input type="hidden" name="return_query" value="<?php echo h($_SERVER['QUERY_STRING'] ?? ''); ?>">
 
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:15px;flex-wrap:wrap">
@@ -1525,6 +1527,17 @@ include 'views/layout/header.php';
 
                             Aprovar e gerar aquisições
 
+                        </button>
+
+                        <button
+                            type="button"
+                            class="btn btn-success btn-sm"
+                            id="btn-aprovar-existentes-oficios"
+                            onclick="aprovarAquisicoesJaGeradas()"
+                            disabled
+                            title="Aprova o processo e libera a aquisição que já está cadastrada, sem duplicar">
+                            <i class="fas fa-check-double"></i>
+                            Aprovar aquisições existentes
                         </button>
 
                         <button
@@ -1994,20 +2007,30 @@ include 'views/layout/header.php';
             && ['ENVIADO', 'APROVADO'].includes(checkbox.dataset.status);
     }
 
+    function elegivelParaAprovacaoExistente(checkbox) {
+        return checkbox.dataset.hasAquisicao === '1'
+            && ['EM_ANALISE', 'ENVIADO', 'APROVADO'].includes(checkbox.dataset.status);
+    }
+
     function atualizarContador() {
         const selecionados = Array.from(document.querySelectorAll('.checkOficio:checked'));
         const total = selecionados.length;
         const totalAptos = selecionados.filter(elegivelParaAprovacao).length;
+        const totalExistentes = selecionados.filter(elegivelParaAprovacaoExistente).length;
         const contador = document.getElementById('contadorSelecionados');
         const botaoAprovar = document.getElementById('btn-aprovar-selecionados');
+        const botaoAprovarExistentes = document.getElementById('btn-aprovar-existentes-oficios');
         const botaoEditarDatas = document.getElementById('btn-editar-datas');
         const itensPagina = document.querySelectorAll('.checkOficio');
 
         if (contador) {
-            contador.textContent = total + ' selecionado(s) · ' + totalAptos + ' apto(s) para aprovar';
+            contador.textContent = total + ' selecionado(s) · ' + totalAptos + ' para gerar · ' + totalExistentes + ' com aquisição existente';
         }
         if (botaoAprovar) {
             botaoAprovar.disabled = totalAptos === 0;
+        }
+        if (botaoAprovarExistentes) {
+            botaoAprovarExistentes.disabled = totalExistentes === 0;
         }
         if (botaoEditarDatas) {
             botaoEditarDatas.disabled = total === 0;
@@ -2020,7 +2043,27 @@ include 'views/layout/header.php';
     }
 </script>
 <script>
+    function aprovarAquisicoesJaGeradas() {
+        const selecionados = Array.from(document.querySelectorAll('.checkOficio:checked'));
+        const aptos = selecionados.filter(elegivelParaAprovacaoExistente);
+        if (!aptos.length || aptos.length !== selecionados.length) {
+            alert('Selecione apenas processos com aquisições já cadastradas e status apto. Não misture outros registros no lote.');
+            return;
+        }
+        if (!window.confirm(
+            'Aprovar ' + aptos.length + ' processo(s) e liberar as aquisições existentes?\n'
+            + 'Nenhuma nova aquisição será criada. Confira itens, valores e fornecedores antes de continuar.'
+        )) return;
+        const form = document.getElementById('form-aprovacao-lote');
+        document.getElementById('acao-aprovacao-lote').value = 'aprovar_existentes';
+        document.getElementById('nova-data-lote').required = false;
+        form.setAttribute('action', 'aprovar_multiplos.php');
+        if (typeof form.requestSubmit === 'function') form.requestSubmit();
+        else form.submit();
+    }
+
     function abrirModalAprovacao() {
+        document.getElementById('acao-aprovacao-lote').value = '';
         const selecionados = Array.from(document.querySelectorAll('.checkOficio:checked'));
         const aptos = selecionados.filter(elegivelParaAprovacao);
         const totalIgnorados = selecionados.length - aptos.length;
@@ -2068,6 +2111,7 @@ include 'views/layout/header.php';
     }
 
     function abrirModalDatas() {
+        document.getElementById('acao-aprovacao-lote').value = '';
         const total = document.querySelectorAll('.checkOficio:checked').length;
 
         if (total === 0) {
