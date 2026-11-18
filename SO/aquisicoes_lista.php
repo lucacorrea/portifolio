@@ -5,6 +5,10 @@ login_check();
 
 $page_title = "Lista de Aquisições";
 $pode_assinar_aquisicao = usuario_pode_assinar_aquisicao($pdo);
+$pode_aprovar_aquisicoes_existentes = in_array(strtoupper((string)($_SESSION['nivel'] ?? '')), ['ADMIN', 'SUPORTE'], true);
+if ($pode_aprovar_aquisicoes_existentes && empty($_SESSION['csrf_aprovacao_multipla'])) {
+    $_SESSION['csrf_aprovacao_multipla'] = bin2hex(random_bytes(32));
+}
 
 if (!function_exists('h')) {
     function h($value)
@@ -509,6 +513,7 @@ $sql_select = "
         a.status,
         a.criado_em,
         o.numero as oficio_num,
+        o.status as oficio_status,
         s.nome as secretaria,
         s.cor_relatorio as secretaria_cor,
         f.nome as fornecedor
@@ -1881,18 +1886,37 @@ include 'views/layout/header.php';
             <h3 style="color: var(--text-dark); font-weight: 700; font-size: 1.25rem; margin: 0;">
                 <i class="fas fa-file-invoice-dollar" style="margin-right: 10px; color: var(--primary);"></i> Aquisições Geradas
             </h3>
-            <a href="aquisicoes_favoritas.php" class="btn btn-outline btn-sm">
-                <i class="fas fa-star" style="color:#eab308"></i> Aquisições favoritas
-            </a>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                <?php if ($pode_aprovar_aquisicoes_existentes): ?>
+                    <form id="form-aprovacao-aquisicoes-existentes" method="POST" action="aprovar_multiplos.php" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                        <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_aprovacao_multipla']); ?>">
+                        <input type="hidden" name="acao" value="aprovar_existentes">
+                        <input type="hidden" name="origem_selecao" value="aquisicoes">
+                        <input type="hidden" name="return_query" value="<?php echo h($_SERVER['QUERY_STRING'] ?? ''); ?>">
+                        <button type="submit" id="btn-aprovar-aquisicoes-existentes" class="btn btn-success btn-sm" disabled>
+                            <i class="fas fa-check-circle"></i> Aprovar selecionadas
+                        </button>
+                        <span id="contador-aprovacao-aquisicoes" class="text-muted" style="font-size:.8rem">0 selecionadas</span>
+                    </form>
+                <?php endif; ?>
+                <a href="aquisicoes_favoritas.php" class="btn btn-outline btn-sm">
+                    <i class="fas fa-star" style="color:#eab308"></i> Aquisições favoritas
+                </a>
+            </div>
         </div>
 
         <?php display_flash(); ?>
-        <p class="so-list-tip"><i class="fas fa-mouse-pointer" aria-hidden="true"></i> Clique em uma linha para visualizar as ações da aquisição.</p>
+        <p class="so-list-tip"><i class="fas fa-mouse-pointer" aria-hidden="true"></i> Clique em uma linha para visualizar as ações da aquisição.
+            <?php if ($pode_aprovar_aquisicoes_existentes): ?>Use as caixas de seleção para aprovar processos com aquisições já cadastradas, sem gerar duplicatas.<?php endif; ?>
+        </p>
 
         <div class="table-responsive lista-table-wrap">
             <table class="table-vcenter text-nowrap lista-table">
                 <thead>
                     <tr>
+                        <?php if ($pode_aprovar_aquisicoes_existentes): ?>
+                            <th width="44"><input type="checkbox" id="selecionar-todas-aquisicoes-existentes" aria-label="Selecionar as aquisições pendentes desta página"></th>
+                        <?php endif; ?>
                         <th>Nº Aquisição</th>
                         <th>Ref. Ofício</th>
                         <th>Secretaria</th>
@@ -1909,6 +1933,18 @@ include 'views/layout/header.php';
                             data-so-actions-title="Aquisição <?php echo h($aq['numero_aq']); ?>"
                             data-so-actions-subtitle="<?php echo h($aq['fornecedor']); ?> • <?php echo h($aq['secretaria']); ?>"
                             title="Clique para ver as ações desta aquisição">
+                            <?php if ($pode_aprovar_aquisicoes_existentes): ?>
+                                <td>
+                                    <?php
+                                        $apta_lote = $aq['status'] === 'ESPERANDO OFICIO'
+                                            && in_array(($aq['oficio_status'] ?? ''), ['EM_ANALISE', 'ENVIADO', 'APROVADO'], true);
+                                    ?>
+                                    <input type="checkbox" class="check-aprovacao-aquisicao"
+                                        form="form-aprovacao-aquisicoes-existentes" name="aquisicoes[]"
+                                        value="<?php echo (int)$aq['id']; ?>" <?php echo $apta_lote ? '' : 'disabled'; ?>
+                                        aria-label="Selecionar aquisição <?php echo h($aq['numero_aq']); ?> para aprovação">
+                                </td>
+                            <?php endif; ?>
                             <td>
                                 <strong style="color: var(--text-dark);">
                                     <?php echo htmlspecialchars($aq['numero_aq'], ENT_QUOTES, 'UTF-8'); ?>
@@ -1942,7 +1978,7 @@ include 'views/layout/header.php';
 
                     <?php if (empty($aquisicoes)): ?>
                         <tr>
-                            <td colspan="7" style="text-align:center; padding: 3rem; color: var(--text-muted);">
+                            <td colspan="<?php echo $pode_aprovar_aquisicoes_existentes ? 8 : 7; ?>" style="text-align:center; padding: 3rem; color: var(--text-muted);">
                                 Nenhuma aquisição encontrada com os filtros informados.
                             </td>
                         </tr>
@@ -1971,6 +2007,46 @@ include 'views/layout/header.php';
     </div>
 </div>
 
+
+<?php if ($pode_aprovar_aquisicoes_existentes): ?>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('form-aprovacao-aquisicoes-existentes');
+    const boxes = Array.from(document.querySelectorAll('.check-aprovacao-aquisicao:not(:disabled)'));
+    const selectAll = document.getElementById('selecionar-todas-aquisicoes-existentes');
+    const btn = document.getElementById('btn-aprovar-aquisicoes-existentes');
+    const contador = document.getElementById('contador-aprovacao-aquisicoes');
+    if (!form || !selectAll || !btn) return;
+
+    function atualizar() {
+        const escolhidas = boxes.filter(box => box.checked).length;
+        btn.disabled = escolhidas === 0;
+        if (contador) contador.textContent = escolhidas + ' selecionada(s)';
+        selectAll.disabled = boxes.length === 0;
+        selectAll.checked = boxes.length > 0 && escolhidas === boxes.length;
+        selectAll.indeterminate = escolhidas > 0 && escolhidas < boxes.length;
+    }
+    selectAll.addEventListener('change', function () {
+        boxes.forEach(box => { box.checked = selectAll.checked; });
+        atualizar();
+    });
+    boxes.forEach(box => box.addEventListener('change', atualizar));
+    form.addEventListener('submit', function (event) {
+        const total = boxes.filter(box => box.checked).length;
+        if (!total || !window.confirm(
+            'Aprovar ' + total + ' processo(s) com aquisição já cadastrada?\n'
+            + 'As aquisições serão liberadas para entrega, sem duplicar registros.\n'
+            + 'Confira antes os fornecedores, valores e itens.'
+        )) {
+            event.preventDefault();
+            return;
+        }
+        btn.disabled = true;
+    });
+    atualizar();
+});
+</script>
+<?php endif; ?>
 
 <?php foreach ($aquisicoes as $aq): ?>
     <template id="acoes-aquisicao-<?php echo (int)$aq['id']; ?>">
