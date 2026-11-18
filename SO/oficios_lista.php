@@ -1509,6 +1509,8 @@ include 'views/layout/header.php';
             <form action="aprovar_multiplos.php" method="POST" id="form-aprovacao-lote">
                 <input type="hidden" name="csrf_token" value="<?php echo h($csrf_aprovacao_multipla); ?>">
                 <input type="hidden" name="csrf_data_token" value="<?php echo h($csrf_datas_multiplas); ?>">
+                <input type="hidden" id="acao-aprovacao-lote" name="acao" value="">
+                <input type="hidden" name="origem_selecao" value="oficios">
                 <input type="hidden" name="return_query" value="<?php echo h($_SERVER['QUERY_STRING'] ?? ''); ?>">
 
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:15px;flex-wrap:wrap">
@@ -1525,6 +1527,17 @@ include 'views/layout/header.php';
 
                             Aprovar e gerar aquisições
 
+                        </button>
+
+                        <button
+                            type="button"
+                            class="btn btn-success btn-sm"
+                            id="btn-aprovar-existentes-oficios"
+                            onclick="aprovarAquisicoesJaGeradas()"
+                            disabled
+                            title="Aprova o processo e libera a aquisição que já está cadastrada, sem duplicar">
+                            <i class="fas fa-check-double"></i>
+                            Aprovar aquisições existentes
                         </button>
 
                         <button
@@ -1670,6 +1683,44 @@ include 'views/layout/header.php';
             <?php endif; ?>
 
             <?php if (in_array($nivel_user, ['ADMIN', 'SUPORTE'])): ?>
+                <div class="modal-aprovacao" id="modalAprovacaoExistentes" aria-hidden="true">
+                    <div class="modal-aprovacao-box" role="dialog" aria-modal="true" aria-labelledby="modal-aprovacao-existentes-title" aria-describedby="modal-aprovacao-existentes-texto">
+                        <div class="modal-header-custom">
+                            <div>
+                                <h3 id="modal-aprovacao-existentes-title">
+                                    <i class="fas fa-check-circle text-success" aria-hidden="true"></i>
+                                    Aprovar aquisições existentes
+                                </h3>
+                                <small>Confira a seleção antes de confirmar.</small>
+                            </div>
+                            <button type="button" class="btn-fechar-modal" onclick="fecharModalAprovacaoExistentes()" aria-label="Fechar">
+                                <i class="fas fa-times" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                        <div class="modal-body-custom">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle" aria-hidden="true"></i>
+                                <strong id="totalAprovacaoExistentes">0 processos selecionados</strong>
+                            </div>
+                            <div class="so-approval-batch-info" id="modal-aprovacao-existentes-texto">
+                                <i class="fas fa-clipboard-check" aria-hidden="true"></i>
+                                <div>
+                                    <strong>Liberação das aquisições cadastradas</strong>
+                                    <p>Os processos selecionados serão aprovados e suas aquisições existentes serão liberadas para entrega. Nenhuma aquisição nova será criada. Confira itens, valores e fornecedores antes de confirmar.</p>
+                                </div>
+                            </div>
+                            <p class="so-approval-batch-alert" id="avisoAprovacaoExistentes" role="alert" hidden></p>
+                        </div>
+                        <div class="modal-footer-custom">
+                            <button type="button" class="btn btn-secondary" onclick="fecharModalAprovacaoExistentes()">Cancelar</button>
+                            <button type="button" class="btn btn-success" id="confirmarAprovacaoExistentes" onclick="enviarAprovacaoExistentes()">
+                                <i class="fas fa-check-circle" aria-hidden="true"></i>
+                                Confirmar aprovação
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="modal-aprovacao" id="modalAprovacao" aria-hidden="true">
                     <div class="modal-aprovacao-box" role="dialog" aria-modal="true" aria-labelledby="modal-aprovacao-title">
                         <div class="modal-header-custom">
@@ -1994,20 +2045,30 @@ include 'views/layout/header.php';
             && ['ENVIADO', 'APROVADO'].includes(checkbox.dataset.status);
     }
 
+    function elegivelParaAprovacaoExistente(checkbox) {
+        return checkbox.dataset.hasAquisicao === '1'
+            && ['EM_ANALISE', 'ENVIADO', 'APROVADO'].includes(checkbox.dataset.status);
+    }
+
     function atualizarContador() {
         const selecionados = Array.from(document.querySelectorAll('.checkOficio:checked'));
         const total = selecionados.length;
         const totalAptos = selecionados.filter(elegivelParaAprovacao).length;
+        const totalExistentes = selecionados.filter(elegivelParaAprovacaoExistente).length;
         const contador = document.getElementById('contadorSelecionados');
         const botaoAprovar = document.getElementById('btn-aprovar-selecionados');
+        const botaoAprovarExistentes = document.getElementById('btn-aprovar-existentes-oficios');
         const botaoEditarDatas = document.getElementById('btn-editar-datas');
         const itensPagina = document.querySelectorAll('.checkOficio');
 
         if (contador) {
-            contador.textContent = total + ' selecionado(s) · ' + totalAptos + ' apto(s) para aprovar';
+            contador.textContent = total + ' selecionado(s) · ' + totalAptos + ' para gerar · ' + totalExistentes + ' com aquisição existente';
         }
         if (botaoAprovar) {
             botaoAprovar.disabled = totalAptos === 0;
+        }
+        if (botaoAprovarExistentes) {
+            botaoAprovarExistentes.disabled = totalExistentes === 0;
         }
         if (botaoEditarDatas) {
             botaoEditarDatas.disabled = total === 0;
@@ -2020,7 +2081,87 @@ include 'views/layout/header.php';
     }
 </script>
 <script>
+    let focoAnteriorAprovacaoExistentes = null;
+
+    function aprovarAquisicoesJaGeradas() {
+        const modal = document.getElementById('modalAprovacaoExistentes');
+        if (!modal) return;
+
+        const selecionados = Array.from(document.querySelectorAll('.checkOficio:checked'));
+        const aptos = selecionados.filter(elegivelParaAprovacaoExistente);
+        const todosAptos = aptos.length > 0 && aptos.length === selecionados.length;
+        const aviso = document.getElementById('avisoAprovacaoExistentes');
+        const confirmar = document.getElementById('confirmarAprovacaoExistentes');
+
+        document.getElementById('totalAprovacaoExistentes').textContent =
+            aptos.length + ' de ' + selecionados.length + ' processo(s) apto(s) para aprovação.';
+        aviso.hidden = todosAptos;
+        aviso.textContent = todosAptos ? '' :
+            'Há processos sem aquisição existente ou com status incompatível. Ajuste a seleção antes de aprovar.';
+        confirmar.disabled = !todosAptos;
+
+        focoAnteriorAprovacaoExistentes = document.activeElement;
+        modal.classList.add('show');
+        modal.setAttribute('aria-hidden', 'false');
+        (todosAptos ? confirmar : modal.querySelector('.btn-fechar-modal')).focus();
+    }
+
+    function fecharModalAprovacaoExistentes() {
+        const modal = document.getElementById('modalAprovacaoExistentes');
+        if (!modal) return;
+        modal.classList.remove('show');
+        modal.setAttribute('aria-hidden', 'true');
+        if (focoAnteriorAprovacaoExistentes && document.contains(focoAnteriorAprovacaoExistentes)) {
+            focoAnteriorAprovacaoExistentes.focus();
+        }
+    }
+
+    function enviarAprovacaoExistentes() {
+        const selecionados = Array.from(document.querySelectorAll('.checkOficio:checked'));
+        const aptos = selecionados.filter(elegivelParaAprovacaoExistente);
+        if (!aptos.length || aptos.length !== selecionados.length) {
+            aprovarAquisicoesJaGeradas();
+            return;
+        }
+
+        const form = document.getElementById('form-aprovacao-lote');
+        const confirmar = document.getElementById('confirmarAprovacaoExistentes');
+        confirmar.disabled = true;
+        document.getElementById('acao-aprovacao-lote').value = 'aprovar_existentes';
+        document.getElementById('nova-data-lote').required = false;
+        form.setAttribute('action', 'aprovar_multiplos.php');
+        if (typeof form.requestSubmit === 'function') form.requestSubmit();
+        else form.submit();
+    }
+
+    const modalAprovacaoExistentes = document.getElementById('modalAprovacaoExistentes');
+    if (modalAprovacaoExistentes) {
+        modalAprovacaoExistentes.addEventListener('click', function(event) {
+            if (event.target === modalAprovacaoExistentes) fecharModalAprovacaoExistentes();
+        });
+        document.addEventListener('keydown', function(event) {
+            if (!modalAprovacaoExistentes.classList.contains('show')) return;
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                fecharModalAprovacaoExistentes();
+            }
+            if (event.key === 'Tab') {
+                const botoes = Array.from(modalAprovacaoExistentes.querySelectorAll('button:not([disabled])'));
+                if (botoes.length === 0) return;
+                const primeiro = botoes[0], ultimo = botoes[botoes.length - 1];
+                if (event.shiftKey && document.activeElement === primeiro) {
+                    event.preventDefault();
+                    ultimo.focus();
+                } else if (!event.shiftKey && document.activeElement === ultimo) {
+                    event.preventDefault();
+                    primeiro.focus();
+                }
+            }
+        });
+    }
+
     function abrirModalAprovacao() {
+        document.getElementById('acao-aprovacao-lote').value = '';
         const selecionados = Array.from(document.querySelectorAll('.checkOficio:checked'));
         const aptos = selecionados.filter(elegivelParaAprovacao);
         const totalIgnorados = selecionados.length - aptos.length;
@@ -2068,6 +2209,7 @@ include 'views/layout/header.php';
     }
 
     function abrirModalDatas() {
+        document.getElementById('acao-aprovacao-lote').value = '';
         const total = document.querySelectorAll('.checkOficio:checked').length;
 
         if (total === 0) {

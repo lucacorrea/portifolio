@@ -45,9 +45,9 @@ body {
 
 .container-xl {
     width: 100%;
-    max-width: 1200px;
+    max-width: none;
     margin: 0 auto;
-    padding: 0 1.5rem;
+    padding: 0 clamp(16px, 2.25vw, 44px);
 }
 
 /* Header & Navbar */
@@ -184,11 +184,15 @@ body {
 
 /* Main Content Area */
 .page-body {
+    width: 100%;
+    min-width: 0;
+    flex: 1;
     padding-bottom: 3rem;
 }
 
 /* Cards & Widgets */
 .card {
+    min-width: 0;
     background: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -225,7 +229,9 @@ body {
 
 /* Tables */
 .table-responsive {
+    max-width: 100%;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 table {
@@ -374,6 +380,7 @@ tr:last-child td {
 
 /* No print rules */
 @media print {
+    .container-xl { max-width: 1200px; padding: 0 1.5rem; }
     @page {
         margin: 0;
         size: A4 portrait;

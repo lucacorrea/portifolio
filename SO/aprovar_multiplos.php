@@ -56,6 +56,143 @@ if ($session_token === '' || $csrf_token === '' || !hash_equals($session_token, 
     exit;
 }
 
+
+/**
+ * Aprovação de processos que JÁ possuem aquisições.
+ * Não cria nova aquisição nem altera datas, itens, valores ou fornecedor.
+ */
+if (($_POST['acao'] ?? '') === 'aprovar_existentes') {
+    $origem_selecao = (string)($_POST['origem_selecao'] ?? '');
+    $lista_ids = $origem_selecao === 'aquisicoes' ? 'aquisicoes' : 'oficios';
+
+    if (!in_array($origem_selecao, ['oficios', 'aquisicoes'], true)) {
+        flash_message('danger', 'Origem da seleção inválida.');
+        header("Location: {$return_url}", true, 303);
+        exit;
+    }
+
+    if ($origem_selecao === 'aquisicoes') {
+        // Mantém apenas filtros conhecidos ao retornar para a listagem de aquisições.
+        $filtros_seguros = [];
+        foreach (['busca', 'status', 'secretaria_id', 'fornecedor_id', 'data_inicio', 'data_fim', 'page', 'por_pagina'] as $chave) {
+            if (!isset($return_source[$chave]) || !is_scalar($return_source[$chave])) {
+                continue;
+            }
+            $valor = trim((string)$return_source[$chave]);
+            if ($chave === 'busca') {
+                $filtros_seguros[$chave] = substr($valor, 0, 120);
+            } elseif ($chave === 'status' && in_array($valor, ['ESPERANDO OFICIO', 'AGUARDANDO ENTREGA', 'FINALIZADO'], true)) {
+                $filtros_seguros[$chave] = $valor;
+            } elseif (in_array($chave, ['secretaria_id', 'fornecedor_id', 'page'], true) && ctype_digit($valor) && (int)$valor > 0) {
+                $filtros_seguros[$chave] = (int)$valor;
+            } elseif ($chave === 'por_pagina' && in_array($valor, ['6', '10', '25', '50', '100'], true)) {
+                $filtros_seguros[$chave] = (int)$valor;
+            } elseif (in_array($chave, ['data_inicio', 'data_fim'], true) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $valor)) {
+                $filtros_seguros[$chave] = $valor;
+            }
+        }
+        $return_url = 'aquisicoes_lista.php';
+        if ($filtros_seguros) {
+            $return_url .= '?' . http_build_query($filtros_seguros);
+        }
+    }
+
+    $posted = $_POST[$lista_ids] ?? null;
+    $ids_selecionados = [];
+    if (is_array($posted)) {
+        foreach ($posted as $v) {
+            if (is_scalar($v) && ctype_digit((string)$v) && (int)$v > 0) {
+                $ids_selecionados[(int)$v] = (int)$v;
+            }
+        }
+    }
+    $ids_selecionados = array_values($ids_selecionados);
+    if (count($ids_selecionados) < 1 || count($ids_selecionados) > 100) {
+        flash_message('warning', 'Selecione de 1 a 100 registros válidos para aprovação em lote.');
+        header("Location: {$return_url}", true, 303);
+        exit;
+    }
+
+    $marcadores = implode(',', array_fill(0, count($ids_selecionados), '?'));
+    $coluna_filtro = $origem_selecao === 'aquisicoes' ? 'a.id' : 'o.id';
+
+    try {
+        $pdo->beginTransaction();
+        $stmt_existentes = $pdo->prepare("
+            SELECT a.id AS aquisicao_id, a.oficio_id, a.numero_aq,
+                   a.status AS status_aquisicao, a.fornecedor_id,
+                   o.numero AS numero_oficio, o.status AS status_oficio,
+                   o.fornecedor_indicado_id,
+                   f.nome AS nome_fornecedor,
+                   (SELECT COUNT(*) FROM itens_aquisicao ia
+                    WHERE ia.aquisicao_id = a.id) AS total_itens
+            FROM aquisicoes a
+            INNER JOIN oficios o ON o.id = a.oficio_id
+            INNER JOIN fornecedores f ON f.id = a.fornecedor_id
+            WHERE {$coluna_filtro} IN ($marcadores)
+            ORDER BY a.id
+            FOR UPDATE
+        ");
+        $stmt_existentes->execute($ids_selecionados);
+        $registros = $stmt_existentes->fetchAll(PDO::FETCH_ASSOC);
+
+        // Abortamos o lote inteiro se algum registro não corresponder à seleção.
+        if (count($registros) !== count($ids_selecionados)) {
+            throw new RuntimeException('Uma das aquisições não existe ou há mais de uma aquisição vinculada ao mesmo processo.');
+        }
+
+        foreach ($registros as $registro) {
+            if (
+                !in_array((string)$registro['status_oficio'], ['ENVIADO', 'EM_ANALISE', 'APROVADO'], true)
+                || (string)$registro['status_aquisicao'] !== 'ESPERANDO OFICIO'
+                || (int)$registro['fornecedor_id'] <= 0
+                || (int)$registro['total_itens'] <= 0
+                || (
+                    $registro['fornecedor_indicado_id'] !== null
+                    && (int)$registro['fornecedor_indicado_id'] !== (int)$registro['fornecedor_id']
+                )
+            ) {
+                throw new RuntimeException('Há aquisições sem itens, já processadas ou com fornecedor/status incompatível.');
+            }
+        }
+
+        $aprovar_oficio = $pdo->prepare("
+            UPDATE oficios SET status = 'APROVADO'
+            WHERE id = ? AND status IN ('ENVIADO', 'EM_ANALISE')
+        ");
+        $liberar_aquisicao = $pdo->prepare("
+            UPDATE aquisicoes SET status = 'AGUARDANDO ENTREGA'
+            WHERE id = ? AND status = 'ESPERANDO OFICIO'
+        ");
+        $numeros = [];
+        foreach ($registros as $registro) {
+            $aprovar_oficio->execute([(int)$registro['oficio_id']]);
+            $liberar_aquisicao->execute([(int)$registro['aquisicao_id']]);
+            if ($liberar_aquisicao->rowCount() !== 1) {
+                throw new RuntimeException('O status de uma aquisição foi alterado durante a operação.');
+            }
+            $numeros[] = (string)$registro['numero_aq'];
+        }
+
+        log_action(
+            $pdo,
+            'APROVACAO_LOTE_AQUISICOES_EXISTENTES',
+            count($numeros) . ' aquisição(ões) existente(s) liberada(s) e respectivos processos aprovados. Aquisições: ' . implode(', ', $numeros)
+        );
+        $pdo->commit();
+        $_SESSION['csrf_aprovacao_multipla'] = bin2hex(random_bytes(32));
+        flash_message('success', count($numeros) . ' aquisição(ões) liberada(s) com sucesso. Nenhuma nova aquisição foi criada.');
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('[SO][APROVACAO_EXISTENTES] ' . $e->getMessage());
+        flash_message('danger', 'Não foi possível aprovar o lote: há registros inválidos ou alterados. Nenhuma atualização parcial foi salva.');
+    }
+    header("Location: {$return_url}", true, 303);
+    exit;
+}
+
 $posted_ids = $_POST['oficios'] ?? [];
 if (!is_array($posted_ids)) {
     $posted_ids = [];
@@ -255,7 +392,46 @@ try {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    flash_message('danger', 'Não foi possível concluir a aprovação múltipla. Nenhuma alteração parcial foi mantida.');
+
+    // Nunca apresentar a mensagem SQL completa ao usuário. Ela fica no log
+    // do servidor, associada a uma referência que o suporte pode localizar.
+    $referencia = 'APR-' . strtoupper(bin2hex(random_bytes(4)));
+    $mysql_code = $e instanceof PDOException ? (int)($e->errorInfo[1] ?? 0) : 0;
+    $sql_state = $e instanceof PDOException ? (string)($e->errorInfo[0] ?? $e->getCode()) : '';
+    error_log(sprintf(
+        '[SO][%s][oficios=%s][mysql=%d][sqlstate=%s] %s',
+        $referencia,
+        implode(',', $ids),
+        $mysql_code,
+        $sql_state,
+        $e->getMessage()
+    ));
+
+    $mensagem = $abrir_aquisicao_individual
+        ? 'Não foi possível aprovar esta solicitação e gerar a aquisição.'
+        : 'Não foi possível concluir a aprovação múltipla.';
+    $mensagem .= ' Nenhuma alteração parcial foi mantida.';
+
+    if ($mysql_code === 1062) {
+        $mensagem .= ' Conflito de numeração ou código já cadastrado. A sequência deve ser conferida antes de repetir.';
+    } elseif (in_array($mysql_code, [1205, 1213], true)) {
+        $mensagem .= ' O banco estava ocupado por outra operação. Tente novamente após atualizar a lista.';
+    } elseif (in_array($mysql_code, [1054, 1146, 1364], true)) {
+        $mensagem .= ' Foi encontrada uma incompatibilidade na estrutura do banco. Solicite a verificação do suporte.';
+    } elseif ($mysql_code === 1452) {
+        $mensagem .= ' Um dos vínculos da aquisição com os dados cadastrados é inválido. Confira os registros relacionados.';
+    }
+
+    if ($nivel === 'SUPORTE') {
+        $mensagem .= ' Diagnóstico: ' . $referencia;
+        if ($mysql_code > 0) {
+            $mensagem .= ' (MySQL ' . $mysql_code . ').';
+        } else {
+            $mensagem .= '.';
+        }
+    }
+
+    flash_message('danger', $mensagem);
 }
 
 header("Location: {$return_url}", true, 303);

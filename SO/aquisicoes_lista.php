@@ -5,6 +5,10 @@ login_check();
 
 $page_title = "Lista de Aquisições";
 $pode_assinar_aquisicao = usuario_pode_assinar_aquisicao($pdo);
+$pode_aprovar_aquisicoes_existentes = in_array(strtoupper((string)($_SESSION['nivel'] ?? '')), ['ADMIN', 'SUPORTE'], true);
+if ($pode_aprovar_aquisicoes_existentes && empty($_SESSION['csrf_aprovacao_multipla'])) {
+    $_SESSION['csrf_aprovacao_multipla'] = bin2hex(random_bytes(32));
+}
 
 if (!function_exists('h')) {
     function h($value)
@@ -30,6 +34,24 @@ function format_date_excel($date)
 function formatarMoedaBR($valor): string
 {
     return 'R$ ' . number_format((float)$valor, 2, ',', '.');
+}
+
+/**
+ * A exibicao em relatorio nao concede aprovacao.
+ * A situacao considera o status do processo E da aquisicao.
+ */
+function situacaoAquisicaoRelatorio($statusOficio, $statusAquisicao): string
+{
+    if ($statusOficio === 'APROVADO'
+        && in_array($statusAquisicao, ['AGUARDANDO ENTREGA', 'FINALIZADO'], true)) {
+        return 'APROVADA';
+    }
+
+    if (in_array($statusOficio, ['REPROVADO', 'ARQUIVADO'], true)) {
+        return 'NAO APROVADA';
+    }
+
+    return 'PENDENTE';
 }
 
 function formatarDataBR($data): string
@@ -91,6 +113,22 @@ function resumirItensDescricao($descricao, int $limite = 180): string
 function formatarDescricaoRelatorio($descricao, int $limite = 180): string
 {
     return formatarTextoCaixaAlta(resumirItensDescricao($descricao, $limite));
+}
+
+/**
+ * Preserva as casas decimais registradas em cada item sem acrescentar zeros.
+ */
+function formatarQuantidadeItemRelatorio($valor): string
+{
+    $quantidade = trim((string)$valor);
+    if (!preg_match('/^(-?)(\d+)(?:\.(\d+))?$/', $quantidade, $partes)) {
+        return '0';
+    }
+
+    $inteiro = number_format((float)$partes[2], 0, ',', '.');
+    $decimais = rtrim($partes[3] ?? '', '0');
+
+    return $partes[1] . $inteiro . ($decimais !== '' ? ',' . $decimais : '');
 }
 
 function corRelatorioSecretaria($cor): string
@@ -325,7 +363,7 @@ function renderizarCabecalhoAquisicoes(
             </tr>
             <tr>
                 <td colspan="3" class="sub-info left"><strong>Busca:</strong> <?php echo $busca !== '' ? h($busca) : 'Todos'; ?></td>
-                <td colspan="4" class="sub-info left"><strong>Status:</strong> <?php echo $status !== '' ? h($status) : 'Todos'; ?></td>
+                <td colspan="4" class="sub-info left"><strong>Status:</strong> <?php echo $status !== '' ? h($status) : 'Todos (pendentes e aprovadas)'; ?></td>
             </tr>
             <tr>
                 <td colspan="3" class="sub-info left"><strong>Período:</strong> <?php echo h($periodoTexto); ?></td>
@@ -336,6 +374,9 @@ function renderizarCabecalhoAquisicoes(
                 <td colspan="4" class="sub-info left"><strong>Registros:</strong> <?php echo $quantidade; ?></td>
             </tr>
 
+            <tr>
+                <td colspan="7" class="sub-info left"><strong>Relatorio gerencial:</strong> inclui pendentes e aprovadas. A inclusao de uma aquisicao neste relatorio nao significa autorizacao ou aprovacao.</td>
+            </tr>
             <tr class="spacer"><td colspan="7"></td></tr>
 
             <tr>
@@ -371,9 +412,11 @@ if (!in_array($tipo_relatorio, ['sintetico', 'analitico'], true)) {
 $data_inicio_valida = $data_inicio !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_inicio);
 $data_fim_valida = $data_fim !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_fim);
 
-$where_parts = [reportable_aquisicoes_condition()];
+// A listagem inclui aquisicoes pendentes; relatorios e impressoes oficiais
+// continuam restritos a processos aprovados e aquisicoes liberadas.
+$where_parts = ["a.status IN ('ESPERANDO OFICIO', 'AGUARDANDO ENTREGA', 'FINALIZADO')"];
 $params = [];
-$status_options = ['AGUARDANDO ENTREGA', 'FINALIZADO'];
+$status_options = ['ESPERANDO OFICIO', 'AGUARDANDO ENTREGA', 'FINALIZADO'];
 
 if ($status !== '' && !in_array($status, $status_options, true)) {
     $status = '';
@@ -435,6 +478,9 @@ if ($data_fim_valida) {
 }
 
 $where = implode(' AND ', $where_parts);
+// O relatório gerencial (PDF/Excel) usa os mesmos filtros da lista,
+// incluindo registros pendentes, sem modificar seu status no banco.
+$where_export = $where;
 
 $secretarias_list = $pdo->query("SELECT id, nome FROM secretarias ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
 $fornecedores_list = $pdo->query("SELECT id, nome, cnpj FROM fornecedores ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
@@ -467,6 +513,7 @@ $sql_select = "
         a.status,
         a.criado_em,
         o.numero as oficio_num,
+        o.status as oficio_status,
         s.nome as secretaria,
         s.cor_relatorio as secretaria_cor,
         f.nome as fornecedor
@@ -486,23 +533,15 @@ $sql_select_export = "
         a.criado_em,
         o.numero as oficio_num,
         o.local as oficio_local,
-        o.resumo_itens,
+        o.status as oficio_status,
         s.nome as secretaria,
         s.cor_relatorio as secretaria_cor,
-        f.nome as fornecedor,
-        COALESCE(NULLIF(TRIM(o.resumo_itens), ''), itens_relatorio.descricao, '') as descricao_relatorio
+        f.nome as fornecedor
     FROM aquisicoes a
     LEFT JOIN oficios o ON a.oficio_id = o.id
     LEFT JOIN secretarias s ON o.secretaria_id = s.id
     LEFT JOIN fornecedores f ON a.fornecedor_id = f.id
-    LEFT JOIN (
-        SELECT
-            aquisicao_id,
-            GROUP_CONCAT(produto ORDER BY id ASC SEPARATOR '; ') as descricao
-        FROM itens_aquisicao
-        GROUP BY aquisicao_id
-    ) itens_relatorio ON itens_relatorio.aquisicao_id = a.id
-    WHERE $where
+    WHERE $where_export
 ";
 
 $sql_order = "
@@ -526,6 +565,62 @@ if (in_array($export, ['excel', 'pdf'], true)) {
     $stmt_export->execute($params);
     $aquisicoes_export = $stmt_export->fetchAll(PDO::FETCH_ASSOC);
     $is_pdf_export = $export === 'pdf';
+
+    // Os itens efetivamente adquiridos prevalecem sobre o resumo genérico do ofício.
+    // Consultas em lotes evitam N+1 e o corte de GROUP_CONCAT em relatórios extensos.
+    $itens_por_aquisicao = [];
+    $ids_aquisicoes = array_values(array_unique(array_map(
+        static function (array $aquisicao): int {
+            return (int)$aquisicao['id'];
+        },
+        $aquisicoes_export
+    )));
+    foreach (array_chunk($ids_aquisicoes, 250) as $lote_ids) {
+        $marcadores = implode(', ', array_fill(0, count($lote_ids), '?'));
+        $sql_itens_relatorio = "
+            SELECT ia.aquisicao_id, ia.produto, ia.quantidade,
+                   COALESCE(
+                       NULLIF(TRIM((
+                           SELECT io.unidade
+                           FROM itens_oficio io
+                           INNER JOIN aquisicoes aq_ref ON aq_ref.oficio_id = io.oficio_id
+                           WHERE aq_ref.id = ia.aquisicao_id
+                             AND (
+                                 io.id = ia.oficio_item_id
+                                 OR (
+                                     ia.oficio_item_id IS NULL
+                                     AND TRIM(UPPER(io.produto)) = TRIM(UPPER(ia.produto))
+                                 )
+                             )
+                           ORDER BY io.id ASC
+                           LIMIT 1
+                       )), ''),
+                       'UN'
+                   ) AS unidade
+            FROM itens_aquisicao ia
+            WHERE ia.aquisicao_id IN ($marcadores)
+            ORDER BY ia.aquisicao_id, ia.id
+        ";
+        $stmt_itens_relatorio = $pdo->prepare($sql_itens_relatorio);
+        $stmt_itens_relatorio->execute($lote_ids);
+        foreach ($stmt_itens_relatorio->fetchAll(PDO::FETCH_ASSOC) as $item_relatorio) {
+            $id_aquisicao = (int)$item_relatorio['aquisicao_id'];
+            $produto = formatarTextoCaixaAlta(limparDescricaoItens($item_relatorio['produto'] ?? ''));
+            $unidade = formatarTextoCaixaAlta(limparDescricaoItens($item_relatorio['unidade'] ?? 'UN'));
+            $itens_por_aquisicao[$id_aquisicao][] =
+                formatarQuantidadeItemRelatorio($item_relatorio['quantidade'] ?? 0)
+                . ' ' . ($unidade !== '' ? $unidade : 'UN')
+                . ' - ' . ($produto !== '' ? $produto : 'ITEM SEM DESCRIÇÃO');
+        }
+    }
+
+    foreach ($aquisicoes_export as &$aquisicao_export) {
+        $aquisicao_export['descricao_relatorio'] = implode(
+            "\n",
+            $itens_por_aquisicao[(int)$aquisicao_export['id']] ?? []
+        );
+    }
+    unset($aquisicao_export);
 
     $agrupamento_fornecedores = agruparAquisicoesPorFornecedor($aquisicoes_export);
     $dadosPorFornecedor = $agrupamento_fornecedores['grupos'];
@@ -554,8 +649,6 @@ if (in_array($export, ['excel', 'pdf'], true)) {
         $fim_txt = $data_fim_valida ? date('d/m/Y', strtotime($data_fim)) : '...';
         $periodo_texto = $inicio_txt . ' até ' . $fim_txt;
     }
-    $descricao_limite = $tipo_relatorio === 'analitico' ? 420 : 180;
-
     $filename = 'relatorio_aquisicoes' . ($modo_pb ? '_preto_branco' : '') . '_' . date('Ymd_His');
     $back_query = $_GET;
     unset($back_query['export'], $back_query['page'], $back_query['modo']);
@@ -624,7 +717,46 @@ if (in_array($export, ['excel', 'pdf'], true)) {
             .center { text-align: center; }
             .right { text-align: right; }
             .text-cell { mso-number-format: "\@"; }
-            .desc-cell { font-weight: 600; text-transform: uppercase; }
+            .desc-cell { font-weight: 600; text-transform: uppercase; overflow-wrap: anywhere; line-height: 1.3; }
+            .report-status-label { display: block; font-size: 9px; font-weight: 700; line-height: 1.35; margin-top: 3px; white-space: normal; }
+            .report-status-pendente { color: #9a3412; }
+            .report-status-aprovada { color: #166534; }
+            .report-status-nao-aprovada { color: #991b1b; }
+            /* A lista usa toda a largura da tabela, com quebra automática de linha. */
+            .report-items-row td {
+                background: #fff;
+                border: 0 !important;
+                padding: 2px 10px;
+            }
+            .report-items-row--header td { padding-top: 8px; padding-bottom: 4px; }
+            .report-items-row--line td { padding-top: 3px; padding-bottom: 3px; }
+            .report-items-title {
+                font-weight: 800;
+                font-size: 11px;
+                color: #1e293b;
+            }
+            .report-items-line {
+                display: block;
+                width: 100%;
+                margin: 0;
+                line-height: 1.6;
+                white-space: normal;
+                overflow-wrap: break-word;
+                color: #111827;
+                font-size: 11px;
+                font-weight: 600;
+                text-transform: uppercase;
+            }
+            body.pdf-export .report-items-row--header td { padding: 5px 9px 4px; }
+            body.pdf-export .report-items-row--line td { padding: 2px 9px; }
+            body.pdf-export .report-items-title { font-size: 10.5px; }
+            body.pdf-export .report-items-line { font-size: 10.3px; line-height: 1.55; }
+            /* Cada linha vira uma unidade pequena para paginação sem cortes. */
+            body.pdf-export .sheet tr.report-items-row,
+            body.pdf-export .sheet tr.report-items-row td {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
             .money-cell { white-space: nowrap; }
             .excel-report td,
             .excel-report th {
@@ -1083,20 +1215,56 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                         </tr>
                         <?php foreach ($secretaria['items'] as $aq): ?>
                             <?php
-                            $descricaoCompleta = limparDescricaoItens($aq['descricao_relatorio'] ?? '');
-                            $descricaoRelatorio = $tipo_relatorio === 'analitico'
-                                ? formatarTextoCaixaAlta($descricaoCompleta !== '' ? $descricaoCompleta : '-')
-                                : formatarDescricaoRelatorio($descricaoCompleta, $descricao_limite);
+                            $descricaoRelatorio = trim((string)($aq['descricao_relatorio'] ?? ''));
+                            if ($descricaoRelatorio === '') {
+                                $descricaoRelatorio = 'NENHUM ITEM CADASTRADO';
+                            }
+                            // Até 5 itens: descrição na tabela.
+                            // Acima de 5: a lista preenche toda a largura e quebra a linha
+                            // conforme o espaço disponível. Blocos de 24 evitam cortes no PDF.
+                            // Excel mantém um registro por aquisição, com a descrição completa.
+                            $linhasDescricao = explode("\n", $descricaoRelatorio);
+                            $itensEmLista = $is_pdf_export && count($linhasDescricao) > 5;
+                            $linhasItensRelatorio = $itensEmLista ? array_chunk($linhasDescricao, 24) : [];
                             ?>
                             <tr class="report-row">
                                 <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($aq['numero_aq']); ?></td>
-                                <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($aq['oficio_num']); ?></td>
+                                <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;">
+                                    <?php echo h($aq['oficio_num'] ?? '-'); ?>
+                                    <?php
+                                        $situacaoRelatorio = situacaoAquisicaoRelatorio(
+                                            $aq['oficio_status'] ?? '',
+                                            $aq['status'] ?? ''
+                                        );
+                                        $situacaoClasse = $situacaoRelatorio === 'APROVADA'
+                                            ? 'report-status-aprovada'
+                                            : ($situacaoRelatorio === 'PENDENTE' ? 'report-status-pendente' : 'report-status-nao-aprovada');
+                                    ?>
+                                    <span class="report-status-label <?php echo $situacaoClasse; ?>"><?php echo h($situacaoRelatorio); ?></span>
+                                </td>
                                 <td class="center text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($usar_coluna_fornecedor ? nomeRelatorio($aq['fornecedor'] ?? '', 'FORNECEDOR NÃO INFORMADO') : secretariaSiglaRelatorio($aq['secretaria'] ?? '')); ?></td>
                                 <td class="left text-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h(nomeRelatorio($aq['oficio_local'] ?? '', '-')); ?></td>
-                                <td class="left text-cell desc-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h($descricaoRelatorio); ?></td>
+                                <td class="left text-cell desc-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo $itensEmLista ? 'ITENS ABAIXO' : nl2br(h($descricaoRelatorio), false); ?></td>
                                 <td class="center" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo h(formatarDataBR($aq['criado_em'])); ?></td>
                                 <td class="right money-cell" bgcolor="<?php echo $cor_item_attr; ?>" style="background-color: <?php echo $cor_item_attr; ?>;"><?php echo formatarMoedaBR($aq['valor_total']); ?></td>
                             </tr>
+                            <?php if ($itensEmLista): ?>
+                                <tr class="report-items-row report-items-row--header">
+                                    <td colspan="7">
+                                        <div class="report-items-title">
+                                            ITENS DA AQUISIÇÃO <?php echo h($aq['numero_aq']); ?>
+                                            (<?php echo count($linhasDescricao); ?> ITENS)
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php foreach ($linhasItensRelatorio as $itensLinha): ?>
+                                    <tr class="report-items-row report-items-row--line">
+                                        <td colspan="7">
+                                            <p class="report-items-line"><?php echo h(implode(' / ', $itensLinha)); ?></p>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         <?php endforeach; ?>
                         <tr class="group-total-row">
                             <td colspan="5" class="right">TOTAL DA SECRETARIA</td>
@@ -1554,6 +1722,7 @@ include 'views/layout/header.php';
                 <div>
                     <h3 class="lista-filtros-titulo">Filtros de Busca</h3>
                     <p class="lista-filtros-subtitulo">Encontre aquisições e gere relatórios sem misturar os controles.</p>
+                    <p class="lista-filtros-subtitulo">Registros pendentes aparecem na lista; relatórios e impressão exigem aprovação do processo.</p>
                 </div>
             </div>
             <span class="lista-filtros-resumo">
@@ -1582,6 +1751,7 @@ include 'views/layout/header.php';
                     <label for="filtro-aquisicao-status">Status</label>
                     <select id="filtro-aquisicao-status" name="status" class="form-control">
                         <option value="">Todos Status</option>
+                        <option value="ESPERANDO OFICIO" <?php echo $status === 'ESPERANDO OFICIO' ? 'selected' : ''; ?>>ESPERANDO OFICIO</option>
                         <option value="AGUARDANDO ENTREGA" <?php echo $status === 'AGUARDANDO ENTREGA' ? 'selected' : ''; ?>>AGUARDANDO ENTREGA</option>
                         <option value="FINALIZADO" <?php echo $status === 'FINALIZADO' ? 'selected' : ''; ?>>FINALIZADO</option>
                     </select>
@@ -1625,6 +1795,12 @@ include 'views/layout/header.php';
                             name="data_inicio"
                             class="form-control"
                             value="<?php echo h($data_inicio); ?>">
+                        <?php if ($data_fim_valida && !$data_inicio_valida): ?>
+                            <small style="display:block; margin-top:6px; color:#92400e; font-size:0.75rem; line-height:1.4;">
+                                Sem data inicial, a busca inclui todas as aquisições anteriores à data final.
+                                Informe a data inicial para delimitar o período.
+                            </small>
+                        <?php endif; ?>
                     </div>
 
                     <div class="lista-filtro">
@@ -1689,7 +1865,7 @@ include 'views/layout/header.php';
                         formaction="aquisicoes_imprimir_lote.php"
                         formtarget="_blank"
                         class="filtro-btn filtro-btn-print"
-                        title="Imprimir aquisições filtradas">
+                        title="Imprimir aquisições aprovadas e filtradas">
                         <i class="fas fa-print"></i>
                         Imprimir
                     </button>
@@ -1710,18 +1886,37 @@ include 'views/layout/header.php';
             <h3 style="color: var(--text-dark); font-weight: 700; font-size: 1.25rem; margin: 0;">
                 <i class="fas fa-file-invoice-dollar" style="margin-right: 10px; color: var(--primary);"></i> Aquisições Geradas
             </h3>
-            <a href="aquisicoes_favoritas.php" class="btn btn-outline btn-sm">
-                <i class="fas fa-star" style="color:#eab308"></i> Aquisições favoritas
-            </a>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                <?php if ($pode_aprovar_aquisicoes_existentes): ?>
+                    <form id="form-aprovacao-aquisicoes-existentes" method="POST" action="aprovar_multiplos.php" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                        <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_aprovacao_multipla']); ?>">
+                        <input type="hidden" name="acao" value="aprovar_existentes">
+                        <input type="hidden" name="origem_selecao" value="aquisicoes">
+                        <input type="hidden" name="return_query" value="<?php echo h($_SERVER['QUERY_STRING'] ?? ''); ?>">
+                        <button type="submit" id="btn-aprovar-aquisicoes-existentes" class="btn btn-success btn-sm" disabled>
+                            <i class="fas fa-check-circle"></i> Aprovar selecionadas
+                        </button>
+                        <span id="contador-aprovacao-aquisicoes" class="text-muted" style="font-size:.8rem">0 selecionadas</span>
+                    </form>
+                <?php endif; ?>
+                <a href="aquisicoes_favoritas.php" class="btn btn-outline btn-sm">
+                    <i class="fas fa-star" style="color:#eab308"></i> Aquisições favoritas
+                </a>
+            </div>
         </div>
 
         <?php display_flash(); ?>
-        <p class="so-list-tip"><i class="fas fa-mouse-pointer" aria-hidden="true"></i> Clique em uma linha para visualizar as ações da aquisição.</p>
+        <p class="so-list-tip"><i class="fas fa-mouse-pointer" aria-hidden="true"></i> Clique em uma linha para visualizar as ações da aquisição.
+            <?php if ($pode_aprovar_aquisicoes_existentes): ?>Use as caixas de seleção para aprovar processos com aquisições já cadastradas, sem gerar duplicatas.<?php endif; ?>
+        </p>
 
         <div class="table-responsive lista-table-wrap">
             <table class="table-vcenter text-nowrap lista-table">
                 <thead>
                     <tr>
+                        <?php if ($pode_aprovar_aquisicoes_existentes): ?>
+                            <th width="44"><input type="checkbox" id="selecionar-todas-aquisicoes-existentes" aria-label="Selecionar as aquisições pendentes desta página"></th>
+                        <?php endif; ?>
                         <th>Nº Aquisição</th>
                         <th>Ref. Ofício</th>
                         <th>Secretaria</th>
@@ -1738,6 +1933,18 @@ include 'views/layout/header.php';
                             data-so-actions-title="Aquisição <?php echo h($aq['numero_aq']); ?>"
                             data-so-actions-subtitle="<?php echo h($aq['fornecedor']); ?> • <?php echo h($aq['secretaria']); ?>"
                             title="Clique para ver as ações desta aquisição">
+                            <?php if ($pode_aprovar_aquisicoes_existentes): ?>
+                                <td>
+                                    <?php
+                                        $apta_lote = $aq['status'] === 'ESPERANDO OFICIO'
+                                            && in_array(($aq['oficio_status'] ?? ''), ['EM_ANALISE', 'ENVIADO', 'APROVADO'], true);
+                                    ?>
+                                    <input type="checkbox" class="check-aprovacao-aquisicao"
+                                        form="form-aprovacao-aquisicoes-existentes" name="aquisicoes[]"
+                                        value="<?php echo (int)$aq['id']; ?>" <?php echo $apta_lote ? '' : 'disabled'; ?>
+                                        aria-label="Selecionar aquisição <?php echo h($aq['numero_aq']); ?> para aprovação">
+                                </td>
+                            <?php endif; ?>
                             <td>
                                 <strong style="color: var(--text-dark);">
                                     <?php echo htmlspecialchars($aq['numero_aq'], ENT_QUOTES, 'UTF-8'); ?>
@@ -1762,7 +1969,7 @@ include 'views/layout/header.php';
                                 <?php echo format_money($aq['valor_total']); ?>
                             </td>
                             <td style="text-align: center;">
-                                <span class="badge badge-<?php echo strtolower($aq['status'] === 'AGUARDANDO ENTREGA' ? 'pending' : 'finalized'); ?>" style="padding: 0.4rem 1rem;">
+                                <span class="badge badge-<?php echo in_array($aq['status'], ['ESPERANDO OFICIO', 'AGUARDANDO ENTREGA'], true) ? 'pending' : 'finalized'; ?>" style="padding: 0.4rem 1rem;">
                                     <?php echo htmlspecialchars($aq['status'], ENT_QUOTES, 'UTF-8'); ?>
                                 </span>
                             </td>
@@ -1771,8 +1978,8 @@ include 'views/layout/header.php';
 
                     <?php if (empty($aquisicoes)): ?>
                         <tr>
-                            <td colspan="7" style="text-align:center; padding: 3rem; color: var(--text-muted);">
-                                Nenhuma aquisição gerada até o momento.
+                            <td colspan="<?php echo $pode_aprovar_aquisicoes_existentes ? 8 : 7; ?>" style="text-align:center; padding: 3rem; color: var(--text-muted);">
+                                Nenhuma aquisição encontrada com os filtros informados.
                             </td>
                         </tr>
                     <?php endif; ?>
@@ -1800,6 +2007,46 @@ include 'views/layout/header.php';
     </div>
 </div>
 
+
+<?php if ($pode_aprovar_aquisicoes_existentes): ?>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('form-aprovacao-aquisicoes-existentes');
+    const boxes = Array.from(document.querySelectorAll('.check-aprovacao-aquisicao:not(:disabled)'));
+    const selectAll = document.getElementById('selecionar-todas-aquisicoes-existentes');
+    const btn = document.getElementById('btn-aprovar-aquisicoes-existentes');
+    const contador = document.getElementById('contador-aprovacao-aquisicoes');
+    if (!form || !selectAll || !btn) return;
+
+    function atualizar() {
+        const escolhidas = boxes.filter(box => box.checked).length;
+        btn.disabled = escolhidas === 0;
+        if (contador) contador.textContent = escolhidas + ' selecionada(s)';
+        selectAll.disabled = boxes.length === 0;
+        selectAll.checked = boxes.length > 0 && escolhidas === boxes.length;
+        selectAll.indeterminate = escolhidas > 0 && escolhidas < boxes.length;
+    }
+    selectAll.addEventListener('change', function () {
+        boxes.forEach(box => { box.checked = selectAll.checked; });
+        atualizar();
+    });
+    boxes.forEach(box => box.addEventListener('change', atualizar));
+    form.addEventListener('submit', function (event) {
+        const total = boxes.filter(box => box.checked).length;
+        if (!total || !window.confirm(
+            'Aprovar ' + total + ' processo(s) com aquisição já cadastrada?\n'
+            + 'As aquisições serão liberadas para entrega, sem duplicar registros.\n'
+            + 'Confira antes os fornecedores, valores e itens.'
+        )) {
+            event.preventDefault();
+            return;
+        }
+        btn.disabled = true;
+    });
+    atualizar();
+});
+</script>
+<?php endif; ?>
 
 <?php foreach ($aquisicoes as $aq): ?>
     <template id="acoes-aquisicao-<?php echo (int)$aq['id']; ?>">
