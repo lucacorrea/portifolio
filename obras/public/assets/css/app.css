@@ -77,3 +77,121 @@ body {font-size:16px;}
 .btn, button {font-size:15px;}
 .page-header p, .panel-heading p {font-size:15px;}
 @media (max-width:680px) {.data-table td,.data-table th {font-size:14.5px;}}
+
+
+/* OBRAS360 1.1 — tipografia compacta e notificações inspiradas no protótipo.
+   Carregado no final para neutralizar os ajustes anteriores que aumentavam as fontes. */
+@media screen {
+  html {font-size:15px}
+  body {font-size:14px;line-height:1.48}
+  h1 {font-size:clamp(1.7rem,2.1vw,2.18rem)}
+  h2 {font-size:1.17rem}
+  h3 {font-size:1.03rem}
+  .brand {padding:22px 20px 17px}
+  .brand-words strong {font-size:1.45rem}
+  .sidebar .nav-link {font-size:13.5px;min-height:40px;padding-top:7px;padding-bottom:7px}
+  .sidebar .nav-caption {font-size:10px;letter-spacing:.085em;margin-top:17px}
+  .sidebar-branch strong {font-size:12.5px}
+  .sidebar-branch small {font-size:11px}
+  .topbar {height:70px;padding-inline:clamp(17px,2.5vw,32px)}
+  .topbar-location small {font-size:10px}
+  .topbar-location strong {font-size:15px}
+  .topbar-date,.topbar-user b {font-size:12.5px}
+  .topbar-user small {font-size:11px}
+  .page-content {padding:clamp(18px,2.35vw,31px)}
+  .page-header {margin-bottom:20px}
+  .page-header p,.page-header>div>p,.panel-heading p {font-size:13px}
+  .eyebrow {font-size:11px}
+  .panel-heading {padding:19px 21px 15px}
+  .panel-content {padding:18px 21px 21px}
+  .data-table th {font-size:11.5px;letter-spacing:.035em}
+  .data-table td {font-size:12.75px;line-height:1.4}
+  .table-subtitle {font-size:11px}
+  .table-count,.table-footer {font-size:12px}
+  .pill {font-size:11px}
+  .field>span:first-child,.field>span,.field label,.form-stack .field span {font-size:12.5px}
+  .field input,.field select,.field textarea,.filter-form select {font-size:13.5px;min-height:42px;padding:9px 12px}
+  .field textarea {min-height:92px}
+  .btn,button.btn {font-size:13px;min-height:40px;padding:9px 14px}
+  .btn-small {font-size:11.5px;min-height:32px;padding:6px 10px}
+  .kpi-card {padding:19px}
+  .kpi-card>strong {font-size:2rem}
+  .kpi-head span,.kpi-card small,.small-stat>span {font-size:12px}
+  .small-stat small {font-size:11px}
+  .chart-legend>div,.chart-legend div {font-size:12px}
+  .map-point-list strong,.map-list-button strong {font-size:13px}
+  .map-list-button small,.map-footnote {font-size:11.5px}
+  .site-footer {font-size:11px}
+  .auth-aside h1 {font-size:clamp(2rem,3vw,3.05rem)}
+  .auth-aside p {font-size:14.5px}
+  .auth-feature-list span {font-size:13px}
+  .auth-logo {margin-bottom:55px}
+  .auth-logo strong {font-size:1.65rem}
+  .auth-card h2 {font-size:1.75rem}
+  .auth-card>p {font-size:13px}
+  .auth-card .form-stack {gap:17px}
+  .auth-foot-note {font-size:11.5px}
+  .auth-card>.small {font-size:11px}
+}
+@media screen and (max-width:740px) {
+  html {font-size:15px}
+  .sidebar .nav-link {font-size:13.5px;min-height:42px}
+  .topbar-location strong {font-size:14px}
+  .data-table th,.data-table td {font-size:12px}
+  .field input,.field select,.field textarea {font-size:14px}
+  .auth-card-wrap {padding:26px 19px}
+}
+
+/* Avisos discretos em estilo toast do protótipo, sem interferir nos formulários. */
+.toast-root{position:fixed;bottom:22px;right:22px;z-index:210;max-width:calc(100vw - 30px);display:flex;flex-direction:column;align-items:flex-end;gap:10px;pointer-events:none}
+.toast-root:empty{display:none}
+.obras-toast{background:#153c4c;color:#f4fbff;border-radius:12px;box-shadow:0 14px 38px rgba(7,34,48,.26);border:1px solid rgba(255,255,255,.10);min-width:min(325px,calc(100vw - 30px));width:min(405px,calc(100vw - 30px));padding:13px 12px 13px 14px;display:flex;align-items:flex-start;gap:11px;pointer-events:auto;animation:obrasToastEnter .20s ease-out;overflow-wrap:anywhere}
+.obras-toast .toast-icon{flex:0 0 auto;width:29px;height:29px;display:grid;place-items:center;border-radius:9px;color:#8cf2cc;background:rgba(71,224,179,.13)}
+.obras-toast .toast-icon .icon{width:18px;height:18px}
+.obras-toast.toast-error .toast-icon{color:#ffb7b8;background:rgba(236,94,97,.16)}
+.obras-toast.toast-warning .toast-icon{color:#ffcd80;background:rgba(255,185,77,.15)}
+.obras-toast.toast-info .toast-icon{color:#a7d9fc;background:rgba(100,176,243,.15)}
+.obras-toast .toast-copy{flex:1;min-width:0;padding-top:1px}
+.obras-toast .toast-copy strong{font-size:13px;font-weight:800;line-height:1.3;display:block}
+.obras-toast .toast-copy p{font-size:12.5px;color:#d4e6ed;line-height:1.48;margin:3px 0 0}
+.obras-toast .toast-close{flex:0 0 auto;background:none;border:0;border-radius:7px;padding:4px;color:#c3d7e0;min-width:27px;min-height:27px;display:grid;place-items:center}
+.obras-toast .toast-close:hover,.obras-toast .toast-close:focus-visible{background:rgba(255,255,255,.12);color:#fff;outline:2px solid transparent}
+.obras-toast .toast-close .icon{width:17px;height:17px}
+.obras-toast.is-hiding{animation:obrasToastExit .16s ease-in forwards}
+@keyframes obrasToastEnter{from{opacity:0;transform:translateY(13px)}to{opacity:1;transform:translateY(0)}}
+@keyframes obrasToastExit{to{opacity:0;transform:translateY(9px)}}
+@media(prefers-reduced-motion:reduce){.obras-toast,.obras-toast.is-hiding{animation:none}}
+@media(max-width:580px){.toast-root{left:12px;right:12px;bottom:14px;max-width:none;align-items:stretch}.obras-toast{width:100%;min-width:0}}
+@media print {.toast-root,.confirm-backdrop {display:none!important}}
+
+/* Avisos permanentes: mesma família visual, mas permanecem no fluxo da página. */
+.notice{gap:9px;border-radius:10px;font-size:12.5px;font-weight:600;line-height:1.45;padding:11px 13px}
+.notice .icon{width:17px;height:17px}
+
+/* Revelar senha, sempre no lado direito do campo e acessível por teclado. */
+.password-wrap{display:block;position:relative;width:100%}
+.password-wrap input{width:100%;padding-right:48px!important}
+.password-wrap .password-visibility{position:absolute;right:5px;top:50%;transform:translateY(-50%);height:34px;width:36px;min-height:0;padding:0;border:0;display:grid;place-items:center;border-radius:8px;background:transparent;color:#708b9b;cursor:pointer}
+.password-wrap .password-visibility:hover,.password-wrap .password-visibility:focus-visible{color:#138b81;background:#eaf6f3;outline:2px solid #8edbd2;outline-offset:1px}
+.password-wrap .password-visibility .icon{width:19px;height:19px}
+.credential-password{max-width:365px;margin:10px 0 0}
+.credential-password input{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12.5px;min-height:39px;border:1px solid #c9e0df;border-radius:9px;background:#f8fcfb;padding:9px 48px 9px 12px;color:#1c4a53}
+.credential-box .credential-password .password-visibility{font-size:13px}
+
+/* Caixa de confirmação em vez de diálogos genéricos do navegador. */
+.confirm-backdrop{position:fixed;inset:0;z-index:220;background:rgba(12,37,53,.67);display:grid;place-items:center;padding:18px;animation:obrasToastEnter .15s ease}
+.confirm-dialog{background:#fff;width:min(420px,100%);border-radius:16px;box-shadow:0 25px 85px rgba(6,31,43,.30);padding:24px;color:#244557}
+.confirm-symbol{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:#fff5e3;color:#a77119;margin-bottom:13px}
+.confirm-symbol svg{height:21px;width:21px}
+.confirm-dialog h2{font-size:19px;margin:0 0 8px}
+.confirm-dialog p{font-size:13px;color:#6b8190;line-height:1.55;margin:0 0 20px;white-space:pre-wrap}
+.confirm-actions{display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+.confirm-actions button{min-width:98px}
+@media(max-width:460px){.confirm-dialog{padding:20px}.confirm-actions .btn{flex:1}}
+
+/* Evita que alertas e conteúdos longos alarguem a página em celulares. */
+.auth-wrap,.auth-card-wrap,.auth-card,.auth-aside{min-width:0}
+.login-setup-notice>span{display:block;min-width:0;flex:1;overflow-wrap:anywhere}
+.login-setup-notice strong{display:block;margin-bottom:3px}
+.login-setup-notice code{font-size:11.5px}
+@media(max-width:740px){.auth-wrap{width:100%;max-width:100vw}.auth-card-wrap{padding:30px 19px}.auth-aside{padding:30px}.auth-card{max-width:100%}}

@@ -133,3 +133,17 @@ configuradas, ou configure o document root para `public/`.
 Ver `docs/VERIFICACOES.md` para testes realizados e limitações. Não houve
 conexão com a conta Hostinger do usuário: a ligação real é estabelecida
 somente após criação do banco e configuração da senha na hospedagem.
+
+
+## Versão 1.1 — ajustes visuais
+
+- Tipografia compacta em todo o sistema (menus, tabelas, formulários e login).
+- Notificações de sucesso, erro e aviso no estilo do protótipo: aparecem no canto inferior direito, têm botão para fechar e respeitam o fechamento automático (erros importantes só fecham ao clicar).
+- Confirmações de operações destrutivas apresentadas em um modal estilizado, em vez da janela padrão do navegador.
+- Botão de olho nas senhas do login, na alteração de senha do perfil e na senha temporária de novos usuários.
+- Senhas do banco **não** são distribuídas no projeto. Configure `config/database.local.php` diretamente na Hostinger com a senha MySQL nova, sem enviar esse arquivo ao GitHub.
+- **Segurança:** versões anteriores do projeto continham uma credencial MySQL em código. Redefina imediatamente essa senha no painel Hostinger, remova-a do histórico público do Git, e configure a nova senha apenas no servidor.
+
+### Atualização pelo GitHub
+
+Publique os arquivos da pasta `obras` na raiz do seu repositório. Continue acessando `https://lucascorrea.pro/obras/public/`. Depois da sincronização, limpe o cache do navegador com `Ctrl+F5`. Não é necessário reinstalar as tabelas MySQL para aplicar apenas estas alterações visuais.

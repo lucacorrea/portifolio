@@ -47,5 +47,18 @@
   </header>
   <div class="page-content">
 <?php endif; ?>
-<?php if ($flash): ?><div class="notice <?= $flash['type']==='error'?'notice-error':'notice-success' ?>" role="alert"><?= ic($flash['type']==='error'?'alert':'check') ?> <?= h($flash['text']) ?></div><?php endif; ?>
+<?php
+$flashTone = in_array(($flash['type'] ?? ''), ['success','error','warning','info'], true) ? $flash['type'] : 'info';
+$flashTitle = ['success'=>'Operação concluída','error'=>'Não foi possível concluir','warning'=>'Atenção','info'=>'Informação'][$flashTone];
+$flashIcon = in_array($flashTone, ['error','warning'], true) ? 'alert' : 'check';
+?>
+<div id="toast-root" class="toast-root" aria-live="polite" aria-relevant="additions">
+<?php if ($flash && (($_GET['format']??'')!=='print')): ?>
+ <div class="obras-toast toast-<?= h($flashTone) ?>" data-toast data-autoclose="<?= $flashTone==='error'?'0':'5700' ?>" role="<?= $flashTone==='error'?'alert':'status' ?>">
+  <span class="toast-icon"><?= ic($flashIcon) ?></span>
+  <span class="toast-copy"><strong><?= h($flashTitle) ?></strong><p><?= h($flash['text']) ?></p></span>
+  <button type="button" class="toast-close" data-close-toast aria-label="Fechar notificação" title="Fechar"><?= ic('x') ?></button>
+ </div>
+<?php endif; ?>
+</div>
 <?php if ($user && is_file(BASE_PATH.'/storage/DEMO_MODE') && (($_GET['format']??'')!=='print')): ?><div class="demo-banner" role="status"><?= ic('alert') ?> MODO DEMONSTRAÇÃO — dados, contratos e localizações fictícios. Não utilizar como registros oficiais.</div><?php endif; ?>
