@@ -67,3 +67,7 @@ Validar requisitos, atribuições e fluxos internos da Secretaria; implementar
 banco de dados, backend, autenticação/autorização por perfil, registros de
 auditoria, uploads, validações, integração cartográfica verdadeira,
 backup, segurança e testes de homologação com a equipe da Prefeitura.
+
+ATUALIZAÇÃO DE LEGIBILIDADE — 18/11/2026
+Esta versão contém fontes ampliadas em todas as páginas, menus, tabelas, formulários,
+indicadores, apresentação e tela de acesso, com ajustes de espaçamento para desktop e celular.
