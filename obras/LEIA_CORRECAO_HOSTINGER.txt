@@ -1,0 +1,34 @@
+OBRAS360 - CORRECAO DB-CONFIGURACAO (HOSTINGER)
+
+A mensagem DB-CONFIGURACAO significa que o login nao recebeu DB_NAME ou DB_USER.
+Isso geralmente significa que config/.env nao foi encontrado na pasta privada correta.
+O host MySQL mostrado no painel Hostinger e srv1885.hstgr.io:3306.
+
+MODO 1 - ARQUIVO PRONTO:
+1) Encontre a pasta public_html onde estao acesso.php e actions-login.php.
+2) NA PASTA PAI DE public_html, deve haver app/ e config/.
+   Exemplo:
+   domains/lucascorrea.pro/
+      app/bootstrap.php
+      config/.env                 <-- COLOQUE AQUI
+      public_html/acesso.php
+      public_html/actions-login.php
+3) Envie o .env deste ZIP para config/ (nao para public_html).
+4) Confirme no gerenciador de arquivos que o nome do arquivo e EXATAMENTE .env,
+   e nao .env.txt, env ou .env.env. Ative "mostrar arquivos ocultos".
+5) Confira se app/bootstrap.php existe no caminho indicado.
+6) Confira o PHP 8.2+ e a extensao pdo_mysql no painel da hospedagem.
+7) Teste o login. Se surgir DB-CONEXAO, DB-CREDENCIAIS ou DB-TABELA,
+   o arquivo ja foi localizado: o novo codigo mostra a proxima etapa.
+
+MODO 2 - SE O GERENCIADOR NAO ACEITAR ARQUIVOS OCULTOS:
+- Use o arquivo CONFIGURACAO_HOSTINGER_RENOMEAR_PARA_DOT_ENV.txt incluido.
+- Envie-o para a pasta privada config/ e renomeie-o para .env.
+
+IMPORTANTE:
+- NAO COLOQUE .env dentro de public_html: ele contem a senha MySQL.
+- Nao execute scripts SQL nem apague tabelas para corrigir DB-CONFIGURACAO.
+- Nao envie screenshot ou conteudo desse .env publicamente.
+- A conexao com o banco real so pode ser testada na hospedagem.
+- Depois que o sistema estiver funcionando, altere a senha MySQL no painel
+  e atualize DB_PASS no .env para substituir a credencial exposta no chat.
