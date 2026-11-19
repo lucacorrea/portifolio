@@ -1,0 +1,36 @@
+OBRAS360 - CORREÇÃO DB-CONFIGURACAO
+
+CAUSA IDENTIFICADA
+O ZIP completo atualizado anterior não incluiu o arquivo privado config/.env.
+Esse arquivo é obrigatório para o PHP encontrar DB_NAME, DB_USER e DB_PASS.
+
+SE O SISTEMA JÁ ESTÁ INSTALADO (SEM REINSTALAR NADA)
+1. No Gerenciador de Arquivos da hospedagem, abra a pasta que contém public_html/.
+2. Nessa mesma pasta deve existir a pasta config/ (fora de public_html).
+3. Envie o arquivo config/.env deste pacote para essa pasta config/.
+4. O caminho esperado é: [diretório do domínio]/config/.env
+   E os caminhos vizinhos são: [diretório do domínio]/app/ e [diretório do domínio]/public_html/.
+5. Não envie este arquivo para public_html/. Não altere nenhuma tabela SQL.
+6. Se config/.env já existir, faça uma cópia e compare os nomes das variáveis; não substitua
+   cegamente um arquivo com credenciais atualizadas. O arquivo incluído usa as credenciais
+   MySQL informadas ao solicitar o sistema, que podem ter mudado.
+7. Tente acessar /acesso.php novamente.
+
+SE AINDA FALHAR
+* DB-CREDENCIAIS: confira as credenciais do MySQL e permissões do usuário no hPanel.
+* DB-CONEXAO: confira DB_HOST (configurado como localhost, sujeito a confirmação no painel).
+* DB-TABELA: confirme a importação das tabelas no phpMyAdmin.
+* DB-DRIVER: habilite pdo_mysql na versão PHP do domínio.
+* DB-CONFIGURACAO novamente: confira que o arquivo oculto .env está no local correto,
+  que o nome é exatamente .env (não .env.txt), que tem permissão de leitura pelo PHP
+  e que não há outra pasta app/ e config/ sendo usada pelo site.
+
+SEGURANÇA
+O arquivo config/.env contém senha do banco e um segredo de auditoria.
+Não o publique, não o envie a terceiros e não exponha o conteúdo em screenshots.
+Proteja a pasta privada; no Linux, use permissão de arquivo 600 ou 640 conforme o usuário web.
+Como a senha do banco já foi compartilhada na conversa, é recomendável alterá-la no painel
+quando o sistema estiver configurado e atualizar DB_PASS no .env.
+
+NOTA: a conexão com a hospedagem não pôde ser executada neste ambiente. Esta correção
+resolve a ausência do arquivo no pacote, não garante conexão com host/usuário válidos.
