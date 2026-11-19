@@ -1,0 +1,7 @@
+/config/.env
+/INSTALACAO_CREDENCIAIS.txt
+/storage/uploads/*
+!/storage/uploads/.gitkeep
+*.log
+*.bak
+.DS_Store
