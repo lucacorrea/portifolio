@@ -25,10 +25,11 @@ necessário para o sistema ser utilizado oficialmente pela Secretaria.
 - Protocolos: numeração, tramitação e assinatura/autorização quando aplicável.
 - Relatórios: critérios homologados, exportações e filtros por permissão.
 
-4. MAPA / WEBGIS
+4. MAPA / WEBGIS (APÓS O PROTÓTIPO VISUAL 2.0)
+- A interface do mapa já existe com filtros, camadas e pontos fictícios.
 - Realizar levantamento de coordenadas oficiais e base cartográfica.
-- Desenvolver visualização WebGIS e validações de georreferenciamento.
-- Vincular cada obra e serviço a sua localização autenticada.
+- Implementar backend geográfico/WebGIS e validações de georreferenciamento.
+- Vincular cada obra e serviço à sua localização autenticada.
 
 5. HOMOLOGAÇÃO
 - Testes técnicos, funcionais, acessibilidade e segurança.
