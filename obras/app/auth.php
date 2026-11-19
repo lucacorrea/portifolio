@@ -61,3 +61,28 @@ function change_my_password(array $u, string $old, string $new, string $confirma
     $_SESSION['csrf'] = bin2hex(random_bytes(32));
     audit_log('auth.password.changed');
 }
+
+/**
+ * Classifica problemas operacionais sem expor mensagens SQL ao navegador.
+ * O código exato da exceção é mantido exclusivamente no log do PHP.
+ */
+function login_failure_code(Throwable $error): string {
+    if ($error instanceof PDOException) {
+        if (str_contains(strtolower($error->getMessage()), 'could not find driver')) return 'DB-DRIVER';
+        $driver = (int)($error->errorInfo[1] ?? 0);
+        return match ($driver) {
+            1045, 1044 => 'DB-CREDENCIAIS',
+            1049 => 'DB-NOME',
+            2002, 2003, 2005, 2006, 2013 => 'DB-CONEXAO',
+            1146 => 'DB-TABELA',
+            1054 => 'DB-COLUNA',
+            1048, 1062, 1452 => 'DB-DADOS',
+            1205, 1213 => 'DB-TRANSACAO',
+            default => 'DB-SQL',
+        };
+    }
+    if ($error instanceof RuntimeException && str_contains($error->getMessage(), 'Configuração do banco de dados incompleta')) {
+        return 'DB-CONFIGURACAO';
+    }
+    return 'LOGIN-SERVIDOR';
+}
