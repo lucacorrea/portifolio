@@ -1,0 +1,11 @@
+# A instalação pública fica em /obras/public/.
+# Impede acesso HTTP a app/, config/, database/, tools/, docs/ e storage/.
+Options -Indexes
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^$ public/acesso.php [R=302,L]
+    RewriteRule ^(?!public(?:/|$)).+ - [F,L,NC]
+</IfModule>
+<FilesMatch "(?i)(\.env|\.sql|\.log|\.ini|\.bak|\.zip)$">
+    Require all denied
+</FilesMatch>

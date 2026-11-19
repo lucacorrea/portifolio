@@ -3,17 +3,44 @@ declare(strict_types=1);
 
 const APP_ROOT = __DIR__ . '/..';
 
+/**
+ * Configuração privada para deploy via GitHub no caminho /obras/public/.
+ * Se o projeto está em public_html/obras, procura primeiro o arquivo em
+ * <dominio>/obras360-private/config/.env, fora de public_html.
+ * Também aceita OBRAS360_ENV_FILE absoluto e variáveis do servidor.
+ */
+function obras_env_file_path(): ?string {
+    $custom = getenv('OBRAS360_ENV_FILE');
+    $root = realpath(APP_ROOT) ?: dirname(__DIR__);
+    $candidates = [];
+    if (is_string($custom) && $custom !== '') $candidates[] = $custom;
+    $candidates[] = dirname(dirname($root)) . '/obras360-private/config/.env';
+    // Compatibilidade com instalações antigas; a pasta config é protegida por .htaccess.
+    $candidates[] = $root . '/config/.env';
+    foreach ($candidates as $file) {
+        if (is_file($file) && is_readable($file)) return $file;
+    }
+    return null;
+}
 function load_environment(): void {
-    $file = APP_ROOT . '/config/.env';
-    if (!is_file($file)) return;
+    $file = obras_env_file_path();
+    if ($file === null) return;
     $vars = parse_ini_file($file, false, INI_SCANNER_RAW);
-    if (!is_array($vars)) throw new RuntimeException('Arquivo de configuração inválido.');
+    if (!is_array($vars)) {
+        error_log('[OBRAS360 CONFIG] Arquivo .env inválido ou ilegível.');
+        return;
+    }
     foreach ($vars as $key => $value) {
-        if (is_string($key) && is_scalar($value) && !array_key_exists($key, $_ENV)) $_ENV[$key] = (string)$value;
+        if (is_string($key) && preg_match('/^[A-Z][A-Z0-9_]*$/', $key)
+            && is_scalar($value) && getenv($key) === false && !array_key_exists($key, $_ENV)) {
+            $_ENV[$key] = (string)$value;
+        }
     }
 }
 function env_value(string $key, string $fallback = ''): string {
-    $v = $_ENV[$key] ?? getenv($key);
+    $v = getenv($key);
+    if (is_string($v) && $v !== '') return $v;
+    $v = $_ENV[$key] ?? null;
     return is_string($v) && $v !== '' ? $v : $fallback;
 }
 function request_https(): bool {

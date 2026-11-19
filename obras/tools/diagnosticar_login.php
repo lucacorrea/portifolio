@@ -32,7 +32,7 @@ check('PHP 8.2 ou superior', PHP_VERSION_ID >= 80200);
 check('Extensão PDO', extension_loaded('PDO'));
 check('Extensão pdo_mysql', extension_loaded('pdo_mysql'));
 check('Suporte Argon2id', defined('PASSWORD_ARGON2ID'));
-check('Arquivo privado config/.env', is_file(APP_ROOT . '/config/.env'));
+check('Configuração privada (.env) ou variáveis do servidor', obras_env_file_path() !== null || (env_value('DB_NAME') !== '' && env_value('DB_USER') !== ''));
 check('Configuração de banco', env_value('DB_NAME') !== '' && env_value('DB_USER') !== '' && env_value('DB_PASS') !== '');
 
 if (!extension_loaded('pdo_mysql') || env_value('DB_NAME') === '' || env_value('DB_USER') === '') {
