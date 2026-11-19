@@ -1,5 +1,8 @@
 # OBRAS360 — PHP 8.2+ / MySQL, mantendo o layout original
 
+> **Deploy GitHub → Hostinger na pasta `obras/`:** siga o [guia específico](docs/DEPLOY_GITHUB_HOSTINGER.md). O arquivo `.env` privado não é versionado e precisa ser configurado uma vez na hospedagem. A aplicação publicada em `/obras/public/` usa estrutura diferente do exemplo manual abaixo.
+
+
 Este pacote adapta o **mesmo protótipo visual enviado**. Os arquivos CSS originais foram preservados. As telas do painel continuam sendo montadas pelo JavaScript original e seus formulários agora enviam dados para uma API PHP autenticada. O banco persiste os registros.
 
 ## Instalação na Hostinger (ou Apache com PHP)
