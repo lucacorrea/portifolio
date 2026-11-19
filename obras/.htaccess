@@ -1,4 +1,4 @@
-# A instalação pública fica em /obras/public/.
+# A instalacao publica fica em /obras/public/.
 # Impede acesso HTTP a app/, config/, database/, tools/, docs/ e storage/.
 Options -Indexes
 <IfModule mod_rewrite.c>

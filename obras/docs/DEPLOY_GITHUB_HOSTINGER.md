@@ -1,34 +1,63 @@
-# OBRAS360 — deploy GitHub → Hostinger
+# OBRAS360 — correção de deploy GitHub → Hostinger
 
-Este guia corresponde à pasta `obras/` do repositório `lucacorrea/portifolio` e ao endereço `https://lucascorrea.pro/obras/public/acesso.php`.
+Este ajuste vale para o repositório **lucacorrea/portifolio**, pasta `obras/`, publicado em
+`https://lucascorrea.pro/obras/public/acesso.php`.
 
-## Erro DB-CONFIGURACAO
+## Por que aparece `DB-CONFIGURACAO`?
 
-O arquivo `obras/config/.env` foi ignorado corretamente pelo Git. Portanto, o deploy automático não entrega as credenciais de banco ao PHP. Não publique senhas no GitHub.
+O `app/bootstrap.php` precisa de `DB_NAME` e `DB_USER`. O arquivo `.env` não está no
+GitHub porque foi corretamente ignorado pelo Git. Portanto, o deploy Git **não cria
+as credenciais** no servidor. Não resolva isso adicionando a senha ao repositório.
 
-## Configuração única, fora de public_html
+## Configuração única na Hostinger (fora do deploy Git)
 
-1. No Gerenciador de Arquivos da Hostinger, encontre a pasta do domínio onde está `public_html/obras/`.
-2. **Fora de `public_html`**, crie `obras360-private/config/`.
-3. Dentro dela, crie o arquivo `.env` usando `obras/config/.env.example` como modelo. Preencha `DB_PASS` com a senha atual do MySQL **somente no servidor**. Não envie o arquivo preenchido ao GitHub, VS Code, screenshots ou issues.
-4. Confirme `DB_HOST=srv1885.hstgr.io`, `DB_PORT=3306`, `DB_NAME=u784961086_obras`, `DB_USER=u784961086_obras`, conforme seu hPanel.
-5. Preencha `APP_AUDIT_SALT` com 64 caracteres hexadecimais aleatórios (gerados, por exemplo, com `openssl rand -hex 32`).
-6. Faça o deploy normal a partir da `main`, depois de revisar e mesclar a alteração. O sistema buscará o arquivo neste caminho semelhante a `domains/lucascorrea.pro/obras360-private/config/.env` sem precisar versioná-lo.
+1. No Gerenciador de Arquivos da Hostinger, localize a pasta do domínio que contém
+   `public_html/obras/`. Crie **fora de `public_html`** a pasta:
+   `obras360-private/config/`.
+2. Crie nela um arquivo chamado `.env`, **não** `.env.txt`. Use `obras/config/.env.example`
+   como modelo, preenchendo `DB_PASS` com a senha atual do MySQL. Não copie esse
+   arquivo preenchido ao VS Code/GitHub. Configure `APP_AUDIT_SALT` com um valor
+   aleatório de 64 caracteres hexadecimais (`openssl rand -hex 32`).
+3. O arquivo ficará em um caminho semelhante a:
+   `domains/lucascorrea.pro/obras360-private/config/.env`.
+   A posição é relativa ao diretório **pai** de `public_html`, não ao diretório `obras`.
+4. Confirme `DB_HOST=srv1885.hstgr.io` e `DB_PORT=3306`, conforme o hPanel mostrado,
+   além do nome e usuário `u784961086_obras`. Salve o arquivo.
+5. No GitHub, depois de revisar e mesclar a correção, faça o deploy da branch `main`
+   normalmente. O PHP encontra o `.env` privado, mesmo que o Git publique apenas
+   `public_html/obras`.
+6. Teste o login. Se surgir `DB-CONEXAO` ou `DB-CREDENCIAIS`, o `.env` já foi
+   localizado; verifique a senha/permissões e a disponibilidade do MySQL.
+   Se surgir `DB-TABELA`, execute o diagnóstico SQL presente em `database/`.
 
-O PHP também aceita um arquivo indicado por `OBRAS360_ENV_FILE` (caminho absoluto) ou variáveis `DB_*` efetivamente disponibilizadas ao processo PHP. Para compatibilidade, ainda lê `obras/config/.env`, mas é preferível manter o segredo fora da área pública.
+A aplicação também suporta a variável de ambiente `OBRAS360_ENV_FILE` apontando
+para um caminho **absoluto**, ou as variáveis `DB_*` efetivamente disponibilizadas
+ao processo PHP pelo servidor. Como último recurso de compatibilidade, ainda lê
+`obras/config/.env`, mas é preferível manter o arquivo fora do `public_html`.
 
-## Segurança
+## Proteção do código privado
 
-O `obras/.htaccess` bloqueia solicitações web para tudo fora de `obras/public/`, e as pastas internas também são bloqueadas individualmente. Confirme que `https://lucascorrea.pro/obras/config/.env.example` responde com **403** ou **404**. A proteção depende do servidor respeitar os arquivos `.htaccess`; sempre que possível configure o document root em `obras/public`.
+`obras/.htaccess` bloqueia URLs de tudo que não esteja em `obras/public/`. Cada
+pasta interna recebe também um `.htaccess` de bloqueio. Isso depende de Apache
+compatível com `.htaccess`; o ideal é configurar o document root diretamente
+para `obras/public` quando a hospedagem permitir. Confirme que uma URL como
+`https://lucascorrea.pro/obras/config/.env.example` retorna **403/404**, não o
+conteúdo do arquivo. Não exponha arquivos de teste, backups, SQL ou credenciais.
 
-## Diagnóstico
+## Diagnóstico e segurança
 
-Caso haja terminal na Hostinger, execute de dentro de `public_html/obras`:
+Na linha de comando da Hostinger, dentro de `public_html/obras`, execute:
 
 ```bash
 php tools/diagnosticar_login.php
 ```
 
-Se após configurar o arquivo surgir `DB-CONEXAO` ou `DB-CREDENCIAIS`, a configuração foi localizada; verifique a conexão e a senha. Se surgir `DB-TABELA`, verifique os SQLs de `database/`. O layout não foi modificado. A conexão real com o MySQL só pode ser testada na hospedagem.
+A execução é permitida somente via CLI e não revela senhas. O script testa
+extensões PHP, configuração, conexão, tabelas e usuário suporte.
 
-**Importante:** substitua a senha do banco e a senha inicial do suporte, pois ambas já foram compartilhadas na conversa. Não comite credenciais.
+O **layout não foi alterado**. Esse ajuste corrige o carregamento de ambiente e
+o isolamento dos arquivos. A conexão real com o MySQL precisa ser testada na
+hospedagem; um PR não prova o sucesso do deploy.
+
+**Troque a senha do banco e a senha inicial de suporte**, pois foram compartilhadas
+na conversa. Jamais as coloque no GitHub, nem em prints, issues ou logs.

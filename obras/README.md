@@ -1,8 +1,5 @@
 # OBRAS360 — PHP 8.2+ / MySQL, mantendo o layout original
 
-> **Deploy GitHub → Hostinger na pasta `obras/`:** siga o [guia específico](docs/DEPLOY_GITHUB_HOSTINGER.md). O arquivo `.env` privado não é versionado e precisa ser configurado uma vez na hospedagem. A aplicação publicada em `/obras/public/` usa estrutura diferente do exemplo manual abaixo.
-
-
 Este pacote adapta o **mesmo protótipo visual enviado**. Os arquivos CSS originais foram preservados. As telas do painel continuam sendo montadas pelo JavaScript original e seus formulários agora enviam dados para uma API PHP autenticada. O banco persiste os registros.
 
 ## Instalação na Hostinger (ou Apache com PHP)
@@ -22,13 +19,13 @@ Este pacote adapta o **mesmo protótipo visual enviado**. Os arquivos CSS origin
     ...
   app/                      <-- PHP interno (privado)
   config/
-    .env                    <-- crie ou preserve no servidor (privado)
+    .env                    <-- conexão com o banco (privado)
     modules.json
   storage/
     uploads/                <-- anexos privados (privado)
 ```
 
-5. No pacote atualizado, por segurança, `config/.env` **não é redistribuído**. Se a instalação já existe, **preserve o seu `.env` atual**. Para uma instalação nova, copie `config/.env.example` para `config/.env`, no diretório privado, e preencha os dados MySQL. Na Hostinger, `DB_HOST=localhost` é o padrão para bancos no mesmo servidor; confirme em seu hPanel. Não é possível testar uma conexão remota sem acesso à hospedagem.
+5. O arquivo `config/.env` já contém **o nome, usuário e senha MySQL informados na conversa**, com `DB_HOST=localhost` como suposição inicial. Confirme em **Hostinger → Bancos de dados MySQL** qual é o endereço de servidor de banco de dados e atualize `DB_HOST` se necessário. Não é possível testar uma conexão remota sem o host correto e acesso à hospedagem.
 6. Confirme que `storage/uploads/` pode receber arquivos pelo usuário do PHP sem ficar acessível por URL.
 7. Acesse **`https://seu-dominio/acesso.php`**. Use usuário `suporte` **ou** e-mail `suporte@obras360.local`, junto da senha inicial em `INSTALACAO_CREDENCIAIS.txt` **(não envie esse TXT para o servidor)**. No primeiro acesso a troca de senha é obrigatória.
 8. Acesse **Usuários e permissões** para cadastrar os demais perfis. O menu de perfil permite trocar sua própria senha e encerrar sessão.
@@ -108,7 +105,3 @@ OBRAS360_PHP_COMPLETO/
 - **Imagem/anexo falha:** confira `storage/uploads`, permissões da pasta e configurações de upload no `php.ini`.
 - **Senha inicial não entra:** confirme que o SQL foi importado somente após selecionar o banco. O `INSERT` do primeiro usuário não substitui uma conta `suporte` já existente.
 - **Mapas não carregam:** confira internet, CSP do servidor, CDN Leaflet e disponibilidade dos blocos de mapa OSM.
-
-## Problemas de login
-
-Se aparecer um código técnico ao entrar, consulte [`docs/CORRIGIR_ERRO_LOGIN.md`](docs/CORRIGIR_ERRO_LOGIN.md), que contém o SQL não destrutivo de verificação (`database/03_verificar_instalacao.sql`) e um diagnóstico por terminal (`tools/diagnosticar_login.php`). Na atualização de uma instalação em uso, **nunca sobrescreva o arquivo `config/.env`** com um exemplo.
