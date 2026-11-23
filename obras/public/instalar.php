@@ -63,7 +63,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             throw new RuntimeException('Informe a senha atual do banco MySQL.');
         if (!is_string($supportPass) || !is_string($supportConfirm)
             || !hash_equals($supportPass, $supportConfirm) || !password_secure($supportPass))
-            throw new RuntimeException('Crie uma senha de suporte com pelo menos 16 caracteres, maiúscula, minúscula, número e símbolo; confira a confirmação.');
+            throw new RuntimeException('Crie uma senha de suporte com pelo menos 8 caracteres, maiúscula, minúscula, número e símbolo; confira a confirmação.');
         if (!extension_loaded('pdo_mysql')) throw new RuntimeException('Ative a extensão pdo_mysql na Hostinger.');
         if (!defined('PASSWORD_ARGON2ID')) throw new RuntimeException('Sua versão do PHP não oferece suporte a Argon2id.');
         $pdo = obras_conectar_com_dados('u784961086_obras', 'u784961086_obras', $dbPass);
@@ -138,8 +138,8 @@ function h(string $v): string { return htmlspecialchars($v, ENT_QUOTES | ENT_SUB
 <label>Banco de dados<input value="u784961086_obras" readonly></label>
 <label>Usuário MySQL<input value="u784961086_obras" readonly></label>
 <label>Senha atual do banco MySQL<input name="db_password" type="password" maxlength="512" required autocomplete="off" placeholder="Senha do banco na Hostinger"></label>
-<label>Nova senha de acesso para o usuário suporte<input name="support_password" type="password" minlength="16" maxlength="128" required autocomplete="new-password" placeholder="16 caracteres, letras, número e símbolo"></label>
-<label>Confirmar senha do suporte<input name="support_confirm" type="password" minlength="16" maxlength="128" required autocomplete="new-password"></label>
+<label>Nova senha de acesso para o usuário suporte<input name="support_password" type="password" minlength="8" maxlength="128" required autocomplete="new-password" placeholder="8 caracteres, letras, número e símbolo"></label>
+<label>Confirmar senha do suporte<input name="support_confirm" type="password" minlength="8" maxlength="128" required autocomplete="new-password"></label>
 <button type="submit">Testar MySQL, configurar e habilitar suporte</button>
 </form><p class="muted">Para instalações novas, defina uma senha exclusiva para o suporte. Se a conta já estiver ativa e precisar redefinir a senha, use <code>instalar.php?reconfigurar=1</code>, informe a senha atual do MySQL e a nova senha do suporte. Remova o instalador após os testes.</p>
 </main></body></html>

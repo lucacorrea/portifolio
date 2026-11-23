@@ -45,14 +45,14 @@ function login_attempt(string $identifier, string $password): bool {
     } catch (Throwable $e) { if ($pdo->inTransaction()) $pdo->rollBack(); throw $e; }
 }
 function password_secure(string $pass): bool {
-    return strlen($pass) >= 16 && strlen($pass) <= 128
+    return strlen($pass) >= 8 && strlen($pass) <= 128
         && preg_match('/[A-Z]/', $pass) && preg_match('/[a-z]/', $pass)
         && preg_match('/[0-9]/', $pass) && preg_match('/[^A-Za-z0-9]/', $pass);
 }
 function change_my_password(array $u, string $old, string $new, string $confirmation): void {
     if (!password_verify($old, $u['password_hash'])) throw new HttpError('Senha atual incorreta.');
     if (!hash_equals($new, $confirmation)) throw new HttpError('A confirmação da senha não confere.');
-    if (!password_secure($new)) throw new HttpError('Use pelo menos 16 caracteres, com letras maiúsculas, minúsculas, número e símbolo.');
+    if (!password_secure($new)) throw new HttpError('Use pelo menos 8 caracteres, com letras maiúsculas, minúsculas, número e símbolo.');
     if (hash_equals($old, $new)) throw new HttpError('A nova senha precisa ser diferente da anterior.');
     $hash = password_hash($new, PASSWORD_ARGON2ID, ['memory_cost'=>65536,'time_cost'=>3,'threads'=>2]);
     $st = db()->prepare('UPDATE users SET password_hash=?, must_change_password=0, password_changed_at=NOW(), failed_attempts=0, locked_until=NULL WHERE id=?');

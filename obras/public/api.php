@@ -160,13 +160,13 @@ try {
                     }
                     $pdo->prepare('UPDATE users SET username=?,email=?,name=?,role=? WHERE id=?')->execute([$username,$email,$name,$role,$id]);
                     if($password!==''){
-                        if(!password_secure($password))throw new HttpError('Senha: mínimo 16 caracteres, com maiúscula, minúscula, número e símbolo.');
+                        if(!password_secure($password))throw new HttpError('Senha: mínimo 8 caracteres, com maiúscula, minúscula, número e símbolo.');
                         if($id===(int)$u['id'])throw new HttpError('Para alterar sua senha use Meu perfil.');
                         $hash=password_hash($password,PASSWORD_ARGON2ID,['memory_cost'=>65536,'time_cost'=>3,'threads'=>2]);
                         $pdo->prepare('UPDATE users SET password_hash=?,must_change_password=1,failed_attempts=0,locked_until=NULL WHERE id=?')->execute([$hash,$id]);
                     }
                 } else {
-                    if(!password_secure($password))throw new HttpError('Senha: mínimo 16 caracteres, com maiúscula, minúscula, número e símbolo.');
+                    if(!password_secure($password))throw new HttpError('Senha: mínimo 8 caracteres, com maiúscula, minúscula, número e símbolo.');
                     $hash=password_hash($password,PASSWORD_ARGON2ID,['memory_cost'=>65536,'time_cost'=>3,'threads'=>2]);
                     $pdo->prepare('INSERT INTO users(username,email,name,role,password_hash,must_change_password,created_by) VALUES (?,?,?,?,?,1,?)')->execute([$username,$email,$name,$role,$hash,$u['id']]);
                     $id=(int)$pdo->lastInsertId();

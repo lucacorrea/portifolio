@@ -72,3 +72,8 @@ A senha dos usuários permanece protegida por **Argon2id**; o sistema ainda
 usa consultas parametrizadas, sessões, controle de acesso e CSRF. Removemos
 somente as opções de configuração pedidas. Não é uma instalação homologada
 para produção nem foi possível testar a conexão ao banco remoto desta hospedagem.
+
+
+## Política de senha (versão demonstrativa atualizada)
+
+A partir desta versão, senhas novas e redefinidas exigem **no mínimo 8 caracteres**, com pelo menos uma letra maiúscula, uma minúscula, um número e um símbolo. Continuam armazenadas com Argon2id. A regra é aplicada pelo PHP e refletida nos formulários HTML/JavaScript. Senhas antigas permanecem válidas.
