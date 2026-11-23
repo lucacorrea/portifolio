@@ -1,7 +1,7 @@
 <?php
-/** Modelo de configuração simples (NÃO publicar com senha no GitHub). */
+/** CREDENCIAL PRIVADA DO MYSQL. Coloque FORA de public_html, NUNCA NO GITHUB. */
 return [
     'DB_NAME' => 'u784961086_obras',
     'DB_USER' => 'u784961086_obras',
-    'DB_PASS' => 'COLE_SENHA_AQUI',
+    'DB_PASS' => '5y&20ciwZ',
 ];
