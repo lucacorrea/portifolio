@@ -81,6 +81,7 @@ function login_failure_code(Throwable $error): string {
             default => 'DB-SQL',
         };
     }
+    if ($error instanceof RuntimeException && str_contains($error->getMessage(), 'Driver pdo_mysql não instalado')) return 'DB-DRIVER';
     if ($error instanceof RuntimeException && str_contains($error->getMessage(), 'Configuração do banco de dados incompleta')) {
         return 'DB-CONFIGURACAO';
     }

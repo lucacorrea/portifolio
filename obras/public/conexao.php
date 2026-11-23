@@ -1,10 +1,11 @@
 <?php
 /**
- * OBRAS360 - diagnostico temporario e independente do arquivo .env.
+ * OBRAS360 - diagnóstico temporário manual e da conexão central app/conexao.php.
  * REMOVA este arquivo da hospedagem apos testar.
  * O formulario nao persiste a senha MySQL e usa apenas hosts predefinidos.
  */
 declare(strict_types=1);
+require_once dirname(__DIR__) . '/app/conexao.php';
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 ini_set('session.use_strict_mode', '1');
@@ -78,7 +79,7 @@ $results=[];
 $done=false;
 $connectionOk=false;
 $error='';
-$envStatus='Não verificado';
+$conexaoStatus='Não verificado';
 $token=$_SESSION['obras_diag_csrf']??null;
 if (!is_string($token) || strlen($token)<32) {
     $token=bin2hex(random_bytes(32));
@@ -113,7 +114,7 @@ if (($_SERVER['REQUEST_METHOD']??'GET')==='POST') {
             $error='A versão do PHP é inferior à exigida pelo OBRAS360.';
         } else {
             try {
-                // Teste isolado do .env: usa somente os dados enviados agora, em memória.
+                // Teste MANUAL isolado: usa os dados informados neste POST, sem gravar senha.
                 $dsn='mysql:host='.$host.';port=3306;dbname=u784961086_obras;charset=utf8mb4';
                 $db=new PDO($dsn,'u784961086_obras',$password,[
                     PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,
@@ -124,7 +125,7 @@ if (($_SERVER['REQUEST_METHOD']??'GET')==='POST') {
                 ]);
                 $db->query('SELECT 1')->fetchColumn();
                 $connectionOk=true;
-                $results[]=status('Conexão MySQL e SELECT 1',true,'A senha informada foi aceita pelo servidor.');
+                $results[]=status('Conexão MANUAL MySQL e SELECT 1',true,'A senha informada foi aceita pelo servidor.');
                 $schema=(string)$db->query('SELECT DATABASE()')->fetchColumn();
                 $results[]=status('Banco correto selecionado',$schema==='u784961086_obras');
                 $required=['users','login_limits','sequences','records','milestones','stock_movements','protocol_forwards','attachments','audit_logs'];
@@ -142,6 +143,35 @@ if (($_SERVER['REQUEST_METHOD']??'GET')==='POST') {
                     }
                 }
                 $db=null;
+
+                // A aplicação usa esta mesma função através de db() em bootstrap.php.
+                // Não utiliza a senha enviada no formulário, somente o PHP privado.
+                if (obras_arquivo_conexao() === null) {
+                    $results[]=status('Conexão INTEGRADA do sistema',false,
+                        'DB-CONFIGURACAO: arquivo obras360-private/conexao.php não encontrado. Crie-o fora de public_html.');
+                } else {
+                    try {
+                        $appDb=obras_conectar();
+                        $appDb->query('SELECT 1')->fetchColumn();
+                        $appSchema=(string)$appDb->query('SELECT DATABASE()')->fetchColumn();
+                        $results[]=status('Conexão INTEGRADA do sistema via app/conexao.php',true,
+                            'PDO e MySQL conectados usando somente o arquivo PHP privado.');
+                        $results[]=status('Banco integrado correto', $appSchema==='u784961086_obras');
+                        $salt=obras_valor_conexao('APP_AUDIT_SALT');
+                        $results[]=status('APP_AUDIT_SALT configurado no PHP privado',
+                            (bool)preg_match('/^[a-f0-9]{64}$/iD',$salt),
+                            'Use 64 caracteres hexadecimais gerados aleatoriamente; não publique esse valor.');
+                    } catch (PDOException $e) {
+                        $results[]=status('Conexão INTEGRADA do sistema',false, mysql_error_code($e) .
+                            ': confira host, usuário, senha e banco no conexao.php privado.');
+                        error_log('[OBRAS360 TESTE INTEGRADO] '. mysql_error_code($e) . ' SQLSTATE='. (string)$e->getCode());
+                    } catch (Throwable $e) {
+                        $code=str_contains($e->getMessage(), 'Driver pdo_mysql') ? 'DB-DRIVER' : 'DB-CONFIGURACAO';
+                        $results[]=status('Conexão INTEGRADA do sistema',false,
+                            $code . ': verifique o conexao.php privado e as extensões PHP.');
+                        error_log('[OBRAS360 TESTE INTEGRADO] '.$code);
+                    }
+                }
             } catch(PDOException $e) {
                 $code=mysql_error_code($e);
                 $results[]=status('Conexão MySQL',false,'Falha: '.$code);
@@ -158,13 +188,13 @@ if (($_SERVER['REQUEST_METHOD']??'GET')==='POST') {
                 error_log('[OBRAS360 DIAGNOSTICO] '.get_class($e));
             }
         }
-        // Verifica SOMENTE a presença do arquivo. Não lê nem divulga credenciais.
-        $base=dirname(__DIR__);
-        $external=dirname(dirname($base)).'/obras360-private/config/.env';
-        $legacy=$base.'/config/.env';
-        if (is_file($external) && is_readable($external)) $envStatus='Arquivo privado encontrado fora de public_html.';
-        elseif (is_file($legacy) && is_readable($legacy)) $envStatus='Arquivo encontrado dentro do projeto (mova-o para fora de public_html).';
-        else $envStatus='Arquivo .env não encontrado nos caminhos esperados. Isso explica o erro DB-CONFIGURACAO, mesmo que o teste manual funcione.';
+        // Informa existência sem divulgar caminhos absolutos nem credenciais.
+        $privateConnection=obras_arquivo_conexao();
+        $conexaoStatus=$privateConnection===null
+            ? 'Arquivo PHP privado ainda não encontrado. Copie config/conexao.exemplo.php para obras360-private/conexao.php no servidor.'
+            : (str_contains(str_replace('\\','/',$privateConnection),'/obras360-private/')
+                ? 'Arquivo PHP privado encontrado fora de public_html.'
+                : 'Arquivo PHP local encontrado em config/conexao.local.php; para produção prefira fora de public_html.');
     }
     // A senha nunca é renderizada, registrada ou salva na sessão.
     unset($password,$_POST['db_password']);
@@ -190,9 +220,9 @@ button{border:0;background:#139487;color:white;font-weight:800;border-radius:9px
 footer{font-size:12px;color:#79919a;margin-top:20px;text-align:center}
 @media(max-width:640px){.row{grid-template-columns:1fr}.wrap{padding:18px 12px}.card{padding:20px}.header{padding:22px}h1{font-size:23px}}
 </style></head><body><div class="wrap">
-<div class="header"><div class="brand">◈ OBRAS<strong>360</strong></div><h1>Diagnóstico da conexão MySQL</h1><p>Teste separado da configuração .env. Nenhuma tabela será criada ou modificada. A senha é usada somente nesta solicitação.</p></div>
-<section class="card"><h2>1. Informar credenciais para teste temporário</h2>
-<p class="sub">Banco e usuário fixos: <span class="mono">u784961086_obras</span>. Use a senha <b>atual</b> do banco da Hostinger. A senha não é gravada no servidor pelo diagnóstico.</p>
+<div class="header"><div class="brand">◈ OBRAS<strong>360</strong></div><h1>Diagnóstico da conexão MySQL</h1><p>Teste do MySQL manual e da conexão central app/conexao.php. Nenhuma tabela será criada ou modificada. A senha é usada somente nesta solicitação.</p></div>
+<section class="card"><h2>1. Testar manualmente e validar a conexão de todo o sistema</h2>
+<p class="sub">Banco e usuário fixos: <span class="mono">u784961086_obras</span>. O teste manual exige a senha atual do MySQL; após conectá-lo, a página testa separadamente a função usada por TODOS os módulos a partir do <span class="mono">conexao.php</span> privado. A senha digitada não é salva.</p>
 <form action="conexao.php" method="post" autocomplete="off">
 <input type="hidden" name="csrf" value="<?=esc($token)?>">
 <div class="row"><div><label for="host">Servidor MySQL</label><select id="host" name="host">
@@ -202,11 +232,11 @@ footer{font-size:12px;color:#79919a;margin-top:20px;text-align:center}
 </form></section>
 <?php if($done): ?><section class="card"><h2>2. Resultado do diagnóstico</h2>
 <?php if($error!==''): ?><div class="warning" role="alert"><?=esc($error)?></div><?php endif; ?>
-<?php if($connectionOk): ?><div class="notice"><b>Conexão manual bem-sucedida!</b> PHP e MySQL conseguiram se comunicar sem depender do .env. Agora basta configurar o arquivo privado para que o login use os mesmos dados.</div><?php endif; ?>
+<?php if($connectionOk): ?><div class="notice"><b>Conexão manual bem-sucedida!</b> O MySQL aceitou a senha digitada. Confira abaixo também o resultado de <b>Conexão INTEGRADA do sistema</b>; somente esse resultado confirma que login, API e módulos conseguem usar o arquivo PHP privado.</div><?php endif; ?>
 <?php foreach($results as $item): ?><div class="result"><span class="symbol <?=$item['ok']?'ok':'no'?>"><?=$item['ok']?'✓':'×'?></span><div><b><?=esc($item['label'])?></b><?php if($item['detail']!==''): ?><div class="detail"><?=esc($item['detail'])?></div><?php endif; ?></div></div><?php endforeach; ?>
-<?php if($envStatus!=='Não verificado'): ?><p class="sub"><b>Arquivo .env atual:</b> <?=esc($envStatus)?></p><?php endif; ?>
+<?php if($conexaoStatus!=='Não verificado'): ?><p class="sub"><b>Conexão PHP privada:</b> <?=esc($conexaoStatus)?></p><?php endif; ?>
 </section><?php endif; ?>
-<section class="card"><h2>3. Próximo passo</h2><p class="sub">Se o teste manual funcionar e o login continuar com <span class="mono">DB-CONFIGURACAO</span>, a falha está na leitura das variáveis do banco, e não no usuário de suporte. Depois, crie o arquivo <span class="mono">obras360-private/config/.env</span> fora de <span class="mono">public_html</span>, conforme o guia do projeto.</p>
+<section class="card"><h2>3. Próximo passo</h2><p class="sub">Se o teste MANUAL funcionar, mas a conexão INTEGRADA falhar, crie o arquivo <span class="mono">obras360-private/conexao.php</span> fora de <span class="mono">public_html</span> usando <span class="mono">config/conexao.exemplo.php</span> como modelo. Todos os módulos chamam <span class="mono">db()</span>, que usa <span class="mono">app/conexao.php</span>. Não é necessário nenhum <span class="mono">.env</span> nesta etapa.</p>
 <div class="warning"><b>Segurança:</b> esta é uma página temporária de instalação. <b>Remova <span class="mono">obras/public/conexao.php</span> do servidor e do GitHub assim que concluir o teste.</b> Não compartilhe a senha em prints ou mensagens.</div>
 <p><a href="acesso.php">← Voltar ao login</a></p></section>
 <footer>OBRAS360 · Diagnóstico temporário · Somente testes de leitura</footer></div></body></html>

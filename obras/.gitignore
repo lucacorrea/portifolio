@@ -5,3 +5,8 @@
 *.log
 *.bak
 .DS_Store
+
+# Credenciais PHP de teste: sempre locais / fora do Git
+/config/conexao.local.php
+/config/conexao.php
+/obras360-private/

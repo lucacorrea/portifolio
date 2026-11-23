@@ -1,4 +1,10 @@
 # OBRAS360 — PHP 8.2+ / MySQL, mantendo o layout original
+> **FASE DE TESTES (NOVEMBRO/2026):** todo o OBRAS360 agora usa `app/conexao.php`
+> e o arquivo privado `obras360-private/conexao.php`, **sem `.env`**. Antes de
+> instalar siga **[docs/TESTES_VIA_CONEXAO_PHP.md](docs/TESTES_VIA_CONEXAO_PHP.md)**.
+> As instruções antigas de `.env` abaixo permanecem apenas como histórico de
+> versões anteriores e NÃO se aplicam a este pacote de testes.
+
 
 Este pacote adapta o **mesmo protótipo visual enviado**. Os arquivos CSS originais foram preservados. As telas do painel continuam sendo montadas pelo JavaScript original e seus formulários agora enviam dados para uma API PHP autenticada. O banco persiste os registros.
 

@@ -32,8 +32,8 @@ check('PHP 8.2 ou superior', PHP_VERSION_ID >= 80200);
 check('Extensão PDO', extension_loaded('PDO'));
 check('Extensão pdo_mysql', extension_loaded('pdo_mysql'));
 check('Suporte Argon2id', defined('PASSWORD_ARGON2ID'));
-check('Configuração privada (.env) ou variáveis do servidor', obras_env_file_path() !== null || (env_value('DB_NAME') !== '' && env_value('DB_USER') !== ''));
-check('Configuração de banco', env_value('DB_NAME') !== '' && env_value('DB_USER') !== '' && env_value('DB_PASS') !== '');
+check('Arquivo PHP privado obras360-private/conexao.php', obras_arquivo_conexao() !== null);
+check('Configuração de banco', env_value('DB_NAME') !== '' && env_value('DB_USER') !== '' && env_value('DB_PASS') !== '' && !str_contains(env_value('DB_PASS'), 'COLE_SENHA'));
 
 if (!extension_loaded('pdo_mysql') || env_value('DB_NAME') === '' || env_value('DB_USER') === '') {
     echo "\nCorrija as falhas acima e execute novamente.\n";
@@ -45,7 +45,7 @@ try {
     check('Conexão e autenticação do MySQL', true);
 } catch (Throwable $e) {
     check('Conexão e autenticação do MySQL', false, pdo_code($e));
-    echo "Confira DB_HOST, DB_NAME, DB_USER, DB_PASS no arquivo privado config/.env.\n";
+    echo "Confira os dados em obras360-private/conexao.php (não no .env).\n";
     exit(1);
 }
 
@@ -95,5 +95,5 @@ if (!in_array('login_limits', $missing, true) && !in_array('audit_logs', $missin
 }
 
 echo "\nResultado: " . (count($failures) === 0 ? 'PRONTO PARA TESTAR O LOGIN' : 'CORREÇÕES NECESSÁRIAS (' . count($failures) . ')') . "\n";
-if ($failures) echo "Verifique database/01_estrutura_e_suporte.sql e config/.env.\n";
+if ($failures) echo "Verifique database/01_estrutura_e_suporte.sql e o conexao.php privado.\n";
 exit(count($failures) === 0 ? 0 : 1);

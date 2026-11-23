@@ -1,3 +1,5 @@
+> **Documento histórico da fase `.env`. Para o pacote atual, siga `TESTES_VIA_CONEXAO_PHP.md` (conexão PHP sem .env).**
+
 # OBRAS360 — correção de deploy GitHub → Hostinger
 
 Este ajuste vale para o repositório **lucacorrea/portifolio**, pasta `obras/`, publicado em

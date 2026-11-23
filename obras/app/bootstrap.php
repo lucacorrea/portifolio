@@ -3,50 +3,15 @@ declare(strict_types=1);
 
 const APP_ROOT = __DIR__ . '/..';
 
-/**
- * Configuração privada para deploy via GitHub no caminho /obras/public/.
- * Se o projeto está em public_html/obras, procura primeiro o arquivo em
- * <dominio>/obras360-private/config/.env, fora de public_html.
- * Também aceita OBRAS360_ENV_FILE absoluto e variáveis do servidor.
- */
-function obras_env_file_path(): ?string {
-    $custom = getenv('OBRAS360_ENV_FILE');
-    $root = realpath(APP_ROOT) ?: dirname(__DIR__);
-    $candidates = [];
-    if (is_string($custom) && $custom !== '') $candidates[] = $custom;
-    $candidates[] = dirname(dirname($root)) . '/obras360-private/config/.env';
-    // Compatibilidade com instalações antigas; a pasta config é protegida por .htaccess.
-    $candidates[] = $root . '/config/.env';
-    foreach ($candidates as $file) {
-        if (is_file($file) && is_readable($file)) return $file;
-    }
-    return null;
-}
-function load_environment(): void {
-    $file = obras_env_file_path();
-    if ($file === null) return;
-    $vars = parse_ini_file($file, false, INI_SCANNER_RAW);
-    if (!is_array($vars)) {
-        error_log('[OBRAS360 CONFIG] Arquivo .env inválido ou ilegível.');
-        return;
-    }
-    foreach ($vars as $key => $value) {
-        if (is_string($key) && preg_match('/^[A-Z][A-Z0-9_]*$/', $key)
-            && is_scalar($value) && getenv($key) === false && !array_key_exists($key, $_ENV)) {
-            $_ENV[$key] = (string)$value;
-        }
-    }
-}
+// Fase de testes: um único conector PHP substitui temporariamente o .env.
+// Alteração futura para .env exigirá apenas trocar a origem em app/conexao.php.
+require_once __DIR__ . '/conexao.php';
 function env_value(string $key, string $fallback = ''): string {
-    $v = getenv($key);
-    if (is_string($v) && $v !== '') return $v;
-    $v = $_ENV[$key] ?? null;
-    return is_string($v) && $v !== '' ? $v : $fallback;
+    return obras_valor_conexao($key, $fallback);
 }
 function request_https(): bool {
     return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (int)($_SERVER['SERVER_PORT'] ?? 0) === 443;
 }
-load_environment();
 date_default_timezone_set(env_value('APP_TIMEZONE', 'America/Manaus'));
 if (PHP_SAPI !== 'cli' && env_value('APP_FORCE_HTTPS', '1') === '1' && !request_https()) {
     $host = $_SERVER['HTTP_HOST'] ?? '';
@@ -79,23 +44,9 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     ]);
     session_start();
 }
+/** Conexão única para login, usuários, mapas, cadastros, estoque e API. */
 function db(): PDO {
-    static $pdo = null;
-    if ($pdo instanceof PDO) return $pdo;
-    $host = env_value('DB_HOST', 'localhost');
-    $port = (int)env_value('DB_PORT', '3306');
-    $name = env_value('DB_NAME');
-    $user = env_value('DB_USER');
-    $pass = env_value('DB_PASS');
-    if ($name === '' || $user === '') throw new RuntimeException('Configuração do banco de dados incompleta.');
-    $pdo = new PDO("mysql:host={$host};port={$port};dbname={$name};charset=utf8mb4", $user, $pass, [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        PDO::ATTR_EMULATE_PREPARES => false,
-        PDO::ATTR_PERSISTENT => false,
-    ]);
-    $pdo->exec("SET time_zone = '-04:00'");
-    return $pdo;
+    return obras_conectar();
 }
 function csrf_token(): string {
     if (empty($_SESSION['csrf'])) $_SESSION['csrf'] = bin2hex(random_bytes(32));
