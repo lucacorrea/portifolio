@@ -25,3 +25,86 @@
 @media(max-width:720px){h1{font-size:22px}.topbar{padding:0 16px}.page-container{padding:19px 15px}.global-search{min-width:auto;width:38px;padding:0;justify-content:center}.global-search span,.global-search kbd{display:none}.header-profile>span:not(.avatar),.header-profile>.ico{display:none}.topbar-right{gap:7px}.breadcrumbs{max-width:220px;overflow:hidden;text-overflow:ellipsis}.page-head{align-items:flex-start;flex-direction:column;gap:15px}.page-head h1{font-size:23px}.page-actions{width:100%}.page-actions .btn{flex:1;min-width:0}.hero-banner{min-height:220px}.hero-content{max-width:100%;padding:27px 22px}.hero-content h2{font-size:24px}.hero-content p{max-width:80%}.hero-illustration{width:54%;opacity:.36}.metrics-grid,.kpi-strip,.planning-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.metric-card{padding:14px}.metric-value{font-size:24px}.metric-top>span{font-size:10px}.metric-icon{width:31px;height:31px}.metric-foot{font-size:9px}.dash-grid,.dash-grid.lower,.module-side-grid,.budget-layout,.summary-grid,.folder-grid,.building-grid,.report-layout{grid-template-columns:1fr}.summary-grid .panel:last-child{grid-column:auto}.stacked-panels{display:flex}.quick-links{grid-template-columns:repeat(3,1fr)}.donut-layout{flex-wrap:wrap}.filter-toolbar{flex-direction:column;align-items:stretch;padding:0 13px 14px}.table-search{max-width:none;flex:auto}.filter-right{justify-content:space-between}.select-wrap{flex:1}.filter-right .btn{flex:none}.panel-head{padding:17px 15px 14px}.table-footer{padding:12px 14px}.report-types{grid-template-columns:repeat(2,1fr)}.report-fields{grid-template-columns:1fr 1fr}.pseudo-map{height:360px}.form-fields{grid-template-columns:1fr}.field.span-2{grid-column:auto}.dialog-body{padding:18px}.dialog-header{padding:20px}.dialog-actions{padding:14px 18px}.app-footer{display:block;line-height:1.9}.app-footer span{display:block}.inventory-bar{flex-wrap:wrap}.inventory-bar .btn{width:100%}}
 @media(max-width:440px){.header-profile{display:none}.page-actions{flex-wrap:wrap}.page-actions .btn{flex:auto}.hero-content h2{font-size:22px}.hero-content p{max-width:95%}.metric-value{font-size:22px}.metric-icon{width:29px;height:29px}.metric-foot{font-size:8px}.panel-head p{font-size:9px}.donut-layout{padding:5px 15px 20px}.spotlight-row{gap:7px}.spot-icon{width:28px;height:28px}.spot-progress{width:46px}.spotlight-row .pill{display:none}.quick-links a{font-size:9px}.filter-right{flex-wrap:wrap}.select-wrap{min-width:100%}.filter-right .btn{width:100%}.report-types{gap:8px}.report-type{padding:12px 9px}.report-fields{grid-template-columns:1fr}.paper-preview{margin:4px 10px 15px;padding:19px 15px}.paper-summary{grid-template-columns:repeat(3,1fr)}.paper-summary>div{padding:9px 6px}.paper-summary strong{font-size:13px}.drawer-body{padding:19px}.drawer-top{padding:22px 19px}.detail-grid{grid-template-columns:1fr 1fr}.map-work .pill{display:none}}
 @media print{body{background:#fff}.sidebar,.topbar,.page-actions,.filter-toolbar,.row-buttons,.app-footer,.demo-note,.btn,.tabs,.quick-panel,.sidebar-scrim{display:none!important}.workspace{width:100%}.page-container{padding:12px}.panel,.metric-card,.kpi-tile{box-shadow:none;break-inside:avoid}.page-head{margin-bottom:15px}.hero-banner{-webkit-print-color-adjust:exact;print-color-adjust:exact}.paper-preview{box-shadow:none;min-height:0}}
+
+/* OBRAS360: botão de Encerrar sessão no modal Minha conta.
+   A função de logout (POST + CSRF) foi preservada. */
+.user-menu-list > form.logout-form {
+  margin: 18px 0 0;
+  padding: 14px 0 0;
+  border-top: 1px solid #e7edef;
+}
+.user-menu-list > form.logout-form > button.logout-button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 54px;
+  padding: 10px 13px;
+  background: linear-gradient(125deg, #fff7f5, #fff0ee);
+  border: 1px solid #efd2cd;
+  border-radius: 12px;
+  color: #a13f36;
+  font: 700 12px/1.35 'Manrope', 'Segoe UI', sans-serif;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(154, 69, 57, .045);
+  transition: background .18s ease, color .18s ease, border-color .18s ease,
+              box-shadow .18s ease, transform .18s ease;
+}
+.user-menu-list > form.logout-form > button.logout-button:hover {
+  background: linear-gradient(125deg, #ffece9, #ffdfda);
+  border-color: #e9aaa0;
+  color: #862d26;
+  box-shadow: 0 6px 16px rgba(154, 69, 57, .13);
+  transform: translateY(-1px);
+}
+.user-menu-list > form.logout-form > button.logout-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(154, 69, 57, .09);
+}
+.user-menu-list > form.logout-form > button.logout-button:focus-visible {
+  outline: 3px solid #f3b4ab;
+  outline-offset: 3px;
+}
+.user-menu-list .logout-button .logout-button-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  background: #ffdfdb;
+  border: 1px solid #f5c5bf;
+  border-radius: 9px;
+}
+.user-menu-list .logout-button .logout-button-icon .ico {
+  width: 17px;
+  height: 17px;
+  color: #b5443b;
+  margin: 0;
+}
+.user-menu-list .logout-button .logout-button-label {
+  flex: 1;
+  min-width: 0;
+}
+.user-menu-list .logout-button .logout-button-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  opacity: .65;
+}
+.user-menu-list .logout-button .logout-button-arrow .ico {
+  width: 16px;
+  height: 16px;
+  color: currentColor;
+  margin: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .user-menu-list > form.logout-form > button.logout-button {
+    transition: none;
+  }
+  .user-menu-list > form.logout-form > button.logout-button:hover {
+    transform: none;
+  }
+}
