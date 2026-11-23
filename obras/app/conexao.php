@@ -66,7 +66,7 @@ function obras_conectar(): PDO {
     $password = $config['DB_PASS'] ?? '';
     $salt = $config['APP_AUDIT_SALT'] ?? '';
     if ($name === '' || $user === '' || $password === '' ||
-        str_contains($password, 'COLE_SENHA') ||
+        str_contains($password, 'xJ^3oLfdp:9') ||
         !preg_match('/^[a-f0-9]{64}$/iD', $salt) ||
         $port < 1 || $port > 65535 ||
         !preg_match('/^[a-zA-Z0-9][a-zA-Z0-9.\-]*$/D', $host)) {
