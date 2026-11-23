@@ -1,5 +1,5 @@
--- OBRAS360 · Instalação da estrutura e primeiro usuário de suporte
--- Selecione o banco u784961086_obras antes de importar este arquivo no phpMyAdmin.
+-- OBRAS360 V2 — 01 CREATE TABLE (somente estrutura, não apaga os dados existentes)
+-- Selecione o banco u784961086_obras antes de importar no phpMyAdmin.
 -- NÃO exige CREATE DATABASE nem privilégios globais.
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 1;
@@ -106,18 +106,3 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     CONSTRAINT fk_audit_actor FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Inicialização idempotente da sequência, sem regredir identificadores já existentes.
-INSERT IGNORE INTO sequences (module,last_number) VALUES ('obras',0);
-INSERT IGNORE INTO sequences (module,last_number) VALUES ('ordens',0);
-INSERT IGNORE INTO sequences (module,last_number) VALUES ('fiscalizacao',0);
-INSERT IGNORE INTO sequences (module,last_number) VALUES ('projetos',0);
-INSERT IGNORE INTO sequences (module,last_number) VALUES ('orcamentos',0);
-INSERT IGNORE INTO sequences (module,last_number) VALUES ('materiais',0);
-INSERT IGNORE INTO sequences (module,last_number) VALUES ('patrimonio',0);
-INSERT IGNORE INTO sequences (module,last_number) VALUES ('protocolos',0);
-
--- Primeiro acesso: suporte com acesso integral. A senha está armazenada SOMENTE como hash Argon2id.
--- Não use INSERT REPLACE: isso preserva alterações feitas em instalações já existentes.
-INSERT INTO users (username,email,name,role,password_hash,active,must_change_password)
-SELECT 'suporte','suporte@obras360.local','Suporte OBRAS360','suporte','$argon2id$v=19$m=65536,t=3,p=2$Q0hFVElSTHFlNGp3cjVrMw$nU+VFAjy6KUNflUnUUQsqPxK/8s6lWNIbmNeQdFZqf8',1,1
-WHERE NOT EXISTS (SELECT 1 FROM users WHERE username='suporte' OR email='suporte@obras360.local');

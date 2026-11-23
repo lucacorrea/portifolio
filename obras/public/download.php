@@ -8,9 +8,20 @@ try {
     $st=db()->prepare('SELECT * FROM attachments WHERE id=? AND deleted_at IS NULL LIMIT 1');
     $st->execute([$id]);$row=$st->fetch();
     if(!$row || !record_row($row['module'],$row['record_code']))throw new HttpError('Anexo não encontrado.',404);
-    $dir=realpath(APP_ROOT.'/storage/uploads');
-    $path=$dir ? realpath($dir.'/'.$row['stored_name']) : false;
-    if(!$path || !str_starts_with($path,$dir.DIRECTORY_SEPARATOR) || !is_file($path))throw new HttpError('Arquivo indisponível.',404);
+    if (!preg_match('/^[a-f0-9]{40}\.(pdf|jpg|jpeg|png|doc|docx)$/iD', $row['stored_name'])) {
+        throw new HttpError('Nome de anexo inválido.', 404);
+    }
+    $path = false;
+    foreach (obras_upload_dirs() as $dirCandidate) {
+        $dir = realpath($dirCandidate);
+        if (!$dir) continue;
+        $possible = realpath($dir . '/' . $row['stored_name']);
+        if ($possible && str_starts_with($possible, $dir . DIRECTORY_SEPARATOR) && is_file($possible)) {
+            $path = $possible;
+            break;
+        }
+    }
+    if (!$path) throw new HttpError('Arquivo indisponível.', 404);
     $name=preg_replace('/[\r\n"\\]/','_', $row['original_name']);
     $ascii=preg_replace('/[^A-Za-z0-9._-]/','_', $name);
     header('Content-Type: application/octet-stream');

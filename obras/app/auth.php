@@ -5,7 +5,7 @@ require_once __DIR__ . '/bootstrap.php';
 function login_attempt(string $identifier, string $password): bool {
     $ident = strtolower(trim($identifier));
     $ip = (string)($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
-    $salt = env_value('APP_AUDIT_SALT');
+    $salt = audit_salt();
     $key = hash('sha256', $salt . "|login|" . $ip . '|' . $ident);
     $pdo = db();
     $pdo->beginTransaction();

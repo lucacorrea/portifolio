@@ -1,113 +1,128 @@
-# OBRAS360 — PHP 8.2+ / MySQL, mantendo o layout original
-> **FASE DE TESTES (NOVEMBRO/2026):** todo o OBRAS360 agora usa `app/conexao.php`
-> e o arquivo privado `obras360-private/conexao.php`, **sem `.env`**. Antes de
-> instalar siga **[docs/TESTES_VIA_CONEXAO_PHP.md](docs/TESTES_VIA_CONEXAO_PHP.md)**.
-> As instruções antigas de `.env` abaixo permanecem apenas como histórico de
-> versões anteriores e NÃO se aplicam a este pacote de testes.
+# OBRAS360 — PHP + MySQL · Reestruturação de instalação e autenticação
 
+Este projeto **mantém o layout original** (HTML, CSS e JavaScript) e os módulos
+preexistentes. A conexão, o instalador, o fluxo de login e os diagnósticos foram
+reorganizados para a fase de testes em hospedagem Hostinger.
 
-Este pacote adapta o **mesmo protótipo visual enviado**. Os arquivos CSS originais foram preservados. As telas do painel continuam sendo montadas pelo JavaScript original e seus formulários agora enviam dados para uma API PHP autenticada. O banco persiste os registros.
+**Requisitos:** PHP 8.2+, PDO / `pdo_mysql`, suporte a Argon2id, `fileinfo`,
+`openssl`, HTTPS, MySQL/MariaDB com `CHECK(JSON_VALID(...))` e InnoDB.
 
-## Instalação na Hostinger (ou Apache com PHP)
+## Instalação rápida (VS Code → GitHub → Hostinger)
 
-1. Tenha PHP **8.2 ou mais recente**, com extensões `pdo_mysql`, `fileinfo`, `openssl` e suporte a **Argon2id**, MySQL 8 / MariaDB 10.4+ e **HTTPS** habilitado. Ajuste `post_max_size` para pelo menos 16M, `upload_max_filesize` para 12M, `memory_limit` recomendado >=128M. Apache e acesso aos arquivos além da raiz pública são recomendados.
-2. No **phpMyAdmin**, selecione o banco já existente **`u784961086_obras`**. Importe `database/01_estrutura_e_suporte.sql` para criar as tabelas, sequências e o primeiro usuário de suporte. Não é preciso `CREATE DATABASE`.
-3. Se quiser recuperar os **41 registros do protótipo** (dados fictícios, para apresentação), importe também `database/02_dados_ficticios_opcional.sql`. Não use os dados falsos como registros oficiais. Os marcadores do mapa nesses registros têm coordenadas **inventadas e identificadas como demonstração**.
-4. Envie os arquivos **de dentro de `public/`** para `public_html/` (sem copiar a pasta `public` dentro dela). Deixe `app/`, `config/` e `storage/` no diretório **pai** de `public_html`, isto é, fora da área publicada pela web. Exemplo:
+1. Antes de qualquer atualização, faça **backup completo do banco e dos arquivos**.
+2. Extraia a pasta `obras/` deste ZIP sobre a pasta `obras/` do repositório.
+   Não envie arquivos de configuração com senhas para um GitHub público.
+3. Faça commit/push no VS Code e confirme que a Hostinger publicou `obras/`.
+   O login continua em `https://lucascorrea.pro/obras/public/acesso.php`.
+4. No phpMyAdmin, abra o banco `u784961086_obras` e execute os SQLs **nesta ordem**:
+   - `database/01_CREATE_TABLE.sql` — cria 9 tabelas com `CREATE TABLE IF NOT EXISTS`.
+   - `database/02_INSERT_INICIAIS.sql` — insere sequências e conta suporte INATIVA.
+   - Opcional: `database/03_INSERT_DEMONSTRACAO_OPCIONAL.sql` — dados fictícios.
+   - `database/04_VERIFICAR_TABELAS.sql` — somente consultas para conferência.
+5. Abra **`https://lucascorrea.pro/obras/public/instalar.php`** pelo HTTPS.
+   Informe a senha **atual** do MySQL, escolha uma **senha nova e forte para o
+   suporte** e clique para configurar. O sistema gera o salt automaticamente,
+   valida as 9 tabelas, testa o MySQL e grava a conexão privada no servidor.
+6. Acesse **`https://lucascorrea.pro/obras/public/conexao.php`** e confirme que
+   a conexão real, as tabelas e o suporte estão OK.
+7. Entre no login com **`suporte`** ou **`suporte@obras360.local`** e a senha que
+   você definiu **no instalador**, não com a senha antiga compartilhada.
 
-```
-.../seu-dominio/
-  public_html/              <-- conteúdo da pasta public/ deste ZIP
-    index.php
-    acesso.php
-    api.php
-    assets/
-    ...
-  app/                      <-- PHP interno (privado)
-  config/
-    .env                    <-- conexão com o banco (privado)
-    modules.json
-  storage/
-    uploads/                <-- anexos privados (privado)
-```
+**Não é necessário montar `.env` nesta fase.** Toda operação que usa MySQL
+chama `db()` em `app/bootstrap.php`, que usa `app/conexao.php`. O instalador
+salva as credenciais no PHP privado `obras360-private/conexao.php` fora de
+`public_html`. Quando a hospedagem não permite gravação no diretório pai,
+a alternativa é `obras/config/conexao.local.php`, que é ignorado pelo Git e
+protegido por `.htaccess`. A página de instalação se desabilita
+automaticamente depois de configurar uma conexão funcional.
 
-5. O arquivo `config/.env` já contém **o nome, usuário e senha MySQL informados na conversa**, com `DB_HOST=localhost` como suposição inicial. Confirme em **Hostinger → Bancos de dados MySQL** qual é o endereço de servidor de banco de dados e atualize `DB_HOST` se necessário. Não é possível testar uma conexão remota sem o host correto e acesso à hospedagem.
-6. Confirme que `storage/uploads/` pode receber arquivos pelo usuário do PHP sem ficar acessível por URL.
-7. Acesse **`https://seu-dominio/acesso.php`**. Use usuário `suporte` **ou** e-mail `suporte@obras360.local`, junto da senha inicial em `INSTALACAO_CREDENCIAIS.txt` **(não envie esse TXT para o servidor)**. No primeiro acesso a troca de senha é obrigatória.
-8. Acesse **Usuários e permissões** para cadastrar os demais perfis. O menu de perfil permite trocar sua própria senha e encerrar sessão.
+Se já existe um arquivo privado incorreto, o instalador pode repará-lo **somente
+depois de validar novamente a senha MySQL fornecida**. Ele também redefine o
+usuário `suporte` com a senha nova informada. Não apaga as demais contas.
 
-**IMPORTANTE:** Não envie `database/`, `INSTALACAO_CREDENCIAIS.txt`, `README.md` ou o código privado para a pasta pública. Na Hostinger alguns planos criam `public_html` diretamente dentro do domínio, conforme a estrutura ilustrada. Caso a estrutura do seu plano seja outra, mantenha a relação `public_html/../app/`, `public_html/../config/` e `public_html/../storage/`.
+## Pastas
 
-## Funções realmente conectadas ao banco
-
-- Login com usuário ou e-mail, logout, alteração obrigatória da senha inicial, contas ativas/desativadas e painel de administração de usuários.
-- CRUD dos oito módulos: obras, ordens de serviço, fiscalização, projetos/documentos, orçamentos/medições, materiais e estoque, prédios públicos, protocolos/processos.
-- Formulários completos, edição e exclusão lógica de registros (auditoria preservada); busca, filtros e ordenação executados na interface com os registros carregados do servidor.
-- Movimentações de estoque (`Entrada` e `Saída`) transacionais com bloqueio de linha, conferência de saldo e histórico; a quantidade de material existente é alterada por movimentações, não por edição arbitrária.
-- Marcos do planejamento com inclusão, edição e exclusão; encaminhamento de protocolos com histórico de despachos.
-- Mapas Leaflet / OpenStreetMap e coordenadas persistidas por registro; apenas cadastros com coordenadas aparecem nos mapas. A base de mapas exige internet. Páginas têm alternativa esquemática se o mapa online falhar.
-- Upload de PDF, JPG, PNG, DOC e DOCX até 12 MB, armazenados fora da raiz pública, com listagem, download autenticado e remoção lógica. Outros tipos não são aceitos.
-- Relatórios e CSV gerados com dados carregados do banco. Relatórios filtram situação e datas quando os registros têm data de referência. Impressão/PDF usa a função de impressão do navegador.
-- Registro de auditoria das alterações e controle de acesso por perfil.
-
-## Perfis
-
-| Perfil | Acesso |
-|---|---|
-| `suporte` | Tudo, incluindo criação de outros usuários de suporte |
-| `administrador` | Tudo, exceto atribuir/alterar a conta de suporte |
-| `gestor` | Consultar e alterar os módulos operacionais |
-| `operador` | Consultar e alterar os módulos operacionais |
-| `consulta` | Apenas consulta e exportação |
-
-Os papéis `gestor` e `operador` usam o mesmo conjunto de permissões nesta versão. Refinar permissões por módulo ou secretaria requer uma política de acesso específica.
-
-## Segurança
-
-- **Argon2id** para senhas (hash não reversível, em vez de criptografia recuperável) com memória de 64 MiB, 3 iterações e 2 threads.
-- Senha inicial aleatória no arquivo confidencial local, **nunca no SQL em texto puro**; troca obrigatória no primeiro login. Requer senha nova de pelo menos 16 caracteres com maiúscula, minúscula, número e símbolo.
-- Sessões de PHP com cookies HttpOnly, SameSite, Secure via HTTPS, regeneração de ID após login e mudança de senha.
-- Tokens de proteção contra CSRF, prepared statements do PDO, validação dos dados no servidor, proteção por perfis e cabeçalhos de segurança.
-- Limite de tentativas de login por identificador/IP e bloqueio temporário da conta; auditoria e exclusão lógica.
-- Anexos verificados por extensão, tipo MIME e tamanho, salvos com nomes aleatórios e servidos somente via `download.php` após autenticação.
-- `.env` contém segredo de conexão e **deve permanecer fora do `public_html`**. Habilite HTTPS/SSL na hospedagem e **troque a senha do banco** se ela tiver sido compartilhada sem proteção.
-
-Não há integração com e-mail transacional, recuperação automática por e-mail, assinatura digital, ou autenticação multifator nesta versão. O código não passou por auditoria independente de segurança nem teste de carga. Recomenda-se homologação, cópias de segurança e teste de permissões antes de operar dados municipais reais.
-
-## Arquivos
-
-```
-OBRAS360_PHP_COMPLETO/
-├── public/                  páginas PHP públicas + assets CSS/JS originais
-│   ├── api.php              API autenticada por sessão e CSRF
-│   ├── actions-login.php
-│   ├── actions-logout.php
-│   ├── actions-password.php
-│   ├── download.php
-│   ├── acesso.php
-│   ├── minha-senha.php
-│   ├── usuarios.php / auditoria.php
-│   └── demais módulos e formulários .php
+```text
+obras/
 ├── app/
-│   ├── bootstrap.php        conexão, sessão, autorização, CSRF, segurança
-│   ├── auth.php             login e hash de senhas
-│   └── data.php             módulos, validação, registros, uploads
+│   ├── bootstrap.php                 (sessão, autenticação básica, utilitários)
+│   ├── conexao.php                   (conector único PDO)
+│   ├── auth.php                      (Argon2id, login, troca de senha)
+│   └── data.php                      (registros, validações, anexos)
 ├── config/
-│   ├── .env                 dados de conexão privados
-│   ├── .env.example
-│   └── modules.json         definição dos campos preservados
+│   ├── modules.json                  (metadados dos formulários)
+│   └── conexao.exemplo.php           (modelo SEM senhas)
 ├── database/
-│   ├── 01_estrutura_e_suporte.sql
-│   └── 02_dados_ficticios_opcional.sql
-├── storage/uploads/        arquivos privados
-└── INSTALACAO_CREDENCIAIS.txt (não publicar)
+│   ├── 01_CREATE_TABLE.sql
+│   ├── 02_INSERT_INICIAIS.sql
+│   ├── 03_INSERT_DEMONSTRACAO_OPCIONAL.sql
+│   └── 04_VERIFICAR_TABELAS.sql
+├── public/
+│   ├── instalar.php                  (assistente seguro de primeira instalação)
+│   ├── conexao.php                  (diagnóstico SOMENTE-LEITURA)
+│   ├── acesso.php, actions-login.php, index.php, api.php
+│   ├── ... todas as demais páginas e formulários
+│   └── assets/                       (layout original: CSS, JS)
+├── storage/uploads/                  (compatibilidade de anexos antigos)
+├── tools/diagnosticar_login.php      (diagnóstico somente via terminal)
+└── docs/INSTALACAO_V2.md
 ```
 
-## Solução de problemas
+No servidor, fora da pasta publicada, o instalador prefere criar:
 
-- **Tela branca/erro 500:** confira extensões PHP (`pdo_mysql`, `fileinfo`, Argon2id), logs da hospedagem e `config/.env`. Os detalhes do erro ficam nos logs do servidor, não na tela.
-- **Loop https:** configure SSL na hospedagem. `APP_FORCE_HTTPS=0` pode ser usado **apenas para desenvolvimento local**; use `1` para produção.
-- **Banco não conecta:** confira DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS e se o banco foi criado na mesma hospedagem.
-- **Imagem/anexo falha:** confira `storage/uploads`, permissões da pasta e configurações de upload no `php.ini`.
-- **Senha inicial não entra:** confirme que o SQL foi importado somente após selecionar o banco. O `INSERT` do primeiro usuário não substitui uma conta `suporte` já existente.
-- **Mapas não carregam:** confira internet, CSP do servidor, CDN Leaflet e disponibilidade dos blocos de mapa OSM.
+```text
+<diretório do domínio>/
+├── obras360-private/
+│   ├── conexao.php                   (contém senha, FORA do Git)
+│   └── uploads/                      (anexos novos, se possível)
+└── public_html/
+    └── obras/
+        ├── app/, config/, database/, docs/, storage/, tools/
+        └── public/
+            ├── acesso.php
+            ├── instalar.php
+            └── conexao.php
+```
+
+## O que é preservado e o que foi corrigido
+
+- Visual original, mapas Leaflet, telas e formulários.
+- CRUD para obras, ordens de serviço, fiscalização, documentos/projetos,
+  medições, materiais/estoque, prédios públicos e protocolos.
+- Login por usuário/e-mail, Argon2id e troca de senha, sessões, CSRF,
+  permissões, auditoria e limitação de tentativas.
+- A conexão do banco **não depende do salt de auditoria**, não usa `.env` e
+  apresenta diagnóstico quando o arquivo PHP privado não foi configurado.
+- Consultas não exibem registros com exclusão lógica (`deleted_at`).
+- Anexos novos preferem área privada fora de `public_html`, sem perder o acesso
+  aos anexos existentes na pasta antiga.
+- Alterações de permissões protegem o último usuário de suporte ativo.
+
+## Erros técnicos
+
+- `DB-CONFIGURACAO`: falta arquivo de configuração privado ou dados incompletos.
+  Use o instalador (e não recadastre tabelas desnecessariamente).
+- `DB-DRIVER`: extensão `pdo_mysql` desabilitada no PHP da Hostinger.
+- `DB-CONEXAO`: endereço/porta do servidor MySQL indisponível.
+- `DB-CREDENCIAIS`: senha ou usuário do banco rejeitado pelo MySQL.
+- `DB-TABELA`: as tabelas não foram instaladas corretamente.
+- `DB-SQL`: erro no banco que deve ser conferido nos logs da hospedagem.
+
+**Atenção:** código e SQL foram analisados localmente, mas a conexão real com
+MySQL na Hostinger e o deploy precisam ser testados na hospedagem. Use o
+instalador e o diagnóstico antes de operar dados reais.
+
+Depois de homologar, **retire o arquivo público `public/conexao.php`** do
+servidor e do repositório para reduzir a exposição de informações técnicas.
+A página `instalar.php` já se desabilita após uma instalação funcional;
+também pode ser retirada depois da homologação.
+
+## Segurança do GitHub
+
+- Nunca versionar `conexao.local.php`, `obras360-private/conexao.php`, senhas
+  MySQL, `APP_AUDIT_SALT` real nem arquivos de backup.
+- O repositório é público. As credenciais anteriormente divulgadas devem ser
+  trocadas após configurar a nova conexão.
+- O bloqueio `.htaccess` depende de o servidor respeitar regras Apache;
+  confira que `https://lucascorrea.pro/obras/config/modules.json` devolve 403/404.
+- Faça cópias de segurança e teste permissões antes de cadastrar dados oficiais.

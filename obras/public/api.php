@@ -154,6 +154,10 @@ try {
                     if(!$old)throw new HttpError('Usuário não encontrado.',404);
                     if($u['role']!=='suporte' && $old['role']==='suporte')throw new HttpError('Não é permitido modificar o suporte.',403);
                     if($id===(int)$u['id'] && $role!==$u['role'])throw new HttpError('Não altere seu próprio perfil.',403);
+                    if($old['role']==='suporte' && $role!=='suporte') {
+                        $cnt=(int)$pdo->query("SELECT COUNT(*) FROM users WHERE role='suporte' AND active=1")->fetchColumn();
+                        if($cnt <= 1)throw new HttpError('O último suporte ativo não pode perder seu perfil.');
+                    }
                     $pdo->prepare('UPDATE users SET username=?,email=?,name=?,role=? WHERE id=?')->execute([$username,$email,$name,$role,$id]);
                     if($password!==''){
                         if(!password_secure($password))throw new HttpError('Senha: mínimo 16 caracteres, com maiúscula, minúscula, número e símbolo.');

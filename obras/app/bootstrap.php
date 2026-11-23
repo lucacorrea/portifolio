@@ -48,6 +48,12 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 function db(): PDO {
     return obras_conectar();
 }
+/** Chave estável derivada da senha MySQL somente para compatibilidade, se não houver salt. */
+function audit_salt(): string {
+    $salt = env_value('APP_AUDIT_SALT');
+    if ($salt !== '') return $salt;
+    return hash('sha256', 'obras360-audit|' . env_value('DB_PASS'));
+}
 function csrf_token(): string {
     if (empty($_SESSION['csrf'])) $_SESSION['csrf'] = bin2hex(random_bytes(32));
     return $_SESSION['csrf'];
@@ -106,7 +112,7 @@ function audit_log(string $event, ?string $module = null, ?string $code = null, 
     $u = user();
     $payload = json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
     $st = db()->prepare('INSERT INTO audit_logs (actor_id, event, module, record_code, ip_hash, metadata) VALUES (?,?,?,?,?,?)');
-    $st->execute([$u['id'] ?? null, $event, $module, $code, hash('sha256', (string)($_SERVER['REMOTE_ADDR'] ?? 'cli') . env_value('APP_AUDIT_SALT')), $payload]);
+    $st->execute([$u['id'] ?? null, $event, $module, $code, hash('sha256', (string)($_SERVER['REMOTE_ADDR'] ?? 'cli') . audit_salt()), $payload]);
 }
 function public_user(array $u): array {
     return ['id' => (int)$u['id'], 'username' => $u['username'], 'email' => $u['email'], 'name' => $u['name'], 'role' => $u['role'], 'must_change_password' => (bool)$u['must_change_password']];

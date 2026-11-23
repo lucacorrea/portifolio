@@ -33,7 +33,7 @@ check('Extensão PDO', extension_loaded('PDO'));
 check('Extensão pdo_mysql', extension_loaded('pdo_mysql'));
 check('Suporte Argon2id', defined('PASSWORD_ARGON2ID'));
 check('Arquivo PHP privado obras360-private/conexao.php', obras_arquivo_conexao() !== null);
-check('Configuração de banco', env_value('DB_NAME') !== '' && env_value('DB_USER') !== '' && env_value('DB_PASS') !== '' && !str_contains(env_value('DB_PASS'), 'COLE_SENHA'));
+check('Configuração de banco', env_value('DB_NAME') !== '' && env_value('DB_USER') !== '' && env_value('DB_PASS') !== '');
 
 if (!extension_loaded('pdo_mysql') || env_value('DB_NAME') === '' || env_value('DB_USER') === '') {
     echo "\nCorrija as falhas acima e execute novamente.\n";

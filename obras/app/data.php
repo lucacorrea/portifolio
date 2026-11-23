@@ -29,7 +29,7 @@ function record_decode(array $r): array {
 function collect_data(): array {
     $payload = [];
     foreach (array_keys(modules()) as $mod) $payload[$mod] = [];
-    foreach (db()->query('SELECT module, code, payload FROM records ORDER BY id DESC') as $row) {
+    foreach (db()->query('SELECT module, code, payload FROM records WHERE deleted_at IS NULL ORDER BY id DESC') as $row) {
         if (array_key_exists($row['module'], $payload)) $payload[$row['module']][] = record_decode($row);
     }
     $payload['__milestones'] = [];
@@ -99,6 +99,19 @@ function validated_payload(string $module, array $previous = []): array {
     return $data;
 }
 function mb_length(string $s): int { return function_exists('mb_strlen') ? mb_strlen($s, 'UTF-8') : strlen($s); }
+/** Pastas de anexos; em produção prioriza uma pasta fora de public_html. */
+function obras_upload_dirs(): array {
+    $root = realpath(APP_ROOT) ?: APP_ROOT;
+    return [dirname(dirname($root)) . '/obras360-private/uploads', $root . '/storage/uploads'];
+}
+function obras_upload_write_dir(): string {
+    foreach (obras_upload_dirs() as $dir) {
+        if (is_dir($dir) || @mkdir($dir, 0700, true)) {
+            if (is_writable($dir)) return $dir;
+        }
+    }
+    throw new HttpError('Diretório de anexos indisponível.', 500);
+}
 function upload_attachment(string $module, string $code, int $userId): void {
     if (empty($_FILES['anexo']) || ($_FILES['anexo']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) return;
     if (!in_array($module, ['obras', 'fiscalizacao', 'projetos', 'patrimonio'], true)) throw new HttpError('Anexo indisponível para este módulo.');
@@ -116,8 +129,7 @@ function upload_attachment(string $module, string $code, int $userId): void {
         'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip'],
     ];
     if (!isset($allowed[$ext]) || !in_array($mime, $allowed[$ext], true)) throw new HttpError('Anexe PDF, JPG, PNG, DOC ou DOCX válido.');
-    $dir = APP_ROOT . '/storage/uploads';
-    if (!is_dir($dir) && !mkdir($dir, 0700, true) && !is_dir($dir)) throw new HttpError('Diretório de anexos indisponível.', 500);
+    $dir = obras_upload_write_dir();
     $filename = bin2hex(random_bytes(20)) . '.' . $ext;
     $path = $dir . '/' . $filename;
     if (!move_uploaded_file((string)$f['tmp_name'], $path)) throw new HttpError('Não foi possível salvar o arquivo.', 500);

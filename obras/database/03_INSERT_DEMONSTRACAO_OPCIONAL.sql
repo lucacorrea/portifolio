@@ -1,6 +1,6 @@
--- 02 OPCIONAL — Importa os mesmos 41 registros FICTÍCIOS do protótipo original.
+-- 03 OPCIONAL — Importa os mesmos 41 registros FICTÍCIOS do protótipo original.
 -- Coordenadas e dados da demonstração NÃO representam instalações, contratos ou obras reais.
--- Importe apenas em banco preparado para demonstração (após 01_estrutura_e_suporte.sql).
+-- Importe apenas em banco preparado para demonstração (após 01_CREATE_TABLE.sql e 02_INSERT_INICIAIS.sql).
 SET NAMES utf8mb4;
 INSERT INTO records(module,code,payload) SELECT 'obras', 'OBR-2026-001', '{"id":"OBR-2026-001","title":"Reforma de unidade pública","local":"Centro","responsavel":"Diretoria de Engenharia","status":"Em andamento","progresso":78,"orcamento":845000,"inicio":"2026-06-05","fim":"2026-12-20","tipo":"Reforma","contrato":"CT-014/2026","descricao":"Adequação de instalações, acessibilidade e melhorias prediais.","lat":-4.0926,"lng":-63.1448,"demo":true}' WHERE NOT EXISTS (SELECT 1 FROM records WHERE module='obras' AND code='OBR-2026-001');
 INSERT INTO records(module,code,payload) SELECT 'obras', 'OBR-2026-002', '{"id":"OBR-2026-002","title":"Manutenção de via urbana","local":"Santa Efigênia","responsavel":"Equipe de Infraestrutura","status":"Em atenção","progresso":45,"orcamento":630000,"inicio":"2026-08-12","fim":"2026-11-30","tipo":"Pavimentação","contrato":"CT-018/2026","descricao":"Reparos em pavimentação e recuperação de drenagem superficial.","lat":-4.097,"lng":-63.1367,"demo":true}' WHERE NOT EXISTS (SELECT 1 FROM records WHERE module='obras' AND code='OBR-2026-002');

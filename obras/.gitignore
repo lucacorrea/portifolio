@@ -1,12 +1,13 @@
+# OBRAS360 — segredos e uploads nunca podem ir para GitHub público
 /config/.env
+/config/conexao.php
+/config/conexao.local.php
+/obras360-private/
 /INSTALACAO_CREDENCIAIS.txt
 /storage/uploads/*
 !/storage/uploads/.gitkeep
 *.log
 *.bak
+*.backup
+*.zip
 .DS_Store
-
-# Credenciais PHP de teste: sempre locais / fora do Git
-/config/conexao.local.php
-/config/conexao.php
-/obras360-private/
