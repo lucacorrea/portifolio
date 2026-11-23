@@ -10,8 +10,8 @@ return [
     'DB_PORT' => '3306',
     'DB_NAME' => 'u784961086_obras',
     'DB_USER' => 'u784961086_obras',
-    'DB_PASS' => 'COLE_SENHA_ATUAL_MYSQL_AQUI',
+    'DB_PASS' => 'xJ^3oLfdp:9',
     'APP_TIMEZONE' => 'America/Manaus',
     'APP_FORCE_HTTPS' => '1',
-    'APP_AUDIT_SALT' => 'COLE_AQUI_64_CARACTERES_HEXADECIMAIS_ALEATORIOS',
+    'APP_AUDIT_SALT' => 'fdac60ad383db7676b415c2b5629755b4a5b33eb11e9283af7dc0b37eba72f61',
 ];
