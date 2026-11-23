@@ -45,8 +45,6 @@ if ($file !== null && extension_loaded('pdo_mysql')) {
                     $add('Senha do suporte protegida por Argon2id', password_get_info($support['password_hash'])['algoName'] === 'argon2id');
                 }
             }
-            $salt = obras_valor_conexao('APP_AUDIT_SALT');
-            $add('Chave de auditoria criada', (bool)preg_match('/^[a-f0-9]{64}$/iD', $salt));
         }
     } catch (Throwable $e) {
         $code = login_failure_code($e);

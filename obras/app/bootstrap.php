@@ -48,10 +48,8 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 function db(): PDO {
     return obras_conectar();
 }
-/** Chave estável derivada da senha MySQL somente para compatibilidade, se não houver salt. */
+/** Identificadores técnicos de auditoria; não há campo extra para configurar. */
 function audit_salt(): string {
-    $salt = env_value('APP_AUDIT_SALT');
-    if ($salt !== '') return $salt;
     return hash('sha256', 'obras360-audit|' . env_value('DB_PASS'));
 }
 function csrf_token(): string {

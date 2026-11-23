@@ -11,3 +11,7 @@
 *.backup
 *.zip
 .DS_Store
+
+# Evitar acidentalmente versionar a configuração privada
+/SOMENTE_HOSTINGER_PRIVADO/
+/config/conexao.local.php

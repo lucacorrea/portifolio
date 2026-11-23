@@ -1,16 +1,18 @@
 <?php
 /**
- * OBRAS360 - ÚNICO ponto de conexão MySQL.
- * Fase atual: conexao.php privado, SEM .env.
- * O login, as APIs, os relatórios e todos os módulos chamam db(), em bootstrap.php.
+ * OBRAS360 - CONEXÃO SIMPLES PARA DEMONSTRAÇÃO.
+ * Tudo (login, cadastros, mapas, API) chama db() -> obras_conectar().
+ * O arquivo de senha fica fora da área pública e fora do GitHub.
+ * Não requer .env, DB_HOST, DB_PORT ou APP_AUDIT_SALT na configuração.
  */
 declare(strict_types=1);
 
 function obras_connection_candidates(): array {
     $root = dirname(__DIR__);
-    $private = dirname(dirname($root)) . '/obras360-private/conexao.php';
-    $local = $root . '/config/conexao.local.php';
-    return [$private, $local];
+    return [
+        dirname(dirname($root)) . '/obras360-private/conexao.php',
+        $root . '/config/conexao.local.php',
+    ];
 }
 
 function obras_arquivo_conexao(): ?string {
@@ -27,88 +29,108 @@ function obras_configuracao_conexao(): array {
     $file = obras_arquivo_conexao();
     if ($file === null) return [];
     try {
-        $data = (static function (string $name): mixed { return require $name; })($file);
+        // require executado em escopo isolado; não exibe conteúdo da configuração.
+        $data = (static function (string $path): mixed { return require $path; })($file);
         if (!is_array($data)) throw new UnexpectedValueException('Tipo de configuração inválido.');
-        $required = ['DB_HOST','DB_PORT','DB_NAME','DB_USER','DB_PASS'];
-        foreach ($required as $key) {
-            if (!isset($data[$key]) || !is_scalar($data[$key]) || trim((string)$data[$key]) === '') {
+        $values = [];
+        foreach (['DB_NAME', 'DB_USER', 'DB_PASS'] as $key) {
+            if (!isset($data[$key]) || !is_string($data[$key]) || trim($data[$key]) === '') {
                 throw new UnexpectedValueException('Configuração do banco de dados incompleta.');
             }
+            $values[$key] = $data[$key];
         }
-        $values = [];
-        foreach ($data as $key => $value) {
-            if (is_string($key) && preg_match('/^[A-Z][A-Z0-9_]*$/D', $key)
-                && (is_string($value) || is_int($value))) $values[$key] = (string)$value;
+        // Estas opções só servem para execução do site, não são obrigatórias.
+        foreach (['APP_TIMEZONE', 'APP_FORCE_HTTPS'] as $key) {
+            if (isset($data[$key]) && is_string($data[$key])) $values[$key] = $data[$key];
         }
         $cached = $values;
         return $values;
     } catch (Throwable $e) {
-        error_log('[OBRAS360 CONFIG] Arquivo de conexão privada inválido: ' . get_class($e));
+        error_log('[OBRAS360 CONFIG] Configuração PHP privada inválida.');
         return [];
     }
 }
 
 function obras_valor_conexao(string $name, string $fallback = ''): string {
-    $c = obras_configuracao_conexao();
-    return $c[$name] ?? $fallback;
+    $config = obras_configuracao_conexao();
+    return $config[$name] ?? $fallback;
 }
 
-/**
- * Separa falhas de configuração de problemas de rede ou credenciais.
- * O sal de auditoria NÃO interfere na abertura de conexão MySQL.
- */
+/** Abre PDO sem precisar selecionar servidor no config; Hostinger usa 3306. */
+function obras_conectar_com_dados(string $name, string $user, string $password): PDO {
+    if (!extension_loaded('pdo_mysql')) throw new RuntimeException('Driver pdo_mysql não instalado.');
+    if ($name === '' || $user === '' || $password === '') {
+        throw new RuntimeException('Configuração do banco de dados incompleta.');
+    }
+    $options = [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false,
+        PDO::ATTR_PERSISTENT => false,
+        PDO::ATTR_TIMEOUT => 5,
+    ];
+    $last = null;
+    // MySQL da própria hospedagem normalmente responde em localhost.
+    // Em algumas instalações Hostinger, o painel indica srv1885.hstgr.io.
+    // Ambos são internos ao conector, não são campos para o usuário configurar.
+    foreach (['localhost', 'srv1885.hstgr.io'] as $host) {
+        try {
+            $pdo = new PDO(
+                'mysql:host=' . $host . ';port=3306;dbname=' . $name . ';charset=utf8mb4',
+                $user, $password, $options
+            );
+            $pdo->exec("SET time_zone = '-04:00'");
+            return $pdo;
+        } catch (PDOException $e) {
+            $last = $e;
+            $driver = (int)($e->errorInfo[1] ?? 0);
+            // Não tenta o segundo host para erros que não são de conexão.
+            if (!in_array($driver, [2002, 2003, 2005, 2006, 2013], true)) throw $e;
+        }
+    }
+    if ($last instanceof PDOException) throw $last;
+    throw new RuntimeException('Não foi possível conectar ao banco.');
+}
+
 function obras_conectar(): PDO {
     static $pdo = null;
     if ($pdo instanceof PDO) return $pdo;
-    $c = obras_configuracao_conexao();
-    $host = $c['DB_HOST'] ?? '';
-    $name = $c['DB_NAME'] ?? '';
-    $user = $c['DB_USER'] ?? '';
-    $pass = $c['DB_PASS'] ?? '';
-    $port = filter_var($c['DB_PORT'] ?? '3306', FILTER_VALIDATE_INT);
-    if (!$host || !$name || !$user || !$pass || $port === false || $port < 1 || $port > 65535
-        || str_contains($pass, 'COLE_') || !preg_match('/^[a-zA-Z0-9][a-zA-Z0-9.-]*$/D', $host)) {
+    $config = obras_configuracao_conexao();
+    $name = $config['DB_NAME'] ?? '';
+    $user = $config['DB_USER'] ?? '';
+    $password = $config['DB_PASS'] ?? '';
+    if ($name === '' || $user === '' || $password === '' || str_starts_with($password, 'COLE_')) {
         throw new RuntimeException('Configuração do banco de dados incompleta.');
     }
-    if (!extension_loaded('pdo_mysql')) throw new RuntimeException('Driver pdo_mysql não instalado.');
-    $pdo = new PDO('mysql:host=' . $host . ';port=' . $port . ';dbname=' . $name . ';charset=utf8mb4',
-        $user, $pass, [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false,
-            PDO::ATTR_PERSISTENT => false,
-            PDO::ATTR_TIMEOUT => 5,
-        ]);
-    $pdo->exec("SET time_zone = '-04:00'");
+    $pdo = obras_conectar_com_dados($name, $user, $password);
     return $pdo;
 }
 
-/**
- * Gera arquivo com credenciais somente no servidor de destino.
- * Chamado apenas pelo instalador depois de autenticar com sucesso no MySQL.
- * Retorna o caminho onde as credenciais privadas foram instaladas.
- */
+/** Grava credenciais recebidas via instalador no PHP privado, nunca no repositório. */
 function obras_gravar_conexao_privada(array $config, bool $replaceExisting = false): string {
-    $paths = obras_connection_candidates();
-    $body = "<?php\n/** ARQUIVO PRIVADO GERADO PELO INSTALADOR. NÃO VERSIONAR NO GIT. */\nreturn "
-        . var_export($config, true) . ";\n";
-    foreach ($paths as $file) {
+    foreach (obras_connection_candidates() as $file) {
         $dir = dirname($file);
         if (!is_dir($dir) && !@mkdir($dir, 0700, true) && !is_dir($dir)) continue;
         if (!is_writable($dir) || (file_exists($file) && !$replaceExisting)) continue;
+        $data = [
+            'DB_NAME' => (string)($config['DB_NAME'] ?? ''),
+            'DB_USER' => (string)($config['DB_USER'] ?? ''),
+            'DB_PASS' => (string)($config['DB_PASS'] ?? ''),
+        ];
+        if (in_array('', $data, true)) throw new RuntimeException('Configuração do banco de dados incompleta.');
+        $content = "<?php\n/** Configuração privada do OBRAS360. NÃO COMITAR. */\nreturn " . var_export($data, true) . ";\n";
         $tmp = @tempnam($dir, '.obras_');
         if ($tmp === false) continue;
         @chmod($tmp, 0600);
         try {
-            if (file_put_contents($tmp, $body, LOCK_EX) === false) continue;
+            if (file_put_contents($tmp, $content, LOCK_EX) === false) continue;
             if (!@rename($tmp, $file)) continue;
             @chmod($file, 0600);
-            // Atualizar cache de stat() após instalar.
             clearstatcache(true, $file);
             return $file;
         } finally {
             if (is_file($tmp)) @unlink($tmp);
         }
     }
-    throw new RuntimeException('Não foi possível gravar o arquivo privado da conexão na hospedagem.');
+    throw new RuntimeException('Não foi possível gravar a conexão privada; use o arquivo preparado para a Hostinger.');
 }
