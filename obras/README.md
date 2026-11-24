@@ -1,5 +1,7 @@
 # OBRAS360 — DEMONSTRAÇÃO FUNCIONAL • PHP + MySQL
 
+> **Excel V6 (24/11/2026):** a aba Indicadores foi redesenhada como tabelas regulares de três colunas, e as três abas agora têm títulos e cabeçalhos com contornos completos e todos os dados centralizados. Veja [docs/ATUALIZACAO_EXCEL_V6.md](docs/ATUALIZACAO_EXCEL_V6.md).
+
 > **Atualização de relatórios (24/11/2026):** exportação Excel refeita com as abas **Registros**, **Indicadores** e **Dados completos**, iniciando pela tabela legível; impressão A4 horizontal com fontes ampliadas. O botão CSV foi removido. O Excel agora tem fonte menor, cabeçalho institucional centralizado e bordas completas nas tabelas. Consulte [docs/RELATORIOS_IMPRESSAO_EXPORTACAO.md](docs/RELATORIOS_IMPRESSAO_EXPORTACAO.md).
 
 Sistema com o mesmo layout, mapas e formulários do protótipo anterior. Todos os módulos

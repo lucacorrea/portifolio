@@ -259,10 +259,10 @@ function rpt_xlsx_styles(): string {
     // Font, preenchimento, borda, número. Índices públicos usados pelo gerador.
     $styles=[
         [0,0,0,0],     // 0 padrão
-        [1,2,0,0],     // 1 marca institucional, fundo verde quase branco
-        [2,4,0,0],     // 2 título grande
-        [3,4,0,0],     // 3 metadados
-        [4,2,0,0],     // 4 seção de indicadores
+        [1,2,4,0],     // 1 instituição: borda completa e alinhamento central
+        [2,4,4,0],     // 2 título do relatório, com borda
+        [3,4,3,0],     // 3 metadados, grade discreta
+        [4,2,4,0],     // 4 seção, com grade completa
         [5,3,4,0],     // 5 título de coluna: contorno completo
         [0,4,3,0],     // 6 linha branca: bordas em todos os lados
         [0,5,3,0],     // 7 linha alternada
@@ -274,23 +274,21 @@ function rpt_xlsx_styles(): string {
         [0,5,3,165],   // 13 percentual alternado
         [9,3,0,0],     // 14 legenda indicador
         [6,3,0,0],     // 15 número indicador
-        [3,4,0,0],     // 16 nota
+        [3,4,3,0],     // 16 nota com borda sutil
         [4,4,0,0],     // 17 negrito simples
         [7,7,3,0],     // 18 situação positiva
         [8,8,3,0],     // 19 situação atenção
         [4,5,3,0],     // 20 situação neutra
-        [5,4,0,0],     // 21 título secundário
+        [5,4,4,0],     // 21 título secundário com borda
         [0,4,3,1],     // 22 inteiro
         [0,5,3,1],     // 23 inteiro alternado
-        [8,6,0,0],     // 24 alerta informativo
+        [8,6,3,0],     // 24 alerta informativo com borda
     ];
     $xfs='';
     foreach($styles as [$fontId,$fillId,$borderId,$formatId]){
-        // O estilo institucional (índice 1) é centralizado em todas as abas.
-        // As demais linhas conservam o alinhamento adequado às informações.
-        $alignment = $borderId===4 ? ' horizontal="center"' : '';
-        if ($fontId===1 && $fillId===2) $alignment=' horizontal="center"';
-        $xfs.='<xf numFmtId="'.$formatId.'" fontId="'.$fontId.'" fillId="'.$fillId.'" borderId="'.$borderId.'" xfId="0" applyFont="1" applyFill="1" applyBorder="1"'.($formatId?' applyNumberFormat="1"':'').'><alignment'.$alignment.' vertical="center" wrapText="1"/></xf>';
+        // Todas as abas: centralização horizontal e vertical em cabeçalhos e dados.
+        // Borda aplica-se a todas as células das tabelas e aos cabeçalhos institucionais.
+        $xfs.='<xf numFmtId="'.$formatId.'" fontId="'.$fontId.'" fillId="'.$fillId.'" borderId="'.$borderId.'" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"'.($formatId?' applyNumberFormat="1"':'').'><alignment horizontal="center" vertical="center" wrapText="1"/></xf>';
     }
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       .'<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
@@ -375,12 +373,20 @@ function rpt_xlsx_bytes(array $dataset): string {
         if(!$columns)$columns=[['id','Código']];
         $data=[];$widths=[];$rowHeights=[];
         $end=rpt_xlsx_col(count($columns)-1);
-        $set($data,1,0,$brand,1);
-        $set($data,2,0,$title.($isExtended?' — todos os campos':''),2);
-        $set($data,3,0,$metadata,3);
-        $set($data,4,0,'Filtros: '.$filter,3);
-        $set($data,5,0,$baseNote,16);
-        $rowHeights=[1=>29,2=>38,3=>26,4=>26,5=>28,7=>36];
+        // Mesmo contorno em toda a largura, inclusive células dentro de mesclas.
+        // O título ocupa no máximo as seis primeiras colunas (visível sem rolagem lateral).
+        $headSpan=min(6,count($columns));
+        $headerRows=[
+            1=>[$brand,1],
+            2=>[$title.($isExtended?' — todos os campos':''),2],
+            3=>[$metadata,3],
+            4=>['Filtros: '.$filter,3],
+            5=>[$baseNote,16],
+        ];
+        foreach($headerRows as $hr=>[$label,$style]){
+            for($hc=0;$hc<count($columns);$hc++)$set($data,$hr,$hc,$hc===0?$label:'',$style);
+        }
+        $rowHeights=[1=>32,2=>40,3=>29,4=>29,5=>34,7=>37];
         foreach($columns as $j=>$column){
             [$key,$label]=$column;
             $set($data,7,$j,(string)$label,5);
@@ -424,45 +430,71 @@ function rpt_xlsx_bytes(array $dataset): string {
             $r++;
         }
         if($dataset['total']===0){$set($data,9,0,'Nenhum registro encontrado para os filtros selecionados.',16);$rowHeights[9]=35;}
-        $merges=['A1:'.$end.'1','A2:'.$end.'2','A3:'.$end.'3','A4:'.$end.'4','A5:'.$end.'5'];
+        $headEnd=rpt_xlsx_col($headSpan-1);
+        $merges=$headSpan>1?['A1:'.$headEnd.'1','A2:'.$headEnd.'2','A3:'.$headEnd.'3','A4:'.$headEnd.'4','A5:'.$headEnd.'5']:[];
         $filterRange=$dataset['total']>0?'A7:'.$end.($r-1):'';
         return rpt_xlsx_sheet($data,$widths,$merges,$filterRange,7,$rowHeights);
     };
     $sheetOne=$buildData($short,false);
-    // Segunda aba: visão executiva compacta, sem blocos e colunas vazias.
-    $summary=[];$sumMerges=[];
-    $place=static function(int $r,int $from,int $to,mixed $value,int $style=6,bool $numeric=false) use (&$summary,&$sumMerges,$set): void {
-        $set($summary,$r,$from,$value,$style,$numeric);
-        if($to>$from)$sumMerges[]=rpt_xlsx_col($from).$r.':'.rpt_xlsx_col($to).$r;
+    // Segunda aba (Indicadores): desenho tabular limpo, sem mesclas dentro das tabelas.
+    // Três colunas fixas tornam a leitura mais simples e os contornos uniformes.
+    $summary=[];
+    $summaryMerges=[];
+    $summaryWidths=[40,24,40];
+    $section=static function(int $row,string $text,int $style=4) use (&$summary,&$summaryMerges,$set): void {
+        for($i=0;$i<3;$i++)$set($summary,$row,$i,$i===0?$text:'',$style);
+        $summaryMerges[]='A'.$row.':C'.$row;
     };
-    $place(1,0,5,$brand,1);
-    $place(2,0,5,'Resumo gerencial — '.$title,2);
-    $place(3,0,5,$metadata,3);
-    $place(4,0,5,'Filtros: '.$filter,3);
-    $place(6,0,5,'INDICADORES DA SELEÇÃO',4);
-    foreach([[0,1,'REGISTROS'],[2,3,'SITUAÇÕES'],[4,5,'DEMONSTRATIVOS']] as [$a,$b,$label])$place(7,$a,$b,$label,14);
-    foreach([[0,1,(int)$dataset['total']],[2,3,count($dataset['status'])],[4,5,(int)$dataset['demo']]] as [$a,$b,$number])$place(8,$a,$b,$number,15,true);
-    foreach([[0,1,'ORÇAMENTO ESTIMADO'],[2,3,'EXECUÇÃO MÉDIA'],[4,5,'VALOR MEDIDO']] as [$a,$b,$label])$place(10,$a,$b,$label,14);
-    $place(11,0,1,(float)$dataset['budget'],10,true);
-    $place(11,2,3,$dataset['progressCount']?(float)$dataset['progress']/$dataset['progressCount']/100:0,12,true);
-    $place(11,4,5,(float)$dataset['measured'],10,true);
-    $place(13,0,5,'DISTRIBUIÇÃO POR SITUAÇÃO',4);
-    $place(14,0,2,'SITUAÇÃO',5);$place(14,3,3,'QUANTIDADE',5);$place(14,4,5,'PARTICIPAÇÃO',5);
-    $row=15;
-    foreach($dataset['status'] as $status=>$quantity){
-        $style=$row%2?6:7;
-        $place($row,0,2,(string)$status,$style);
-        $place($row,3,3,(int)$quantity,$style,true);
-        $place($row,4,5,$dataset['total']?(float)$quantity/$dataset['total']:0,$row%2?12:13,true);
-        $row++;
+    $section(1,$brand,1);
+    $section(2,'Resumo gerencial — '.$title,2);
+    $section(3,$metadata,3);
+    $section(4,'Filtros: '.$filter,3);
+    $section(6,'INDICADORES DA SELEÇÃO',4);
+    foreach(['INDICADOR','VALOR','REFERÊNCIA'] as $i=>$text)$set($summary,7,$i,$text,5);
+    $avg=$dataset['progressCount']?(float)$dataset['progress']/$dataset['progressCount']/100:0;
+    $kpis=[
+        ['Registros selecionados',(int)$dataset['total'],'Total conforme filtros','int'],
+        ['Situações identificadas',count($dataset['status']),'Categorias diferentes','int'],
+        ['Registros demonstrativos',(int)$dataset['demo'],'Validar antes de divulgação','int'],
+        ['Orçamento estimado',(float)$dataset['budget'],'Valores cadastrados','money'],
+        ['Execução média',$avg,'Média dos percentuais disponíveis','percent'],
+        ['Valor medido',(float)$dataset['measured'],'Valores cadastrados','money'],
+    ];
+    $summaryHeights=[1=>32,2=>40,3=>30,4=>30,6=>30,7=>35];
+    $line=8;
+    foreach($kpis as [$label,$value,$context,$kind]){
+        $shade=($line%2===0);
+        $set($summary,$line,0,$label,$shade?6:7);
+        $numberStyle=match($kind){'money'=>$shade?10:11,'percent'=>$shade?12:13,default=>$shade?22:23};
+        $set($summary,$line,1,$value,$numberStyle,true);
+        $set($summary,$line,2,$context,$shade?6:7);
+        $summaryHeights[$line]=32;
+        $line++;
     }
-    if(!$dataset['status']){$place($row,0,5,'Nenhuma situação informada nos registros filtrados.',16);$row++;}
-    $noteRow=$row+2;
-    $place($noteRow,0,5,'NOTAS DE LEITURA',4);
-    $place($noteRow+1,0,5,'Dados extraídos no momento da emissão. Consulte Registros para a tabela principal.',16);
-    if($dataset['demo']>0)$place($noteRow+2,0,5,'Atenção: existem registros de demonstração. Validar antes de utilizar oficialmente.',24);
-    $sumHeights=[1=>29,2=>38,3=>26,4=>26,6=>29,7=>27,8=>38,10=>27,11=>38,13=>29,14=>33,$noteRow=>29,$noteRow+1=>27];
-    $sheetTwo=rpt_xlsx_sheet($summary,[29,15,29,15,29,15],$sumMerges,'',0,$sumHeights);
+    $section(15,'DISTRIBUIÇÃO POR SITUAÇÃO',4);
+    foreach(['SITUAÇÃO','QUANTIDADE','PARTICIPAÇÃO'] as $i=>$text)$set($summary,16,$i,$text,5);
+    $summaryHeights[15]=30;$summaryHeights[16]=35;
+    $line=17;
+    foreach($dataset['status'] as $state=>$qty){
+        $shade=($line%2===0);
+        $set($summary,$line,0,(string)$state,$shade?6:7);
+        $set($summary,$line,1,(int)$qty,$shade?22:23,true);
+        $set($summary,$line,2,$dataset['total']?(float)$qty/$dataset['total']:0,$shade?12:13,true);
+        $summaryHeights[$line]=31;
+        $line++;
+    }
+    if(!$dataset['status']){
+        $section($line,'Nenhuma situação informada nos registros selecionados.',16);
+        $summaryHeights[$line]=34;
+        $line++;
+    }
+    $noteRow=$line+2;
+    $section($noteRow,'NOTAS DE LEITURA',4);
+    $section($noteRow+1,'Dados extraídos do MySQL na emissão. Consulte a aba Registros.',16);
+    if($dataset['demo']>0) $section($noteRow+2,'ATENÇÃO: há registros demonstrativos nesta seleção.',24);
+    $summaryHeights[$noteRow]=30;$summaryHeights[$noteRow+1]=31;
+    if($dataset['demo']>0)$summaryHeights[$noteRow+2]=32;
+    $sheetTwo=rpt_xlsx_sheet($summary,$summaryWidths,$summaryMerges,'',7,$summaryHeights);
     // Terceira aba conserva todos os campos sem sobrecarregar a leitura inicial.
     $sheetThree=$buildData($extended,true);
     $types='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
