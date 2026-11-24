@@ -62,7 +62,7 @@ const routes = {
  mapa:['mapa-interativo.php','Mapa interativo','map'], formularios:['formularios.php','Central de formulários','clipboardList'],
  cadastro:['cadastro-obra.php','Cadastro e edição','edit'], marco:['cadastro-marco.php','Novo marco','calendar'],
  movimentacao:['movimentacao-estoque.php','Movimentar estoque','box'], encaminhamento:['encaminhamento-protocolo.php','Encaminhar protocolo','right'],
- usuarios:['usuarios.php','Usuários e permissões','users'], auditoria:['auditoria.php','Auditoria do sistema','shield']
+ usuarios:['usuarios.php','Usuários e permissões','users'], 'usuario-form':['cadastro-usuario.php','Cadastro de usuário','users'], auditoria:['auditoria.php','Auditoria do sistema','shield']
 };
 const page = document.body.dataset.page || 'dashboard';
 const BOOT=window.OBRAS_BOOTSTRAP||{records:{},csrf:'',user:null};
@@ -379,17 +379,54 @@ function standaloneForwardPage(){const id=new URLSearchParams(location.search).g
 
 let adminUsers=[];
 function usersPage(){
- if(!isAdmin)return heading('Acesso restrito','Seu perfil não administra usuários.','CONTROLE DE ACESSO');
- apiGet('users.list').then(r=>{adminUsers=r.items;const t=$('#users-table');if(t)t.innerHTML=usersTable();}).catch(showApiError);
- return `${heading('Usuários e permissões','Gerencie contas, níveis de acesso e a situação dos usuários.','ADMINISTRAÇÃO',btn(I('plus')+' Novo usuário','user-new'))}<section class="panel list-panel"><div class="panel-head"><div><h3>Usuários cadastrados</h3><p>As senhas são protegidas por hash Argon2id e nunca exibidas.</p></div></div><div id="users-table"><div class="empty-state">Carregando usuários...</div></div></section>${notice()}`;
+  if(!isAdmin)return heading('Acesso restrito','Seu perfil não administra usuários.','CONTROLE DE ACESSO');
+  apiGet('users.list').then(r=>{
+    adminUsers=Array.isArray(r.items)?r.items:[];
+    const t=$('#users-table');if(t)t.innerHTML=usersTable();
+  }).catch(err=>{
+    const t=$('#users-table');
+    if(t)t.innerHTML=`<div class="empty-state"><strong>Não foi possível consultar os usuários.</strong><p>${S(err.message||'Erro ao carregar a lista.')}</p><button class="btn secondary" type="button" data-action="users-reload">Tentar novamente</button></div>`;
+    showApiError(err);
+  });
+  const notice=BOOT.usersNotice ? `<div class="users-feedback success" role="status">${I('check')} ${S(BOOT.usersNotice)}</div>` : '';
+  return `${heading('Usuários e permissões','Gerencie contas, níveis de acesso e a situação dos usuários.','ADMINISTRAÇÃO',`<a class="btn primary" href="cadastro-usuario.php">${I('plus')} Novo usuário</a>`)}${notice}<section class="panel list-panel"><div class="panel-head"><div><h3>Usuários cadastrados</h3><p>As senhas são protegidas por hash Argon2id e nunca exibidas.</p></div></div><div id="users-table"><div class="empty-state">Carregando usuários...</div></div></section>${noticeBoxUsers()}`;
 }
-function usersTable(){return `<div class="table-wrap"><table class="data-table"><thead><tr><th>USUÁRIO</th><th>NOME</th><th>E-MAIL</th><th>PERFIL</th><th>STATUS</th><th>AÇÕES</th></tr></thead><tbody>${adminUsers.map(u=>`<tr><td><strong>${S(u.username)}</strong></td><td>${S(u.name)}</td><td>${S(u.email)}</td><td>${pill(u.role)}</td><td>${pill(Number(u.active)===1?'Ativo':'Desativado')}</td><td><div class="row-buttons"><button class="row-icon" data-action="user-edit" data-id="${S(u.id)}" title="Editar">${I('edit')}</button>${Number(u.id)!==Number(loggedUser.id)?`<button class="row-icon" data-action="user-toggle" data-id="${S(u.id)}" data-active="${Number(u.active)===1?'0':'1'}" title="${Number(u.active)===1?'Desativar':'Ativar'}">${I(Number(u.active)===1?'x':'check')}</button>`:''}</div></td></tr>`).join('')}</tbody></table></div>`;}
+function noticeBoxUsers(){return notice();}
+function usersTable(){
+  if(!adminUsers.length)return `<div class="empty-state"><strong>Nenhum usuário cadastrado.</strong></div>`;
+  return `<div class="table-wrap"><table class="data-table"><thead><tr><th>USUÁRIO</th><th>NOME</th><th>E-MAIL</th><th>PERFIL</th><th>STATUS</th><th>AÇÕES</th></tr></thead><tbody>${adminUsers.map(u=>`<tr><td><strong>${S(u.username)}</strong></td><td>${S(u.name)}</td><td>${S(u.email)}</td><td>${pill(u.role)}</td><td>${pill(Number(u.active)===1?'Ativo':'Desativado')}</td><td><div class="row-buttons"><a class="row-icon" href="cadastro-usuario.php?id=${encodeURIComponent(u.id)}" title="Editar usuário" aria-label="Editar ${S(u.username)}">${I('edit')}</a>${Number(u.id)!==Number(loggedUser.id)?`<button class="row-icon" data-action="user-toggle" data-id="${S(u.id)}" data-active="${Number(u.active)===1?'0':'1'}" title="${Number(u.active)===1?'Desativar':'Ativar'} usuário" aria-label="${Number(u.active)===1?'Desativar':'Ativar'} ${S(u.username)}">${I(Number(u.active)===1?'x':'check')}</button>`:''}</div></td></tr>`).join('')}</tbody></table></div>`;
+}
 function userForm(id=''){
- const u=adminUsers.find(r=>String(r.id)===String(id))||{};
- overlay(`<div class="dialog-header"><div><span class="dialog-eyebrow">CONTROLE DE USUÁRIOS</span><h2>${id?'Editar usuário':'Cadastrar usuário'}</h2><p>${id?'Você pode manter a senha em branco para não alterá-la.':'O usuário deverá trocar a senha no primeiro acesso.'}</p></div><button class="icon-button" data-action="close-overlay">${I('x')}</button></div><form id="user-form"><input type="hidden" name="id" value="${S(u.id||'')}"><div class="dialog-body"><div class="form-fields"><label class="field"><span>Nome completo *</span><input required name="name" maxlength="150" value="${S(u.name||'')}"></label><label class="field"><span>Usuário *</span><input required name="username" maxlength="50" pattern="[a-z0-9._-]{3,50}" value="${S(u.username||'')}"></label><label class="field span-2"><span>E-mail *</span><input required type="email" name="email" value="${S(u.email||'')}"></label><label class="field"><span>Perfil *</span><select name="role">${['suporte','administrador','gestor','operador','consulta'].filter(r=>loggedUser.role==='suporte'||r!=='suporte').map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${S(r)}</option>`).join('')}</select></label><label class="field"><span>${id?'Nova senha (opcional)':'Senha inicial *'}</span><input type="password" name="password" autocomplete="new-password" ${id?'':'required'} minlength="8" placeholder="Mínimo de 8 caracteres"></label></div><p class="caption-muted">Senha forte: letras maiúsculas, minúsculas, número e símbolo. Nunca será salva em texto puro.</p></div><div class="dialog-actions"><button type="button" class="btn secondary" data-action="close-overlay">Cancelar</button><button type="submit" class="btn primary">${I('check')} Salvar usuário</button></div></form>`);
+  // A página própria é mais confiável que a modal e usa POST PHP nativo.
+  window.location.href='cadastro-usuario.php'+(id?'?id='+encodeURIComponent(id):'');
 }
-async function saveUser(form){if(form.dataset.sending)return;form.dataset.sending='1';try{let r=await apiRequest('users.save',new FormData(form));closeOverlay();toast(r.message);if(page==='usuarios')renderPage();}catch(e){showApiError(e);}finally{form.dataset.sending='';}}
-async function toggleUser(id,active){if(!confirm((active==='0'?'Desativar':'Ativar')+' este acesso?'))return;try{const r=await apiRequest('users.toggle',{id,active});toast(r.message);renderPage();}catch(e){showApiError(e);}}
+function userFormPage(){
+  if(!isAdmin)return heading('Acesso restrito','Seu perfil não administra usuários.','CONTROLE DE ACESSO');
+  const u=BOOT.formUser||{}, editing=Number(u.id)>0;
+  const roles=['suporte','administrador','gestor','operador','consulta'].filter(r=>loggedUser.role==='suporte'||r!=='suporte');
+  const permissions={suporte:'Acesso total, inclusive gestão de outros usuários de suporte.',administrador:'Gerencia usuários e módulos operacionais, mas não pode conceder suporte.',gestor:'Consulta e altera os módulos operacionais.',operador:'Consulta e altera os módulos operacionais.',consulta:'Visualiza os dados, sem alterar os registros.'};
+  const err=BOOT.userFormError?`<div class="users-feedback error" role="alert">${I('alert')} ${S(BOOT.userFormError)}</div>`:'';
+  const cls=(name,extra='')=>`<label class="field ${extra}"><span>${name}</span>`;
+  return `${heading(editing?'Editar usuário':'Novo usuário',editing?'Atualize os dados e as permissões do usuário.':'Cadastre o responsável e defina o nível de acesso.','ADMINISTRAÇÃO',`<a class="btn secondary" href="usuarios.php">Voltar à lista</a>`)}
+  ${err}<div class="users-form-layout"><section class="panel users-form-panel"><div class="panel-head"><div><h3>${editing?'Dados do usuário':'Cadastro de usuário'}</h3><p>Preencha os campos abaixo. O cadastro será salvo diretamente no banco MySQL.</p></div></div>
+  <form id="admin-user-native-form" action="actions-user.php" method="post">
+  <input type="hidden" name="_csrf" value="${S(BOOT.csrf)}"><input type="hidden" name="id" value="${S(u.id||'')}">
+  <div class="users-form-fields form-fields">
+  ${cls('Nome completo *')}<input required name="name" autocomplete="name" maxlength="150" value="${S(u.name||'')}" placeholder="Nome do responsável"></label>
+  ${cls('Usuário *')}<input required name="username" pattern="[a-z0-9._-]{3,50}" maxlength="50" minlength="3" autocapitalize="none" spellcheck="false" autocomplete="off" value="${S(u.username||'')}" placeholder="ex: joao.silva"></label>
+  ${cls('E-mail *','span-2')}<input required type="email" name="email" maxlength="190" autocomplete="email" value="${S(u.email||'')}" placeholder="nome@dominio.com"></label>
+  ${cls('Nível de acesso *')}<select name="role" required>${roles.map(r=>`<option value="${r}" ${((u.role||'operador')===r)?'selected':''}>${r.charAt(0).toUpperCase()+r.slice(1)}</option>`).join('')}</select></label>
+  ${cls(editing?'Nova senha (opcional)':'Senha inicial *')}<input type="password" name="password" autocomplete="new-password" minlength="8" maxlength="128" ${editing?'':'required'} placeholder="No mínimo 8 caracteres"></label>
+  ${cls('Confirmar senha'+(editing?' (se for alterar)':' *'),'span-2')}<input type="password" name="confirm_password" autocomplete="new-password" minlength="8" maxlength="128" ${editing?'':'required'} placeholder="Digite a mesma senha novamente"></label>
+  <p class="caption-muted span-2">A senha deve ter pelo menos 8 caracteres, com letras maiúsculas, minúsculas, número e símbolo. O usuário deverá trocar a senha no primeiro acesso.</p>
+  </div><div class="users-form-actions"><a class="btn secondary" href="usuarios.php">Cancelar</a><button class="btn primary" type="submit">${I('check')} ${editing?'Salvar alterações':'Cadastrar usuário'}</button></div></form></section>
+  <aside class="panel users-permissions-panel"><div class="panel-head"><div><h3>${I('shield')} Perfis de acesso</h3><p>O que cada nível poderá fazer.</p></div></div><div class="users-permissions-list">${roles.map(r=>`<div><strong>${r.charAt(0).toUpperCase()+r.slice(1)}</strong><p>${permissions[r]}</p></div>`).join('')}</div></aside></div>`;
+}
+async function toggleUser(id,active){
+  if(!confirm((active==='0'?'Desativar':'Ativar')+' este acesso?'))return;
+  try{const r=await apiRequest('users.toggle',{id,active});toast(r.message);renderPage();}
+  catch(e){showApiError(e);}
+}
 function auditPage(){if(!isAdmin)return heading('Acesso restrito','Seu perfil não consulta a auditoria.','SEGURANÇA');apiGet('audit.list').then(r=>{const t=$('#audit-table');if(t)t.innerHTML=`<div class="table-wrap"><table class="data-table"><thead><tr><th>DATA</th><th>USUÁRIO</th><th>EVENTO</th><th>MÓDULO</th><th>REGISTRO</th></tr></thead><tbody>${r.items.map(x=>`<tr><td>${S(x.created_at)}</td><td>${S(x.actor||'Sistema')}</td><td>${S(x.event)}</td><td>${S(x.module||'—')}</td><td>${S(x.record_code||'—')}</td></tr>`).join('')}</tbody></table></div>`;}).catch(showApiError);return `${heading('Auditoria do sistema','Histórico de acessos e alterações realizado por usuários.','SEGURANÇA E RASTREABILIDADE')}<section class="panel list-panel"><div class="panel-head"><div><h3>Últimos 200 eventos</h3><p>Registros persistentes no banco de dados.</p></div></div><div id="audit-table">Carregando...</div></section>`;}
 async function loadRecordExtras(key,id){
  if(!['obras','fiscalizacao','projetos','patrimonio','protocolos'].includes(key))return;
@@ -408,7 +445,7 @@ async function loadRecordExtras(key,id){
 }
 async function deleteAttachment(id,key,code){if(!confirm('Remover este anexo?'))return;try{await apiRequest('attachments.delete',{id});toast('Anexo removido.');loadRecordExtras(key,code);}catch(e){showApiError(e);}}
 async function deleteMilestone(id){if(!confirm('Excluir este marco do cronograma?'))return;try{await apiRequest('milestone.delete',{id});await reloadData();renderPage();toast('Marco removido.');}catch(e){showApiError(e);}}
-function renderPage(){const root=$('#page-root');if(!root)return;if(geoMapInstance){geoMapInstance.remove();geoMapInstance=null;geoMapMarkers=[];geoPickerMarker=null;}const content=page==='dashboard'?dashboard():page==='usuarios'?usersPage():page==='auditoria'?auditPage():page==='planejamento'?planningPage():page==='relatorios'?reportsPage():page==='mapa'?geoMapPage():page==='formularios'?formsHubPage():page==='cadastro'?fullFormPage():page==='marco'?standaloneMilestonePage():page==='movimentacao'?standaloneMovementPage():page==='encaminhamento'?standaloneForwardPage():config[page]?modulePage(page):dashboard();root.innerHTML=content;document.title=`${page==='cadastro'?config[formModule].title:routes[page][1]} · OBRAS360 Coari`;requestAnimationFrame(initGeoMaps);}
+function renderPage(){const root=$('#page-root');if(!root)return;if(geoMapInstance){geoMapInstance.remove();geoMapInstance=null;geoMapMarkers=[];geoPickerMarker=null;}const content=page==='dashboard'?dashboard():page==='usuarios'?usersPage():page==='usuario-form'?userFormPage():page==='auditoria'?auditPage():page==='planejamento'?planningPage():page==='relatorios'?reportsPage():page==='mapa'?geoMapPage():page==='formularios'?formsHubPage():page==='cadastro'?fullFormPage():page==='marco'?standaloneMilestonePage():page==='movimentacao'?standaloneMovementPage():page==='encaminhamento'?standaloneForwardPage():config[page]?modulePage(page):dashboard();root.innerHTML=content;document.title=`${page==='cadastro'?config[formModule].title:routes[page][1]} · OBRAS360 Coari`;requestAnimationFrame(initGeoMaps);}
 function searchDialog(){const html=`<div class="dialog-header"><div><span class="dialog-eyebrow">ACESSO RÁPIDO</span><h2>Buscar no OBRAS360</h2><p>Encontre módulos ou registros da demonstração.</p></div><button class="icon-button" data-action="close-overlay">${I('x')}</button></div><div class="dialog-body"><label class="search-dialog-input">${I('search')}<input id="global-search-field" type="search" placeholder="Digite uma obra, número ou módulo..." autocomplete="off" aria-label="Busca global"></label><div id="global-search-results">${searchResults('')}</div></div>`;overlay(html);$('#global-search-field')?.focus();}
 function searchResults(q){q=q.toLocaleLowerCase('pt-BR').trim();const pages=Object.entries(routes).filter(([k,v])=>(isAdmin||!['usuarios','auditoria'].includes(k))&&(!q||v[1].toLocaleLowerCase('pt-BR').includes(q)));const matches=Object.keys(config).flatMap(k=>allRecords(k).filter(r=>q&&Object.values(r).some(v=>String(v).toLocaleLowerCase('pt-BR').includes(q))).slice(0,6).map(r=>({...r,module:k}))).slice(0,10);return `<div class="search-results"><span class="search-group-title">PÁGINAS</span>${pages.slice(0,11).map(([k,v])=>`<a href="${v[0]}" class="search-result">${I(v[2])}<span>${S(v[1])}</span>${I('right')}</a>`).join('')||'<p class="muted">Nenhuma página correspondente.</p>'}<span class="search-group-title">REGISTROS</span>${matches.map(r=>`<button class="search-result" data-action="search-detail" data-module="${r.module}" data-id="${S(r.id)}">${I('files')}<span>${S(r.title)} <small>${S(r.id)} · ${S(routes[r.module][1])}</small></span>${I('right')}</button>`).join('')||'<p class="muted search-empty">Digite parte do nome ou código para encontrar registros.</p>'}</div>`;}
 function notificationsDialog(){
@@ -447,6 +484,7 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-action]')
  else if(action==='user')userDialog();
  else if(action==='reset')safeRestore();
  else if(action==='user-new')userForm();
+ else if(action==='users-reload')renderPage();
  else if(action==='user-edit')userForm(el.dataset.id);
  else if(action==='user-toggle')toggleUser(el.dataset.id,el.dataset.active);
  else if(action==='attachment-delete')deleteAttachment(el.dataset.id,el.dataset.module,el.dataset.code);

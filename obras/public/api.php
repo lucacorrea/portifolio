@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require dirname(__DIR__) . '/app/data.php';
-require_once dirname(__DIR__) . '/app/auth.php';
+require_once dirname(__DIR__) . '/app/user_management.php';
 
 try {
     $u = require_login(true);
@@ -143,38 +143,8 @@ try {
             json_reply(['ok'=>true,'items'=>$rows]);
         case 'users.save':
             require_post($method);require_admin($u);
-            $id=(int)post_string('id',15);$name=post_string('name',150);$username=strtolower(post_string('username',50));$email=strtolower(post_string('email',190));$role=post_string('role',30);$password=post_string('password',256);
-            if($name===''||!preg_match('/^[a-z0-9._-]{3,50}$/',$username)||!filter_var($email,FILTER_VALIDATE_EMAIL))throw new HttpError('Nome, usuário ou e-mail inválido.');
-            if(!in_array($role,['suporte','administrador','gestor','operador','consulta'],true))throw new HttpError('Perfil inválido.');
-            if($u['role']!=='suporte'&&$role==='suporte')throw new HttpError('Somente o suporte pode conceder acesso de suporte.',403);
-            $pdo->beginTransaction();
-            try {
-                if($id>0){
-                    $st=$pdo->prepare('SELECT id,role FROM users WHERE id=? FOR UPDATE');$st->execute([$id]);$old=$st->fetch();
-                    if(!$old)throw new HttpError('Usuário não encontrado.',404);
-                    if($u['role']!=='suporte' && $old['role']==='suporte')throw new HttpError('Não é permitido modificar o suporte.',403);
-                    if($id===(int)$u['id'] && $role!==$u['role'])throw new HttpError('Não altere seu próprio perfil.',403);
-                    if($old['role']==='suporte' && $role!=='suporte') {
-                        $cnt=(int)$pdo->query("SELECT COUNT(*) FROM users WHERE role='suporte' AND active=1")->fetchColumn();
-                        if($cnt <= 1)throw new HttpError('O último suporte ativo não pode perder seu perfil.');
-                    }
-                    $pdo->prepare('UPDATE users SET username=?,email=?,name=?,role=? WHERE id=?')->execute([$username,$email,$name,$role,$id]);
-                    if($password!==''){
-                        if(!password_secure($password))throw new HttpError('Senha: mínimo 8 caracteres, com maiúscula, minúscula, número e símbolo.');
-                        if($id===(int)$u['id'])throw new HttpError('Para alterar sua senha use Meu perfil.');
-                        $hash=password_hash($password,PASSWORD_ARGON2ID,['memory_cost'=>65536,'time_cost'=>3,'threads'=>2]);
-                        $pdo->prepare('UPDATE users SET password_hash=?,must_change_password=1,failed_attempts=0,locked_until=NULL WHERE id=?')->execute([$hash,$id]);
-                    }
-                } else {
-                    if(!password_secure($password))throw new HttpError('Senha: mínimo 8 caracteres, com maiúscula, minúscula, número e símbolo.');
-                    $hash=password_hash($password,PASSWORD_ARGON2ID,['memory_cost'=>65536,'time_cost'=>3,'threads'=>2]);
-                    $pdo->prepare('INSERT INTO users(username,email,name,role,password_hash,must_change_password,created_by) VALUES (?,?,?,?,?,1,?)')->execute([$username,$email,$name,$role,$hash,$u['id']]);
-                    $id=(int)$pdo->lastInsertId();
-                }
-                audit_log('user.saved','usuarios',(string)$id,['role'=>$role]);
-                $pdo->commit();json_reply(['ok'=>true,'message'=>'Usuário salvo com sucesso.']);
-            }catch(PDOException $e){if($pdo->inTransaction())$pdo->rollBack();if($e->getCode()==='23000')throw new HttpError('Usuário ou e-mail já está cadastrado.',409);throw $e;}
-            catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+            $id=save_managed_user($u, $_POST);
+            json_reply(['ok'=>true,'message'=>'Usuário salvo com sucesso.','id'=>$id]);
         case 'users.toggle':
             require_post($method);require_admin($u);
             $id=(int)post_string('id',15);$active=post_string('active',2);

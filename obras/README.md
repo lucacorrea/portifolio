@@ -77,3 +77,22 @@ para produção nem foi possível testar a conexão ao banco remoto desta hosped
 ## Política de senha (versão demonstrativa atualizada)
 
 A partir desta versão, senhas novas e redefinidas exigem **no mínimo 8 caracteres**, com pelo menos uma letra maiúscula, uma minúscula, um número e um símbolo. Continuam armazenadas com Argon2id. A regra é aplicada pelo PHP e refletida nos formulários HTML/JavaScript. Senhas antigas permanecem válidas.
+
+
+## Cadastro de usuários — correção (24/11/2026)
+
+O botão **Novo usuário** agora abre `public/cadastro-usuario.php`, uma página com
+formulário nativo enviado a `public/actions-user.php`. Não depende da modal JS
+para cadastrar. O backend centralizado `app/user_management.php` é usado por
+`actions-user.php` e pela API `users.save`, garantindo validação consistente,
+Argon2id e auditoria. O formulário exibe mensagens de erro e conserva os campos
+preenchidos (exceto a senha).
+
+Permissões: **suporte** pode criar outros suportes e todos os perfis;
+**administrador** pode criar administradores, gestores, operadores e usuários
+de consulta, mas não suporte. Gestor, operador e consulta não podem administrar
+usuários. Um usuário novo deve trocar sua senha no primeiro acesso.
+
+Não há alteração de banco necessária. Preserve a configuração MySQL privada
+na Hostinger, fora do GitHub. Teste criar um usuário, editar, desativar, ativar
+e entrar com a senha temporária após publicar os arquivos no servidor.

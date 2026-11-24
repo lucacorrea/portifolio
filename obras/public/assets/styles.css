@@ -118,3 +118,23 @@
   .user-menu-list > form[action$="actions-logout.php"] > button[type="submit"] {transition: none;}
   .user-menu-list > form[action$="actions-logout.php"] > button[type="submit"]:hover {transform: none;}
 }
+
+/* Cadastro e edição de usuários — layout padrão do OBRAS360 */
+.users-feedback{display:flex;align-items:center;gap:10px;padding:14px 18px;margin-bottom:18px;border-radius:10px;font-size:12px;font-weight:650;line-height:1.6}
+.users-feedback .ico{height:17px;width:17px;flex-shrink:0}
+.users-feedback.success{background:#e8f7f1;border:1px solid #bfe7db;color:#12685c}
+.users-feedback.error{background:#fff0ec;border:1px solid #fac9ba;color:#ab4936}
+.users-form-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(245px,1fr);gap:18px;align-items:start}
+.users-form-panel,.users-permissions-panel{overflow:hidden}
+.users-form-fields{padding:24px;gap:19px}
+.users-form-fields .field>span{font-weight:700;font-size:12px}
+.users-form-fields input,.users-form-fields select{min-height:45px}
+.users-form-fields .span-2{grid-column:span 2}
+.users-form-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;padding:20px 24px;border-top:1px solid #e7eef0;background:#fbfcfc}
+.users-permissions-list{padding:12px 22px}
+.users-permissions-list>div{border-bottom:1px solid #eef2f3;padding:12px 0}
+.users-permissions-list>div:last-child{border-bottom:none}
+.users-permissions-list strong{font-size:12px;color:#174457;text-transform:capitalize}
+.users-permissions-list p{font-size:11px;color:#6e8894;line-height:1.5;margin:4px 0 0}
+@media(max-width:960px){.users-form-layout{grid-template-columns:1fr}}
+@media(max-width:590px){.users-form-fields{grid-template-columns:1fr;padding:17px}.users-form-fields .span-2{grid-column:auto}.users-form-actions{padding:17px}}
