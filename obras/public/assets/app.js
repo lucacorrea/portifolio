@@ -394,6 +394,13 @@ function printReport(){
  else window.location.assign(url);
 }
 
+/* OBRAS360 - extensão de interface para apresentação (sem backend, sem dados oficiais). */
+const FORM_ROUTES={obras:'cadastro-obra.php',ordens:'cadastro-ordem-servico.php',fiscalizacao:'cadastro-vistoria.php',projetos:'cadastro-documento.php',orcamentos:'cadastro-medicao.php',materiais:'cadastro-material.php',patrimonio:'cadastro-predio.php',protocolos:'cadastro-protocolo.php'};
+const GEO_CENTER=[-4.0904,-63.1410];
+const GEO_KEYS=['obras','ordens','fiscalizacao','patrimonio'];
+const GEO_META={obras:{label:'Obras',icon:'hardhat',color:'#109186'},ordens:{label:'Ordens de serviço',icon:'clipboard',color:'#437dd5'},fiscalizacao:{label:'Vistorias',icon:'shield',color:'#d39539'},patrimonio:{label:'Prédios públicos',icon:'building',color:'#8660c7'}};
+const GEO_OFFSETS={obras:[[-.0022,-.0038],[-.0066,.0043],[.0024,.0049],[-.0041,-.0087],[.0071,-.0044],[.0064,.0067],[-.0087,-.0057],[.0004,.0086]],ordens:[[.0005,-.0016],[-.0038,-.0048],[.0062,-.0021],[.0053,.0040],[-.0050,.0072],[.0010,.0063]],fiscalizacao:[[.0018,.0018],[-.0028,.0044],[.0065,-.0046],[-.0068,-.0035]],patrimonio:[[.0018,-.0059],[-.0049,.0025],[.0035,.0062],[.0057,-.0070],[-.0011,.0076]]};
+let geoMapInstance=null, geoMapMarkers=[],geoPickerMarker=null, geoQuery='', geoLayers=new Set(GEO_KEYS), geoTried=false;
 function formLink(k,id){return (FORM_ROUTES[k]||'formularios.php')+(id?'?editar='+encodeURIComponent(id):'');}
 function geoCoord(k,i,r){if(r&&Number.isFinite(Number(r.lat))&&Number.isFinite(Number(r.lng))&&String(r.lat)!==''&&String(r.lng)!=='')return [Number(r.lat),Number(r.lng)];const v=(GEO_OFFSETS[k]||GEO_OFFSETS.obras)[i%(GEO_OFFSETS[k]||GEO_OFFSETS.obras).length];return [GEO_CENTER[0]+v[0],GEO_CENTER[1]+v[1]];}
 function geoData(mode='all'){const groups=mode==='all'?GEO_KEYS:[mode];return groups.flatMap(k=>allRecords(k).filter(r=>r.lat!==undefined&&r.lng!==undefined&&Number.isFinite(Number(r.lat))&&Number.isFinite(Number(r.lng))).map((r,i)=>({key:k,id:r.id,title:r.title,location:r.local||r.obra||r.setor||'Coari · AM',status:r.status||r.condicao||'Cadastrado',coord:[Number(r.lat),Number(r.lng)],demo:Boolean(r.demo)})));}
