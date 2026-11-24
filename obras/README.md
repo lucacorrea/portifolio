@@ -101,3 +101,8 @@ e entrar com a senha temporária após publicar os arquivos no servidor.
 ## Relatórios institucionais, impressão e exportação
 
 Esta versão inclui **impressão A4 / Salvar como PDF**, **Excel .xlsx** e **CSV**, gerados a partir do MySQL autenticado, com filtros, ficha de registro individual e relatório executivo para reuniões. Veja [docs/RELATORIOS_IMPRESSAO_EXPORTACAO.md](docs/RELATORIOS_IMPRESSAO_EXPORTACAO.md). Não há migrações SQL nesta atualização.
+
+
+## Relatórios e Excel (correção de 24/11/2026)
+
+A exportação `.xlsx` agora gera duas abas (Resumo e Registros) com dados atuais do MySQL, filtros, cabeçalho congelado e estilos institucionais. Foi corrigida a ordem das seções XML que ocasionava a mensagem de reparação e folhas vazias em algumas versões do Excel. A impressão em A4 horizontal tem visual branco, discreto, com tabelas e indicadores. Use `docs/RELATORIOS_IMPRESSAO_EXPORTACAO.md` para conferir os botões por módulo. Nenhuma mudança no banco foi necessária.
