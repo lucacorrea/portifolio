@@ -5,6 +5,20 @@
  */
 declare(strict_types=1);
 require dirname(__DIR__) . '/app/auth.php';
+// Depois da instalação, resultados operacionais do servidor são exclusivos
+// do suporte autenticado. Antes de instalar, mostra apenas diagnóstico inicial.
+if (obras_arquivo_conexao() !== null) {
+    try {
+        $diagUser=user();
+        if (!$diagUser || $diagUser['role'] !== 'suporte') {
+            http_response_code(403);
+            exit('Diagnóstico restrito ao suporte autenticado.');
+        }
+    } catch (Throwable $e) {
+        http_response_code(403);
+        exit('Diagnóstico indisponível sem autenticação de suporte.');
+    }
+}
 header('X-Robots-Tag: noindex, nofollow, noarchive');
 $checks = [];
 $add = static function (string $name, bool $ok, string $detail = '') use (&$checks): void {

@@ -122,9 +122,10 @@ function rpt_apply_filters(array $rows, array $query): array {
             if (!$hit) continue;
         }
         $reference = substr((string)($row['data'] ?? $row['inicio'] ?? $row['prazo'] ?? $row['fim'] ?? $row['date'] ?? ''),0,10);
-        // Compatível com a tela: registros sem data permanecem quando se filtra por período.
-        if ($reference !== '' && $query['inicio'] !== '' && $reference < $query['inicio']) continue;
-        if ($reference !== '' && $query['fim'] !== '' && $reference > $query['fim']) continue;
+        // Uma seleção de período não deve incluir registros sem data de referência.
+        if (($query['inicio'] !== '' || $query['fim'] !== '') && $reference === '') continue;
+        if ($query['inicio'] !== '' && $reference < $query['inicio']) continue;
+        if ($query['fim'] !== '' && $reference > $query['fim']) continue;
         $result[]=$row;
     }
     $sort=$query['ordem'];

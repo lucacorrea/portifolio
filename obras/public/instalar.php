@@ -9,6 +9,21 @@ require dirname(__DIR__) . '/app/auth.php';
 
 $existingConnection = obras_arquivo_conexao();
 $reconfigureSupport = (($_GET['reconfigurar'] ?? $_POST['reconfigurar'] ?? '') === '1');
+// Uma conta de suporte JÁ instalada não pode ter a senha substituída por
+// uma pessoa anônima, mesmo que ela conheça a senha do MySQL.
+if ($existingConnection !== null && $reconfigureSupport) {
+    try {
+        $installerActor = user();
+        if (!$installerActor || $installerActor['role'] !== 'suporte') {
+            http_response_code(403);
+            exit('A recuperação remota de suporte exige uma sessão autenticada de suporte.');
+        }
+    } catch (Throwable $e) {
+        error_log('[OBRAS360 INSTALAR] Recuperação não autorizada: banco indisponível.');
+        http_response_code(403);
+        exit('Recuperação indisponível; utilize o procedimento administrativo no servidor.');
+    }
+}
 if ($existingConnection !== null && !$reconfigureSupport) {
     try {
         if ((int)db()->query('SELECT 1')->fetchColumn() === 1) {
@@ -73,6 +88,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             ->fetchAll(PDO::FETCH_COLUMN);
         $missing = array_diff($needed, array_map('strtolower', $existing));
         if ($missing) throw new RuntimeException('Importe primeiro 01_CREATE_TABLE.sql e 02_INSERT_INICIAIS.sql no phpMyAdmin. Tabelas ausentes: ' . implode(', ', $missing));
+        // Se o arquivo privado desapareceu mas o suporte já havia sido ativado,
+        // NÃO permitir que qualquer visitante recrie sua senha com a senha MySQL.
+        if ($existingConnection === null) {
+            $st=$pdo->query("SELECT COUNT(*) FROM users WHERE role='suporte' AND active=1");
+            if ((int)$st->fetchColumn() > 0) {
+                throw new RuntimeException('Instalação já concluída. A recuperação de conexão deve ser feita pelo administrador diretamente na hospedagem.');
+            }
+        }
 
         $hash = password_hash($supportPass, PASSWORD_ARGON2ID, ['memory_cost'=>65536, 'time_cost'=>3,'threads'=>2]);
         if (!$hash) throw new RuntimeException('Não foi possível proteger a senha de suporte.');
@@ -141,5 +164,5 @@ function h(string $v): string { return htmlspecialchars($v, ENT_QUOTES | ENT_SUB
 <label>Nova senha de acesso para o usuário suporte<input name="support_password" type="password" minlength="8" maxlength="128" required autocomplete="new-password" placeholder="8 caracteres, letras, número e símbolo"></label>
 <label>Confirmar senha do suporte<input name="support_confirm" type="password" minlength="8" maxlength="128" required autocomplete="new-password"></label>
 <button type="submit">Testar MySQL, configurar e habilitar suporte</button>
-</form><p class="muted">Para instalações novas, defina uma senha exclusiva para o suporte. Se a conta já estiver ativa e precisar redefinir a senha, use <code>instalar.php?reconfigurar=1</code>, informe a senha atual do MySQL e a nova senha do suporte. Remova o instalador após os testes.</p>
+</form><p class="muted">Para instalações novas, defina uma senha exclusiva para o suporte. Para redefinir a senha depois da instalação, entre com uma conta suporte ativa antes de usar <code>instalar.php?reconfigurar=1</code>. Sem acesso de suporte, a recuperação deve ser feita administrativamente no servidor. Remova o instalador após os testes.</p>
 </main></body></html>

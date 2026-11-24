@@ -34,6 +34,9 @@ function save_managed_user(array $actor, array $data): int {
     $pdo->beginTransaction();
     try {
         if ($id > 0) {
+            // Ordem de locks idêntica à desativação via API, para que duas
+            // mudanças simultâneas não removam o último suporte ativo.
+            $supportLocks=$pdo->query("SELECT id,active FROM users WHERE role='suporte' ORDER BY id FOR UPDATE")->fetchAll();
             $st = $pdo->prepare('SELECT id,role,active FROM users WHERE id=? FOR UPDATE');
             $st->execute([$id]);
             $old = $st->fetch();
@@ -41,7 +44,7 @@ function save_managed_user(array $actor, array $data): int {
             if ($actor['role'] !== 'suporte' && $old['role'] === 'suporte') throw new HttpError('Somente o suporte pode editar outro suporte.',403);
             if ($id === (int)$actor['id'] && $role !== $actor['role']) throw new HttpError('Você não pode alterar seu próprio nível de acesso.',403);
             if ($old['role'] === 'suporte' && $role !== 'suporte' && (int)$old['active'] === 1) {
-                $n = (int)$pdo->query("SELECT COUNT(*) FROM users WHERE role='suporte' AND active=1")->fetchColumn();
+                $n = count(array_filter($supportLocks,static fn($row)=>(int)$row['active']===1));
                 if ($n <= 1) throw new HttpError('O último suporte ativo não pode perder esse perfil.');
             }
             if ($id === (int)$actor['id'] && $password !== '') throw new HttpError('Para trocar sua própria senha, use Minha conta → Alterar senha.');

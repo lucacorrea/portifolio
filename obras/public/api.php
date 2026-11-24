@@ -18,29 +18,39 @@ try {
             require_post($method); require_write($u);
             $module = post_string('module', 45); ensure_module($module);
             $code = post_string('code', 64);
-            $old = $code !== '' ? record_row($module, $code) : null;
-            if ($code !== '' && !$old) throw new HttpError('Registro não encontrado.',404);
-            $prior = $old ? record_decode($old) : [];
-            $data = validated_payload($module, $prior);
-            if ($module === 'materiais' && $old && abs((float)$data['quantidade'] - (float)($prior['quantidade']??0)) > 0.00001) {
-                throw new HttpError('Para alterar o saldo de um material existente, utilize Movimentação de estoque.');
-            }
             $pdo->beginTransaction();
+            $attachmentPath = null;
             try {
+                // Leitura e gravação protegidas pela MESMA transação.
+                // Uma movimentação de estoque concorrente não pode ser anulada
+                // por uma edição aberta anteriormente.
+                $old = $code !== '' ? record_row($module, $code, true) : null;
+                if ($code !== '' && !$old) throw new HttpError('Registro não encontrado.',404);
+                $prior = $old ? record_decode($old) : [];
+                $data = validated_payload($module, $prior);
+                if ($module === 'materiais' && $old &&
+                    abs((float)$data['quantidade'] - (float)($prior['quantidade'] ?? 0)) > 0.00001) {
+                    throw new HttpError('O saldo deste material foi alterado. Recarregue o cadastro; para entradas e saídas use Movimentação de estoque.',409);
+                }
                 if ($code === '') {
                     $code = next_code($module);
                     $data['id'] = $code;
-                    $sql = 'INSERT INTO records (module, code, payload, created_by, updated_by) VALUES (?,?,?,?,?)';
-                    $pdo->prepare($sql)->execute([$module, $code, json_encode($data, JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR), $u['id'], $u['id']]);
+                    $pdo->prepare('INSERT INTO records (module, code, payload, created_by, updated_by) VALUES (?,?,?,?,?)')
+                        ->execute([$module,$code,json_encode($data, JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),$u['id'],$u['id']]);
                 } else {
                     $data['id'] = $code;
-                    $pdo->prepare('UPDATE records SET payload=?,updated_by=? WHERE module=? AND code=? AND deleted_at IS NULL')->execute([json_encode($data, JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),$u['id'],$module,$code]);
+                    $pdo->prepare('UPDATE records SET payload=?,updated_by=? WHERE module=? AND code=? AND deleted_at IS NULL')
+                        ->execute([json_encode($data, JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),$u['id'],$module,$code]);
                 }
-                upload_attachment($module, $code, (int)$u['id']);
+                $attachmentPath = upload_attachment($module, $code, (int)$u['id']);
                 audit_log($old ? 'record.updated' : 'record.created', $module, $code, ['title'=>$data['title'] ?? '']);
                 $pdo->commit();
                 json_reply(['ok'=>true,'message'=>$old?'Registro atualizado.':'Registro cadastrado.','record'=>$data]);
-            } catch (Throwable $e) { if ($pdo->inTransaction()) $pdo->rollBack(); throw $e; }
+            } catch (Throwable $e) {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                if ($attachmentPath !== null) @unlink($attachmentPath);
+                throw $e;
+            }
         case 'record.delete':
             require_post($method); require_write($u);
             $module = post_string('module',45); $code = post_string('code',64);
@@ -86,7 +96,12 @@ try {
                 if (!preg_match('/^MR-\d+$/',$id)) throw new HttpError('Identificador inválido.');
                 $st=$pdo->prepare('UPDATE milestones SET title=?,work=?,due_date=?,status=?,updated_by=? WHERE id=?');
                 $st->execute([$title,$work,$date,$status,$u['id'],substr($id,3)]);
-                if (!$st->rowCount()) throw new HttpError('Marco não encontrado ou sem alterações.',404);
+                if (!$st->rowCount()) {
+                    $exists=$pdo->prepare('SELECT id FROM milestones WHERE id=? LIMIT 1');
+                    $exists->execute([substr($id,3)]);
+                    if (!$exists->fetchColumn()) throw new HttpError('Marco não encontrado.',404);
+                    // Nenhuma mudança não é um erro para o usuário.
+                }
             } else {
                 $st=$pdo->prepare('INSERT INTO milestones(title,work,due_date,status,created_by,updated_by) VALUES (?,?,?,?,?,?)');
                 $st->execute([$title,$work,$date,$status,$u['id'],$u['id']]); $id='MR-'.$pdo->lastInsertId();
@@ -148,18 +163,26 @@ try {
         case 'users.toggle':
             require_post($method);require_admin($u);
             $id=(int)post_string('id',15);$active=post_string('active',2);
-            if($id===(int)$u['id'])throw new HttpError('Você não pode desativar sua própria conta.');
-            if(!in_array($active,['0','1'],true))throw new HttpError('Situação inválida.');
-            $st=$pdo->prepare('SELECT role FROM users WHERE id=?');$st->execute([$id]);$old=$st->fetchColumn();
-            if($old===false)throw new HttpError('Usuário inexistente.',404);
-            if($old==='suporte'&&$u['role']!=='suporte')throw new HttpError('Não é permitido desativar o suporte.',403);
-            if($old==='suporte' && $active==='0') {
-                $cnt=$pdo->query("SELECT COUNT(*) FROM users WHERE role='suporte' AND active=1")->fetchColumn();
-                if((int)$cnt<=1)throw new HttpError('O último usuário de suporte não pode ser desativado.');
-            }
-            $pdo->prepare('UPDATE users SET active=? WHERE id=?')->execute([(int)$active,$id]);
-            audit_log('user.status','usuarios',(string)$id,['active'=>$active]);
-            json_reply(['ok'=>true,'message'=>'Situação de acesso atualizada.']);
+            if ($id===(int)$u['id']) throw new HttpError('Você não pode desativar sua própria conta.');
+            if (!in_array($active,['0','1'],true)) throw new HttpError('Situação inválida.');
+            $pdo->beginTransaction();
+            try {
+                // Mantém a contagem estável enquanto o último suporte é protegido.
+                // Lock das contas de suporte em ordem de id evita corrida simultânea.
+                $locks=$pdo->query("SELECT id,active FROM users WHERE role='suporte' ORDER BY id FOR UPDATE")->fetchAll();
+                $st=$pdo->prepare('SELECT role,active FROM users WHERE id=? FOR UPDATE');
+                $st->execute([$id]);$old=$st->fetch();
+                if (!$old) throw new HttpError('Usuário inexistente.',404);
+                if ($old['role']==='suporte' && $u['role']!=='suporte') throw new HttpError('Não é permitido desativar o suporte.',403);
+                if ($old['role']==='suporte' && $active==='0' && (int)$old['active']===1) {
+                    $cnt=count(array_filter($locks,static fn($x)=>(int)$x['active']===1));
+                    if ($cnt<=1) throw new HttpError('O último usuário de suporte não pode ser desativado.');
+                }
+                $pdo->prepare('UPDATE users SET active=? WHERE id=?')->execute([(int)$active,$id]);
+                audit_log('user.status','usuarios',(string)$id,['active'=>$active]);
+                $pdo->commit();
+                json_reply(['ok'=>true,'message'=>'Situação de acesso atualizada.']);
+            } catch (Throwable $e) {if ($pdo->inTransaction()) $pdo->rollBack();throw $e;}
         case 'audit.list':
             require_get($method);require_admin($u);
             $rows=$pdo->query('SELECT a.id,a.event,a.module,a.record_code,a.created_at,u.name AS actor FROM audit_logs a LEFT JOIN users u ON u.id=a.actor_id ORDER BY a.id DESC LIMIT 200')->fetchAll();

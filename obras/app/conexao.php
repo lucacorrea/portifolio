@@ -108,7 +108,11 @@ function obras_conectar(): PDO {
 
 /** Grava credenciais recebidas via instalador no PHP privado, nunca no repositório. */
 function obras_gravar_conexao_privada(array $config, bool $replaceExisting = false): string {
-    foreach (obras_connection_candidates() as $file) {
+    // Na hospedagem nunca gravar credenciais dentro de public_html,
+    // mesmo que um .htaccess pareça protegê-las. Leitura legada permanece.
+    $candidates = obras_connection_candidates();
+    if (PHP_SAPI !== 'cli') $candidates = array_slice($candidates, 0, 1);
+    foreach ($candidates as $file) {
         $dir = dirname($file);
         if (!is_dir($dir) && !@mkdir($dir, 0700, true) && !is_dir($dir)) continue;
         if (!is_writable($dir) || (file_exists($file) && !$replaceExisting)) continue;

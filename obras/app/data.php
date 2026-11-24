@@ -105,15 +105,15 @@ function obras_upload_dirs(): array {
     return [dirname(dirname($root)) . '/obras360-private/uploads', $root . '/storage/uploads'];
 }
 function obras_upload_write_dir(): string {
-    foreach (obras_upload_dirs() as $dir) {
-        if (is_dir($dir) || @mkdir($dir, 0700, true)) {
-            if (is_writable($dir)) return $dir;
-        }
-    }
-    throw new HttpError('Diretório de anexos indisponível.', 500);
+    // Nunca gravar novos anexos em public_html. A leitura legada
+    // permanece disponível em download.php para arquivos antigos.
+    $dir = obras_upload_dirs()[0];
+    if ((is_dir($dir) || @mkdir($dir, 0700, true)) && is_writable($dir)) return $dir;
+    throw new HttpError('Crie a pasta privada obras360-private/uploads com permissão de gravação.', 500);
 }
-function upload_attachment(string $module, string $code, int $userId): void {
-    if (empty($_FILES['anexo']) || ($_FILES['anexo']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) return;
+/** Retorna o caminho privado se houver upload, para limpeza em rollback. */
+function upload_attachment(string $module, string $code, int $userId): ?string {
+    if (empty($_FILES['anexo']) || ($_FILES['anexo']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) return null;
     if (!in_array($module, ['obras', 'fiscalizacao', 'projetos', 'patrimonio'], true)) throw new HttpError('Anexo indisponível para este módulo.');
     $f = $_FILES['anexo'];
     if (!is_array($f) || is_array($f['name'] ?? null) || ($f['error'] ?? 0) !== UPLOAD_ERR_OK) throw new HttpError('Falha no envio do arquivo.');
@@ -138,4 +138,5 @@ function upload_attachment(string $module, string $code, int $userId): void {
         $st = db()->prepare('INSERT INTO attachments (module, record_code, original_name, stored_name, mime, size_bytes, uploaded_by) VALUES (?,?,?,?,?,?,?)');
         $st->execute([$module, $code, substr($original, 0, 240), $filename, $mime, $size, $userId]);
     } catch (Throwable $e) { @unlink($path); throw $e; }
+    return $path;
 }
