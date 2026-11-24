@@ -26,85 +26,95 @@
 @media(max-width:440px){.header-profile{display:none}.page-actions{flex-wrap:wrap}.page-actions .btn{flex:auto}.hero-content h2{font-size:22px}.hero-content p{max-width:95%}.metric-value{font-size:22px}.metric-icon{width:29px;height:29px}.metric-foot{font-size:8px}.panel-head p{font-size:9px}.donut-layout{padding:5px 15px 20px}.spotlight-row{gap:7px}.spot-icon{width:28px;height:28px}.spot-progress{width:46px}.spotlight-row .pill{display:none}.quick-links a{font-size:9px}.filter-right{flex-wrap:wrap}.select-wrap{min-width:100%}.filter-right .btn{width:100%}.report-types{gap:8px}.report-type{padding:12px 9px}.report-fields{grid-template-columns:1fr}.paper-preview{margin:4px 10px 15px;padding:19px 15px}.paper-summary{grid-template-columns:repeat(3,1fr)}.paper-summary>div{padding:9px 6px}.paper-summary strong{font-size:13px}.drawer-body{padding:19px}.drawer-top{padding:22px 19px}.detail-grid{grid-template-columns:1fr 1fr}.map-work .pill{display:none}}
 @media print{body{background:#fff}.sidebar,.topbar,.page-actions,.filter-toolbar,.row-buttons,.app-footer,.demo-note,.btn,.tabs,.quick-panel,.sidebar-scrim{display:none!important}.workspace{width:100%}.page-container{padding:12px}.panel,.metric-card,.kpi-tile{box-shadow:none;break-inside:avoid}.page-head{margin-bottom:15px}.hero-banner{-webkit-print-color-adjust:exact;print-color-adjust:exact}.paper-preview{box-shadow:none;min-height:0}}
 
-/* OBRAS360: botão de Encerrar sessão no modal Minha conta.
-   A função de logout (POST + CSRF) foi preservada. */
-.user-menu-list > form.logout-form {
-  margin: 18px 0 0;
-  padding: 14px 0 0;
-  border-top: 1px solid #e7edef;
+/* OBRAS360 — botão de logout V2 (funciona inclusive com HTML antigo em cache).
+   O design não interfere nos links Alterar senha / Usuários / Auditoria. */
+.user-menu-list > form[action$="actions-logout.php"] {
+  display: block;
+  width: 100%;
+  margin: 13px 0 0;
+  padding: 13px 0 0;
+  border-top: 1px solid #e6ecef;
 }
-.user-menu-list > form.logout-form > button.logout-button {
+.user-menu-list > form[action$="actions-logout.php"] > button[type="submit"] {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 12px;
   width: 100%;
   min-height: 54px;
-  padding: 10px 13px;
-  background: linear-gradient(125deg, #fff7f5, #fff0ee);
-  border: 1px solid #efd2cd;
+  margin: 0;
+  padding: 9px 13px;
+  border: 1px solid #edc5c0;
   border-radius: 12px;
-  color: #a13f36;
-  font: 700 12px/1.35 'Manrope', 'Segoe UI', sans-serif;
+  background: linear-gradient(110deg, #fff5f3 0%, #ffebe7 100%);
+  color: #a73530;
+  font: 700 12px/1.4 'Manrope', 'Segoe UI', sans-serif;
+  letter-spacing: 0;
   text-align: left;
   cursor: pointer;
-  box-shadow: 0 2px 5px rgba(154, 69, 57, .045);
-  transition: background .18s ease, color .18s ease, border-color .18s ease,
-              box-shadow .18s ease, transform .18s ease;
+  box-shadow: 0 2px 5px rgba(132, 42, 36, .035);
+  transition: background .16s ease, border-color .16s ease,
+              color .16s ease, box-shadow .16s ease, transform .16s ease;
 }
-.user-menu-list > form.logout-form > button.logout-button:hover {
-  background: linear-gradient(125deg, #ffece9, #ffdfda);
-  border-color: #e9aaa0;
-  color: #862d26;
-  box-shadow: 0 6px 16px rgba(154, 69, 57, .13);
+.user-menu-list > form[action$="actions-logout.php"] > button[type="submit"]:hover {
+  background: linear-gradient(110deg, #ffe9e5 0%, #ffdcd6 100%);
+  border-color: #de9b94;
+  color: #842a25;
+  box-shadow: 0 5px 15px rgba(162, 57, 49, .11);
   transform: translateY(-1px);
 }
-.user-menu-list > form.logout-form > button.logout-button:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(154, 69, 57, .09);
-}
-.user-menu-list > form.logout-form > button.logout-button:focus-visible {
-  outline: 3px solid #f3b4ab;
+.user-menu-list > form[action$="actions-logout.php"] > button[type="submit"]:focus-visible {
+  outline: 3px solid #ed9e94;
   outline-offset: 3px;
 }
-.user-menu-list .logout-button .logout-button-icon {
+.user-menu-list > form[action$="actions-logout.php"] > button[type="submit"]:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+.user-menu-list > form[action$="actions-logout.php"] > button[type="submit"] > .logout-button-icon {
   display: inline-flex;
+  flex: 0 0 35px;
+  width: 35px;
+  height: 35px;
   align-items: center;
   justify-content: center;
-  flex: 0 0 34px;
-  width: 34px;
-  height: 34px;
-  background: #ffdfdb;
-  border: 1px solid #f5c5bf;
   border-radius: 9px;
+  background: #ffdbd5;
+  color: #aa3932;
 }
-.user-menu-list .logout-button .logout-button-icon .ico {
-  width: 17px;
-  height: 17px;
-  color: #b5443b;
-  margin: 0;
-}
-.user-menu-list .logout-button .logout-button-label {
+.user-menu-list > form[action$="actions-logout.php"] > button[type="submit"] > .logout-button-label {
   flex: 1;
   min-width: 0;
 }
-.user-menu-list .logout-button .logout-button-arrow {
+.user-menu-list > form[action$="actions-logout.php"] > button[type="submit"] > .logout-button-arrow {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
   opacity: .65;
 }
-.user-menu-list .logout-button .logout-button-arrow .ico {
-  width: 16px;
-  height: 16px;
+/* SVGs gerados pelo JavaScript, inclusive em versões antigas do modal. */
+.user-menu-list > form[action$="actions-logout.php"] > button[type="submit"] .ico {
+  width: 17px;
+  height: 17px;
   color: currentColor;
+}
+.user-menu-list > form[action$="actions-logout.php"] > button[type="submit"] .logout-button-icon .ico,
+.user-menu-list > form[action$="actions-logout.php"] > button[type="submit"] .logout-button-arrow .ico {
   margin: 0;
 }
-@media (prefers-reduced-motion: reduce) {
-  .user-menu-list > form.logout-form > button.logout-button {
-    transition: none;
+.user-menu-list > form[action$="actions-logout.php"] > button[type="submit"] > .ico:last-child {
+  margin-left: auto;
+}
+@media(max-width:480px) {
+  .user-menu-list > form[action$="actions-logout.php"] > button[type="submit"] {
+    min-height: 50px;
+    font-size: 12px;
   }
-  .user-menu-list > form.logout-form > button.logout-button:hover {
-    transform: none;
-  }
+}
+@media(prefers-reduced-motion:reduce) {
+  .user-menu-list > form[action$="actions-logout.php"] > button[type="submit"] {transition: none;}
+  .user-menu-list > form[action$="actions-logout.php"] > button[type="submit"]:hover {transform: none;}
 }
