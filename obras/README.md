@@ -96,3 +96,8 @@ usuários. Um usuário novo deve trocar sua senha no primeiro acesso.
 Não há alteração de banco necessária. Preserve a configuração MySQL privada
 na Hostinger, fora do GitHub. Teste criar um usuário, editar, desativar, ativar
 e entrar com a senha temporária após publicar os arquivos no servidor.
+
+
+## Relatórios institucionais, impressão e exportação
+
+Esta versão inclui **impressão A4 / Salvar como PDF**, **Excel .xlsx** e **CSV**, gerados a partir do MySQL autenticado, com filtros, ficha de registro individual e relatório executivo para reuniões. Veja [docs/RELATORIOS_IMPRESSAO_EXPORTACAO.md](docs/RELATORIOS_IMPRESSAO_EXPORTACAO.md). Não há migrações SQL nesta atualização.
