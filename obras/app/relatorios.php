@@ -1,6 +1,6 @@
 <?php
 /**
- * OBRAS360 | Relatórios gerenciais, impressão, CSV e XLSX.
+ * OBRAS360 | Relatórios gerenciais, impressão e XLSX.
  * Fonte: banco MySQL autenticado, nunca dados fictícios do JavaScript.
  */
 declare(strict_types=1);
@@ -189,25 +189,6 @@ function rpt_display_value(string $key,mixed $value): string {
 function rpt_filename(string $module,string $extension): string {
     return 'OBRAS360_'.preg_replace('/[^a-z0-9_-]/','',strtolower($module)).'_'.date('Ymd_His').'.'.$extension;
 }
-function rpt_csv_injection_safe(string $value): string {
-    // Protege a abertura de CSV em planilhas (inclusive prefixos após espaços).
-    return preg_match('/^[\s\x00-\x1F]*[=+\-@]/u',$value) ? "'".$value : $value;
-}
-function rpt_download_csv(array $dataset): never {
-    $columns=rpt_columns($dataset['module'],false);
-    header('Content-Type: text/csv; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="'.rpt_filename($dataset['module'],'csv').'"');
-    header('X-Content-Type-Options: nosniff');
-    echo "\xEF\xBB\xBF";
-    $out=fopen('php://output','wb');
-    fputcsv($out, array_column($columns,1), ';', '"', '');
-    foreach ($dataset['rows'] as $row) {
-        $cells=[];
-        foreach ($columns as [$key]) $cells[]=rpt_csv_injection_safe(rpt_display_value((string)$key,$row[$key]??null));
-        fputcsv($out,$cells,';','"','');
-    }
-    fclose($out);exit;
-}
 function rpt_xml(string $value): string {
     // Caracteres válidos XML 1.0; não permitir elementos ou fórmulas executáveis.
     $value=preg_replace('/[^\x{9}\x{A}\x{D}\x{20}-\x{D7FF}\x{E000}-\x{FFFD}]/u','',$value) ?? '';
@@ -247,17 +228,18 @@ function rpt_zip(array $files): string {
 }
 function rpt_xlsx_styles(): string {
     // Visual discreto, elevado contraste e fontes amplas; sem blocos escuros enormes.
+    // Tipografia compacta exclusiva do Excel; a impressão A4 mantém fonte maior.
     $fonts=[
-        '<font><sz val="12"/><name val="Aptos"/><color rgb="FF243C46"/></font>',
-        '<font><b/><sz val="13"/><name val="Aptos"/><color rgb="FF126E66"/></font>',
-        '<font><b/><sz val="20"/><name val="Aptos Display"/><color rgb="FF183947"/></font>',
-        '<font><sz val="11"/><name val="Aptos"/><color rgb="FF526875"/></font>',
-        '<font><b/><sz val="12"/><name val="Aptos"/><color rgb="FF183947"/></font>',
-        '<font><b/><sz val="12"/><name val="Aptos"/><color rgb="FF244754"/></font>',
-        '<font><b/><sz val="18"/><name val="Aptos Display"/><color rgb="FF183947"/></font>',
-        '<font><b/><sz val="11"/><name val="Aptos"/><color rgb="FF206C52"/></font>',
-        '<font><b/><sz val="11"/><name val="Aptos"/><color rgb="FF9B5B24"/></font>',
-        '<font><sz val="11"/><name val="Aptos"/><color rgb="FF516A75"/></font>',
+        '<font><sz val="10"/><name val="Aptos"/><color rgb="FF243C46"/></font>',
+        '<font><b/><sz val="10"/><name val="Aptos"/><color rgb="FF126E66"/></font>',
+        '<font><b/><sz val="16"/><name val="Aptos Display"/><color rgb="FF183947"/></font>',
+        '<font><sz val="9"/><name val="Aptos"/><color rgb="FF526875"/></font>',
+        '<font><b/><sz val="10"/><name val="Aptos"/><color rgb="FF183947"/></font>',
+        '<font><b/><sz val="10"/><name val="Aptos"/><color rgb="FF244754"/></font>',
+        '<font><b/><sz val="15"/><name val="Aptos Display"/><color rgb="FF183947"/></font>',
+        '<font><b/><sz val="10"/><name val="Aptos"/><color rgb="FF206C52"/></font>',
+        '<font><b/><sz val="10"/><name val="Aptos"/><color rgb="FF9B5B24"/></font>',
+        '<font><sz val="9"/><name val="Aptos"/><color rgb="FF516A75"/></font>',
     ];
     $fills=[
         '<fill><patternFill patternType="none"/></fill>',
@@ -270,6 +252,9 @@ function rpt_xlsx_styles(): string {
         '<border><left/><right/><top/><bottom/><diagonal/></border>',
         '<border><left/><right/><top style="hair"><color rgb="FFDCE6E9"/></top><bottom style="hair"><color rgb="FFDCE6E9"/></bottom><diagonal/></border>',
         '<border><left/><right/><top/><bottom style="thin"><color rgb="FFB9CCD2"/></bottom><diagonal/></border>',
+        // Grade sutil e completa, usada em todas as células da tabela de dados.
+        '<border><left style="thin"><color rgb="FFD5E0E4"/></left><right style="thin"><color rgb="FFD5E0E4"/></right><top style="thin"><color rgb="FFD5E0E4"/></top><bottom style="thin"><color rgb="FFD5E0E4"/></bottom><diagonal/></border>',
+        '<border><left style="thin"><color rgb="FFB5C8CF"/></left><right style="thin"><color rgb="FFB5C8CF"/></right><top style="thin"><color rgb="FFB5C8CF"/></top><bottom style="thin"><color rgb="FFB5C8CF"/></bottom><diagonal/></border>',
     ];
     // Font, preenchimento, borda, número. Índices públicos usados pelo gerador.
     $styles=[
@@ -278,30 +263,34 @@ function rpt_xlsx_styles(): string {
         [2,4,0,0],     // 2 título grande
         [3,4,0,0],     // 3 metadados
         [4,2,0,0],     // 4 seção de indicadores
-        [5,3,2,0],     // 5 título de coluna
-        [0,4,1,0],     // 6 linha branca
-        [0,5,1,0],     // 7 linha alternada
-        [0,4,1,2],     // 8 decimal branco
-        [0,5,1,2],     // 9 decimal alternado
-        [0,4,1,164],   // 10 moeda
-        [0,5,1,164],   // 11 moeda alternada
-        [0,4,1,165],   // 12 percentual
-        [0,5,1,165],   // 13 percentual alternado
+        [5,3,4,0],     // 5 título de coluna: contorno completo
+        [0,4,3,0],     // 6 linha branca: bordas em todos os lados
+        [0,5,3,0],     // 7 linha alternada
+        [0,4,3,2],     // 8 decimal branco
+        [0,5,3,2],     // 9 decimal alternado
+        [0,4,3,164],   // 10 moeda
+        [0,5,3,164],   // 11 moeda alternada
+        [0,4,3,165],   // 12 percentual
+        [0,5,3,165],   // 13 percentual alternado
         [9,3,0,0],     // 14 legenda indicador
         [6,3,0,0],     // 15 número indicador
         [3,4,0,0],     // 16 nota
         [4,4,0,0],     // 17 negrito simples
-        [7,7,1,0],     // 18 situação positiva
-        [8,8,1,0],     // 19 situação atenção
-        [4,5,1,0],     // 20 situação neutra
+        [7,7,3,0],     // 18 situação positiva
+        [8,8,3,0],     // 19 situação atenção
+        [4,5,3,0],     // 20 situação neutra
         [5,4,0,0],     // 21 título secundário
-        [0,4,1,1],     // 22 inteiro
-        [0,5,1,1],     // 23 inteiro alternado
+        [0,4,3,1],     // 22 inteiro
+        [0,5,3,1],     // 23 inteiro alternado
         [8,6,0,0],     // 24 alerta informativo
     ];
     $xfs='';
     foreach($styles as [$fontId,$fillId,$borderId,$formatId]){
-        $xfs.='<xf numFmtId="'.$formatId.'" fontId="'.$fontId.'" fillId="'.$fillId.'" borderId="'.$borderId.'" xfId="0" applyFont="1" applyFill="1" applyBorder="1"'.($formatId?' applyNumberFormat="1"':'').'><alignment vertical="center" wrapText="1"/></xf>';
+        // O estilo institucional (índice 1) é centralizado em todas as abas.
+        // As demais linhas conservam o alinhamento adequado às informações.
+        $alignment = $borderId===4 ? ' horizontal="center"' : '';
+        if ($fontId===1 && $fillId===2) $alignment=' horizontal="center"';
+        $xfs.='<xf numFmtId="'.$formatId.'" fontId="'.$fontId.'" fillId="'.$fillId.'" borderId="'.$borderId.'" xfId="0" applyFont="1" applyFill="1" applyBorder="1"'.($formatId?' applyNumberFormat="1"':'').'><alignment'.$alignment.' vertical="center" wrapText="1"/></xf>';
     }
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       .'<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
@@ -345,7 +334,7 @@ function rpt_xlsx_sheet(array $rows,array $widths,array $merges=[],string $filte
     $xml.='</cols><sheetData>';
     ksort($rows);
     foreach($rows as $r=>$cells){
-        $height=$rowHeights[$r]??($r===1?30:($r===2?38:($r===7?42:30)));
+        $height=$rowHeights[$r]??($r===1?28:($r===2?34:($r===7?34:26)));
         $xml.='<row r="'.$r.'" ht="'.(float)$height.'" customHeight="1">';
         ksort($cells);
         foreach($cells as $col=>$item)$xml.=rpt_xlsx_cell((int)$col,(int)$r,$item);
@@ -391,7 +380,7 @@ function rpt_xlsx_bytes(array $dataset): string {
         $set($data,3,0,$metadata,3);
         $set($data,4,0,'Filtros: '.$filter,3);
         $set($data,5,0,$baseNote,16);
-        $rowHeights=[1=>31,2=>42,3=>30,4=>29,5=>32,7=>46];
+        $rowHeights=[1=>29,2=>38,3=>26,4=>26,5=>28,7=>36];
         foreach($columns as $j=>$column){
             [$key,$label]=$column;
             $set($data,7,$j,(string)$label,5);
@@ -431,7 +420,7 @@ function rpt_xlsx_bytes(array $dataset): string {
                     $maxLength=max($maxLength,strlen((string)$txt));
                 }
             }
-            $rowHeights[$r]=$maxLength>100?59:($maxLength>54?44:31);
+            $rowHeights[$r]=$maxLength>100?48:($maxLength>54?36:27);
             $r++;
         }
         if($dataset['total']===0){$set($data,9,0,'Nenhum registro encontrado para os filtros selecionados.',16);$rowHeights[9]=35;}
@@ -472,7 +461,7 @@ function rpt_xlsx_bytes(array $dataset): string {
     $place($noteRow,0,5,'NOTAS DE LEITURA',4);
     $place($noteRow+1,0,5,'Dados extraídos no momento da emissão. Consulte Registros para a tabela principal.',16);
     if($dataset['demo']>0)$place($noteRow+2,0,5,'Atenção: existem registros de demonstração. Validar antes de utilizar oficialmente.',24);
-    $sumHeights=[1=>31,2=>42,3=>30,4=>30,6=>32,7=>31,8=>45,10=>31,11=>45,13=>31,14=>39,$noteRow=>31,$noteRow+1=>32];
+    $sumHeights=[1=>29,2=>38,3=>26,4=>26,6=>29,7=>27,8=>38,10=>27,11=>38,13=>29,14=>33,$noteRow=>29,$noteRow+1=>27];
     $sheetTwo=rpt_xlsx_sheet($summary,[29,15,29,15,29,15],$sumMerges,'',0,$sumHeights);
     // Terceira aba conserva todos os campos sem sobrecarregar a leitura inicial.
     $sheetThree=$buildData($extended,true);
@@ -624,7 +613,7 @@ function rpt_print_document(array $dataset): string {
     $content='<section class="section table-section"><div class="section-heading"><span>03</span><div><h2>'.($isExec?'Carteira de obras':'Detalhamento dos registros').'</h2><p>Todos os registros da seleção, sem limite de pré-visualização.</p></div><strong class="table-count">'.rpt_html($total).' registros</strong></div>'.$table.'</section>';
     return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
     .'<title>'.rpt_html($title).' | OBRAS360</title><link rel="stylesheet" href="assets/relatorios.css?v=4"></head><body>'
-    .'<div class="print-toolbar"><div class="toolbar-brand"><span class="toolbar-logo">◈</span><div><b>OBRAS<span>360</span></b><small>Relatório gerencial</small></div></div><div class="toolbar-actions"><a class="toolbar-link" href="'.rpt_html($back).'">← Voltar</a><a class="toolbar-btn outlined" href="'.rpt_html(rpt_url($dataset,'csv')).'">Baixar CSV</a><a class="toolbar-btn outlined" href="'.rpt_html(rpt_url($dataset,'xlsx')).'">Baixar Excel</a><button class="toolbar-btn primary" type="button" id="print-now">Imprimir / Salvar PDF</button></div></div>'
+    .'<div class="print-toolbar"><div class="toolbar-brand"><span class="toolbar-logo">◈</span><div><b>OBRAS<span>360</span></b><small>Relatório gerencial</small></div></div><div class="toolbar-actions"><a class="toolbar-link" href="'.rpt_html($back).'">← Voltar</a><a class="toolbar-btn outlined" href="'.rpt_html(rpt_url($dataset,'xlsx')).'">Baixar Excel</a><button class="toolbar-btn primary" type="button" id="print-now">Imprimir / Salvar PDF</button></div></div>'
     .'<div class="document"><header class="doc-header"><div class="header-mark"><div class="emblem">◈</div><div><span class="gov-small">PREFEITURA MUNICIPAL DE COARI</span><strong>Secretaria Municipal de Obras e Planejamento</strong><small>Coari · Amazonas</small></div></div><div class="edition-mark"><strong>OBRAS<span>360</span></strong><small>ACOMPANHAMENTO GERENCIAL</small></div></header>'
     .'<div class="hero-band"><div class="hero-kicker">RELATÓRIO DE GESTÃO <span> / </span> '.rpt_html(date('Y')).'</div><h1>'.rpt_html($title).'</h1><p>Síntese das informações cadastradas para acompanhamento gerencial.</p></div>'
     .'<section class="document-meta"><div><small>EMISSÃO</small><b>'.rpt_html(date('d/m/Y H:i')).' (AM)</b></div><div><small>RESPONSÁVEL PELA EMISSÃO</small><b>'.rpt_html($dataset['user']['name']??$dataset['user']['username']??'Usuário').'</b></div><div><small>ORIGEM</small><b>OBRAS360 · Registros cadastrados</b></div></section>'

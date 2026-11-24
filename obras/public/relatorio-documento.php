@@ -1,6 +1,6 @@
 <?php
 /** Exportação e impressão institucional do OBRAS360.
- * Os formatos imprimível, CSV e XLSX sempre consultam o banco e aplicam os mesmos filtros.
+ * Os formatos imprimível e XLSX sempre consultam o banco e aplicam os mesmos filtros.
  */
 declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/relatorios.php';
@@ -9,10 +9,9 @@ try {
     $module=rpt_query_string('modulo',45) ?: 'obras';
     rpt_allowed($module,$who);
     $format=rpt_query_string('formato',8) ?: 'imprimir';
-    if(!in_array($format,['imprimir','csv','xlsx'],true))throw new HttpError('Formato não suportado.',400);
+    if(!in_array($format,['imprimir','xlsx'],true))throw new HttpError('Formato não suportado.',400);
     $query=rpt_query();
     $set=rpt_dataset($module,$who,$query);
-    if($format==='csv')rpt_download_csv($set);
     if($format==='xlsx')rpt_download_xlsx($set);
     header('Content-Type: text/html; charset=utf-8');
     echo rpt_print_document($set);

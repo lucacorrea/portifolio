@@ -1,6 +1,6 @@
 # OBRAS360 — DEMONSTRAÇÃO FUNCIONAL • PHP + MySQL
 
-> **Atualização de relatórios (24/11/2026):** exportação Excel refeita com as abas **Registros**, **Indicadores** e **Dados completos**, iniciando pela tabela legível; impressão A4 horizontal com fontes ampliadas. O CSV mantém os mesmos seis campos da aba principal, mas não suporta estilos visuais. Consulte [docs/RELATORIOS_IMPRESSAO_EXPORTACAO.md](docs/RELATORIOS_IMPRESSAO_EXPORTACAO.md).
+> **Atualização de relatórios (24/11/2026):** exportação Excel refeita com as abas **Registros**, **Indicadores** e **Dados completos**, iniciando pela tabela legível; impressão A4 horizontal com fontes ampliadas. O botão CSV foi removido. O Excel agora tem fonte menor, cabeçalho institucional centralizado e bordas completas nas tabelas. Consulte [docs/RELATORIOS_IMPRESSAO_EXPORTACAO.md](docs/RELATORIOS_IMPRESSAO_EXPORTACAO.md).
 
 Sistema com o mesmo layout, mapas e formulários do protótipo anterior. Todos os módulos
 usam **`app/bootstrap.php` → `db()` → `app/conexao.php`** para abrir PDO.
@@ -102,7 +102,7 @@ e entrar com a senha temporária após publicar os arquivos no servidor.
 
 ## Relatórios institucionais, impressão e exportação
 
-Esta versão inclui **impressão A4 / Salvar como PDF**, **Excel .xlsx** e **CSV**, gerados a partir do MySQL autenticado, com filtros, ficha de registro individual e relatório executivo para reuniões. Veja [docs/RELATORIOS_IMPRESSAO_EXPORTACAO.md](docs/RELATORIOS_IMPRESSAO_EXPORTACAO.md). Não há migrações SQL nesta atualização.
+Esta versão inclui **impressão A4 / Salvar como PDF**, **Excel .xlsx**, gerados a partir do MySQL autenticado, com filtros, ficha de registro individual e relatório executivo para reuniões. Veja [docs/RELATORIOS_IMPRESSAO_EXPORTACAO.md](docs/RELATORIOS_IMPRESSAO_EXPORTACAO.md). Não há migrações SQL nesta atualização.
 
 
 ## Relatórios e Excel (correção de 24/11/2026)
