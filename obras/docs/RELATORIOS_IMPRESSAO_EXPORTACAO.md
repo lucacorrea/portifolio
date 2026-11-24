@@ -36,3 +36,12 @@
 - Não houve alteração de SQL ou mudança de tabelas nesta entrega.
 - **CSV é um formato de texto e não admite estilos visuais.** Para apresentações, utilize o **Excel (.xlsx)** ou imprima/salve em PDF.
 - A versão precisa ser validada no MySQL real da Hostinger após publicação. Os testes locais validam formato, lógica, sintaxe e a renderização do documento com dados fictícios.
+
+
+## Atualização V4 — leitura ampliada e Excel redesenhado
+
+- Impressão: A4 horizontal com tipografia maior, maior contraste, tabelas legíveis e paginação natural.
+- Excel (.xlsx): abre na aba **Registros** (6 campos principais), exibe **Indicadores** na segunda e **Dados completos** na terceira; cabeçalhos claros, larguras ajustadas, linhas alternadas, filtros e números reais.
+- CSV (.csv): possui as mesmas **seis colunas principais** da aba Registros, UTF-8 com BOM e `;` como separador. **CSV não suporta tipografia, cores, abas, larguras ou formatação visual**, portanto para apresentação institucional use XLSX ou Imprimir/PDF.
+- Ambos os formatos usam os mesmos filtros e consultam o MySQL ao serem gerados.
+- Nenhuma alteração no banco de dados.

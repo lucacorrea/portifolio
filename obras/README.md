@@ -1,5 +1,7 @@
 # OBRAS360 — DEMONSTRAÇÃO FUNCIONAL • PHP + MySQL
 
+> **Atualização de relatórios (24/11/2026):** exportação Excel refeita com as abas **Registros**, **Indicadores** e **Dados completos**, iniciando pela tabela legível; impressão A4 horizontal com fontes ampliadas. O CSV mantém os mesmos seis campos da aba principal, mas não suporta estilos visuais. Consulte [docs/RELATORIOS_IMPRESSAO_EXPORTACAO.md](docs/RELATORIOS_IMPRESSAO_EXPORTACAO.md).
+
 Sistema com o mesmo layout, mapas e formulários do protótipo anterior. Todos os módulos
 usam **`app/bootstrap.php` → `db()` → `app/conexao.php`** para abrir PDO.
 

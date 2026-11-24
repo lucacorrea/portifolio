@@ -194,7 +194,7 @@ function rpt_csv_injection_safe(string $value): string {
     return preg_match('/^[\s\x00-\x1F]*[=+\-@]/u',$value) ? "'".$value : $value;
 }
 function rpt_download_csv(array $dataset): never {
-    $columns=rpt_columns($dataset['module'],true);
+    $columns=rpt_columns($dataset['module'],false);
     header('Content-Type: text/csv; charset=UTF-8');
     header('Content-Disposition: attachment; filename="'.rpt_filename($dataset['module'],'csv').'"');
     header('X-Content-Type-Options: nosniff');
@@ -214,7 +214,7 @@ function rpt_xml(string $value): string {
     return htmlspecialchars($value,ENT_QUOTES | ENT_XML1 | ENT_SUBSTITUTE,'UTF-8');
 }
 /**
- * XLSX Office Open XML: duas abas institucionais, tipos numéricos e estilos.
+ * XLSX Office Open XML: planilha principal legível, indicadores e todos os campos.
  * O XML segue a ordem exigida pelo Excel (autoFilter ANTES de mergeCells).
  * Não depende de Composer, ZipArchive ou bibliotecas de servidor.
  */
@@ -246,57 +246,73 @@ function rpt_zip(array $files): string {
     return $out;
 }
 function rpt_xlsx_styles(): string {
-    $font=[
-        '<font><sz val="11"/><name val="Aptos"/><color rgb="FF243B4A"/></font>',
-        '<font><b/><sz val="17"/><name val="Aptos Display"/><color rgb="FFFFFFFF"/></font>',
-        '<font><b/><sz val="13"/><name val="Aptos"/><color rgb="FF183849"/></font>',
-        '<font><b/><sz val="10"/><name val="Aptos"/><color rgb="FFFFFFFF"/></font>',
-        '<font><sz val="10"/><name val="Aptos"/><color rgb="FF667D86"/></font>',
-        '<font><b/><sz val="10"/><name val="Aptos"/><color rgb="FF183849"/></font>',
+    // Visual discreto, elevado contraste e fontes amplas; sem blocos escuros enormes.
+    $fonts=[
+        '<font><sz val="12"/><name val="Aptos"/><color rgb="FF243C46"/></font>',
+        '<font><b/><sz val="13"/><name val="Aptos"/><color rgb="FF126E66"/></font>',
+        '<font><b/><sz val="20"/><name val="Aptos Display"/><color rgb="FF183947"/></font>',
+        '<font><sz val="11"/><name val="Aptos"/><color rgb="FF526875"/></font>',
+        '<font><b/><sz val="12"/><name val="Aptos"/><color rgb="FF183947"/></font>',
+        '<font><b/><sz val="12"/><name val="Aptos"/><color rgb="FF244754"/></font>',
+        '<font><b/><sz val="18"/><name val="Aptos Display"/><color rgb="FF183947"/></font>',
+        '<font><b/><sz val="11"/><name val="Aptos"/><color rgb="FF206C52"/></font>',
+        '<font><b/><sz val="11"/><name val="Aptos"/><color rgb="FF9B5B24"/></font>',
+        '<font><sz val="11"/><name val="Aptos"/><color rgb="FF516A75"/></font>',
     ];
-    $fills=['<fill><patternFill patternType="none"/></fill>',
-        '<fill><patternFill patternType="gray125"/></fill>'];
-    foreach(['FF183E4D','FFE1EEEA','FFF3F7F8','FFFFFFFF'] as $color){
-        $fills[]='<fill><patternFill patternType="solid"><fgColor rgb="'.$color.'"/><bgColor indexed="64"/></patternFill></fill>';
+    $fills=[
+        '<fill><patternFill patternType="none"/></fill>',
+        '<fill><patternFill patternType="gray125"/></fill>',
+    ];
+    foreach(['FFECF6F2','FFECF1F3','FFFFFFFF','FFF7FAFA','FFFFF6E9','FFEAF5EF','FFFFF3E8'] as $fill){
+        $fills[]='<fill><patternFill patternType="solid"><fgColor rgb="'.$fill.'"/><bgColor indexed="64"/></patternFill></fill>';
     }
-    $border='<border><left/><right/><top/><bottom/><diagonal/></border>';
-    $border2='<border><left/><right/><top/><bottom style="hair"><color rgb="FFD9E4E7"/></bottom><diagonal/></border>';
-    $styles=[
-        [0,0,0,0], // 0 normal
-        [1,2,0,0], // 1 faixa institucional
-        [2,5,0,0], // 2 subtítulo
-        [4,0,0,0], // 3 metadados
-        [3,2,0,0], // 4 seção / cabeçalho
-        [3,2,0,0], // 5 cabeçalho de tabela
-        [0,5,1,0], // 6 linha branca
-        [0,4,1,0], // 7 zebra
-        [0,5,1,2], // 8 numérico, 2 casas
-        [0,4,1,2], // 9 numérico zebra
-        [0,5,1,164], // 10 moeda
-        [0,4,1,164], // 11 moeda zebra
-        [0,5,1,165], // 12 percentual
-        [0,4,1,165], // 13 percentual zebra
-        [4,3,0,0], // 14 label KPI
-        [2,3,0,0], // 15 valor KPI
-        [4,0,0,0], // 16 observação
-        [5,0,0,0], // 17 negrito simples
-        [2,0,0,0], // 18 título fora do banner
-        [2,3,0,164], // 19 KPI moeda
-        [2,3,0,165], // 20 KPI %
+    $borders=[
+        '<border><left/><right/><top/><bottom/><diagonal/></border>',
+        '<border><left/><right/><top style="hair"><color rgb="FFDCE6E9"/></top><bottom style="hair"><color rgb="FFDCE6E9"/></bottom><diagonal/></border>',
+        '<border><left/><right/><top/><bottom style="thin"><color rgb="FFB9CCD2"/></bottom><diagonal/></border>',
     ];
-    $xfs='';foreach($styles as [$fontId,$fillId,$borderId,$formatId]){
+    // Font, preenchimento, borda, número. Índices públicos usados pelo gerador.
+    $styles=[
+        [0,0,0,0],     // 0 padrão
+        [1,2,0,0],     // 1 marca institucional, fundo verde quase branco
+        [2,4,0,0],     // 2 título grande
+        [3,4,0,0],     // 3 metadados
+        [4,2,0,0],     // 4 seção de indicadores
+        [5,3,2,0],     // 5 título de coluna
+        [0,4,1,0],     // 6 linha branca
+        [0,5,1,0],     // 7 linha alternada
+        [0,4,1,2],     // 8 decimal branco
+        [0,5,1,2],     // 9 decimal alternado
+        [0,4,1,164],   // 10 moeda
+        [0,5,1,164],   // 11 moeda alternada
+        [0,4,1,165],   // 12 percentual
+        [0,5,1,165],   // 13 percentual alternado
+        [9,3,0,0],     // 14 legenda indicador
+        [6,3,0,0],     // 15 número indicador
+        [3,4,0,0],     // 16 nota
+        [4,4,0,0],     // 17 negrito simples
+        [7,7,1,0],     // 18 situação positiva
+        [8,8,1,0],     // 19 situação atenção
+        [4,5,1,0],     // 20 situação neutra
+        [5,4,0,0],     // 21 título secundário
+        [0,4,1,1],     // 22 inteiro
+        [0,5,1,1],     // 23 inteiro alternado
+        [8,6,0,0],     // 24 alerta informativo
+    ];
+    $xfs='';
+    foreach($styles as [$fontId,$fillId,$borderId,$formatId]){
         $xfs.='<xf numFmtId="'.$formatId.'" fontId="'.$fontId.'" fillId="'.$fillId.'" borderId="'.$borderId.'" xfId="0" applyFont="1" applyFill="1" applyBorder="1"'.($formatId?' applyNumberFormat="1"':'').'><alignment vertical="center" wrapText="1"/></xf>';
     }
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-        .'<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-        .'<numFmts count="2"><numFmt numFmtId="164" formatCode="&quot;R$&quot; #,##0.00"/><numFmt numFmtId="165" formatCode="0%"/></numFmts>'
-        .'<fonts count="'.count($font).'">'.implode('',$font).'</fonts>'
-        .'<fills count="'.count($fills).'">'.implode('',$fills).'</fills>'
-        .'<borders count="2">'.$border.$border2.'</borders>'
-        .'<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
-        .'<cellXfs count="'.count($styles).'">'.$xfs.'</cellXfs>'
-        .'<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
-        .'</styleSheet>';
+      .'<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+      .'<numFmts count="3"><numFmt numFmtId="164" formatCode="&quot;R$&quot; #,##0.00"/><numFmt numFmtId="165" formatCode="0%"/><numFmt numFmtId="166" formatCode="0.0000"/></numFmts>'
+      .'<fonts count="'.count($fonts).'">'.implode('',$fonts).'</fonts>'
+      .'<fills count="'.count($fills).'">'.implode('',$fills).'</fills>'
+      .'<borders count="'.count($borders).'">'.implode('',$borders).'</borders>'
+      .'<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+      .'<cellXfs count="'.count($styles).'">'.$xfs.'</cellXfs>'
+      .'<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
+      .'</styleSheet>';
 }
 /** @return array{v:mixed,s:int,n?:bool} */
 function rpt_xlsx_item(mixed $value,int $style=6,bool $numeric=false): array {
@@ -316,7 +332,7 @@ function rpt_xlsx_cell(int $col,int $row,array $item): string {
  * @param array<int,array<int,array>> $rows linhas 1-based com células 0-based
  * @param array<int,int|float> $widths larguras 1-based
  */
-function rpt_xlsx_sheet(array $rows,array $widths,array $merges=[],string $filter='',int $freeze=0): string {
+function rpt_xlsx_sheet(array $rows,array $widths,array $merges=[],string $filter='',int $freeze=0,array $rowHeights=[]): string {
     $lastRow=max(1,(int)max(array_keys($rows)));
     $lastCol=rpt_xlsx_col(count($widths)-1);
     $xml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
@@ -324,22 +340,22 @@ function rpt_xlsx_sheet(array $rows,array $widths,array $merges=[],string $filte
         .'<dimension ref="A1:'.$lastCol.$lastRow.'"/>'
         .'<sheetViews><sheetView showGridLines="0" workbookViewId="0">';
     if ($freeze>0) $xml.='<pane ySplit="'.$freeze.'" topLeftCell="A'.($freeze+1).'" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A'.($freeze+1).'" sqref="A'.($freeze+1).'"/>';
-    $xml.='</sheetView></sheetViews><sheetFormatPr defaultRowHeight="19"/><cols>';
+    $xml.='</sheetView></sheetViews><sheetFormatPr defaultRowHeight="25"/><cols>';
     foreach($widths as $index=>$width)$xml.='<col min="'.($index+1).'" max="'.($index+1).'" width="'.(float)$width.'" customWidth="1"/>';
     $xml.='</cols><sheetData>';
     ksort($rows);
     foreach($rows as $r=>$cells){
-        $height=$r===1?31:($r===2?27:($r===6||$r===8?24:22));
-        $xml.='<row r="'.$r.'" ht="'.$height.'" customHeight="1">';
+        $height=$rowHeights[$r]??($r===1?30:($r===2?38:($r===7?42:30)));
+        $xml.='<row r="'.$r.'" ht="'.(float)$height.'" customHeight="1">';
         ksort($cells);
         foreach($cells as $col=>$item)$xml.=rpt_xlsx_cell((int)$col,(int)$r,$item);
         $xml.='</row>';
     }
     $xml.='</sheetData>';
-    // Ordem oficial: autoFilter antes de mergeCells. O Excel removia as células ao reparar a planilha anterior.
+    // Ordem exigida pelo Excel: autoFilter antes de mergeCells.
     if ($filter!=='')$xml.='<autoFilter ref="'.rpt_xml($filter).'"/>';
     if ($merges){$xml.='<mergeCells count="'.count($merges).'">';foreach($merges as $range)$xml.='<mergeCell ref="'.rpt_xml($range).'"/>';$xml.='</mergeCells>';}
-    $xml.='<printOptions gridLines="0"/><pageMargins left="0.3" right="0.3" top="0.55" bottom="0.5" header="0.2" footer="0.2"/>'
+    $xml.='<printOptions gridLines="0"/><pageMargins left="0.4" right="0.4" top="0.6" bottom="0.6" header="0.25" footer="0.25"/>'
         .'<pageSetup orientation="landscape" paperSize="9" fitToWidth="1" fitToHeight="0"/>'
         .'</worksheet>';
     return $xml;
@@ -352,94 +368,133 @@ function rpt_xlsx_numeric_kind(string $field,mixed $value): string {
     return '';
 }
 function rpt_xlsx_bytes(array $dataset): string {
-    $columns=rpt_columns($dataset['module'],true);
-    $count=max(1,count($columns));
-    // A aba Resumo é sempre visível, mesmo quando nenhum registro corresponde aos filtros.
-    $summary=[];$summaryMerges=['A1:H1','A2:H2','A4:H4','A5:H5','A6:H6','A8:H8','A13:H13'];
+    $short = rpt_columns($dataset['module'],false);
+    $extended = rpt_columns($dataset['module'],true);
     $set=static function(array &$rows,int $r,int $c,mixed $v,int $style=6,bool $numeric=false): void {
         $rows[$r][$c]=rpt_xlsx_item($v,$style,$numeric);
     };
-    $set($summary,1,0,'OBRAS360   /   PREFEITURA MUNICIPAL DE COARI',1);
-    $set($summary,2,0,rpt_module_title($dataset['module']),18);
-    $set($summary,4,0,'EMISSÃO  '.date('d/m/Y H:i').'     •     ORIGEM  OBRAS360 / MYSQL',3);
-    $set($summary,5,0,'RESPONSÁVEL  '.($dataset['user']['name']??$dataset['user']['username']??'Usuário'),3);
-    $set($summary,6,0,'FILTROS  '.rpt_filters_text($dataset['filters']),3);
-    $set($summary,8,0,'INDICADORES DA SELEÇÃO',4);
-    foreach([[0,'REGISTROS'],[3,'SITUAÇÕES'],[6,'DEMONSTRATIVOS']] as [$c,$label])$set($summary,9,$c,$label,14);
-    foreach([[0,(int)$dataset['total']],[3,count($dataset['status'])],[6,(int)$dataset['demo']]] as [$c,$value])$set($summary,10,$c,$value,15,true);
-    foreach([[0,'ORÇAMENTO ESTIMADO'],[3,'EXECUÇÃO MÉDIA'],[6,'VALOR MEDIDO']] as [$c,$label])$set($summary,11,$c,$label,14);
-    $set($summary,12,0,(float)$dataset['budget'],19,true);
-    $set($summary,12,3,$dataset['progressCount'] ? (float)$dataset['progress']/$dataset['progressCount']/100 : 0,20,true);
-    $set($summary,12,6,(float)$dataset['measured'],19,true);
-    $set($summary,13,0,'DISTRIBUIÇÃO POR SITUAÇÃO',4);
-    $set($summary,14,0,'SITUAÇÃO',5);$set($summary,14,3,'QUANTIDADE',5);$set($summary,14,6,'PARTICIPAÇÃO',5);
-    $i=15;
-    foreach($dataset['status'] as $status=>$quantity){
-        $style=$i%2?6:7;
-        $set($summary,$i,0,$status,$style);
-        $set($summary,$i,3,(int)$quantity,$style,true);
-        $set($summary,$i,6,$dataset['total'] ? (float)$quantity/$dataset['total'] : 0,$i%2?12:13,true);
-        $i++;
-    }
-    if (!$dataset['status']){$set($summary,15,0,'Sem classificação de situação na seleção.',16);$i=16;}
-    $noteRow=$i+2;
-    $set($summary,$noteRow,0,'OBSERVAÇÕES',4);$summaryMerges[]='A'.$noteRow.':H'.$noteRow;
-    $set($summary,$noteRow+1,0,'Os dados são extraídos do MySQL no momento da emissão. Consulte a aba Registros para ver a relação completa.',16);
-    $summaryMerges[]='A'.($noteRow+1).':H'.($noteRow+1);
-    if ($dataset['demo']>0){$set($summary,$noteRow+2,0,'ATENÇÃO: há registros demonstrativos nesta seleção. Validar antes de utilizar oficialmente.',16);$summaryMerges[]='A'.($noteRow+2).':H'.($noteRow+2);}
-    $summaryWidth=[31,19,4,31,19,4,31,19];
-
-    // Na aba Registros, a tabela começa em A6 e cada linha corresponde a um registro do banco.
-    $data=[];$lastCol=rpt_xlsx_col($count-1);
-    $set($data,1,0,'OBRAS360   /   SECRETARIA MUNICIPAL DE OBRAS E PLANEJAMENTO',1);
-    $set($data,2,0,rpt_module_title($dataset['module']).' — relação de registros',18);
-    $set($data,3,0,'EMISSÃO: '.date('d/m/Y H:i').'    |    RESPONSÁVEL: '.($dataset['user']['name']??'Usuário').'    |    REGISTROS: '.$dataset['total'],3);
-    $set($data,4,0,'FILTROS: '.rpt_filters_text($dataset['filters']),3);
-    foreach($columns as $j=>$column)$set($data,6,$j,(string)$column[1],5);
-    $r=7;
-    foreach($dataset['rows'] as $record){
-        foreach($columns as $j=>[$key]){
-            $value=$record[$key]??'';
-            $kind=rpt_xlsx_numeric_kind((string)$key,$value);
-            $odd=$r%2!==0;
-            if ($kind==='money')$set($data,$r,$j,(float)$value,$odd?10:11,true);
-            elseif ($kind==='progress')$set($data,$r,$j,((float)$value)/100,$odd?12:13,true);
-            elseif ($kind==='number')$set($data,$r,$j,(float)$value,$odd?8:9,true);
-            else $set($data,$r,$j,$value===''||$value===null?'—':rpt_display_value((string)$key,$value),$odd?6:7);
+    $user=$dataset['user']['name']??$dataset['user']['username']??'Usuário';
+    $date=date('d/m/Y H:i');
+    $filter=rpt_filters_text($dataset['filters']);
+    $title=rpt_module_title($dataset['module']);
+    $brand='PREFEITURA MUNICIPAL DE COARI  /  OBRAS360';
+    $metadata='Emitido em '.$date.'   •   Responsável: '.$user.'   •   Total: '.$dataset['total'].' registro(s)';
+    $baseNote='Fonte: OBRAS360 / MySQL    •    Consulte a aba Indicadores para o resumo da seleção.';
+    if($dataset['demo']>0) $baseNote.='    •    '.$dataset['demo'].' registros demonstrativos: validar antes de divulgar.';
+    // A primeira aba abre diretamente a tabela principal, sem espaços enormes.
+    $buildData=static function(array $columns,bool $isExtended) use ($dataset,$set,$brand,$metadata,$title,$filter,$baseNote): string {
+        if(!$columns)$columns=[['id','Código']];
+        $data=[];$widths=[];$rowHeights=[];
+        $end=rpt_xlsx_col(count($columns)-1);
+        $set($data,1,0,$brand,1);
+        $set($data,2,0,$title.($isExtended?' — todos os campos':''),2);
+        $set($data,3,0,$metadata,3);
+        $set($data,4,0,'Filtros: '.$filter,3);
+        $set($data,5,0,$baseNote,16);
+        $rowHeights=[1=>31,2=>42,3=>30,4=>29,5=>32,7=>46];
+        foreach($columns as $j=>$column){
+            [$key,$label]=$column;
+            $set($data,7,$j,(string)$label,5);
+            $widths[]=match((string)$key){
+                'id','code','username'=>21,
+                'title'=>47,
+                'name','descricao','observacao'=>46,
+                'local','obra','setor','destino','responsavel','work'=>33,
+                'email'=>38,
+                'status','situacao','role','prioridade','tipo','condicao'=>25,
+                'contrato'=>30,
+                'inicio','fim','prazo','date','data','created_at','last_login_at'=>23,
+                'progresso','valor','orcamento','quantidade','lat','lng'=>20,
+                default=>max(19,min(36,strlen((string)$label)+9))
+            };
         }
-        $r++;
+        $r=8;
+        foreach($dataset['rows'] as $record){
+            $maxLength=0;
+            foreach($columns as $j=>[$key]){
+                $value=$record[$key]??'';
+                $kind=rpt_xlsx_numeric_kind((string)$key,$value);
+                $white=$r%2===0;
+                if($kind==='money')$set($data,$r,$j,(float)$value,$white?10:11,true);
+                elseif($kind==='progress')$set($data,$r,$j,(float)$value/100,$white?12:13,true);
+                elseif($kind==='number')$set($data,$r,$j,(float)$value,$white?8:9,true);
+                else {
+                    $txt=$value===''||$value===null?'—':rpt_display_value((string)$key,$value);
+                    $style=$white?6:7;
+                    if(in_array((string)$key,['status','active_label'],true)){
+                        $lower=rpt_lower((string)$txt);
+                        if(rpt_contains($lower,'conclu') || rpt_contains($lower,'finaliz') || $lower==='ativo' || $lower==='normal')$style=18;
+                        elseif(rpt_contains($lower,'abert') || rpt_contains($lower,'atras') || rpt_contains($lower,'penden'))$style=19;
+                        else $style=20;
+                    }
+                    $set($data,$r,$j,$txt,$style);
+                    $maxLength=max($maxLength,strlen((string)$txt));
+                }
+            }
+            $rowHeights[$r]=$maxLength>100?59:($maxLength>54?44:31);
+            $r++;
+        }
+        if($dataset['total']===0){$set($data,9,0,'Nenhum registro encontrado para os filtros selecionados.',16);$rowHeights[9]=35;}
+        $merges=['A1:'.$end.'1','A2:'.$end.'2','A3:'.$end.'3','A4:'.$end.'4','A5:'.$end.'5'];
+        $filterRange=$dataset['total']>0?'A7:'.$end.($r-1):'';
+        return rpt_xlsx_sheet($data,$widths,$merges,$filterRange,7,$rowHeights);
+    };
+    $sheetOne=$buildData($short,false);
+    // Segunda aba: visão executiva compacta, sem blocos e colunas vazias.
+    $summary=[];$sumMerges=[];
+    $place=static function(int $r,int $from,int $to,mixed $value,int $style=6,bool $numeric=false) use (&$summary,&$sumMerges,$set): void {
+        $set($summary,$r,$from,$value,$style,$numeric);
+        if($to>$from)$sumMerges[]=rpt_xlsx_col($from).$r.':'.rpt_xlsx_col($to).$r;
+    };
+    $place(1,0,5,$brand,1);
+    $place(2,0,5,'Resumo gerencial — '.$title,2);
+    $place(3,0,5,$metadata,3);
+    $place(4,0,5,'Filtros: '.$filter,3);
+    $place(6,0,5,'INDICADORES DA SELEÇÃO',4);
+    foreach([[0,1,'REGISTROS'],[2,3,'SITUAÇÕES'],[4,5,'DEMONSTRATIVOS']] as [$a,$b,$label])$place(7,$a,$b,$label,14);
+    foreach([[0,1,(int)$dataset['total']],[2,3,count($dataset['status'])],[4,5,(int)$dataset['demo']]] as [$a,$b,$number])$place(8,$a,$b,$number,15,true);
+    foreach([[0,1,'ORÇAMENTO ESTIMADO'],[2,3,'EXECUÇÃO MÉDIA'],[4,5,'VALOR MEDIDO']] as [$a,$b,$label])$place(10,$a,$b,$label,14);
+    $place(11,0,1,(float)$dataset['budget'],10,true);
+    $place(11,2,3,$dataset['progressCount']?(float)$dataset['progress']/$dataset['progressCount']/100:0,12,true);
+    $place(11,4,5,(float)$dataset['measured'],10,true);
+    $place(13,0,5,'DISTRIBUIÇÃO POR SITUAÇÃO',4);
+    $place(14,0,2,'SITUAÇÃO',5);$place(14,3,3,'QUANTIDADE',5);$place(14,4,5,'PARTICIPAÇÃO',5);
+    $row=15;
+    foreach($dataset['status'] as $status=>$quantity){
+        $style=$row%2?6:7;
+        $place($row,0,2,(string)$status,$style);
+        $place($row,3,3,(int)$quantity,$style,true);
+        $place($row,4,5,$dataset['total']?(float)$quantity/$dataset['total']:0,$row%2?12:13,true);
+        $row++;
     }
-    if ($dataset['total']===0)$set($data,8,0,'Nenhum registro encontrado para os filtros selecionados.',16);
-    $widths=[];
-    foreach($columns as [$key,$label]){
-        $widths[]=match((string)$key){
-            'id','code','username','tipo','status','role'=>22,
-            'title','name','email','local','descricao','observacao'=>42,
-            'responsavel','work','contrato'=>31,
-            'inicio','fim','prazo','date','data','created_at','last_login_at'=>23,
-            default=>max(18,min(33,strlen((string)$label)+9))
-        };
-    }
-    $sheetOne=rpt_xlsx_sheet($summary,$summaryWidth,$summaryMerges,'',0);
-    $sheetTwo=rpt_xlsx_sheet($data,$widths,['A1:'.$lastCol.'1','A2:'.$lastCol.'2','A3:'.$lastCol.'3','A4:'.$lastCol.'4'],
-        $dataset['total']>0?'A6:'.$lastCol.($r-1):'',6);
+    if(!$dataset['status']){$place($row,0,5,'Nenhuma situação informada nos registros filtrados.',16);$row++;}
+    $noteRow=$row+2;
+    $place($noteRow,0,5,'NOTAS DE LEITURA',4);
+    $place($noteRow+1,0,5,'Dados extraídos no momento da emissão. Consulte Registros para a tabela principal.',16);
+    if($dataset['demo']>0)$place($noteRow+2,0,5,'Atenção: existem registros de demonstração. Validar antes de utilizar oficialmente.',24);
+    $sumHeights=[1=>31,2=>42,3=>30,4=>30,6=>32,7=>31,8=>45,10=>31,11=>45,13=>31,14=>39,$noteRow=>31,$noteRow+1=>32];
+    $sheetTwo=rpt_xlsx_sheet($summary,[29,15,29,15,29,15],$sumMerges,'',0,$sumHeights);
+    // Terceira aba conserva todos os campos sem sobrecarregar a leitura inicial.
+    $sheetThree=$buildData($extended,true);
     $types='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-        .'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
-        .'<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
-        .'<Default Extension="xml" ContentType="application/xml"/>'
-        .'<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
-        .'<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
-        .'<Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
-        .'<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
-        .'</Types>';
+      .'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+      .'<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+      .'<Default Extension="xml" ContentType="application/xml"/>'
+      .'<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+      .'<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+      .'<Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+      .'<Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+      .'<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+      .'</Types>';
     $files=[
         '[Content_Types].xml'=>$types,
         '_rels/.rels'=>'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
-        'xl/workbook.xml'=>'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView activeTab="0"/></bookViews><sheets><sheet name="Resumo" sheetId="1" r:id="rId1"/><sheet name="Registros" sheetId="2" r:id="rId2"/></sheets></workbook>',
-        'xl/_rels/workbook.xml.rels'=>'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
+        'xl/workbook.xml'=>'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView activeTab="0"/></bookViews><sheets><sheet name="Registros" sheetId="1" r:id="rId1"/><sheet name="Indicadores" sheetId="2" r:id="rId2"/><sheet name="Dados completos" sheetId="3" r:id="rId3"/></sheets></workbook>',
+        'xl/_rels/workbook.xml.rels'=>'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
         'xl/styles.xml'=>rpt_xlsx_styles(),
         'xl/worksheets/sheet1.xml'=>$sheetOne,
         'xl/worksheets/sheet2.xml'=>$sheetTwo,
+        'xl/worksheets/sheet3.xml'=>$sheetThree,
     ];
     return rpt_zip($files);
 }
@@ -568,7 +623,7 @@ function rpt_print_document(array $dataset): string {
     $back=match($module){'executivo'=>'index.php','planejamento'=>'planejamento.php','mapa'=>'mapa-interativo.php','movimentacoes'=>'materiais-e-estoque.php','usuarios'=>'usuarios.php','auditoria'=>'auditoria.php',default=>match($module){'obras'=>'obras.php','ordens'=>'ordens-de-servico.php','fiscalizacao'=>'fiscalizacao.php','projetos'=>'projetos-e-documentos.php','orcamentos'=>'orcamentos-e-medicoes.php','materiais'=>'materiais-e-estoque.php','patrimonio'=>'predios-publicos.php','protocolos'=>'protocolos.php',default=>'relatorios.php'}};
     $content='<section class="section table-section"><div class="section-heading"><span>03</span><div><h2>'.($isExec?'Carteira de obras':'Detalhamento dos registros').'</h2><p>Todos os registros da seleção, sem limite de pré-visualização.</p></div><strong class="table-count">'.rpt_html($total).' registros</strong></div>'.$table.'</section>';
     return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
-    .'<title>'.rpt_html($title).' | OBRAS360</title><link rel="stylesheet" href="assets/relatorios.css?v=3"></head><body>'
+    .'<title>'.rpt_html($title).' | OBRAS360</title><link rel="stylesheet" href="assets/relatorios.css?v=4"></head><body>'
     .'<div class="print-toolbar"><div class="toolbar-brand"><span class="toolbar-logo">◈</span><div><b>OBRAS<span>360</span></b><small>Relatório gerencial</small></div></div><div class="toolbar-actions"><a class="toolbar-link" href="'.rpt_html($back).'">← Voltar</a><a class="toolbar-btn outlined" href="'.rpt_html(rpt_url($dataset,'csv')).'">Baixar CSV</a><a class="toolbar-btn outlined" href="'.rpt_html(rpt_url($dataset,'xlsx')).'">Baixar Excel</a><button class="toolbar-btn primary" type="button" id="print-now">Imprimir / Salvar PDF</button></div></div>'
     .'<div class="document"><header class="doc-header"><div class="header-mark"><div class="emblem">◈</div><div><span class="gov-small">PREFEITURA MUNICIPAL DE COARI</span><strong>Secretaria Municipal de Obras e Planejamento</strong><small>Coari · Amazonas</small></div></div><div class="edition-mark"><strong>OBRAS<span>360</span></strong><small>ACOMPANHAMENTO GERENCIAL</small></div></header>'
     .'<div class="hero-band"><div class="hero-kicker">RELATÓRIO DE GESTÃO <span> / </span> '.rpt_html(date('Y')).'</div><h1>'.rpt_html($title).'</h1><p>Síntese das informações cadastradas para acompanhamento gerencial.</p></div>'
@@ -578,5 +633,5 @@ function rpt_print_document(array $dataset): string {
     .(!empty($counts)?'<section class="section situation-section"><div class="section-heading"><span>02</span><div><h2>Distribuição por situação</h2><p>Visão comparativa dos registros filtrados.</p></div></div><div class="status-grid">'.$countsHtml.'</div></section>':'')
     .$content
     .'<footer class="doc-footer"><div class="footer-note"><span class="footer-dot"></span><div><strong>Observação de integridade</strong><p>Documento gerado a partir dos dados disponíveis no OBRAS360. Validar os cadastros e eventuais dados de demonstração antes de apresentação oficial. Este relatório não substitui documentos assinados ou parecer técnico.</p></div></div><div class="footer-bottom"><strong>OBRAS360</strong><span>Secretaria Municipal de Obras e Planejamento · Coari/AM</span><span>Emitido em '.rpt_html(date('d/m/Y')).'</span></div></footer></div>'
-    .'<script src="assets/relatorios.js?v=1" defer></script></body></html>';
+    .'<script src="assets/relatorios.js?v=2" defer></script></body></html>';
 }
