@@ -546,9 +546,8 @@ $sql_select_export = "
 
 $sql_order = "
     ORDER BY
-        CAST(SUBSTRING_INDEX(REPLACE(REPLACE(UPPER(TRIM(a.numero_aq)), 'AQ-', ''), 'AQ', ''), '-', 1) AS UNSIGNED) ASC,
-        CAST(SUBSTRING_INDEX(REPLACE(REPLACE(UPPER(TRIM(a.numero_aq)), 'AQ-', ''), 'AQ', ''), '-', -1) AS UNSIGNED) ASC,
-        a.id ASC
+        a.criado_em DESC,
+        a.id DESC
 ";
 
 $sql_export_order = "
