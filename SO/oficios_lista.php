@@ -860,7 +860,7 @@ $stmt = $pdo->prepare("
     ) fornecedores_oficio ON fornecedores_oficio.oficio_id = o.id
     LEFT JOIN fornecedores f_indicado ON f_indicado.id = o.fornecedor_indicado_id
     WHERE $where
-    ORDER BY o.criado_em DESC
+    ORDER BY o.id DESC
     LIMIT $itens_por_pagina OFFSET $offset
 ");
 $stmt->execute($params);
