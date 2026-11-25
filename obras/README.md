@@ -1,5 +1,8 @@
 > **Revisão V7 (24/11/2026):** consulte [Auditoria funcional](docs/AUDITORIA_FUNCIONAL_V7.md) e [Roteiro de homologação](docs/ROTEIRO_HOMOLOGACAO_EQUIPE.md). Apenas piloto assistido; a integração MySQL precisa de validação na Hostinger.
 
+> **Atualização V9 — anexos de imagem até 30 KiB:** veja [docs/IMAGENS_30KB_TESTES_V9.md](docs/IMAGENS_30KB_TESTES_V9.md). Fotos acima do limite podem sofrer perda visual; se não couberem, são recusadas.
+
+
 # OBRAS360 — DEMONSTRAÇÃO FUNCIONAL • PHP + MySQL
 
 > **Excel V6 (24/11/2026):** a aba Indicadores foi redesenhada como tabelas regulares de três colunas, e as três abas agora têm títulos e cabeçalhos com contornos completos e todos os dados centralizados. Veja [docs/ATUALIZACAO_EXCEL_V6.md](docs/ATUALIZACAO_EXCEL_V6.md).

@@ -20,7 +20,7 @@ try {
     }
 
     $stored = (string)$row['stored_name'];
-    if (!preg_match('/^[a-f0-9]{40}\.(?:pdf|jpg|jpeg|png|doc|docx)$/iD', $stored)) {
+    if (!preg_match('/^[a-f0-9]{40}\.(?:pdf|jpg|jpeg|png|webp|doc|docx)$/iD', $stored)) {
         error_log('[OBRAS360 DOWNLOAD] Nome armazenado inválido, id=' . $id);
         throw new HttpError('Anexo com referência inválida. Solicite verificação ao suporte.', 404);
     }
