@@ -544,10 +544,9 @@ $sql_select_export = "
     WHERE $where_export
 ";
 
+// Ordena por ordem de cadastro, inclusive aquisições com data retroativa.
 $sql_order = "
-    ORDER BY
-        a.criado_em DESC,
-        a.id DESC
+    ORDER BY a.id DESC
 ";
 
 $sql_export_order = "
