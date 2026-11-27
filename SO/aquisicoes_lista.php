@@ -1894,22 +1894,12 @@ include 'views/layout/header.php';
                     <button
                         type="submit"
                         name="export"
-                        value="excel"
-                        class="filtro-btn filtro-btn-excel"
-                        title="Exportar Excel">
-                        <i class="fas fa-file-excel"></i>
-                        Excel
-                    </button>
-
-                    <button
-                        type="submit"
-                        name="export"
                         value="pdf"
                         formtarget="_blank"
-                        class="filtro-btn filtro-btn-pdf"
-                        title="Baixar PDF">
-                        <i class="fas fa-file-pdf"></i>
-                        PDF
+                        class="filtro-btn filtro-btn-print"
+                        title="Imprimir tabela de aquisições filtradas">
+                        <i class="fas fa-table"></i>
+                        Imprimir tabela
                     </button>
 
                     <button
@@ -1919,7 +1909,7 @@ include 'views/layout/header.php';
                         class="filtro-btn filtro-btn-print"
                         title="Imprimir aquisições aprovadas e filtradas">
                         <i class="fas fa-print"></i>
-                        Imprimir
+                        Imprimir aquisição
                     </button>
 
                     <a href="aquisicoes_lista.php" class="filtro-btn filtro-btn-clear" title="Limpar filtros">
