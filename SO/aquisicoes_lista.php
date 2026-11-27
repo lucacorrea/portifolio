@@ -1169,6 +1169,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
 
                 .pdf-wrap {
                     padding: 0 !important;
+                    overflow: visible !important;
                 }
 
                 .pdf-page {
@@ -1430,24 +1431,24 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                         let pdf = null;
                         for (const target of targets) {
                             let worker = window.html2pdf().set({
-                            margin: sections.length ? [5, 5, 7, 5] : [0, 0, 7, 0],
-                            filename: filename,
-                            image: { type: 'jpeg', quality: 0.98 },
-                            html2canvas: {
-                                scale: 2,
-                                useCORS: true,
-                                backgroundColor: '#ffffff',
-                                windowWidth: target.scrollWidth
-                            },
-                            jsPDF: {
-                                unit: 'mm',
-                                format: 'a4',
-                                orientation: 'landscape'
-                            },
-                            pagebreak: {
-                                mode: ['css', 'legacy'],
-                                avoid: ['tr']
-                            }
+                                margin: sections.length ? [5, 5, 7, 5] : [0, 0, 7, 0],
+                                filename: filename,
+                                image: { type: 'jpeg', quality: 0.98 },
+                                html2canvas: {
+                                    scale: 2,
+                                    useCORS: true,
+                                    backgroundColor: '#ffffff',
+                                    windowWidth: target.scrollWidth
+                                },
+                                jsPDF: {
+                                    unit: 'mm',
+                                    format: 'a4',
+                                    orientation: 'landscape'
+                                },
+                                pagebreak: {
+                                    mode: ['css', 'legacy'],
+                                    avoid: ['tr']
+                                }
                             });
                             if (pdf) {
                                 pdf.addPage();
