@@ -418,6 +418,62 @@ $where_parts = ["a.status IN ('ESPERANDO OFICIO', 'AGUARDANDO ENTREGA', 'FINALIZ
 $params = [];
 $status_options = ['ESPERANDO OFICIO', 'AGUARDANDO ENTREGA', 'FINALIZADO'];
 
+// As opções dos filtros usam o mesmo período e os mesmos status visíveis da lista,
+// sem depender da página atual ou de outro filtro selecionado.
+$periodo_parts = [];
+$periodo_params = [];
+if ($data_inicio_valida) {
+    $periodo_parts[] = "a.criado_em >= :data_inicio";
+    $periodo_params[':data_inicio'] = $data_inicio . ' 00:00:00';
+}
+if ($data_fim_valida) {
+    $periodo_parts[] = "a.criado_em <= :data_fim";
+    $periodo_params[':data_fim'] = $data_fim . ' 23:59:59';
+}
+
+$filtros_removidos = [];
+if ($periodo_parts && !in_array($export, ['excel', 'pdf'], true)) {
+    $where_opcoes = implode(' AND ', array_merge($where_parts, $periodo_parts));
+    $stmt_secretarias = $pdo->prepare("
+        SELECT DISTINCT s.id, s.nome
+        FROM aquisicoes a
+        INNER JOIN oficios o ON a.oficio_id = o.id
+        INNER JOIN secretarias s ON o.secretaria_id = s.id
+        WHERE $where_opcoes
+        ORDER BY s.nome
+    ");
+    $stmt_secretarias->execute($periodo_params);
+    $secretarias_list = $stmt_secretarias->fetchAll(PDO::FETCH_ASSOC);
+
+    $stmt_fornecedores = $pdo->prepare("
+        SELECT DISTINCT f.id, f.nome, f.cnpj
+        FROM aquisicoes a
+        INNER JOIN fornecedores f ON a.fornecedor_id = f.id
+        WHERE $where_opcoes
+        ORDER BY f.nome
+    ");
+    $stmt_fornecedores->execute($periodo_params);
+    $fornecedores_list = $stmt_fornecedores->fetchAll(PDO::FETCH_ASSOC);
+
+    // Se a seleção anterior não existe no novo período, volta para Todos.
+    if ($secretaria_id !== '' && !in_array($secretaria_id, array_map('strval', array_column($secretarias_list, 'id')), true)) {
+        $secretaria_id = '';
+        unset($_GET['secretaria_id']);
+        $filtros_removidos[] = 'secretaria';
+    }
+    if ($fornecedor_id !== '' && !in_array($fornecedor_id, array_map('strval', array_column($fornecedores_list, 'id')), true)) {
+        $fornecedor_id = '';
+        unset($_GET['fornecedor_id']);
+        $filtros_removidos[] = 'fornecedor';
+    }
+} else {
+    // Sem período, mantém o cadastro completo. Exportações diretas preservam
+    // os IDs solicitados e os nomes nos cabeçalhos, sem ampliar o relatório.
+    $secretarias_list = $pdo->query("SELECT id, nome FROM secretarias ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
+    $fornecedores_list = $pdo->query("SELECT id, nome, cnpj FROM fornecedores ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
 if ($status !== '' && !in_array($status, $status_options, true)) {
     $status = '';
 }
@@ -467,23 +523,15 @@ if ($fornecedor_id !== '') {
     $params[':fornecedor_id'] = (int)$fornecedor_id;
 }
 
-if ($data_inicio_valida) {
-    $where_parts[] = "a.criado_em >= :data_inicio";
-    $params[':data_inicio'] = $data_inicio . ' 00:00:00';
-}
-
-if ($data_fim_valida) {
-    $where_parts[] = "a.criado_em <= :data_fim";
-    $params[':data_fim'] = $data_fim . ' 23:59:59';
-}
+$where_parts = array_merge($where_parts, $periodo_parts);
+$params = array_merge($params, $periodo_params);
 
 $where = implode(' AND ', $where_parts);
 // O relatório gerencial (PDF/Excel) usa os mesmos filtros da lista,
 // incluindo registros pendentes, sem modificar seu status no banco.
 $where_export = $where;
 
-$secretarias_list = $pdo->query("SELECT id, nome FROM secretarias ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
-$fornecedores_list = $pdo->query("SELECT id, nome, cnpj FROM fornecedores ORDER BY nome")->fetchAll(PDO::FETCH_ASSOC);
+
 
 $nome_secretaria_filtro = 'Todas';
 if ($secretaria_id !== '') {
@@ -1720,6 +1768,7 @@ include 'views/layout/header.php';
                 <div>
                     <h3 class="lista-filtros-titulo">Filtros de Busca</h3>
                     <p class="lista-filtros-subtitulo">Encontre aquisições e gere relatórios sem misturar os controles.</p>
+                    <p class="lista-filtros-subtitulo">Ao filtrar por data, são exibidos apenas fornecedores e secretarias com aquisições no período.</p>
                     <p class="lista-filtros-subtitulo">Registros pendentes aparecem na lista; relatórios e impressão exigem aprovação do processo.</p>
                 </div>
             </div>
@@ -1729,6 +1778,11 @@ include 'views/layout/header.php';
             </span>
         </div>
 
+        <?php if ($filtros_removidos): ?>
+            <p role="status" style="margin:0 0 12px;color:#92400e;font-size:.85rem;">
+                A seleção de <?php echo h(implode(' e ', $filtros_removidos)); ?> foi removida porque não possui aquisições no período informado.
+            </p>
+        <?php endif; ?>
         <form action="" method="GET" class="lista-filtros-form lista-filtros-form--aquisicoes">
             <div class="lista-filtros-principais">
                 <div class="lista-filtro lista-filtro-busca">
