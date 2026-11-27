@@ -258,19 +258,25 @@ function secretariaSiglaRelatorio($nome): string
     return $sigla !== '' ? $sigla : $nomeUp;
 }
 
-function agruparAquisicoesPorFornecedor(array $aquisicoes): array
+function agruparAquisicoesPorFornecedor(array $aquisicoes, bool $separarPorId = false): array
 {
     $grupos = [];
     $totalGeral = 0.0;
 
     foreach ($aquisicoes as $aq) {
         $fornecedor = nomeRelatorio($aq['fornecedor'] ?? '', 'FORNECEDOR NÃO INFORMADO');
+        $chaveFornecedor = $separarPorId && !empty($aq['fornecedor_id'])
+            ? 'id:' . (int)$aq['fornecedor_id']
+            : 'nome:' . $fornecedor;
+        if (!$separarPorId) {
+            $chaveFornecedor = $fornecedor;
+        }
         $secretaria = nomeRelatorio($aq['secretaria'] ?? '', 'SECRETARIA NÃO INFORMADA');
         $secretariaCor = corRelatorioSecretaria($aq['secretaria_cor'] ?? '');
         $valor = (float)($aq['valor_total'] ?? 0);
 
-        if (!isset($grupos[$fornecedor])) {
-            $grupos[$fornecedor] = [
+        if (!isset($grupos[$chaveFornecedor])) {
+            $grupos[$chaveFornecedor] = [
                 'nome' => $fornecedor,
                 'quantidade' => 0,
                 'total' => 0.0,
@@ -278,8 +284,8 @@ function agruparAquisicoesPorFornecedor(array $aquisicoes): array
             ];
         }
 
-        if (!isset($grupos[$fornecedor]['secretarias'][$secretaria])) {
-            $grupos[$fornecedor]['secretarias'][$secretaria] = [
+        if (!isset($grupos[$chaveFornecedor]['secretarias'][$secretaria])) {
+            $grupos[$chaveFornecedor]['secretarias'][$secretaria] = [
                 'nome' => $secretaria,
                 'cor' => $secretariaCor,
                 'quantidade' => 0,
@@ -288,11 +294,11 @@ function agruparAquisicoesPorFornecedor(array $aquisicoes): array
             ];
         }
 
-        $grupos[$fornecedor]['quantidade']++;
-        $grupos[$fornecedor]['total'] += $valor;
-        $grupos[$fornecedor]['secretarias'][$secretaria]['quantidade']++;
-        $grupos[$fornecedor]['secretarias'][$secretaria]['total'] += $valor;
-        $grupos[$fornecedor]['secretarias'][$secretaria]['items'][] = $aq;
+        $grupos[$chaveFornecedor]['quantidade']++;
+        $grupos[$chaveFornecedor]['total'] += $valor;
+        $grupos[$chaveFornecedor]['secretarias'][$secretaria]['quantidade']++;
+        $grupos[$chaveFornecedor]['secretarias'][$secretaria]['total'] += $valor;
+        $grupos[$chaveFornecedor]['secretarias'][$secretaria]['items'][] = $aq;
         $totalGeral += $valor;
     }
 
@@ -340,6 +346,22 @@ function gerarResumoSecretarias(array $aquisicoes): array
     });
 
     return array_values($resumo);
+}
+
+function renderizarInicioTabelaAquisicoes(): void
+{
+    ?>
+        <table class="sheet excel-report">
+            <colgroup>
+                <col style="width: 10%;">
+                <col style="width: 18%;">
+                <col style="width: 13%;">
+                <col style="width: 13%;">
+                <col style="width: 30%;">
+                <col style="width: 8%;">
+                <col style="width: 8%;">
+            </colgroup>
+    <?php
 }
 
 function renderizarCabecalhoAquisicoes(
@@ -581,6 +603,7 @@ $sql_select_export = "
         a.criado_em,
         o.numero as oficio_num,
         o.local as oficio_local,
+        a.fornecedor_id,
         o.status as oficio_status,
         s.nome as secretaria,
         s.cor_relatorio as secretaria_cor,
@@ -668,7 +691,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
     }
     unset($aquisicao_export);
 
-    $agrupamento_fornecedores = agruparAquisicoesPorFornecedor($aquisicoes_export);
+    $agrupamento_fornecedores = agruparAquisicoesPorFornecedor($aquisicoes_export, $is_pdf_export && $fornecedor_id === '');
     $dadosPorFornecedor = $agrupamento_fornecedores['grupos'];
     $total_export = (float)$agrupamento_fornecedores['total'];
     $quantidade_export = (int)$agrupamento_fornecedores['quantidade'];
@@ -681,13 +704,15 @@ if (in_array($export, ['excel', 'pdf'], true)) {
     $fornecedor_color_map = [];
     if ($usar_cores_fornecedor) {
         $fornecedor_cor_index = 0;
-        foreach (array_keys($dadosPorFornecedor) as $nomeFornecedor) {
-            $fornecedor_color_map[$nomeFornecedor] = corRelatorioFornecedor($fornecedor_cor_index);
+        foreach (array_keys($dadosPorFornecedor) as $chaveFornecedor) {
+            $fornecedor_color_map[$chaveFornecedor] = corRelatorioFornecedor($fornecedor_cor_index);
             $fornecedor_cor_index++;
         }
     }
     $usar_coluna_fornecedor = $secretaria_id !== '' && $fornecedor_id === '';
-    $usar_cabecalho_por_fornecedor = $usar_coluna_fornecedor && count($dadosPorFornecedor) > 1;
+    // PDF/Imprimir tabela: cada fornecedor tem uma tabela independente.
+    $separar_fornecedores = $is_pdf_export && $fornecedor_id === '' && !empty($dadosPorFornecedor);
+    $usar_cabecalho_por_fornecedor = $separar_fornecedores || ($usar_coluna_fornecedor && count($dadosPorFornecedor) > 1);
 
     $periodo_texto = 'Todos';
     if ($data_inicio_valida || $data_fim_valida) {
@@ -1016,10 +1041,24 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                 padding: 2px 5px;
             }
 
-            /* Fornecedores seguem na mesma folha quando houver espaço. */
-            body.pdf-export .supplier-page-break {
-                break-before: auto;
-                page-break-before: auto;
+            /* Prévia: uma folha visual independente para cada fornecedor.
+               O conteúdo pode crescer naturalmente quando houver muitas aquisições. */
+            @media screen {
+                .pdf-page.pdf-page--separated {
+                    padding: 0;
+                    background: #eef2f7;
+                }
+
+                .pdf-page--separated > .supplier-sheet {
+                    min-height: 210mm;
+                    padding: 5mm;
+                    background: #ffffff;
+                    box-shadow: 0 1px 5px rgba(0, 0, 0, .13);
+                }
+
+                .pdf-page--separated > .supplier-sheet--next {
+                    margin-top: 12px;
+                }
             }
 
             body.pdf-export .secretaria-card-title td {
@@ -1139,6 +1178,18 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                     padding: 0 !important;
                 }
 
+                .supplier-sheet {
+                    min-height: 0 !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    box-shadow: none !important;
+                }
+
+                .supplier-sheet--next {
+                    break-before: page;
+                    page-break-before: always;
+                }
+
                 .sheet tr, .sheet td, .sheet th {
                     break-inside: avoid;
                     page-break-inside: avoid;
@@ -1167,19 +1218,12 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                 </div>
             </div>
             <div class="pdf-wrap">
-                <div class="pdf-page" id="pdf-report-page">
+                <div class="pdf-page<?php echo $separar_fornecedores ? ' pdf-page--separated' : ''; ?>" id="pdf-report-page">
         <?php endif; ?>
 
-        <table class="sheet excel-report">
-            <colgroup>
-                <col style="width: 10%;">
-                <col style="width: 18%;">
-                <col style="width: 13%;">
-                <col style="width: 13%;">
-                <col style="width: 30%;">
-                <col style="width: 8%;">
-                <col style="width: 8%;">
-            </colgroup>
+        <?php if (!$separar_fornecedores): ?>
+            <?php renderizarInicioTabelaAquisicoes(); ?>
+        <?php endif; ?>
 
             <?php if (!$usar_cabecalho_por_fornecedor): ?>
                 <?php
@@ -1202,12 +1246,12 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                 </tr>
             <?php else: ?>
                 <?php $gerado_em_relatorio = date('d/m/Y H:i:s'); ?>
-                <?php $mostrar_blocos_fornecedor = count($dadosPorFornecedor) > 1; ?>
+                <?php $mostrar_blocos_fornecedor = count($dadosPorFornecedor) > 1 && !$separar_fornecedores; ?>
                 <?php $fornecedor_index = 0; ?>
-                <?php foreach ($dadosPorFornecedor as $fornecedor): ?>
+                <?php foreach ($dadosPorFornecedor as $chaveFornecedor => $fornecedor): ?>
                     <?php
                     $fornecedor_cor = $usar_cores_fornecedor
-                        ? h($fornecedor_color_map[$fornecedor['nome']] ?? corRelatorioFornecedor($fornecedor_index))
+                        ? h($fornecedor_color_map[$chaveFornecedor] ?? corRelatorioFornecedor($fornecedor_index))
                         : '';
                     $fornecedor_bg_attr = $fornecedor_cor !== ''
                         ? ' bgcolor="' . $fornecedor_cor . '" style="background-color: ' . $fornecedor_cor . ';"'
@@ -1215,6 +1259,10 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                     $fornecedor_quebra_pagina = $fornecedor_index > 0;
                     $fornecedor_index++;
                     ?>
+                    <?php if ($separar_fornecedores): ?>
+                        <section class="supplier-sheet<?php echo $fornecedor_quebra_pagina ? ' supplier-sheet--next' : ''; ?>">
+                            <?php renderizarInicioTabelaAquisicoes(); ?>
+                    <?php endif; ?>
                     <?php if ($usar_cabecalho_por_fornecedor): ?>
                         <?php
                         renderizarCabecalhoAquisicoes(
@@ -1226,7 +1274,7 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                             (string)$fornecedor['nome'],
                             (int)$fornecedor['quantidade'],
                             (float)$fornecedor['total'],
-                            $fornecedor_quebra_pagina
+                            !$separar_fornecedores && $fornecedor_quebra_pagina
                         );
                         ?>
                     <?php endif; ?>
@@ -1319,24 +1367,43 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                         </tr>
                     <?php endforeach; ?>
 
-                    <?php if ($mostrar_blocos_fornecedor): ?>
+                    <?php if ($mostrar_blocos_fornecedor || $separar_fornecedores): ?>
                         <tr class="supplier-total-row">
                             <td colspan="5" class="right"<?php echo $fornecedor_bg_attr; ?>>TOTAL DO FORNECEDOR</td>
                             <td class="center"<?php echo $fornecedor_bg_attr; ?>><?php echo (int)$fornecedor['quantidade']; ?> AQ</td>
                             <td class="right money-cell"<?php echo $fornecedor_bg_attr; ?>><?php echo formatarMoedaBR($fornecedor['total']); ?></td>
                         </tr>
                     <?php endif; ?>
+                    <?php if ($separar_fornecedores): ?>
+                        <?php if ($fornecedor_index === count($dadosPorFornecedor) && count($dadosPorFornecedor) > 1): ?>
+                            <tr class="spacer"><td colspan="7"></td></tr>
+                            <tr class="total-row">
+                                <td colspan="5" class="right">TOTAL GERAL (TODOS OS FORNECEDORES)</td>
+                                <td class="center"><?php echo $quantidade_export; ?> AQ</td>
+                                <td class="right money-cell"><?php echo formatarMoedaBR($total_export); ?></td>
+                            </tr>
+                        <?php endif; ?>
+                        </table>
+                        <div class="credito-aquisicoes-lista">Desenvolvido por Lucas Correa</div>
+                        </section>
+                    <?php endif; ?>
                 <?php endforeach; ?>
 
-                <tr class="spacer"><td colspan="7"></td></tr>
-                <tr class="total-row">
-                    <td colspan="6" class="right">TOTAL GERAL</td>
-                    <td class="right money-cell"><?php echo formatarMoedaBR($total_export); ?></td>
-                </tr>
+                <?php if (!$separar_fornecedores): ?>
+                    <tr class="spacer"><td colspan="7"></td></tr>
+                    <tr class="total-row">
+                        <td colspan="6" class="right">TOTAL GERAL</td>
+                        <td class="right money-cell"><?php echo formatarMoedaBR($total_export); ?></td>
+                    </tr>
+                <?php endif; ?>
             <?php endif; ?>
-        </table>
+        <?php if (!$separar_fornecedores): ?>
+            </table>
+        <?php endif; ?>
         <?php if ($is_pdf_export): ?>
-                <div class="credito-aquisicoes-lista">Desenvolvido por Lucas Correa</div>
+                <?php if (!$separar_fornecedores): ?>
+                    <div class="credito-aquisicoes-lista">Desenvolvido por Lucas Correa</div>
+                <?php endif; ?>
                 </div>
             </div>
 
@@ -1355,16 +1422,22 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                     button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando...';
 
                     try {
-                        const worker = window.html2pdf().set({
-                            // Reserva espaço inferior para o crédito e a paginação do PDF.
-                            margin: [0, 0, 7, 0],
-                            filename: <?php echo json_encode($filename . '.pdf'); ?>,
+                        // Renderiza cada fornecedor separadamente para começar em nova página
+                        // e evitar um único canvas excessivamente alto no relatório completo.
+                        const sections = Array.from(report.querySelectorAll('.supplier-sheet'));
+                        const targets = sections.length ? sections : [report];
+                        const filename = <?php echo json_encode($filename . '.pdf'); ?>;
+                        let pdf = null;
+                        for (const target of targets) {
+                            let worker = window.html2pdf().set({
+                            margin: sections.length ? [5, 5, 7, 5] : [0, 0, 7, 0],
+                            filename: filename,
                             image: { type: 'jpeg', quality: 0.98 },
                             html2canvas: {
                                 scale: 2,
                                 useCORS: true,
                                 backgroundColor: '#ffffff',
-                                windowWidth: report.scrollWidth
+                                windowWidth: target.scrollWidth
                             },
                             jsPDF: {
                                 unit: 'mm',
@@ -1375,9 +1448,15 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                                 mode: ['css', 'legacy'],
                                 avoid: ['tr']
                             }
-                        }).from(report).toPdf();
+                            });
+                            if (pdf) {
+                                pdf.addPage();
+                                worker = worker.set({ pdf: pdf });
+                            }
+                            pdf = await worker.from(target).toPdf().get('pdf');
+                        }
 
-                        await worker.get('pdf').then((pdf) => {
+                        {
                             const totalPages = pdf.internal.getNumberOfPages();
                             const pageWidth = pdf.internal.pageSize.getWidth();
                             const pageHeight = pdf.internal.pageSize.getHeight();
@@ -1392,9 +1471,9 @@ if (in_array($export, ['excel', 'pdf'], true)) {
                                     align: 'right'
                                 });
                             }
-                        });
+                        }
 
-                        await worker.save();
+                        pdf.save(filename);
                     } catch (error) {
                         console.error('Falha ao baixar PDF:', error);
                         window.print();
